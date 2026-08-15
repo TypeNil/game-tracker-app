@@ -1,0 +1,90 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+naming:
+  FunctionNaming:
+    active: true
+    # Allows PascalCase for Jetpack Compose Composable functions
+    functionPattern: '([a-zA-Z][a-zA-Z0-9]*)|([A-Z][a-zA-Z0-9]*)'
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][A-Z0-9_]*'
+    propertyPattern: '[a-zA-Z][a-zA-Z0-9]*'
+  PackageNaming:
+    active: true
+    packagePattern: '^[a-z]+(\.[a-z][A-Za-z0-9]*)*$'
+
+complexity:
+  TooManyFunctions:
+    active: true
+    ignoreAnnotatedFunctions: ['Preview', 'Composable']
+  LongMethod:
+    active: true
+    ignoreAnnotated: ['Composable']
+  ComplexCondition:
+    active: true
+  LargeClass:
+    active: true
+
+style:
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2', '100', '1000']
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: true
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreNamedArgument: true
+    ignoreEnums: true
+    ignoreRanges: true
+  UnusedPrivateMember:
+    active: true
+    ignoreAnnotated: ['Preview']
+  WildcardImport:
+    active: true
+    excludeImports: ['java.util.*', 'kotlinx.android.synthetic.*']
+
+formatting:
+  active: true
+  android: true
+  autoCorrect: true
+  FinalNewline:
+    active: true
+    autoCorrect: true
+  NoUnusedImports:
+    active: true
+    autoCorrect: true
+  ParameterListWrapping:
+    active: true
+    autoCorrect: true
+  MaximumLineLength:
+    active: true
+    maxLineLength: 140
+  PackageName:
+    active: true
+  TrailingCommaOnCallSite:
+    active: false
+  TrailingCommaOnDeclarationSite:
+    active: false
+
+Compose:
+  ComposableNaming:
+    active: true
+  ModifierNaming:
+    active: true
+  ModifierMissing:
+    active: true
+  ModifierReused:
+    active: true
+  MutableParams:
+    active: true
+  RememberContentMissing:
+    active: true

@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.detekt)
 }
 
 val localProperties = Properties().apply {
@@ -124,6 +125,10 @@ dependencies {
     // Image Loading (Coil 3)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    // Detekt Plugins (KtLint Formatting & Compose Rules)
+    detektPlugins(libs.detekt.formatting)
+    detektPlugins(libs.detekt.compose)
 
     // Testing
     testImplementation(libs.junit)
