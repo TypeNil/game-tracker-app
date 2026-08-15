@@ -26,7 +26,7 @@
 -dontwarn okio.**
 -dontwarn javax.annotation.**
 
-# Room Database
+# Room Database & Paging
 -keepclassmembers class * extends androidx.room.RoomDatabase {
     <init>();
 }
@@ -38,6 +38,11 @@
 -keep class * extends dagger.hilt.internal.GeneratedComponentBuilder
 -keep class * extends dagger.hilt.internal.ComponentManager
 -keep class * extends dagger.hilt.internal.UnsafeCasts
+
+# WorkManager & Hilt Worker
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
 
 # Coil 3
 -keep class coil3.** { *; }
