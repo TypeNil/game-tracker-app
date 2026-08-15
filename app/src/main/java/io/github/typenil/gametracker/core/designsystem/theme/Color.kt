@@ -1,4 +1,4 @@
-package io.github.typenil.gametracker.ui.theme
+package io.github.typenil.gametracker.core.designsystem.theme
 
 import androidx.compose.ui.graphics.Color
 

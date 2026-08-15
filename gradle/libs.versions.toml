@@ -5,6 +5,7 @@ ksp = "2.2.10-2.0.2"
 hilt = "2.60.1"
 hiltExtensions = "1.2.0"
 coreKtx = "1.19.0"
+coreSplashScreen = "1.2.0"
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
 composeBom = "2026.02.01"
@@ -28,6 +29,7 @@ turbine = "1.2.0"
 [libraries]
 # AndroidX Core & Lifecycle
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashScreen" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }

@@ -27,7 +27,7 @@ android {
     defaultConfig {
         applicationId = "io.github.typenil.gametracker"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
@@ -88,6 +88,7 @@ android {
 dependencies {
     // AndroidX Core & Architecture Components
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
