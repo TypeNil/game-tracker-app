@@ -61,7 +61,7 @@ fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
 
-# AI Agent Local Scratch / Temp (Preserves .agents/rules and .agents/memory in git while ignoring local scratch)
-.agents/scratch/
-.agents/local/
+# AI Agent Local Context & Rules (Local to developer machine only)
+.agents/
+AGENTS.md
 .gemini/
