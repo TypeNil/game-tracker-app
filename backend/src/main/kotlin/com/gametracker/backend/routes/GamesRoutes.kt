@@ -5,6 +5,7 @@ import com.gametracker.backend.cache.CachePolicy
 import com.gametracker.backend.error.ErrorResponse
 import com.gametracker.backend.igdb.IgdbQueryBuilder
 import com.gametracker.backend.igdb.IgdbService
+import com.gametracker.backend.models.GameDto
 import com.gametracker.backend.models.toDto
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -44,7 +45,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
             
             if (q.isNullOrBlank()) {
-                call.respond(emptyList<Any>())
+                call.respond(emptyList<GameDto>())
                 return@get
             }
             
