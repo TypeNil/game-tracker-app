@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "GameTracker"
 include(":app")
+include(":backend")
