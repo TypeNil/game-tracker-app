@@ -3,15 +3,19 @@ package com.gametracker.backend.auth
 import com.gametracker.backend.application.IgdbConfig
 import com.gametracker.backend.error.UpstreamBadGatewayException
 import com.gametracker.backend.error.UpstreamRateLimitException
+import com.gametracker.backend.error.UpstreamServiceUnavailableException
+import com.gametracker.backend.error.UpstreamTimeoutException
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -21,6 +25,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -192,18 +197,56 @@ class IgdbTokenManagerImplTest {
     }
 
     @Test
-    fun `Twitch OAuth error 429 throws UpstreamRateLimitException`() = runTest {
+    fun `Twitch OAuth error 429 throws UpstreamRateLimitException with parsed Retry-After`() = runTest {
         val engine = MockEngine {
             respond(
                 content = """{"status":429,"message":"too many requests"}""",
                 status = HttpStatusCode.TooManyRequests,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
+                headers = headersOf(HttpHeaders.RetryAfter, "25")
             )
         }
         val client = createMockClient(engine)
         val manager = IgdbTokenManagerImpl(createMockConfig(), client)
 
         val result = runCatching { manager.getValidAccessToken() }
-        assertTrue(result.exceptionOrNull() is UpstreamRateLimitException)
+        val ex = result.exceptionOrNull()
+        assertTrue(ex is UpstreamRateLimitException)
+        assertEquals(25L, (ex as UpstreamRateLimitException).retryAfterSeconds)
+    }
+
+    @Test
+    fun `Twitch OAuth network timeout throws UpstreamTimeoutException`() = runTest {
+        val engine = MockEngine {
+            throw HttpRequestTimeoutException("https://id.twitch.tv", 5000L)
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is UpstreamTimeoutException)
+    }
+
+    @Test
+    fun `Twitch OAuth IOException throws UpstreamServiceUnavailableException`() = runTest {
+        val engine = MockEngine {
+            throw IOException("Connection refused")
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is UpstreamServiceUnavailableException)
+    }
+
+    @Test
+    fun `Twitch OAuth token acquisition propagates CancellationException`() = runTest {
+        val engine = MockEngine {
+            throw CancellationException("Caller coroutine cancelled")
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is CancellationException)
     }
 }

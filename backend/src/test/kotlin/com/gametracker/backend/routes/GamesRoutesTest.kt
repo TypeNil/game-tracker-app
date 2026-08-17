@@ -118,6 +118,30 @@ class GamesRoutesTest {
         assertEquals(1431993600L, game.releaseDateEpochSeconds)
         assertEquals(listOf("Role-playing (RPG)"), game.genres)
         assertEquals(listOf("PC (Microsoft Windows)"), game.platforms)
+        cache.close()
+    }
+
+    @Test
+    fun `top-rated with non-numeric limit returns 400 Bad Request`() = testApplication {
+        val service = createMockService()
+        val cache = BffCache()
+
+        application {
+            testModule(service, cache)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        val response = client.get("/v1/discover/top-rated?limit=abc")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+
+        val error = response.body<ErrorResponse>()
+        assertEquals("BAD_REQUEST", error.code)
+        cache.close()
     }
 
     @Test
@@ -140,6 +164,7 @@ class GamesRoutesTest {
 
         val error = response.body<ErrorResponse>()
         assertEquals("BAD_REQUEST", error.code)
+        cache.close()
     }
 
     @Test
@@ -162,6 +187,7 @@ class GamesRoutesTest {
 
         val error = response.body<ErrorResponse>()
         assertEquals("BAD_REQUEST", error.code)
+        cache.close()
     }
 
     @Test
@@ -185,10 +211,11 @@ class GamesRoutesTest {
         val games = response.body<List<GameDto>>()
         assertEquals(1, games.size)
         assertEquals("The Witcher 3: Wild Hunt", games[0].name)
+        cache.close()
     }
 
     @Test
-    fun `game details returns 400 Bad Request for zero or negative id`() = testApplication {
+    fun `game details returns 400 Bad Request for zero, negative or non-numeric id`() = testApplication {
         val service = createMockService()
         val cache = BffCache()
 
@@ -207,6 +234,10 @@ class GamesRoutesTest {
 
         val responseNegative = client.get("/v1/games/-5")
         assertEquals(HttpStatusCode.BadRequest, responseNegative.status)
+
+        val responseNonNumeric = client.get("/v1/games/not-a-number")
+        assertEquals(HttpStatusCode.BadRequest, responseNonNumeric.status)
+        cache.close()
     }
 
     @Test
@@ -229,5 +260,6 @@ class GamesRoutesTest {
 
         val error = response.body<ErrorResponse>()
         assertEquals("NOT_FOUND", error.code)
+        cache.close()
     }
 }

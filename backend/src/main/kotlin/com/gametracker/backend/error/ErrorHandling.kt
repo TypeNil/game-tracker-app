@@ -20,62 +20,76 @@ fun Application.configureErrorHandling() {
     install(StatusPages) {
         configureUpstreamExceptionHandlers()
         configureClientExceptionHandlers()
+        configureDirectStatusHandlers()
         configureFallbackExceptionHandler()
     }
 }
 
 private fun StatusPagesConfig.configureUpstreamExceptionHandlers() {
     exception<UpstreamRateLimitException> { call, cause ->
-        logger.warn("Upstream rate limit reached on ${call.request.local.uri}: ${cause.message}")
+        logger.warn("Upstream rate limit reached on {}: {}", call.request.local.uri, cause.message)
         call.response.header(HttpHeaders.RetryAfter, cause.retryAfterSeconds.toString())
         call.respond(
             status = HttpStatusCode.TooManyRequests,
             message = ErrorResponse(
                 code = "RATE_LIMIT_EXCEEDED",
-                message = cause.message ?: "Rate limit exceeded. Please retry later."
+                message = "Rate limit exceeded. Please retry later."
             )
         )
     }
 
     exception<UpstreamBadGatewayException> { call, cause ->
-        logger.error("Upstream bad gateway on ${call.request.local.uri}: ${cause.message}", cause)
+        logger.error("Upstream bad gateway on {}: {}", call.request.local.uri, cause.message, cause)
         call.respond(
             status = HttpStatusCode.BadGateway,
-            message = ErrorResponse(code = "BAD_GATEWAY", message = cause.message ?: "Invalid upstream response")
+            message = ErrorResponse(code = "BAD_GATEWAY", message = "Upstream service error.")
         )
     }
 
     exception<UpstreamServiceUnavailableException> { call, cause ->
-        logger.error("Upstream service unavailable on ${call.request.local.uri}: ${cause.message}", cause)
+        logger.error("Upstream service unavailable on {}: {}", call.request.local.uri, cause.message, cause)
         call.respond(
             status = HttpStatusCode.ServiceUnavailable,
-            message = ErrorResponse(code = "SERVICE_UNAVAILABLE", message = cause.message ?: "Upstream service unavailable")
+            message = ErrorResponse(code = "SERVICE_UNAVAILABLE", message = "Upstream service is temporarily unavailable.")
         )
     }
 
     exception<UpstreamTimeoutException> { call, cause ->
-        logger.error("Upstream timeout on ${call.request.local.uri}: ${cause.message}", cause)
+        logger.error("Upstream timeout on {}: {}", call.request.local.uri, cause.message, cause)
         call.respond(
             status = HttpStatusCode.GatewayTimeout,
-            message = ErrorResponse(code = "GATEWAY_TIMEOUT", message = cause.message ?: "Upstream request timed out")
+            message = ErrorResponse(code = "GATEWAY_TIMEOUT", message = "Upstream request timed out.")
         )
     }
 }
 
 private fun StatusPagesConfig.configureClientExceptionHandlers() {
     exception<IllegalArgumentException> { call, cause ->
-        logger.warn("Validation error on ${call.request.local.uri}: ${cause.message}")
+        logger.warn("Validation error on {}: {}", call.request.local.uri, cause.message)
         call.respond(
             status = HttpStatusCode.BadRequest,
-            message = ErrorResponse(code = "BAD_REQUEST", message = cause.message ?: "Invalid request parameters")
+            message = ErrorResponse(code = "BAD_REQUEST", message = cause.message ?: "Invalid request parameters.")
         )
     }
 
     exception<NoSuchElementException> { call, cause ->
-        logger.warn("Resource not found on ${call.request.local.uri}: ${cause.message}")
+        logger.warn("Resource not found on {}: {}", call.request.local.uri, cause.message)
         call.respond(
             status = HttpStatusCode.NotFound,
-            message = ErrorResponse(code = "NOT_FOUND", message = cause.message ?: "Requested resource not found")
+            message = ErrorResponse(code = "NOT_FOUND", message = cause.message ?: "Requested resource not found.")
+        )
+    }
+}
+
+private fun StatusPagesConfig.configureDirectStatusHandlers() {
+    status(HttpStatusCode.TooManyRequests) { call, _ ->
+        call.response.header(HttpHeaders.RetryAfter, "1")
+        call.respond(
+            status = HttpStatusCode.TooManyRequests,
+            message = ErrorResponse(
+                code = "RATE_LIMIT_EXCEEDED",
+                message = "Rate limit exceeded. Please retry later."
+            )
         )
     }
 }
@@ -86,7 +100,7 @@ private fun StatusPagesConfig.configureFallbackExceptionHandler() {
             // Строгое соблюдение Structured Concurrency: CancellationException не подавляется
             throw cause
         }
-        logger.error("Unhandled internal server error on ${call.request.local.uri}", cause)
+        logger.error("Unhandled internal server error on {}", call.request.local.uri, cause)
         call.respond(
             status = HttpStatusCode.InternalServerError,
             message = ErrorResponse(

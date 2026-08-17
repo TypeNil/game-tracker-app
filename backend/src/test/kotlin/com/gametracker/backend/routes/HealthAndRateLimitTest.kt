@@ -1,9 +1,12 @@
 package com.gametracker.backend.routes
 
 import com.gametracker.backend.application.IgdbConfig
+import com.gametracker.backend.error.ErrorResponse
+import com.gametracker.backend.error.configureErrorHandling
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -12,6 +15,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerCon
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.plugins.ratelimit.RateLimitName
 import io.ktor.server.plugins.ratelimit.rateLimit
+import io.ktor.server.response.header
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -34,8 +38,12 @@ class HealthAndRateLimitTest {
         install(RateLimit) {
             register(RateLimitName("api_v1")) {
                 rateLimiter(limit = 2, refillPeriod = 60.seconds)
+                modifyResponse { call, _ ->
+                    call.response.header(HttpHeaders.RetryAfter, "1")
+                }
             }
         }
+        configureErrorHandling()
         routing {
             healthRoutes(config)
             rateLimit(RateLimitName("api_v1")) {
@@ -88,13 +96,13 @@ class HealthAndRateLimitTest {
     }
 
     @Test
-    fun `health routes are not throttled when API rate limit is exceeded`() = testApplication {
+    fun `client 429 rate limit response returns JSON ErrorResponse and Retry-After header`() = testApplication {
         application { healthTestModule(configured = true) }
         val client = createClient {
             install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
 
-        // Исчерпываем 2 разрешенных вызова к ограниченному эндпоинту
+        // Exhaust 2 permits
         val res1 = client.get("/limited-endpoint")
         val res2 = client.get("/limited-endpoint")
         val res3 = client.get("/limited-endpoint")
@@ -102,8 +110,24 @@ class HealthAndRateLimitTest {
         assertEquals(HttpStatusCode.OK, res1.status)
         assertEquals(HttpStatusCode.OK, res2.status)
         assertEquals(HttpStatusCode.TooManyRequests, res3.status)
+        assertEquals("1", res3.headers[HttpHeaders.RetryAfter])
 
-        // Health-эндпоинты должны оставаться доступными (200 OK)
+        val error = res3.body<ErrorResponse>()
+        assertEquals("RATE_LIMIT_EXCEEDED", error.code)
+    }
+
+    @Test
+    fun `health routes are not throttled when API rate limit is exceeded`() = testApplication {
+        application { healthTestModule(configured = true) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        client.get("/limited-endpoint")
+        client.get("/limited-endpoint")
+        val res3 = client.get("/limited-endpoint")
+        assertEquals(HttpStatusCode.TooManyRequests, res3.status)
+
         val healthRes = client.get("/health")
         val pingRes = client.get("/api/v1/ping")
 

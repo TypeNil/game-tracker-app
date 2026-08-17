@@ -57,3 +57,5 @@ fun IgdbGame.toDto(): GameDto {
         platforms = this.platforms?.map { it.name } ?: emptyList()
     )
 }
+
+fun IgdbGame.toGameDto(): GameDto = toDto()

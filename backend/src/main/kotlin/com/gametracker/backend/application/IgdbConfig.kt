@@ -13,7 +13,10 @@ interface IgdbConfig {
 
 /**
  * Конфигурация для доступа к IGDB API.
- * Значения загружаются из application.conf, local.properties или переменных окружения.
+ * Строгий порядок разрешения параметров:
+ * 1. Явная конфигурация Ktor (application.conf / sysprops / test config)
+ * 2. Переменные окружения процесса (IGDB_CLIENT_ID / IGDB_CLIENT_SECRET)
+ * 3. Локальный файл разработчика local.properties (fallback)
  */
 class IgdbConfigImpl(config: ApplicationConfig) : IgdbConfig {
     override val clientId: String
@@ -31,14 +34,18 @@ class IgdbConfigImpl(config: ApplicationConfig) : IgdbConfig {
         val configClientId = config.propertyOrNull("igdb.clientId")?.getString()
         val configClientSecret = config.propertyOrNull("igdb.clientSecret")?.getString()
 
-        clientId = configClientId
-            ?: props.getProperty("IGDB_CLIENT_ID")
-            ?: System.getenv("IGDB_CLIENT_ID")
-            ?: ""
+        clientId = when {
+            configClientId != null -> configClientId.trim()
+            else -> System.getenv("IGDB_CLIENT_ID")?.takeIf { it.isNotBlank() }
+                ?: props.getProperty("IGDB_CLIENT_ID")?.takeIf { it.isNotBlank() }
+                ?: ""
+        }
 
-        clientSecret = configClientSecret
-            ?: props.getProperty("IGDB_CLIENT_SECRET")
-            ?: System.getenv("IGDB_CLIENT_SECRET")
-            ?: ""
+        clientSecret = when {
+            configClientSecret != null -> configClientSecret.trim()
+            else -> System.getenv("IGDB_CLIENT_SECRET")?.takeIf { it.isNotBlank() }
+                ?: props.getProperty("IGDB_CLIENT_SECRET")?.takeIf { it.isNotBlank() }
+                ?: ""
+        }
     }
 }

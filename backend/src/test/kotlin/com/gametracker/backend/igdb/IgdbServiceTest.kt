@@ -17,8 +17,10 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -32,10 +34,10 @@ class IgdbServiceTest {
     }
 
     private class TestTokenManager(var token: String = "valid_token") : IgdbTokenManager {
-        var invalidatedToken: String? = null
+        val invalidatedTokens = mutableListOf<String>()
         override suspend fun getValidAccessToken(): String = token
         override fun invalidateToken(badToken: String) {
-            invalidatedToken = badToken
+            invalidatedTokens.add(badToken)
             token = "refreshed_token"
         }
     }
@@ -112,21 +114,26 @@ class IgdbServiceTest {
         val service = IgdbService(createClient(engine), tokenManager, mockConfig)
         val games = service.queryGames("fields name;")
 
-        assertEquals("valid_token", tokenManager.invalidatedToken)
+        assertEquals(listOf("valid_token"), tokenManager.invalidatedTokens)
         assertEquals(2, attempt)
         assertEquals(1, games.size)
     }
 
     @Test
-    fun `queryGames throws UpstreamBadGatewayException on repeated 401`() = runTest {
+    fun `queryGames invalidates second token upon repeated 401 and sanitizes error message`() = runTest {
         val engine = MockEngine {
-            respond(content = "Unauthorized", status = HttpStatusCode.Unauthorized)
+            respond(content = "Sensitive Internal Upstream Error", status = HttpStatusCode.Unauthorized)
         }
 
-        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val tokenManager = TestTokenManager()
+        val service = IgdbService(createClient(engine), tokenManager, mockConfig)
         val result = runCatching { service.queryGames("fields name;") }
         val ex = result.exceptionOrNull()
+
         assertTrue(ex is UpstreamBadGatewayException)
+        assertFalse(ex!!.message!!.contains("Sensitive Internal Upstream Error"))
+        // Check that both first and refreshed tokens were invalidated
+        assertEquals(2, tokenManager.invalidatedTokens.size)
     }
 
     @Test
@@ -146,10 +153,13 @@ class IgdbServiceTest {
     }
 
     @Test
-    fun `queryGames throws UpstreamRateLimitException with parsed HTTP date`() = runTest {
+    fun `queryGames throws UpstreamRateLimitException with parsed HTTP date using injected Clock`() = runTest {
+        val fixedInstant = Instant.parse("2026-08-18T00:00:00Z")
+        val fixedClock = Clock.fixed(fixedInstant, ZoneOffset.UTC)
         val futureDate = DateTimeFormatter.RFC_1123_DATE_TIME.format(
-            ZonedDateTime.ofInstant(Instant.now().plusSeconds(25), ZoneOffset.UTC)
+            ZonedDateTime.ofInstant(fixedInstant.plusSeconds(30), ZoneOffset.UTC)
         )
+
         val engine = MockEngine {
             respond(
                 content = "Rate limit reached",
@@ -158,17 +168,22 @@ class IgdbServiceTest {
             )
         }
 
-        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val service = IgdbService(
+            httpClient = createClient(engine),
+            tokenManager = TestTokenManager(),
+            config = mockConfig,
+            clock = fixedClock
+        )
         val result = runCatching { service.queryGames("fields name;") }
         val ex = result.exceptionOrNull() as UpstreamRateLimitException
-        assertTrue(ex.retryAfterSeconds in 20L..30L)
+        assertEquals(30L, ex.retryAfterSeconds)
     }
 
     @Test
-    fun `queryGames throws UpstreamBadGatewayException on malformed JSON`() = runTest {
+    fun `queryGames throws UpstreamBadGatewayException on malformed JSON without leaking body in message`() = runTest {
         val engine = MockEngine {
             respond(
-                content = "invalid-json",
+                content = "upstream-unparseable-data",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
@@ -176,7 +191,9 @@ class IgdbServiceTest {
 
         val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
         val result = runCatching { service.queryGames("fields name;") }
-        assertTrue(result.exceptionOrNull() is UpstreamBadGatewayException)
+        val ex = result.exceptionOrNull()
+        assertTrue(ex is UpstreamBadGatewayException)
+        assertFalse(ex!!.message!!.contains("upstream-unparseable-data"))
     }
 
     @Test

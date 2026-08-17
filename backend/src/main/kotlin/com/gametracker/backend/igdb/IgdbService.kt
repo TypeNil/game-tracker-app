@@ -17,6 +17,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.discardRemaining
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
@@ -25,7 +26,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.slf4j.LoggerFactory
-import java.time.Instant
+import java.io.IOException
+import java.time.Clock
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.random.Random
@@ -34,18 +36,20 @@ private const val DEFAULT_RETRY_DELAY_BASE_MS = 100L
 private const val JITTER_MAX_MS = 50
 private const val DEFAULT_RETRY_AFTER_SECONDS = 5L
 private const val MAX_TRANSIENT_RETRIES = 2
+private const val MAX_DIAGNOSTIC_LOG_LENGTH = 256
 
 class IgdbService(
     private val httpClient: HttpClient,
     private val tokenManager: IgdbTokenManager,
     private val config: IgdbConfig,
-    private val rateLimiter: TokenBucketRateLimiter = TokenBucketRateLimiter(ratePerSecond = 3.5, capacity = 4.0),
-    private val concurrencySemaphore: Semaphore = Semaphore(4)
+    private val rateLimiter: SmoothRateLimiter = SmoothRateLimiter(),
+    private val concurrencySemaphore: Semaphore = Semaphore(4),
+    private val clock: Clock = Clock.systemUTC()
 ) {
     private val logger = LoggerFactory.getLogger("IgdbService")
 
     suspend fun queryGames(apicalypseQuery: String): List<IgdbGame> {
-        logger.info("Executing IGDB query:\n{}", apicalypseQuery)
+        logger.info("Executing IGDB query (length={})", apicalypseQuery.length)
         val response = executeWithRetry(apicalypseQuery)
         return try {
             response.body<List<IgdbGame>>()
@@ -53,6 +57,8 @@ class IgdbService(
             if (e is CancellationException) throw e
             logger.error("Failed to deserialize IGDB response", e)
             throw UpstreamBadGatewayException("Failed to deserialize IGDB game response", e)
+        } finally {
+            response.discardRemaining()
         }
     }
 
@@ -72,14 +78,20 @@ class IgdbService(
             val response = responseResult.getOrThrow()
 
             if (response.status == HttpStatusCode.Unauthorized) {
-                authRetried = handleAuthUnauthorized(token, authRetried)
+                authRetried = handleAuthUnauthorized(response, token, authRetried)
                 continue
             }
 
             if (isTransientStatus(response.status) && transientRetries < MAX_TRANSIENT_RETRIES) {
                 transientRetries++
+                response.discardRemaining()
                 val backoffMs = DEFAULT_RETRY_DELAY_BASE_MS * transientRetries + Random.nextLong(0, JITTER_MAX_MS.toLong())
-                logger.warn("IGDB returned transient status ${response.status} (attempt $transientRetries). Retrying in ${backoffMs}ms...")
+                logger.warn(
+                    "IGDB returned transient status {} (attempt {}). Retrying in {}ms...",
+                    response.status,
+                    transientRetries,
+                    backoffMs
+                )
                 delay(backoffMs)
                 continue
             }
@@ -104,13 +116,15 @@ class IgdbService(
         }
     }
 
-    private fun handleAuthUnauthorized(token: String, authRetried: Boolean): Boolean {
+    private suspend fun handleAuthUnauthorized(response: HttpResponse, token: String, authRetried: Boolean): Boolean {
+        response.discardRemaining()
         if (!authRetried) {
             logger.warn("Received 401 Unauthorized from IGDB. Invalidating token and retrying once.")
             tokenManager.invalidateToken(token)
             return true
         } else {
-            logger.error("IGDB returned 401 Unauthorized even after token refresh.")
+            logger.error("IGDB returned 401 Unauthorized even after token refresh. Invalidating refreshed token.")
+            tokenManager.invalidateToken(token)
             throw UpstreamBadGatewayException("IGDB authentication failed after token refresh")
         }
     }
@@ -120,32 +134,37 @@ class IgdbService(
         if (isTransientNetworkError(exception) && currentRetries < MAX_TRANSIENT_RETRIES) {
             val nextRetries = currentRetries + 1
             val backoffMs = DEFAULT_RETRY_DELAY_BASE_MS * nextRetries + Random.nextLong(0, JITTER_MAX_MS.toLong())
-            logger.warn("Transient network error (attempt $nextRetries): ${exception.message}. Retrying in ${backoffMs}ms...")
+            logger.warn("Transient network error (attempt {}): {}. Retrying in {}ms...", nextRetries, exception.message, backoffMs)
             delay(backoffMs)
             return nextRetries
         }
         when (exception) {
             is HttpRequestTimeoutException, is SocketTimeoutException, is ConnectTimeoutException ->
                 throw UpstreamTimeoutException("IGDB request timed out", exception)
-            else ->
+            is IOException ->
                 throw UpstreamServiceUnavailableException("Failed to connect to IGDB API", exception)
+            else ->
+                throw UpstreamBadGatewayException("Unexpected error during IGDB request", exception)
         }
     }
 
-    private suspend fun handleNonSuccessStatus(response: HttpResponse) {
-        val errorBody = response.bodyAsText()
+    private suspend fun handleNonSuccessStatus(response: HttpResponse): Nothing {
         val status = response.status
-        logger.error("IGDB request failed with status {}: {}", status, errorBody)
+        val retryAfterHeader = response.headers[HttpHeaders.RetryAfter]
+        val diagnosticBody = runCatching { response.bodyAsText().take(MAX_DIAGNOSTIC_LOG_LENGTH) }.getOrDefault("")
+        response.discardRemaining()
+
+        logger.error("IGDB request failed with status {}. Diagnostics: {}", status, diagnosticBody)
 
         when (status) {
             HttpStatusCode.TooManyRequests -> {
-                val retryAfterSeconds = parseRetryAfter(response.headers[HttpHeaders.RetryAfter])
+                val retryAfterSeconds = parseRetryAfter(retryAfterHeader)
                 throw UpstreamRateLimitException(retryAfterSeconds)
             }
             HttpStatusCode.BadGateway -> throw UpstreamBadGatewayException("IGDB returned 502 Bad Gateway")
             HttpStatusCode.ServiceUnavailable -> throw UpstreamServiceUnavailableException("IGDB returned 503 Service Unavailable")
             HttpStatusCode.GatewayTimeout -> throw UpstreamTimeoutException("IGDB returned 504 Gateway Timeout")
-            else -> throw UpstreamBadGatewayException("IGDB request failed with status ${status.value}: $errorBody")
+            else -> throw UpstreamBadGatewayException("IGDB request failed with status ${status.value}")
         }
     }
 
@@ -165,7 +184,7 @@ class IgdbService(
 
         return try {
             val targetInstant = ZonedDateTime.parse(headerValue, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant()
-            val diffSeconds = targetInstant.epochSecond - Instant.now().epochSecond
+            val diffSeconds = targetInstant.epochSecond - clock.instant().epochSecond
             diffSeconds.coerceAtLeast(1L)
         } catch (_: Exception) {
             DEFAULT_RETRY_AFTER_SECONDS
