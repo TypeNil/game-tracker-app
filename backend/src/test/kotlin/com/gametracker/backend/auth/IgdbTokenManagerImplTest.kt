@@ -1,9 +1,12 @@
 package com.gametracker.backend.auth
 
 import com.gametracker.backend.application.IgdbConfig
+import com.gametracker.backend.error.UpstreamBadGatewayException
+import com.gametracker.backend.error.UpstreamRateLimitException
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -15,7 +18,12 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class IgdbTokenManagerImplTest {
@@ -31,9 +39,24 @@ class IgdbTokenManagerImplTest {
         }
     }
 
+    private class MutableClock(private var currentInstant: Instant) : Clock() {
+        override fun getZone(): ZoneId = ZoneId.of("UTC")
+        override fun withZone(zone: ZoneId?): Clock = this
+        override fun instant(): Instant = currentInstant
+        fun advanceSeconds(seconds: Long) {
+            currentInstant = currentInstant.plusSeconds(seconds)
+        }
+    }
+
     @Test
-    fun `getValidAccessToken fetches new token on first call`() = runTest {
+    fun `getValidAccessToken sends credentials in POST body and not in URL query`() = runTest {
         val engine = MockEngine { request ->
+            assertFalse(request.url.toString().contains("client_secret"))
+            val bodyString = String(request.body.toByteArray())
+            assertTrue(bodyString.contains("client_id=test_client_id"))
+            assertTrue(bodyString.contains("client_secret=test_client_secret"))
+            assertTrue(bodyString.contains("grant_type=client_credentials"))
+
             respond(
                 content = """{"access_token":"token_123","expires_in":3600,"token_type":"bearer"}""",
                 status = HttpStatusCode.OK,
@@ -45,44 +68,46 @@ class IgdbTokenManagerImplTest {
 
         val token = manager.getValidAccessToken()
         assertEquals("token_123", token)
-        
-        // Assert exactly 1 request was made
         assertEquals(1, engine.requestHistory.size)
     }
 
     @Test
-    fun `getValidAccessToken uses cached token on subsequent calls`() = runTest {
+    fun `getValidAccessToken respects Clock expiration and 60s buffer`() = runTest {
         var requestCount = 0
         val engine = MockEngine { request ->
             requestCount++
             respond(
-                content = """{"access_token":"token_123","expires_in":3600,"token_type":"bearer"}""",
+                content = """{"access_token":"token_$requestCount","expires_in":3600,"token_type":"bearer"}""",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
         }
+        val clock = MutableClock(Instant.parse("2026-08-18T00:00:00Z"))
         val client = createMockClient(engine)
-        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client, clock)
 
         val token1 = manager.getValidAccessToken()
-        val token2 = manager.getValidAccessToken()
-        val token3 = manager.getValidAccessToken()
-
-        assertEquals("token_123", token1)
-        assertEquals("token_123", token2)
-        assertEquals("token_123", token3)
-        
-        // Assert only 1 request was made despite 3 calls
+        assertEquals("token_1", token1)
         assertEquals(1, requestCount)
+
+        clock.advanceSeconds(3500)
+        val token2 = manager.getValidAccessToken()
+        assertEquals("token_1", token2)
+        assertEquals(1, requestCount)
+
+        clock.advanceSeconds(50)
+        val token3 = manager.getValidAccessToken()
+        assertEquals("token_2", token3)
+        assertEquals(2, requestCount)
     }
 
     @Test
-    fun `concurrent calls only trigger one network request`() = runTest {
+    fun `concurrent calls trigger only one network request`() = runTest {
         var requestCount = 0
         val engine = MockEngine { request ->
             requestCount++
             respond(
-                content = """{"access_token":"token_123","expires_in":3600,"token_type":"bearer"}""",
+                content = """{"access_token":"token_concurrent","expires_in":3600,"token_type":"bearer"}""",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
@@ -90,22 +115,17 @@ class IgdbTokenManagerImplTest {
         val client = createMockClient(engine)
         val manager = IgdbTokenManagerImpl(createMockConfig(), client)
 
-        // Launch 100 concurrent requests for the token
-        val deferreds = (1..100).map {
+        val deferreds = (1..50).map {
             async { manager.getValidAccessToken() }
         }
-        
         val tokens = deferreds.awaitAll()
-        
-        // All 100 callers should get the same token
-        tokens.forEach { assertEquals("token_123", it) }
-        
-        // The network request should only happen exactly once thanks to Mutex
+
+        tokens.forEach { assertEquals("token_concurrent", it) }
         assertEquals(1, requestCount)
     }
 
     @Test
-    fun `forceRefresh clears cache and triggers new fetch`() = runTest {
+    fun `invalidateToken with matching token clears cache`() = runTest {
         var requestCount = 0
         val engine = MockEngine { request ->
             requestCount++
@@ -120,12 +140,70 @@ class IgdbTokenManagerImplTest {
 
         val token1 = manager.getValidAccessToken()
         assertEquals("token_1", token1)
-        
-        manager.forceRefresh()
-        
+
+        manager.invalidateToken("token_1")
+
         val token2 = manager.getValidAccessToken()
         assertEquals("token_2", token2)
-        
         assertEquals(2, requestCount)
+    }
+
+    @Test
+    fun `invalidateToken with stale token does not clear newly refreshed token (CAS protection)`() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { request ->
+            requestCount++
+            respond(
+                content = """{"access_token":"token_$requestCount","expires_in":3600,"token_type":"bearer"}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val token1 = manager.getValidAccessToken()
+        manager.invalidateToken(token1)
+
+        val token2 = manager.getValidAccessToken()
+        assertEquals("token_2", token2)
+
+        manager.invalidateToken("token_1")
+
+        val token3 = manager.getValidAccessToken()
+        assertEquals("token_2", token3)
+        assertEquals(2, requestCount)
+    }
+
+    @Test
+    fun `Twitch OAuth error 400 throws UpstreamBadGatewayException`() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = """{"status":400,"message":"invalid client"}""",
+                status = HttpStatusCode.BadRequest,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is UpstreamBadGatewayException)
+    }
+
+    @Test
+    fun `Twitch OAuth error 429 throws UpstreamRateLimitException`() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = """{"status":429,"message":"too many requests"}""",
+                status = HttpStatusCode.TooManyRequests,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is UpstreamRateLimitException)
     }
 }

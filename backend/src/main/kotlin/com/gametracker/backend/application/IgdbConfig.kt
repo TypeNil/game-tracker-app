@@ -1,37 +1,44 @@
 package com.gametracker.backend.application
 
 import io.ktor.server.config.ApplicationConfig
+import java.io.File
+import java.util.Properties
 
 interface IgdbConfig {
     val clientId: String
     val clientSecret: String
+    val isConfigured: Boolean
+        get() = clientId.isNotBlank() && clientSecret.isNotBlank()
 }
 
 /**
  * Конфигурация для доступа к IGDB API.
- * Значения загружаются из application.conf или переменных окружения.
+ * Значения загружаются из application.conf, local.properties или переменных окружения.
  */
 class IgdbConfigImpl(config: ApplicationConfig) : IgdbConfig {
     override val clientId: String
     override val clientSecret: String
 
     init {
-        val props = java.util.Properties()
-        val file = java.io.File("local.properties")
+        val props = Properties()
+        val file = File("local.properties")
         if (file.exists()) {
             props.load(file.inputStream())
-        } else if (java.io.File("../local.properties").exists()) {
-            props.load(java.io.File("../local.properties").inputStream())
+        } else if (File("../local.properties").exists()) {
+            props.load(File("../local.properties").inputStream())
         }
 
-        clientId = config.propertyOrNull("igdb.clientId")?.getString()?.takeIf { it.isNotBlank() }
-            ?: props.getProperty("IGDB_CLIENT_ID") ?: ""
+        val configClientId = config.propertyOrNull("igdb.clientId")?.getString()
+        val configClientSecret = config.propertyOrNull("igdb.clientSecret")?.getString()
 
-        clientSecret = config.propertyOrNull("igdb.clientSecret")?.getString()?.takeIf { it.isNotBlank() }
-            ?: props.getProperty("IGDB_CLIENT_SECRET") ?: ""
+        clientId = configClientId
+            ?: props.getProperty("IGDB_CLIENT_ID")
+            ?: System.getenv("IGDB_CLIENT_ID")
+            ?: ""
 
-        if (clientId.isBlank() || clientSecret.isBlank()) {
-            println("WARN: IGDB credentials are not set properly. API calls will fail.")
-        }
+        clientSecret = configClientSecret
+            ?: props.getProperty("IGDB_CLIENT_SECRET")
+            ?: System.getenv("IGDB_CLIENT_SECRET")
+            ?: ""
     }
 }

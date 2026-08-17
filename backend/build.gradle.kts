@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
     application
 }
 
@@ -32,6 +33,7 @@ dependencies {
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.server.status.pages)
     implementation(libs.ktor.server.rate.limit)
+    implementation(libs.ktor.server.forwarded.header)
     implementation(libs.ktor.serialization.kotlinx.json)
 
     // Ktor Client (для вызовов к IGDB API)
@@ -47,6 +49,10 @@ dependencies {
     // Coroutines & Serialization
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+
+    // Detekt Plugins
+    detektPlugins(libs.detekt.formatting)
+    detektPlugins(libs.detekt.compose)
 
     // Testing
     testImplementation(libs.ktor.server.test.host)

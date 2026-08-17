@@ -11,8 +11,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-test:
-    name: Code Quality & Unit Tests
+  backend-ci:
+    name: Backend Lint, Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run Backend Detekt Checks
+        run: ./gradlew :backend:detekt --stacktrace
+
+      - name: Run Backend Tests and Build
+        run: ./gradlew :backend:check :backend:build --stacktrace
+
+      - name: Verify Clean Working Tree
+        run: git diff --exit-code
+
+      - name: Upload Test Report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-reports
+          path: |
+            backend/build/reports/
+
+  android-ci:
+    name: Android Lint, Test & Assemble
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -32,20 +70,22 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run Detekt & KtLint Code Quality Checks
-        run: ./gradlew detekt --stacktrace
+      - name: Run Android Detekt Code Quality Checks
+        run: ./gradlew :app:detekt --stacktrace
 
-      - name: Run Unit Tests
+      - name: Run Android Demo Unit Tests
         run: ./gradlew testDemoDebugUnitTest --stacktrace
 
       - name: Assemble Demo Debug APK
         run: ./gradlew assembleDemoDebug --stacktrace
 
-      - name: Upload Detekt Report (on failure)
+      - name: Verify Clean Working Tree
+        run: git diff --exit-code
+
+      - name: Upload Reports (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: detekt-report
+          name: android-reports
           path: |
-            **/build/reports/detekt/
-            **/build/reports/tests/
+            app/build/reports/

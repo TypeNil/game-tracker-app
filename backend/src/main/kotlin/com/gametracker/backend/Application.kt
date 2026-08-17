@@ -1,20 +1,21 @@
 package com.gametracker.backend
 
-import com.gametracker.backend.application.IgdbConfig
+import com.gametracker.backend.application.BffDependencies
 import com.gametracker.backend.application.ServerConfig
-import com.gametracker.backend.auth.IgdbTokenManagerImpl
-import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.error.configureErrorHandling
-import com.gametracker.backend.igdb.IgdbHttpClientFactory
-import com.gametracker.backend.igdb.IgdbService
 import com.gametracker.backend.routes.configureRouting
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
+import io.ktor.server.plugins.origin
+import io.ktor.server.plugins.ratelimit.RateLimit
+import io.ktor.server.plugins.ratelimit.RateLimitName
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
@@ -36,21 +37,24 @@ fun main() {
 
 /**
  * Основной модуль конфигурации Ktor.
- * Настраивает плагины ContentNegotiation, CallLogging, StatusPages и корневую маршрутизацию.
+ * Поддерживает внедрение [customDeps] для изолированного модульного и интеграционного тестирования.
  */
-fun Application.module() {
-    val igdbConfig = com.gametracker.backend.application.IgdbConfigImpl(environment.config)
-    val httpClient = IgdbHttpClientFactory.create()
-    val tokenManager = IgdbTokenManagerImpl(igdbConfig, httpClient)
-    val cache = BffCache()
-    val igdbService = IgdbService(httpClient, tokenManager, igdbConfig)
+fun Application.module(customDeps: BffDependencies? = null) {
+    val deps = customDeps ?: BffDependencies.createProduction(environment.config).also { prodDeps ->
+        monitor.subscribe(ApplicationStopped) {
+            logger.info("Application stopped. Closing production dependencies...")
+            prodDeps.close()
+        }
+    }
+
+    install(XForwardedHeaders)
 
     install(ContentNegotiation) {
         json(
             Json {
                 ignoreUnknownKeys = true
                 isLenient = true
-                prettyPrint = true
+                prettyPrint = false
             }
         )
     }
@@ -59,12 +63,13 @@ fun Application.module() {
         level = Level.INFO
     }
 
-    install(io.ktor.server.plugins.ratelimit.RateLimit) {
-        global {
-            rateLimiter(limit = 3, refillPeriod = 1.seconds)
+    install(RateLimit) {
+        register(RateLimitName("api_v1")) {
+            rateLimiter(limit = 10, refillPeriod = 1.seconds)
+            requestKey { call -> call.request.origin.remoteHost }
         }
     }
 
     configureErrorHandling()
-    configureRouting(igdbService, cache)
+    configureRouting(deps)
 }

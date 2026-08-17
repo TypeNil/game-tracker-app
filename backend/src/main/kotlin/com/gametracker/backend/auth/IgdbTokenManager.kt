@@ -1,18 +1,16 @@
 package com.gametracker.backend.auth
 
 /**
- * Контракт менеджера OAuth2 токенов Twitch / IGDB API.
- * Отвечает за безопасное получение, ротацию и кэширование access token.
+ * Менеджер управления доступом к IGDB API через Twitch OAuth2.
  */
 interface IgdbTokenManager {
     /**
-     * Возвращает валидный access_token (берет из кэша памяти или запрашивает новый у Twitch).
+     * Возвращает действующий OAuth Bearer токен (из кэша или запрашивая новый).
      */
     suspend fun getValidAccessToken(): String
-    
+
     /**
-     * Принудительно очищает кэш токена, чтобы следующий вызов [getValidAccessToken] запросил новый.
-     * Используется, если IGDB вернул 401 Unauthorized до истечения срока действия токена.
+     * Атомарно инвалидирует токен при ошибке 401 Unauthorized, если текущий токен совпадает с [badToken].
      */
-    fun forceRefresh()
+    fun invalidateToken(badToken: String)
 }

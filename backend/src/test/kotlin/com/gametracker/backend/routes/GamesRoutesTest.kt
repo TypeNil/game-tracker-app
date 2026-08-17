@@ -20,11 +20,14 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
+import io.ktor.server.plugins.ratelimit.RateLimit
+import io.ktor.server.plugins.ratelimit.RateLimitName
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.time.Duration.Companion.seconds
 
 class GamesRoutesTest {
 
@@ -35,7 +38,7 @@ class GamesRoutesTest {
 
     private val mockTokenManager = object : IgdbTokenManager {
         override suspend fun getValidAccessToken() = "mock_token"
-        override fun forceRefresh() {}
+        override fun invalidateToken(badToken: String) {}
     }
 
     private val sampleIgdbJson = """
@@ -49,7 +52,9 @@ class GamesRoutesTest {
                 "cover": {
                     "id": 888,
                     "image_id": "co1wyy"
-                }
+                },
+                "genres": [{"id": 1, "name": "Role-playing (RPG)"}],
+                "platforms": [{"id": 6, "name": "PC (Microsoft Windows)"}]
             }
         ]
     """.trimIndent()
@@ -74,6 +79,11 @@ class GamesRoutesTest {
         install(ServerContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
         }
+        install(RateLimit) {
+            register(RateLimitName("api_v1")) {
+                rateLimiter(limit = 100, refillPeriod = 1.seconds)
+            }
+        }
         configureErrorHandling()
         routing {
             gamesRoutes(service, cache)
@@ -81,7 +91,7 @@ class GamesRoutesTest {
     }
 
     @Test
-    fun `top-rated endpoint returns transformed GameDto list`() = testApplication {
+    fun `top-rated endpoint returns enriched GameDto list with genres and platforms`() = testApplication {
         val service = createMockService()
         val cache = BffCache()
 
@@ -105,10 +115,13 @@ class GamesRoutesTest {
         assertEquals("The Witcher 3: Wild Hunt", game.name)
         assertEquals("https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg", game.coverUrl)
         assertEquals(92.5, game.rating!!, 0.01)
+        assertEquals(1431993600L, game.releaseDateEpochSeconds)
+        assertEquals(listOf("Role-playing (RPG)"), game.genres)
+        assertEquals(listOf("PC (Microsoft Windows)"), game.platforms)
     }
 
     @Test
-    fun `search with empty query returns empty list immediately`() = testApplication {
+    fun `search with empty or blank query returns 400 Bad Request`() = testApplication {
         val service = createMockService()
         val cache = BffCache()
 
@@ -123,10 +136,32 @@ class GamesRoutesTest {
         }
 
         val response = client.get("/v1/games/search?q=")
-        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(HttpStatusCode.BadRequest, response.status)
 
-        val games = response.body<List<GameDto>>()
-        assertEquals(0, games.size)
+        val error = response.body<ErrorResponse>()
+        assertEquals("BAD_REQUEST", error.code)
+    }
+
+    @Test
+    fun `search with invalid characters returns 400 Bad Request`() = testApplication {
+        val service = createMockService()
+        val cache = BffCache()
+
+        application {
+            testModule(service, cache)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        val response = client.get("/v1/games/search?q=witcher\"")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+
+        val error = response.body<ErrorResponse>()
+        assertEquals("BAD_REQUEST", error.code)
     }
 
     @Test
@@ -153,7 +188,7 @@ class GamesRoutesTest {
     }
 
     @Test
-    fun `game details returns game when found`() = testApplication {
+    fun `game details returns 400 Bad Request for zero or negative id`() = testApplication {
         val service = createMockService()
         val cache = BffCache()
 
@@ -167,38 +202,15 @@ class GamesRoutesTest {
             }
         }
 
-        val response = client.get("/v1/games/1020")
-        assertEquals(HttpStatusCode.OK, response.status)
+        val responseZero = client.get("/v1/games/0")
+        assertEquals(HttpStatusCode.BadRequest, responseZero.status)
 
-        val game = response.body<GameDto>()
-        assertEquals(1020L, game.id)
-        assertEquals("The Witcher 3: Wild Hunt", game.name)
+        val responseNegative = client.get("/v1/games/-5")
+        assertEquals(HttpStatusCode.BadRequest, responseNegative.status)
     }
 
     @Test
-    fun `game details returns 400 Bad Request for invalid id`() = testApplication {
-        val service = createMockService()
-        val cache = BffCache()
-
-        application {
-            testModule(service, cache)
-        }
-
-        val client = createClient {
-            install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true })
-            }
-        }
-
-        val response = client.get("/v1/games/not-a-number")
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-
-        val error = response.body<ErrorResponse>()
-        assertEquals("BAD_REQUEST", error.code)
-    }
-
-    @Test
-    fun `game details returns 404 Not Found when game not in IGDB`() = testApplication {
+    fun `game details returns 404 Not Found when game not found in IGDB`() = testApplication {
         val service = createMockService(jsonResponse = "[]")
         val cache = BffCache()
 
