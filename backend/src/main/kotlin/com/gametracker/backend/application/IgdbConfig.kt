@@ -18,9 +18,9 @@ fun loadDefaultLocalProperties(): Properties {
     val props = Properties()
     val file = File("local.properties")
     if (file.exists()) {
-        props.load(file.inputStream())
+        file.inputStream().use { props.load(it) }
     } else if (File("../local.properties").exists()) {
-        props.load(File("../local.properties").inputStream())
+        File("../local.properties").inputStream().use { props.load(it) }
     }
     return props
 }

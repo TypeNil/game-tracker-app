@@ -94,6 +94,18 @@ fun Application.module(customDeps: BffDependencies? = null) {
     configureRouting(deps)
 }
 
+/**
+ * Разрешает реальный IP-адрес клиента с защитой от IP-спуфинга.
+ *
+ * Политика безопасности прокси:
+ * - Если [isProxyEnabled] == false (прямое развертывание), заголовки X-Forwarded-* игнорируются,
+ *   и возвращается [ApplicationCall.request.local.remoteHost].
+ * - Если [isProxyEnabled] == true (развертывание за reverse proxy):
+ *   проверяется непосредственный транспортный пир ([ApplicationCall.request.local.remoteHost]).
+ *   Только если он точно совпадает (exact string match) со значением из [trustedHosts] (e.g. "127.0.0.1", "10.0.0.2"),
+ *   используется адрес из заголовка [ApplicationCall.request.origin.remoteHost].
+ *   Если прямой пир не в списке доверенных, возвращается его непосредственный IP для исключения подделки заголовков.
+ */
 fun resolveClientIp(
     call: ApplicationCall,
     isProxyEnabled: Boolean,

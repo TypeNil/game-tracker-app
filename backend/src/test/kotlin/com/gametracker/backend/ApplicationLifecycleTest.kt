@@ -14,6 +14,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.isActive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Properties
@@ -185,13 +186,17 @@ class ApplicationLifecycleTest {
     }
 
     @Test
-    fun `BffDependencies createProduction fails fast if credentials missing`() {
-        val emptyConfig = MapApplicationConfig("igdb.clientId" to "", "igdb.clientSecret" to "")
-        val config = IgdbConfigImpl(
-            config = emptyConfig,
+    fun `BffDependencies fails fast when credentials are unconfigured`() {
+        val unconfigured = IgdbConfigImpl(
+            config = MapApplicationConfig(),
             envProvider = { null },
             localPropertiesProvider = { Properties() }
         )
-        assertFalse(config.isConfigured)
+        assertFalse(unconfigured.isConfigured)
+        assertThrows(IllegalArgumentException::class.java) {
+            require(unconfigured.isConfigured) {
+                "IGDB credentials must be configured via application.conf or environment variables"
+            }
+        }
     }
 }
