@@ -2,10 +2,18 @@ package io.github.typenil.gametracker.core.network.mapper
 
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.network.model.ErrorResponseDto
 import io.github.typenil.gametracker.core.network.model.GameDto
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
+
+private val json = Json {
+    ignoreUnknownKeys = true
+    coerceInputValues = true
+    isLenient = true
+}
 
 /**
  * Maps a network [GameDto] to a pure domain [Game] model.
@@ -29,16 +37,30 @@ fun GameDto.toDomain(): Game {
 fun List<GameDto>.toDomain(): List<Game> = map { it.toDomain() }
 
 /**
- * Maps raw thrown network/HTTP exceptions into typed [AppError] domain failures.
+ * Safely parses the error body and maps HTTP exceptions into typed [AppError.HttpError]
+ * without exposing raw payload or crashing if the response body is unreadable.
  */
 fun Throwable.toAppError(): AppError {
     return when (this) {
-        is HttpException -> AppError.HttpError(
-            statusCode = code(),
-            message = response()?.errorBody()?.string() ?: message()
-        )
+        is HttpException -> {
+            val parsedError = parseErrorBody(response()?.errorBody()?.string())
+            AppError.HttpError(
+                statusCode = code(),
+                errorCode = parsedError?.code,
+                message = parsedError?.message
+            )
+        }
         is IOException -> AppError.NetworkError
         is SerializationException -> AppError.SerializationError(message = message)
-        else -> AppError.UnknownError(throwable = this)
+        else -> AppError.UnknownError(cause = this)
+    }
+}
+
+private fun parseErrorBody(rawBody: String?): ErrorResponseDto? {
+    if (rawBody.isNullOrBlank()) return null
+    return try {
+        json.decodeFromString<ErrorResponseDto>(rawBody)
+    } catch (_: Exception) {
+        null
     }
 }

@@ -8,6 +8,7 @@ import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.HttpException
@@ -21,7 +22,7 @@ class GameMappersTest {
         val dto = GameDto(
             id = 42L,
             name = "Test Game",
-            coverUrl = "https://example.com/cover.jpg",
+            coverUrl = "file:///android_asset/covers/cover_witcher3.png",
             rating = 91.5,
             releaseDateEpochSeconds = 1700000000L,
             summary = "Epic adventure",
@@ -33,7 +34,7 @@ class GameMappersTest {
 
         assertEquals(42L, domain.id)
         assertEquals("Test Game", domain.name)
-        assertEquals("https://example.com/cover.jpg", domain.coverUrl)
+        assertEquals("file:///android_asset/covers/cover_witcher3.png", domain.coverUrl)
         assertEquals(91.5, domain.rating)
         assertEquals(1700000000L, domain.releaseDateEpochSeconds)
         assertEquals("Epic adventure", domain.summary)
@@ -50,14 +51,32 @@ class GameMappersTest {
     }
 
     @Test
-    fun `toAppError maps HttpException to HttpError with statusCode`() {
-        val responseBody = "Rate limit exceeded".toResponseBody("text/plain".toMediaType())
+    fun `toAppError safely parses structured ErrorResponseDto JSON`() {
+        val jsonPayload = """{"code":"RATE_LIMIT_EXCEEDED","message":"Rate limit reached","timestamp":1700000000}"""
+        val responseBody = jsonPayload.toResponseBody("application/json".toMediaType())
         val httpException = HttpException(Response.error<String>(429, responseBody))
 
         val error = httpException.toAppError()
 
         assertTrue(error is AppError.HttpError)
-        assertEquals(429, (error as AppError.HttpError).statusCode)
+        val httpError = error as AppError.HttpError
+        assertEquals(429, httpError.statusCode)
+        assertEquals("RATE_LIMIT_EXCEEDED", httpError.errorCode)
+        assertEquals("Rate limit reached", httpError.message)
+    }
+
+    @Test
+    fun `toAppError handles unparseable error body gracefully without crashing`() {
+        val malformedPayload = "<html>502 Bad Gateway</html>"
+        val responseBody = malformedPayload.toResponseBody("text/html".toMediaType())
+        val httpException = HttpException(Response.error<String>(502, responseBody))
+
+        val error = httpException.toAppError()
+
+        assertTrue(error is AppError.HttpError)
+        val httpError = error as AppError.HttpError
+        assertEquals(502, httpError.statusCode)
+        assertNull(httpError.errorCode)
     }
 
     @Test
@@ -75,6 +94,6 @@ class GameMappersTest {
         val error = exception.toAppError()
 
         assertTrue(error is AppError.UnknownError)
-        assertEquals(exception, (error as AppError.UnknownError).throwable)
+        assertEquals(exception, (error as AppError.UnknownError).cause)
     }
 }

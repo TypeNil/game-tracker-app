@@ -22,20 +22,31 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
+
+private const val HTTP_STATUS_TOO_MANY_REQUESTS = 429
+private const val HTTP_STATUS_SERVER_ERROR_MIN = 500
+private const val HTTP_STATUS_SERVER_ERROR_MAX = 599
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,15 +56,29 @@ fun DiscoverScreen(
     onSearchClick: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
+    onUserMessageShown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.userMessageRes) {
+        uiState.userMessageRes?.let { messageRes ->
+            snackbarHostState.showSnackbar(
+                message = context.getString(messageRes)
+            )
+            onUserMessageShown()
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Discover Games",
+                        text = stringResource(R.string.discover_title),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -63,7 +88,7 @@ fun DiscoverScreen(
                     IconButton(onClick = onSearchClick) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search games"
+                            contentDescription = stringResource(R.string.search_action_desc)
                         )
                     }
                 },
@@ -73,18 +98,18 @@ fun DiscoverScreen(
             )
         }
     ) { innerPadding ->
-        when (uiState) {
-            is DiscoverUiState.Loading -> {
+        when {
+            uiState.isInitialLoading -> {
                 DiscoverLoadingState(modifier = Modifier.padding(innerPadding))
             }
-            is DiscoverUiState.Error -> {
+            uiState.error != null && uiState.games.isEmpty() -> {
                 DiscoverErrorState(
                     error = uiState.error,
                     onRetry = onRetry,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
-            is DiscoverUiState.Success -> {
+            else -> {
                 DiscoverContent(
                     games = uiState.games,
                     isRefreshing = uiState.isRefreshing,
@@ -120,7 +145,7 @@ private fun DiscoverContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No games found in catalog",
+                    text = stringResource(R.string.no_games_found),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -129,7 +154,7 @@ private fun DiscoverContent(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
                     items = games,
@@ -161,7 +186,7 @@ private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Loading top rated games...",
+                text = stringResource(R.string.loading_games),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -176,10 +201,14 @@ private fun DiscoverErrorState(
     modifier: Modifier = Modifier
 ) {
     val errorMessage = when (error) {
-        is AppError.NetworkError -> "Network connection failed. Please check your internet."
-        is AppError.HttpError -> "Server error (${error.statusCode}): ${error.message ?: "Unknown"}"
-        is AppError.SerializationError -> "Failed to process data from server."
-        is AppError.UnknownError -> "An unexpected error occurred. Please try again."
+        is AppError.NetworkError -> stringResource(R.string.error_network)
+        is AppError.HttpError -> when (error.statusCode) {
+            HTTP_STATUS_TOO_MANY_REQUESTS -> stringResource(R.string.error_rate_limit)
+            in HTTP_STATUS_SERVER_ERROR_MIN..HTTP_STATUS_SERVER_ERROR_MAX -> stringResource(R.string.error_server)
+            else -> stringResource(R.string.error_generic)
+        }
+        is AppError.SerializationError -> stringResource(R.string.error_serialization)
+        is AppError.UnknownError -> stringResource(R.string.error_unknown)
     }
 
     Box(
@@ -213,7 +242,7 @@ private fun DiscoverErrorState(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text(text = "Retry")
+                Text(text = stringResource(R.string.retry_button))
             }
         }
     }

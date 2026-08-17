@@ -1,11 +1,9 @@
 package io.github.typenil.gametracker.core.model
 
-import androidx.compose.runtime.Immutable
-
 /**
  * Pure domain model representing a video game in the catalog.
+ * Free of Android/Compose UI framework dependencies.
  */
-@Immutable
 data class Game(
     val id: Long,
     val name: String,

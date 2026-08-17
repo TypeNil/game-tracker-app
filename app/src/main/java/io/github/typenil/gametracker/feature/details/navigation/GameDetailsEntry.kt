@@ -14,11 +14,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import io.github.typenil.gametracker.R
 
 /**
  * Extension for navigating to the Game Details screen.
@@ -40,12 +42,12 @@ fun NavGraphBuilder.gameDetailsEntry(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Game Details") },
+                    title = { Text(stringResource(R.string.details_title)) },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = stringResource(R.string.back_action_desc)
                             )
                         }
                     }
@@ -59,7 +61,7 @@ fun NavGraphBuilder.gameDetailsEntry(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Game Details for ID #${key.gameId}",
+                    text = stringResource(R.string.game_details_id_format, key.gameId),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )

@@ -10,10 +10,11 @@ sealed interface AppError {
     data object NetworkError : AppError
 
     /**
-     * HTTP response error with a status code (e.g. 404 Not Found, 429 Rate Limit, 500 Internal Server Error).
+     * HTTP response error with a status code and structured error code from BFF.
      */
     data class HttpError(
         val statusCode: Int,
+        val errorCode: String? = null,
         val message: String? = null
     ) : AppError
 
@@ -25,9 +26,9 @@ sealed interface AppError {
     ) : AppError
 
     /**
-     * Unexpected runtime error.
+     * Unexpected runtime exception.
      */
     data class UnknownError(
-        val throwable: Throwable? = null
+        val cause: Throwable? = null
     ) : AppError
 }

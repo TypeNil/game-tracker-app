@@ -33,7 +33,8 @@ fun NavGraphBuilder.discoverEntry(
             onGameClick = onGameClick,
             onSearchClick = onSearchClick,
             onRefresh = viewModel::refresh,
-            onRetry = viewModel::retry
+            onRetry = viewModel::retry,
+            onUserMessageShown = viewModel::onUserMessageShown
         )
     }
 }

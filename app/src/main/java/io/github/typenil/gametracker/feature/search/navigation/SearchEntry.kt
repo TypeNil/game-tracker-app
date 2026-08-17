@@ -14,10 +14,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
+import io.github.typenil.gametracker.R
 
 /**
  * Extension for navigating to the Search screen.
@@ -38,12 +40,12 @@ fun NavGraphBuilder.searchEntry(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Search Games") },
+                    title = { Text(stringResource(R.string.search_title)) },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = stringResource(R.string.back_action_desc)
                             )
                         }
                     }
@@ -57,7 +59,7 @@ fun NavGraphBuilder.searchEntry(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Search screen placeholder",
+                    text = stringResource(R.string.search_placeholder),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

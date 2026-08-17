@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.feature.discover
 
 import app.cash.turbine.test
+import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
@@ -12,6 +13,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,8 +43,9 @@ class DiscoverViewModelTest {
 
         viewModel.uiState.test {
             val item = awaitItem()
-            assertTrue(item is DiscoverUiState.Success)
-            assertEquals(sampleGames, (item as DiscoverUiState.Success).games)
+            assertFalse(item.isLoading)
+            assertEquals(sampleGames, item.games)
+            assertNull(item.error)
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -49,15 +53,16 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun `init emits Error when repository fails`() = runTest {
+    fun `init emits Error when repository fails on initial load`() = runTest {
         coEvery { repository.getTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
 
         viewModel.uiState.test {
             val item = awaitItem()
-            assertTrue(item is DiscoverUiState.Error)
-            assertEquals(AppError.NetworkError, (item as DiscoverUiState.Error).error)
+            assertFalse(item.isLoading)
+            assertTrue(item.games.isEmpty())
+            assertEquals(AppError.NetworkError, item.error)
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -65,7 +70,7 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun `refresh reloads data and updates state`() = runTest {
+    fun `refresh reloads data and updates games list`() = runTest {
         coEvery { repository.getTopRatedGames() } returns AppResult.Success(sampleGames)
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
@@ -77,12 +82,39 @@ class DiscoverViewModelTest {
 
         viewModel.uiState.test {
             val item = awaitItem()
-            assertTrue(item is DiscoverUiState.Success)
-            assertEquals(updatedGames, (item as DiscoverUiState.Success).games)
+            assertFalse(item.isRefreshing)
+            assertEquals(updatedGames, item.games)
             cancelAndIgnoreRemainingEvents()
         }
 
         coVerify(exactly = 2) { repository.getTopRatedGames() }
+    }
+
+    @Test
+    fun `refresh failure with existing data retains games and sets userMessageRes`() = runTest {
+        coEvery { repository.getTopRatedGames() } returns AppResult.Success(sampleGames)
+
+        val viewModel = DiscoverViewModel(gameRepository = repository)
+
+        coEvery { repository.getTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
+
+        viewModel.refresh()
+
+        viewModel.uiState.test {
+            val item = awaitItem()
+            assertFalse(item.isRefreshing)
+            assertEquals(sampleGames, item.games) // Preserves existing data
+            assertEquals(R.string.error_refresh_failed, item.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        viewModel.onUserMessageShown()
+
+        viewModel.uiState.test {
+            val item = awaitItem()
+            assertNull(item.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
@@ -97,8 +129,9 @@ class DiscoverViewModelTest {
 
         viewModel.uiState.test {
             val item = awaitItem()
-            assertTrue(item is DiscoverUiState.Success)
-            assertEquals(sampleGames, (item as DiscoverUiState.Success).games)
+            assertFalse(item.isLoading)
+            assertEquals(sampleGames, item.games)
+            assertNull(item.error)
             cancelAndIgnoreRemainingEvents()
         }
 
