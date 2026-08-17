@@ -18,6 +18,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = LoggerFactory.getLogger("Application")
 
@@ -38,7 +39,7 @@ fun main() {
  * Настраивает плагины ContentNegotiation, CallLogging, StatusPages и корневую маршрутизацию.
  */
 fun Application.module() {
-    val igdbConfig = IgdbConfig(environment.config)
+    val igdbConfig = com.gametracker.backend.application.IgdbConfigImpl(environment.config)
     val httpClient = IgdbHttpClientFactory.create()
     val tokenManager = IgdbTokenManagerImpl(igdbConfig, httpClient)
     val cache = BffCache()
@@ -56,6 +57,12 @@ fun Application.module() {
 
     install(CallLogging) {
         level = Level.INFO
+    }
+
+    install(io.ktor.server.plugins.ratelimit.RateLimit) {
+        global {
+            rateLimiter(limit = 3, refillPeriod = 1.seconds)
+        }
     }
 
     configureErrorHandling()

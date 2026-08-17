@@ -51,7 +51,14 @@ class IgdbTokenManagerImpl(
     }
 
     private fun isTokenValid(): Boolean {
-        return cachedToken != null && Instant.now().isBefore(expiresAt)
+        // Оставляем запас (buffer) в 60 секунд, чтобы токен не протух во время самого запроса
+        return cachedToken != null && Instant.now().isBefore(expiresAt.minusSeconds(60))
+    }
+
+    override fun forceRefresh() {
+        cachedToken = null
+        expiresAt = Instant.MIN
+        logger.info("Token forcefully invalidated. Next request will fetch a new token.")
     }
 
     private suspend fun fetchNewToken(): TwitchTokenResponse {

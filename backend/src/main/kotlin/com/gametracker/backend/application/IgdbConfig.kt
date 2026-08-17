@@ -2,13 +2,18 @@ package com.gametracker.backend.application
 
 import io.ktor.server.config.ApplicationConfig
 
+interface IgdbConfig {
+    val clientId: String
+    val clientSecret: String
+}
+
 /**
  * Конфигурация для доступа к IGDB API.
  * Значения загружаются из application.conf или переменных окружения.
  */
-class IgdbConfig(config: ApplicationConfig) {
-    val clientId: String
-    val clientSecret: String
+class IgdbConfigImpl(config: ApplicationConfig) : IgdbConfig {
+    override val clientId: String
+    override val clientSecret: String
 
     init {
         val props = java.util.Properties()

@@ -31,6 +31,7 @@ dependencies {
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.server.status.pages)
+    implementation(libs.ktor.server.rate.limit)
     implementation(libs.ktor.serialization.kotlinx.json)
 
     // Ktor Client (для вызовов к IGDB API)
@@ -51,6 +52,7 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.junit)
 }
 

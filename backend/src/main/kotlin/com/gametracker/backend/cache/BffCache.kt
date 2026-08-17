@@ -1,25 +1,31 @@
 package com.gametracker.backend.cache
 
+import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
-/**
- * In-memory кэш для BFF, адаптированный под Kotlin Coroutines.
- * Использует Mutex для предотвращения race conditions (состояние гонки), 
- * когда несколько параллельных запросов пытаются получить данные, которых еще нет в кэше.
- */
+enum class CachePolicy {
+    SEARCH, POPULAR, GAME_DETAILS
+}
+
 class BffCache {
-    private val cache = Caffeine.newBuilder()
-        .expireAfterWrite(15, TimeUnit.MINUTES)
-        .maximumSize(500)
-        .build<String, Any>()
+    private val popularCache = Caffeine.newBuilder().expireAfterWrite(15, TimeUnit.MINUTES).maximumSize(100).build<String, Any>()
+    private val searchCache = Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(200).build<String, Any>()
+    private val gameCache = Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).maximumSize(500).build<String, Any>()
+
+    private fun getCacheFor(policy: CachePolicy): Cache<String, Any> = when (policy) {
+        CachePolicy.POPULAR -> popularCache
+        CachePolicy.SEARCH -> searchCache
+        CachePolicy.GAME_DETAILS -> gameCache
+    }
         
     private val mutexes = ConcurrentHashMap<String, Mutex>()
 
-    suspend fun <T : Any> getOrPut(key: String, compute: suspend () -> T): T {
+    suspend fun <T : Any> getOrPut(key: String, policy: CachePolicy = CachePolicy.POPULAR, compute: suspend () -> T): T {
+        val cache = getCacheFor(policy)
         cache.getIfPresent(key)?.let { 
             @Suppress("UNCHECKED_CAST")
             return it as T 
@@ -37,9 +43,6 @@ class BffCache {
                 result
             }
         } finally {
-            // Удаляем mutex только если в мапе лежит именно наш экземпляр, 
-            // чтобы не удалить чужой при edge-кейсах.
-            // Предотвращает утечку памяти для бесконечного множества ключей (например, поисковых запросов).
             mutexes.remove(key, mutex)
         }
     }
