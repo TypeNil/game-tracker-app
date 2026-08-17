@@ -1,25 +1,32 @@
 package com.gametracker.backend
 
-import com.gametracker.backend.application.IgdbConfig
+import com.gametracker.backend.application.BffDependencies
 import com.gametracker.backend.application.ServerConfig
-import com.gametracker.backend.auth.IgdbTokenManagerImpl
-import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.error.configureErrorHandling
-import com.gametracker.backend.igdb.IgdbHttpClientFactory
-import com.gametracker.backend.igdb.IgdbService
 import com.gametracker.backend.routes.configureRouting
+import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
+import io.ktor.server.plugins.origin
+import io.ktor.server.plugins.ratelimit.RateLimit
+import io.ktor.server.plugins.ratelimit.RateLimitName
+import io.ktor.server.response.header
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = LoggerFactory.getLogger("Application")
+
+val defaultTrustedProxyHosts: Set<String> = setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1", "localhost")
 
 fun main() {
     val config = ServerConfig()
@@ -35,21 +42,36 @@ fun main() {
 
 /**
  * Основной модуль конфигурации Ktor.
- * Настраивает плагины ContentNegotiation, CallLogging, StatusPages и корневую маршрутизацию.
+ * Поддерживает внедрение [customDeps] для изолированного модульного и интеграционного тестирования.
  */
-fun Application.module() {
-    val igdbConfig = IgdbConfig(environment.config)
-    val httpClient = IgdbHttpClientFactory.create()
-    val tokenManager = IgdbTokenManagerImpl(igdbConfig, httpClient)
-    val cache = BffCache()
-    val igdbService = IgdbService(httpClient, tokenManager, igdbConfig)
+fun Application.module(customDeps: BffDependencies? = null) {
+    val deps = customDeps ?: BffDependencies.createProduction(environment.config)
+
+    // Безусловная регистрация очистки ресурсов при остановке приложения
+    monitor.subscribe(ApplicationStopped) {
+        logger.info("Application stopped. Closing dependencies...")
+        deps.close()
+    }
+
+    val trustedProxiesCount = environment.config.propertyOrNull("bff.proxy.trustedProxiesCount")
+        ?.getString()?.toIntOrNull() ?: 0
+
+    val configuredTrustedHosts = environment.config.propertyOrNull("bff.proxy.trustedHosts")
+        ?.getString()?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
+        ?: defaultTrustedProxyHosts
+
+    if (trustedProxiesCount > 0) {
+        install(XForwardedHeaders) {
+            skipLastProxies(trustedProxiesCount)
+        }
+    }
 
     install(ContentNegotiation) {
         json(
             Json {
                 ignoreUnknownKeys = true
                 isLenient = true
-                prettyPrint = true
+                prettyPrint = false
             }
         )
     }
@@ -58,6 +80,46 @@ fun Application.module() {
         level = Level.INFO
     }
 
+    install(RateLimit) {
+        register(RateLimitName("api_v1")) {
+            rateLimiter(limit = 10, refillPeriod = 1.seconds)
+            requestKey { call -> resolveClientIp(call, trustedProxiesCount > 0, configuredTrustedHosts) }
+            modifyResponse { call, _ ->
+                call.response.header(HttpHeaders.RetryAfter, "1")
+            }
+        }
+    }
+
     configureErrorHandling()
-    configureRouting(igdbService, cache)
+    configureRouting(deps)
+}
+
+/**
+ * Разрешает реальный IP-адрес клиента с защитой от IP-спуфинга.
+ *
+ * Политика безопасности прокси:
+ * - Если [isProxyEnabled] == false (прямое развертывание), заголовки X-Forwarded-* игнорируются,
+ *   и возвращается [ApplicationCall.request.local.remoteHost].
+ * - Если [isProxyEnabled] == true (развертывание за reverse proxy):
+ *   проверяется непосредственный транспортный пир ([ApplicationCall.request.local.remoteHost]).
+ *   Только если он точно совпадает (exact string match) со значением из [trustedHosts] (e.g. "127.0.0.1", "10.0.0.2"),
+ *   используется адрес из заголовка [ApplicationCall.request.origin.remoteHost].
+ *   Если прямой пир не в списке доверенных, возвращается его непосредственный IP для исключения подделки заголовков.
+ */
+fun resolveClientIp(
+    call: ApplicationCall,
+    isProxyEnabled: Boolean,
+    trustedHosts: Set<String> = defaultTrustedProxyHosts
+): String {
+    if (!isProxyEnabled) {
+        return call.request.local.remoteHost
+    }
+
+    val directPeer = call.request.local.remoteHost
+    return if (directPeer in trustedHosts) {
+        call.request.origin.remoteHost
+    } else {
+        // Прямой клиент пытается подделать X-Forwarded-For: используем его реальный IP
+        directPeer
+    }
 }

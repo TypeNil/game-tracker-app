@@ -86,6 +86,8 @@ ktor-server-netty = { group = "io.ktor", name = "ktor-server-netty-jvm", version
 ktor-server-content-negotiation = { group = "io.ktor", name = "ktor-server-content-negotiation-jvm", version.ref = "ktor" }
 ktor-server-call-logging = { group = "io.ktor", name = "ktor-server-call-logging-jvm", version.ref = "ktor" }
 ktor-server-status-pages = { group = "io.ktor", name = "ktor-server-status-pages-jvm", version.ref = "ktor" }
+ktor-server-rate-limit = { group = "io.ktor", name = "ktor-server-rate-limit-jvm", version.ref = "ktor" }
+ktor-server-forwarded-header = { group = "io.ktor", name = "ktor-server-forwarded-header-jvm", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json-jvm", version.ref = "ktor" }
 
 # Ktor Client (BFF to IGDB)
@@ -93,6 +95,7 @@ ktor-client-core = { group = "io.ktor", name = "ktor-client-core-jvm", version.r
 ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio-jvm", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation-jvm", version.ref = "ktor" }
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging-jvm", version.ref = "ktor" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock-jvm", version.ref = "ktor" }
 
 # Cache & Logging (BFF)
 caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }

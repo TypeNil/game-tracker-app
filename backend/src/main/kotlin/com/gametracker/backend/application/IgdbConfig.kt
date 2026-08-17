@@ -1,32 +1,72 @@
 package com.gametracker.backend.application
 
 import io.ktor.server.config.ApplicationConfig
+import java.io.File
+import java.util.Properties
+
+interface IgdbConfig {
+    val clientId: String
+    val clientSecret: String
+    val isConfigured: Boolean
+        get() = clientId.isNotBlank() && clientSecret.isNotBlank()
+}
+
+/**
+ * Загрузка свойств из local.properties в текущем каталоге или родительском каталоге проекта.
+ */
+fun loadDefaultLocalProperties(): Properties {
+    val props = Properties()
+    val file = File("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { props.load(it) }
+    } else if (File("../local.properties").exists()) {
+        File("../local.properties").inputStream().use { props.load(it) }
+    }
+    return props
+}
 
 /**
  * Конфигурация для доступа к IGDB API.
- * Значения загружаются из application.conf или переменных окружения.
+ * Строгий порядок разрешения параметров:
+ * 1. Непустая явная конфигурация Ktor (application.conf / sysprops / test config)
+ * 2. Переменные окружения процесса (IGDB_CLIENT_ID / IGDB_CLIENT_SECRET)
+ * 3. Локальный файл разработчика local.properties (fallback)
  */
-class IgdbConfig(config: ApplicationConfig) {
-    val clientId: String
-    val clientSecret: String
+class IgdbConfigImpl(
+    config: ApplicationConfig,
+    envProvider: (String) -> String? = { System.getenv(it) },
+    localPropertiesProvider: () -> Properties = { loadDefaultLocalProperties() }
+) : IgdbConfig {
+    override val clientId: String
+    override val clientSecret: String
 
     init {
-        val props = java.util.Properties()
-        val file = java.io.File("local.properties")
-        if (file.exists()) {
-            props.load(file.inputStream())
-        } else if (java.io.File("../local.properties").exists()) {
-            props.load(java.io.File("../local.properties").inputStream())
-        }
+        val props by lazy { localPropertiesProvider() }
 
-        clientId = config.propertyOrNull("igdb.clientId")?.getString()?.takeIf { it.isNotBlank() }
-            ?: props.getProperty("IGDB_CLIENT_ID") ?: ""
+        clientId = resolveParameter(
+            configValue = config.propertyOrNull("igdb.clientId")?.getString(),
+            envKey = "IGDB_CLIENT_ID",
+            envProvider = envProvider,
+            props = props
+        )
 
-        clientSecret = config.propertyOrNull("igdb.clientSecret")?.getString()?.takeIf { it.isNotBlank() }
-            ?: props.getProperty("IGDB_CLIENT_SECRET") ?: ""
+        clientSecret = resolveParameter(
+            configValue = config.propertyOrNull("igdb.clientSecret")?.getString(),
+            envKey = "IGDB_CLIENT_SECRET",
+            envProvider = envProvider,
+            props = props
+        )
+    }
 
-        if (clientId.isBlank() || clientSecret.isBlank()) {
-            println("WARN: IGDB credentials are not set properly. API calls will fail.")
-        }
+    private fun resolveParameter(
+        configValue: String?,
+        envKey: String,
+        envProvider: (String) -> String?,
+        props: Properties
+    ): String {
+        return configValue?.trim()?.takeIf { it.isNotEmpty() }
+            ?: envProvider(envKey)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: props.getProperty(envKey)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: ""
     }
 }
