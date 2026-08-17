@@ -3,15 +3,18 @@ package com.gametracker.backend.routes
 import com.gametracker.backend.application.IgdbConfig
 import com.gametracker.backend.error.ErrorResponse
 import com.gametracker.backend.error.configureErrorHandling
+import com.gametracker.backend.resolveClientIp
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
+import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.plugins.ratelimit.RateLimitName
 import io.ktor.server.plugins.ratelimit.rateLimit
@@ -133,5 +136,40 @@ class HealthAndRateLimitTest {
 
         assertEquals(HttpStatusCode.OK, healthRes.status)
         assertEquals(HttpStatusCode.OK, pingRes.status)
+    }
+
+    @Test
+    fun `trusted proxy correctly resolves client IP whereas untrusted peer falls back to local remoteHost`() = testApplication {
+        application {
+            install(XForwardedHeaders) {
+                skipLastProxies(1)
+            }
+            routing {
+                get("/test-ip-trusted") {
+                    // testApplication direct peer is localhost (127.0.0.1 / localhost)
+                    val ip = resolveClientIp(call, isProxyEnabled = true, trustedHosts = setOf("127.0.0.1", "localhost"))
+                    call.respondText(ip)
+                }
+                get("/test-ip-untrusted") {
+                    // direct peer is NOT in trustedHosts (e.g. only 10.0.0.1 is trusted)
+                    val ip = resolveClientIp(call, isProxyEnabled = true, trustedHosts = setOf("10.0.0.1"))
+                    call.respondText(ip)
+                }
+            }
+        }
+
+        val client = createClient {}
+
+        // 1. When proxy is trusted, X-Forwarded-For is respected
+        val trustedResponse = client.get("/test-ip-trusted") {
+            header(HttpHeaders.XForwardedFor, "203.0.113.195")
+        }
+        assertEquals("203.0.113.195", trustedResponse.body<String>())
+
+        // 2. When peer is not in trusted proxy allowlist, spoofed X-Forwarded-For is ignored
+        val untrustedResponse = client.get("/test-ip-untrusted") {
+            header(HttpHeaders.XForwardedFor, "203.0.113.195")
+        }
+        assertEquals("localhost", untrustedResponse.body<String>())
     }
 }

@@ -69,7 +69,7 @@ class SmoothRateLimiterTest {
     }
 
     @Test
-    fun `acquire guarantees no more than 3 requests in any 1-second rolling window`() = runTest {
+    fun `acquire guarantees rate does not exceed 3_33 req per sec across rolling window`() = runTest {
         val timeSource = VirtualTimeSource()
         val timestamps = mutableListOf<Long>()
 
@@ -84,7 +84,13 @@ class SmoothRateLimiterTest {
             timestamps.add(timeSource.now())
         }
 
-        // Verify that in every 1000ms (1_000_000_000ns) window there are <= 4 requests
+        // Verify that consecutive timestamps are spaced by at least 300ms (300_000_000ns)
+        for (i in 0 until timestamps.size - 1) {
+            val delta = timestamps[i + 1] - timestamps[i]
+            assertTrue("Expected delta >= 300ms but was ${delta / 1_000_000}ms", delta >= 300_000_000L)
+        }
+
+        // Verify that across any 1000ms window there are at most 4 requests (0ms, 300ms, 600ms, 900ms)
         for (i in timestamps.indices) {
             val windowStart = timestamps[i]
             val windowEnd = windowStart + 1_000_000_000L
@@ -124,9 +130,9 @@ class SmoothRateLimiterTest {
     }
 
     @Test
-    fun `concurrent callers serialize acquisition smoothly`() = runTest {
+    fun `concurrent callers serialize acquisition smoothly with monotonic spacing`() = runTest {
         val timeSource = VirtualTimeSource()
-        val executionOrder = mutableListOf<Int>()
+        val executionTimestamps = mutableListOf<Long>()
 
         val limiter = SmoothRateLimiter(
             intervalNanos = 100_000_000L,
@@ -134,14 +140,21 @@ class SmoothRateLimiterTest {
             delayFn = { millis -> timeSource.advance(millis * 1_000_000L) }
         )
 
-        val deferreds = (1..5).map { id ->
+        val deferreds = (1..5).map {
             async {
                 limiter.acquire()
-                executionOrder.add(id)
+                synchronized(executionTimestamps) {
+                    executionTimestamps.add(timeSource.now())
+                }
             }
         }
         deferreds.awaitAll()
 
-        assertEquals(5, executionOrder.size)
+        assertEquals(5, executionTimestamps.size)
+        val sorted = executionTimestamps.sorted()
+        for (i in 0 until sorted.size - 1) {
+            val delta = sorted[i + 1] - sorted[i]
+            assertTrue(delta >= 100_000_000L)
+        }
     }
 }

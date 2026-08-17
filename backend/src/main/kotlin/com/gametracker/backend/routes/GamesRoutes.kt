@@ -29,7 +29,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
                 val offset = parseIntegerParam(call.request.queryParameters["offset"], "offset")
                 val request = TopRatedRequest(limit, offset)
 
-                logger.info("Fetching top rated games with cacheKey: {}", request.cacheKey)
+                logger.info("Fetching top rated games (limit={}, offset={})", limit, offset)
                 val games = cache.getOrPut(request.cacheKey, CachePolicy.POPULAR) {
                     igdbService.queryGames(request.toApicalypseQuery()).mapNotNull { it.toGameDto() }
                 }
@@ -43,7 +43,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
                 val offset = parseIntegerParam(call.request.queryParameters["offset"], "offset")
                 val request = SearchRequest(query, limit, offset)
 
-                logger.info("Searching games with cacheKey: {}", request.cacheKey)
+                logger.info("Searching games (queryLength={}, limit={}, offset={})", request.canonicalQuery.length, limit, offset)
                 val games = cache.getOrPut(request.cacheKey, CachePolicy.SEARCH) {
                     igdbService.queryGames(request.toApicalypseQuery()).mapNotNull { it.toGameDto() }
                 }
@@ -55,6 +55,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
                 val id = parseLongParam(call.parameters["id"], "id")
                 val request = GameDetailsRequest(id)
 
+                logger.info("Fetching game details (id={})", id)
                 val game = cache.getOrPut(request.cacheKey, CachePolicy.GAME_DETAILS) {
                     val results = igdbService.queryGames(request.toApicalypseQuery())
                     val match = results.firstOrNull()?.toGameDto()

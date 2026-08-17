@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val EXPIRATION_BUFFER_SECONDS = 60L
 private const val DEFAULT_RETRY_AFTER_SECONDS = 5L
+private const val MILLIS_PER_SECOND = 1000L
 
 class IgdbTokenManagerImpl(
     private val config: IgdbConfig,
@@ -74,7 +75,7 @@ class IgdbTokenManagerImpl(
             if (current != null && current.token == badToken) null else current
         }
         if (updated == null) {
-            logger.info("Token matching '{}' successfully invalidated in cache.", badToken.take(TOKEN_PREFIX_LENGTH) + "...")
+            logger.info("Invalidated expired/rejected access token from memory cache.")
         }
     }
 
@@ -117,10 +118,21 @@ class IgdbTokenManagerImpl(
             )
             tokenResponse
         } catch (e: Throwable) {
-            if (e is CancellationException) throw e
-            if (e is UpstreamRateLimitException || e is UpstreamBadGatewayException) throw e
-            logger.error("Failed to decode Twitch OAuth token response", e)
-            throw UpstreamBadGatewayException("Failed to decode Twitch OAuth token response", e)
+            when (e) {
+                is CancellationException,
+                is UpstreamRateLimitException,
+                is UpstreamBadGatewayException,
+                is UpstreamServiceUnavailableException,
+                is UpstreamTimeoutException -> throw e
+                is HttpRequestTimeoutException, is SocketTimeoutException, is ConnectTimeoutException ->
+                    throw UpstreamTimeoutException("Twitch OAuth response reading timed out", e)
+                is IOException ->
+                    throw UpstreamServiceUnavailableException("I/O error reading Twitch OAuth response", e)
+                else -> {
+                    logger.error("Failed to decode Twitch OAuth token response", e)
+                    throw UpstreamBadGatewayException("Failed to decode Twitch OAuth token response", e)
+                }
+            }
         } finally {
             response.discardRemaining()
         }
@@ -130,12 +142,21 @@ class IgdbTokenManagerImpl(
         val status = response.status
         logger.error("Twitch OAuth failed with status {}", status)
 
-        if (status == HttpStatusCode.TooManyRequests) {
-            val retryAfterHeader = response.headers[HttpHeaders.RetryAfter]
-            val retryAfterSeconds = parseRetryAfter(retryAfterHeader)
-            throw UpstreamRateLimitException(retryAfterSeconds)
-        } else {
-            throw UpstreamBadGatewayException("Twitch OAuth request returned status ${status.value}")
+        when (status) {
+            HttpStatusCode.TooManyRequests -> {
+                val retryAfterHeader = response.headers[HttpHeaders.RetryAfter]
+                val retryAfterSeconds = parseRetryAfter(retryAfterHeader)
+                throw UpstreamRateLimitException(retryAfterSeconds)
+            }
+            HttpStatusCode.ServiceUnavailable -> {
+                throw UpstreamServiceUnavailableException("Twitch OAuth service unavailable")
+            }
+            HttpStatusCode.GatewayTimeout, HttpStatusCode.RequestTimeout -> {
+                throw UpstreamTimeoutException("Twitch OAuth gateway timeout")
+            }
+            else -> {
+                throw UpstreamBadGatewayException("Twitch OAuth request returned status ${status.value}")
+            }
         }
     }
 
@@ -156,9 +177,4 @@ class IgdbTokenManagerImpl(
         val token: String,
         val expiresAtEpochSeconds: Long
     )
-
-    companion object {
-        private const val TOKEN_PREFIX_LENGTH = 6
-        private const val MILLIS_PER_SECOND = 1000L
-    }
 }

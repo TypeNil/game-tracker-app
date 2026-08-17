@@ -26,6 +26,8 @@ import kotlin.time.Duration.Companion.seconds
 
 private val logger = LoggerFactory.getLogger("Application")
 
+val defaultTrustedProxyHosts: Set<String> = setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1", "localhost")
+
 fun main() {
     val config = ServerConfig()
     logger.info("Starting GameTracker BFF on http://${config.host}:${config.port} ...")
@@ -54,6 +56,10 @@ fun Application.module(customDeps: BffDependencies? = null) {
     val trustedProxiesCount = environment.config.propertyOrNull("bff.proxy.trustedProxiesCount")
         ?.getString()?.toIntOrNull() ?: 0
 
+    val configuredTrustedHosts = environment.config.propertyOrNull("bff.proxy.trustedHosts")
+        ?.getString()?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
+        ?: defaultTrustedProxyHosts
+
     if (trustedProxiesCount > 0) {
         install(XForwardedHeaders) {
             skipLastProxies(trustedProxiesCount)
@@ -77,7 +83,7 @@ fun Application.module(customDeps: BffDependencies? = null) {
     install(RateLimit) {
         register(RateLimitName("api_v1")) {
             rateLimiter(limit = 10, refillPeriod = 1.seconds)
-            requestKey { call -> resolveClientIp(call, trustedProxiesCount > 0) }
+            requestKey { call -> resolveClientIp(call, trustedProxiesCount > 0, configuredTrustedHosts) }
             modifyResponse { call, _ ->
                 call.response.header(HttpHeaders.RetryAfter, "1")
             }
@@ -88,10 +94,20 @@ fun Application.module(customDeps: BffDependencies? = null) {
     configureRouting(deps)
 }
 
-fun resolveClientIp(call: ApplicationCall, isProxyEnabled: Boolean): String {
-    return if (isProxyEnabled) {
+fun resolveClientIp(
+    call: ApplicationCall,
+    isProxyEnabled: Boolean,
+    trustedHosts: Set<String> = defaultTrustedProxyHosts
+): String {
+    if (!isProxyEnabled) {
+        return call.request.local.remoteHost
+    }
+
+    val directPeer = call.request.local.remoteHost
+    return if (directPeer in trustedHosts) {
         call.request.origin.remoteHost
     } else {
-        call.request.local.remoteHost
+        // Прямой клиент пытается подделать X-Forwarded-For: используем его реальный IP
+        directPeer
     }
 }

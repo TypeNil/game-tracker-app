@@ -215,6 +215,38 @@ class IgdbTokenManagerImplTest {
     }
 
     @Test
+    fun `Twitch OAuth error 503 throws UpstreamServiceUnavailableException`() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = """{"status":503,"message":"Service Unavailable"}""",
+                status = HttpStatusCode.ServiceUnavailable,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is UpstreamServiceUnavailableException)
+    }
+
+    @Test
+    fun `Twitch OAuth error 504 throws UpstreamTimeoutException`() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = """{"status":504,"message":"Gateway Timeout"}""",
+                status = HttpStatusCode.GatewayTimeout,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = createMockClient(engine)
+        val manager = IgdbTokenManagerImpl(createMockConfig(), client)
+
+        val result = runCatching { manager.getValidAccessToken() }
+        assertTrue(result.exceptionOrNull() is UpstreamTimeoutException)
+    }
+
+    @Test
     fun `Twitch OAuth network timeout throws UpstreamTimeoutException`() = runTest {
         val engine = MockEngine {
             throw HttpRequestTimeoutException("https://id.twitch.tv", 5000L)

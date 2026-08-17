@@ -1,12 +1,15 @@
 package com.gametracker.backend.cache
 
 import com.github.benmanes.caffeine.cache.Ticker
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,7 +31,8 @@ class BffCacheTest {
 
     @Test
     fun `getOrPut returns computed value on cache miss and cached value on cache hit`() = runTest {
-        val cache = BffCache()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
         var computeCount = 0
 
         val result1 = cache.getOrPut("key_1", CachePolicy.POPULAR) {
@@ -48,7 +52,8 @@ class BffCacheTest {
 
     @Test
     fun `same-key concurrent requests execute compute exactly once (single-flight)`() = runTest {
-        val cache = BffCache()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
         var computeCount = 0
 
         val deferreds = (1..50).map {
@@ -70,7 +75,8 @@ class BffCacheTest {
 
     @Test
     fun `cancelling a waiter does not cancel leader computation or other waiters`() = runTest {
-        val cache = BffCache()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
         var computeCompleted = false
 
         // Waiter 1 (gets cancelled)
@@ -104,7 +110,8 @@ class BffCacheTest {
 
     @Test
     fun `failed computation does not poison cache and allows subsequent retry`() = runTest {
-        val cache = BffCache()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
         var attemptCount = 0
 
         val result1 = runCatching {
@@ -131,7 +138,8 @@ class BffCacheTest {
     @Test
     fun `entries expire after TTL configured in CachePolicy`() = runTest {
         val fakeTicker = FakeTicker()
-        val cache = BffCache(ticker = fakeTicker)
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(ticker = fakeTicker, cacheScope = testScope)
         var computeCount = 0
 
         val val1 = cache.getOrPut("ttl_key", CachePolicy.SEARCH) {
@@ -155,7 +163,8 @@ class BffCacheTest {
 
     @Test
     fun `distinct keys are cached separately across policies`() = runTest {
-        val cache = BffCache()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
 
         val searchResult = cache.getOrPut("shared_key", CachePolicy.SEARCH) { "search_data" }
         val gameResult = cache.getOrPut("shared_key", CachePolicy.GAME_DETAILS) { "game_data" }

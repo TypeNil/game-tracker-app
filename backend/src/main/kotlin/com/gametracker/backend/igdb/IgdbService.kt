@@ -16,7 +16,6 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.discardRemaining
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -36,7 +35,6 @@ private const val DEFAULT_RETRY_DELAY_BASE_MS = 100L
 private const val JITTER_MAX_MS = 50
 private const val DEFAULT_RETRY_AFTER_SECONDS = 5L
 private const val MAX_TRANSIENT_RETRIES = 2
-private const val MAX_DIAGNOSTIC_LOG_LENGTH = 256
 
 class IgdbService(
     private val httpClient: HttpClient,
@@ -151,10 +149,9 @@ class IgdbService(
     private suspend fun handleNonSuccessStatus(response: HttpResponse): Nothing {
         val status = response.status
         val retryAfterHeader = response.headers[HttpHeaders.RetryAfter]
-        val diagnosticBody = runCatching { response.bodyAsText().take(MAX_DIAGNOSTIC_LOG_LENGTH) }.getOrDefault("")
         response.discardRemaining()
 
-        logger.error("IGDB request failed with status {}. Diagnostics: {}", status, diagnosticBody)
+        logger.error("IGDB request failed with status {}", status)
 
         when (status) {
             HttpStatusCode.TooManyRequests -> {
