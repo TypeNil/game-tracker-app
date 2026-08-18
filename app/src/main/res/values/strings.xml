@@ -14,7 +14,12 @@
     <string name="error_unknown">An unexpected error occurred. Please try again.</string>
     <string name="error_refresh_failed">Could not refresh catalog. Showing cached data.</string>
     <string name="search_title">Search Games</string>
-    <string name="search_placeholder">Search screen placeholder</string>
+    <string name="search_hint">Search games by title…</string>
+    <string name="search_clear_desc">Clear search query</string>
+    <string name="search_idle_title">Search Video Games</string>
+    <string name="search_idle_subtitle">Type a title above to search through the IGDB catalog</string>
+    <string name="search_empty_results_format">No games found for \"%1$s\"</string>
+    <string name="search_loading_games">Searching games…</string>
     <string name="details_title">Game Details</string>
     <string name="game_details_id_format">Game Details for ID #%1$d</string>
 </resources>
