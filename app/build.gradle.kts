@@ -43,12 +43,10 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".demo"
             versionNameSuffix = "-demo"
-            buildConfigField("Boolean", "IS_DEMO", "true")
             buildConfigField("String", "BFF_BASE_URL", "\"http://10.0.2.2:8080/\"")
         }
         create("live") {
             dimension = "environment"
-            buildConfigField("Boolean", "IS_DEMO", "false")
             buildConfigField("String", "BFF_BASE_URL", "\"$liveBaseUrl\"")
         }
     }
@@ -71,6 +69,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests.all {
+            it.systemProperty("demoAssetsDir", file("src/demo/assets").absolutePath)
+        }
     }
 
     buildFeatures {

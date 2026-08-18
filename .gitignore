@@ -64,4 +64,5 @@ fastlane/test_output
 # AI Agent Local Context & Rules (Local to developer machine only)
 .agents/
 AGENTS.md
+AGENTS.android.md
 .gemini/
