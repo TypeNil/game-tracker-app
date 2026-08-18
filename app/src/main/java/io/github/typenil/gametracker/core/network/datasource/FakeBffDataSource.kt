@@ -15,7 +15,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 1942L,
             name = "The Witcher 3: Wild Hunt",
-            coverUrl = "file:///android_asset/covers/cover_witcher3.png",
+            coverUrl = "file:///android_asset/covers/cover_witcher3.jpg",
             rating = 95.8,
             releaseDateEpochSeconds = 1431993600L,
             summary = "The Witcher: Wild Hunt is a story-driven open world RPG set in a fantasy universe.",
@@ -25,7 +25,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 119133L,
             name = "Elden Ring",
-            coverUrl = "file:///android_asset/covers/cover_eldenring.png",
+            coverUrl = "file:///android_asset/covers/cover_eldenring.jpg",
             rating = 95.2,
             releaseDateEpochSeconds = 1645747200L,
             summary = "Elden Ring is an action-RPG developed by FromSoftware, set in the Lands Between.",
@@ -35,7 +35,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 125174L,
             name = "Baldur's Gate 3",
-            coverUrl = "file:///android_asset/covers/cover_bg3.png",
+            coverUrl = "file:///android_asset/covers/cover_bg3.jpg",
             rating = 96.1,
             releaseDateEpochSeconds = 1691020800L,
             summary = "An ancient evil has returned to Baldur's Gate, intent on devouring it from the inside out.",
@@ -45,7 +45,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 112875L,
             name = "God of War Ragnarök",
-            coverUrl = "file:///android_asset/covers/cover_gow_ragnarok.png",
+            coverUrl = "file:///android_asset/covers/cover_gow_ragnarok.jpg",
             rating = 93.7,
             releaseDateEpochSeconds = 1667952000L,
             summary = "Kratos and Atreus must journey to each of the Nine Realms in search of answers.",
@@ -55,7 +55,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 1877L,
             name = "Cyberpunk 2077",
-            coverUrl = "file:///android_asset/covers/cover_cyberpunk.png",
+            coverUrl = "file:///android_asset/covers/cover_cyberpunk.jpg",
             rating = 87.4,
             releaseDateEpochSeconds = 1607558400L,
             summary = "Cyberpunk 2077 is an open-world, action-adventure RPG set in Night City.",
@@ -65,7 +65,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 119277L,
             name = "The Legend of Zelda: Tears of the Kingdom",
-            coverUrl = "file:///android_asset/covers/cover_zelda_totk.png",
+            coverUrl = "file:///android_asset/covers/cover_zelda_totk.jpg",
             rating = 95.5,
             releaseDateEpochSeconds = 1683849600L,
             summary = "An epic adventure across the land and skies of Hyrule awaits in Tears of the Kingdom.",
@@ -75,7 +75,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 9927L,
             name = "Hollow Knight",
-            coverUrl = "file:///android_asset/covers/cover_hollow_knight.png",
+            coverUrl = "file:///android_asset/covers/cover_hollow_knight.jpg",
             rating = 91.8,
             releaseDateEpochSeconds = 1487894400L,
             summary = "Forge your own path in Hollow Knight! An epic action adventure through an insect kingdom.",
@@ -85,7 +85,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 1009L,
             name = "The Last of Us Part I",
-            coverUrl = "file:///android_asset/covers/cover_tlou.png",
+            coverUrl = "file:///android_asset/covers/cover_tlou.jpg",
             rating = 92.4,
             releaseDateEpochSeconds = 1662076800L,
             summary = "Joel is hired to smuggle 14-year-old Ellie out of a military quarantine zone.",
@@ -95,7 +95,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 25076L,
             name = "Red Dead Redemption 2",
-            coverUrl = "file:///android_asset/covers/cover_rdr2.png",
+            coverUrl = "file:///android_asset/covers/cover_rdr2.jpg",
             rating = 96.0,
             releaseDateEpochSeconds = 1540512000L,
             summary = "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run.",
@@ -105,7 +105,7 @@ class FakeBffDataSource @Inject constructor() : BffRemoteDataSource {
         GameDto(
             id = 7331L,
             name = "Portal 2",
-            coverUrl = "file:///android_asset/covers/cover_portal2.png",
+            coverUrl = "file:///android_asset/covers/cover_portal2.jpg",
             rating = 94.6,
             releaseDateEpochSeconds = 1303171200L,
             summary = "Sequel to the acclaimed Portal (2007), Portal 2 pits the protagonist against a corrupt AI.",

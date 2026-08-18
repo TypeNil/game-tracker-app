@@ -24,7 +24,7 @@ class GameMappersTest {
         val dto = GameDto(
             id = 42L,
             name = "Test Game",
-            coverUrl = "file:///android_asset/covers/cover_witcher3.png",
+            coverUrl = "file:///android_asset/covers/cover_witcher3.jpg",
             rating = 91.5,
             releaseDateEpochSeconds = 1700000000L,
             summary = "Epic adventure",
@@ -36,7 +36,7 @@ class GameMappersTest {
 
         assertEquals(42L, domain.id)
         assertEquals("Test Game", domain.name)
-        assertEquals("file:///android_asset/covers/cover_witcher3.png", domain.coverUrl)
+        assertEquals("file:///android_asset/covers/cover_witcher3.jpg", domain.coverUrl)
         assertEquals(91.5, domain.rating)
         assertEquals(1700000000L, domain.releaseDateEpochSeconds)
         assertEquals("Epic adventure", domain.summary)
