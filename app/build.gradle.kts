@@ -73,6 +73,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        unitTests.all {
+            it.systemProperty("demoAssetsDir", file("src/demo/assets").absolutePath)
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true

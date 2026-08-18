@@ -6,9 +6,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.typenil.gametracker.BuildConfig
 import io.github.typenil.gametracker.core.network.api.BffApiService
-import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
-import io.github.typenil.gametracker.core.network.datasource.FakeBffDataSource
-import io.github.typenil.gametracker.core.network.datasource.RetrofitBffDataSource
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -71,16 +68,4 @@ object NetworkModule {
         return retrofit.create(BffApiService::class.java)
     }
 
-    @Provides
-    @Singleton
-    fun provideBffRemoteDataSource(
-        fakeDataSource: FakeBffDataSource,
-        retrofitDataSource: RetrofitBffDataSource
-    ): BffRemoteDataSource {
-        return if (BuildConfig.IS_DEMO) {
-            fakeDataSource
-        } else {
-            retrofitDataSource
-        }
-    }
 }
