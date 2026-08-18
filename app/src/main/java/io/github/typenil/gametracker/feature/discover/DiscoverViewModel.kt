@@ -8,15 +8,11 @@ import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppResult
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-private const val WHILE_SUBSCRIBED_TIMEOUT_MS = 5_000L
 
 @HiltViewModel
 class DiscoverViewModel @Inject constructor(
@@ -25,11 +21,6 @@ class DiscoverViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DiscoverUiState(isLoading = true))
     val uiState: StateFlow<DiscoverUiState> = _uiState.asStateFlow()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(WHILE_SUBSCRIBED_TIMEOUT_MS),
-            initialValue = DiscoverUiState(isLoading = true)
-        )
 
     private var loadJob: Job? = null
     private var refreshJob: Job? = null

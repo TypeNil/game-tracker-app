@@ -6,7 +6,9 @@ import io.github.typenil.gametracker.core.network.mapper.toDomain
 import io.github.typenil.gametracker.core.network.model.GameDto
 import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.BufferedSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -76,6 +78,25 @@ class GameMappersTest {
         assertTrue(error is AppError.HttpError)
         val httpError = error as AppError.HttpError
         assertEquals(502, httpError.statusCode)
+        assertNull(httpError.errorCode)
+    }
+
+    @Test
+    fun `toAppError handles error body reading IOException gracefully without escaping`() {
+        val throwingBody = object : ResponseBody() {
+            override fun contentType() = "application/json".toMediaType()
+            override fun contentLength() = 100L
+            override fun source(): BufferedSource {
+                throw IOException("Broken stream during read")
+            }
+        }
+        val httpException = HttpException(Response.error<String>(500, throwingBody))
+
+        val error = httpException.toAppError()
+
+        assertTrue(error is AppError.HttpError)
+        val httpError = error as AppError.HttpError
+        assertEquals(500, httpError.statusCode)
         assertNull(httpError.errorCode)
     }
 

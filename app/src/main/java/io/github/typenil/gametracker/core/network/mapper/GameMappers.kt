@@ -38,12 +38,12 @@ fun List<GameDto>.toDomain(): List<Game> = map { it.toDomain() }
 
 /**
  * Safely parses the error body and maps HTTP exceptions into typed [AppError.HttpError]
- * without exposing raw payload or crashing if the response body is unreadable.
+ * without exposing raw transport payloads or allowing body reading exceptions to escape.
  */
 fun Throwable.toAppError(): AppError {
     return when (this) {
         is HttpException -> {
-            val parsedError = parseErrorBody(response()?.errorBody()?.string())
+            val parsedError = parseErrorResponse()
             AppError.HttpError(
                 statusCode = code(),
                 errorCode = parsedError?.code,
@@ -56,11 +56,17 @@ fun Throwable.toAppError(): AppError {
     }
 }
 
-private fun parseErrorBody(rawBody: String?): ErrorResponseDto? {
-    if (rawBody.isNullOrBlank()) return null
+private fun HttpException.parseErrorResponse(): ErrorResponseDto? {
     return try {
-        json.decodeFromString<ErrorResponseDto>(rawBody)
-    } catch (_: Exception) {
+        response()
+            ?.errorBody()
+            ?.string()
+            ?.let { json.decodeFromString<ErrorResponseDto>(it) }
+    } catch (_: IOException) {
+        null
+    } catch (_: SerializationException) {
+        null
+    } catch (_: IllegalArgumentException) {
         null
     }
 }
