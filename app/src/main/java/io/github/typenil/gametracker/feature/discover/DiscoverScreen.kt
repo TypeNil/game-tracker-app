@@ -34,19 +34,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
+import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
-
-private const val HTTP_STATUS_TOO_MANY_REQUESTS = 429
-private const val HTTP_STATUS_SERVER_ERROR_MIN = 500
-private const val HTTP_STATUS_SERVER_ERROR_MAX = 599
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,12 +56,12 @@ fun DiscoverScreen(
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val userMessage = uiState.userMessageRes?.let { stringResource(it) }
 
-    LaunchedEffect(uiState.userMessageRes) {
-        uiState.userMessageRes?.let { messageRes ->
+    LaunchedEffect(userMessage) {
+        userMessage?.let { message ->
             snackbarHostState.showSnackbar(
-                message = context.getString(messageRes)
+                message = message
             )
             onUserMessageShown()
         }
@@ -200,16 +196,6 @@ private fun DiscoverErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val errorMessage = when (error) {
-        is AppError.NetworkError -> stringResource(R.string.error_network)
-        is AppError.HttpError -> when (error.statusCode) {
-            HTTP_STATUS_TOO_MANY_REQUESTS -> stringResource(R.string.error_rate_limit)
-            in HTTP_STATUS_SERVER_ERROR_MIN..HTTP_STATUS_SERVER_ERROR_MAX -> stringResource(R.string.error_server)
-            else -> stringResource(R.string.error_generic)
-        }
-        is AppError.SerializationError -> stringResource(R.string.error_serialization)
-        is AppError.UnknownError -> stringResource(R.string.error_unknown)
-    }
 
     Box(
         modifier = modifier
@@ -229,7 +215,7 @@ private fun DiscoverErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = errorMessage,
+                text = error.errorMessage(),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface

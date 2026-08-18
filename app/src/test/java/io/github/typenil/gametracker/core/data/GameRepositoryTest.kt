@@ -1,6 +1,5 @@
 package io.github.typenil.gametracker.core.data
 
-import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
@@ -10,10 +9,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -67,41 +63,36 @@ class GameRepositoryTest {
     }
 
     @Test
-    fun `searchGames reactive stream debounces and filters blank queries`() = runTest {
-        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+    fun `searchGames returns Success with empty list when query is blank`() = runTest {
         val repository = DefaultGameRepository(
             remoteDataSource = remoteDataSource,
-            ioDispatcher = testDispatcher
+            ioDispatcher = StandardTestDispatcher(testScheduler)
+        )
+
+        val result = repository.searchGames(query = "   ", limit = 20, offset = 0)
+
+        assertTrue(result is AppResult.Success)
+        assertTrue((result as AppResult.Success).data.isEmpty())
+        coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any()) }
+    }
+
+    @Test
+    fun `searchGames returns Success when dataSource succeeds with matching games`() = runTest {
+        val repository = DefaultGameRepository(
+            remoteDataSource = remoteDataSource,
+            ioDispatcher = StandardTestDispatcher(testScheduler)
         )
         coEvery { remoteDataSource.searchGames("witcher", 20, 0) } returns listOf(
             sampleGameDto.copy(name = "The Witcher 3")
         )
 
-        val queryFlow = flow {
-            emit("   ")
-            delay(350L)
-            emit("wit")
-            delay(100L) // Under debounce threshold
-            emit("witcher")
-            delay(350L)
-        }
+        val result = repository.searchGames(query = "  witcher  ", limit = 20, offset = 0)
 
-        repository.searchGames(queryFlow = queryFlow, limit = 20).test {
-            val blankResult = awaitItem()
-            assertTrue(blankResult is AppResult.Success)
-            assertTrue((blankResult as AppResult.Success).data.isEmpty())
-
-            val searchResult = awaitItem()
-            assertTrue(searchResult is AppResult.Success)
-            val games = (searchResult as AppResult.Success).data
-            assertEquals(1, games.size)
-            assertEquals("The Witcher 3", games[0].name)
-
-            cancelAndIgnoreRemainingEvents()
-        }
-
+        assertTrue(result is AppResult.Success)
+        val games = (result as AppResult.Success).data
+        assertEquals(1, games.size)
+        assertEquals("The Witcher 3", games[0].name)
         coVerify(exactly = 1) { remoteDataSource.searchGames("witcher", 20, 0) }
-        coVerify(exactly = 0) { remoteDataSource.searchGames("wit", any(), any()) }
     }
 
     @Test

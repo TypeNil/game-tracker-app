@@ -1,0 +1,26 @@
+package io.github.typenil.gametracker.feature.search
+
+import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.model.Game
+
+/**
+ * UI State for the Search screen.
+ *
+ * @property query The raw text currently in the search input field.
+ * @property result The distinct lifecycle result of the active search operation.
+ */
+data class SearchUiState(
+    val query: String = "",
+    val result: SearchResultUiState = SearchResultUiState.Idle
+)
+
+/**
+ * Single source of truth for search result lifecycle states, preventing contradictory states.
+ */
+sealed interface SearchResultUiState {
+    data object Idle : SearchResultUiState
+    data object Loading : SearchResultUiState
+    data class Content(val games: List<Game>) : SearchResultUiState
+    data class Empty(val query: String) : SearchResultUiState
+    data class Error(val error: AppError) : SearchResultUiState
+}
