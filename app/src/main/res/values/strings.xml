@@ -13,7 +13,6 @@
     <string name="error_serialization">Failed to process data from the server.</string>
     <string name="error_unknown">An unexpected error occurred. Please try again.</string>
     <string name="error_refresh_failed">Could not refresh catalog. Showing cached data.</string>
-    <string name="search_title">Search Games</string>
     <string name="search_hint">Search games by title…</string>
     <string name="search_clear_desc">Clear search query</string>
     <string name="search_idle_title">Search Video Games</string>

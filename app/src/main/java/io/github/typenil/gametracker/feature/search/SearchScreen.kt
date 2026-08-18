@@ -49,11 +49,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
+import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
-
-private const val HTTP_STATUS_TOO_MANY_REQUESTS = 429
-private const val HTTP_STATUS_SERVER_ERROR_MIN = 500
-private const val HTTP_STATUS_SERVER_ERROR_MAX = 599
+import io.github.typenil.gametracker.core.model.Game
 
 @Composable
 fun SearchRoute(
@@ -155,25 +153,25 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (val status = uiState.status) {
-                is SearchStatus.Idle -> {
+            when (val result = uiState.result) {
+                is SearchResultUiState.Idle -> {
                     SearchIdleState()
                 }
-                is SearchStatus.Loading -> {
+                is SearchResultUiState.Loading -> {
                     SearchLoadingState()
                 }
-                is SearchStatus.Content -> {
+                is SearchResultUiState.Content -> {
                     SearchContentState(
-                        games = uiState.games,
+                        games = result.games,
                         onGameClick = onGameClick
                     )
                 }
-                is SearchStatus.Empty -> {
-                    SearchEmptyState(query = uiState.query)
+                is SearchResultUiState.Empty -> {
+                    SearchEmptyState(query = result.query)
                 }
-                is SearchStatus.Error -> {
+                is SearchResultUiState.Error -> {
                     SearchErrorState(
-                        error = status.error,
+                        error = result.error,
                         onRetry = onRetry
                     )
                 }
@@ -246,7 +244,7 @@ private fun SearchLoadingState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SearchContentState(
-    games: List<io.github.typenil.gametracker.core.model.Game>,
+    games: List<Game>,
     onGameClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -305,17 +303,6 @@ private fun SearchErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val errorMessage = when (error) {
-        is AppError.NetworkError -> stringResource(R.string.error_network)
-        is AppError.HttpError -> when (error.statusCode) {
-            HTTP_STATUS_TOO_MANY_REQUESTS -> stringResource(R.string.error_rate_limit)
-            in HTTP_STATUS_SERVER_ERROR_MIN..HTTP_STATUS_SERVER_ERROR_MAX -> stringResource(R.string.error_server)
-            else -> stringResource(R.string.error_generic)
-        }
-        is AppError.SerializationError -> stringResource(R.string.error_serialization)
-        is AppError.UnknownError -> stringResource(R.string.error_unknown)
-    }
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -334,7 +321,7 @@ private fun SearchErrorState(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = errorMessage,
+                text = error.errorMessage(),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface

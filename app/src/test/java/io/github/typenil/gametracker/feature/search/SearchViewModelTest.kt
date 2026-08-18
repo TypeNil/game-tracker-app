@@ -15,6 +15,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -50,8 +51,7 @@ class SearchViewModelTest {
     ): SearchViewModel {
         return SearchViewModel(
             gameRepository = repository,
-            savedStateHandle = savedStateHandle,
-            ioDispatcher = testDispatcher
+            savedStateHandle = savedStateHandle
         )
     }
 
@@ -62,8 +62,7 @@ class SearchViewModelTest {
         viewModel.uiState.test {
             val item = awaitItem()
             assertEquals("", item.query)
-            assertEquals(SearchStatus.Idle, item.status)
-            assertTrue(item.games.isEmpty())
+            assertEquals(SearchResultUiState.Idle, item.result)
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -76,24 +75,24 @@ class SearchViewModelTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
-            val initial = awaitItem() // Initial Idle
-            assertEquals(SearchStatus.Idle, initial.status)
+            val initial = awaitItem()
+            assertEquals(SearchResultUiState.Idle, initial.result)
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("witcher")
+            testScheduler.runCurrent()
+            val intermediateLoading = awaitItem()
+            assertEquals("witcher", intermediateLoading.query)
+            assertEquals(SearchResultUiState.Loading, intermediateLoading.result)
 
-            advanceTimeBy(250L)
+            advanceTimeBy(250L) // Under 300ms debounce
             coVerify(exactly = 0) { repository.searchGames(any(), any(), any()) }
 
             advanceTimeBy(100L) // Exceeds 300ms debounce
-            val loadingState = awaitItem()
-            assertEquals("witcher", loadingState.query)
-            assertEquals(SearchStatus.Loading, loadingState.status)
-
             advanceUntilIdle()
             val contentState = awaitItem()
             assertEquals("witcher", contentState.query)
-            assertEquals(SearchStatus.Content, contentState.status)
-            assertEquals(sampleGames, contentState.games)
+            assertEquals(SearchResultUiState.Content(sampleGames), contentState.result)
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -108,25 +107,32 @@ class SearchViewModelTest {
 
         viewModel.uiState.test {
             awaitItem() // Initial Idle
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("w")
+            testScheduler.runCurrent()
+            awaitItem() // Loading for "w"
+
             advanceTimeBy(100L)
             viewModel.onQueryChanged("wi")
+            testScheduler.runCurrent()
+            awaitItem() // Loading for "wi"
+
             advanceTimeBy(100L)
             viewModel.onQueryChanged("wit")
+            testScheduler.runCurrent()
+            awaitItem() // Loading for "wit"
+
             advanceTimeBy(100L)
             viewModel.onQueryChanged("witcher")
-            advanceTimeBy(350L)
+            testScheduler.runCurrent()
+            awaitItem() // Loading for "witcher"
 
-            val loadingState = awaitItem()
-            assertEquals("witcher", loadingState.query)
-            assertEquals(SearchStatus.Loading, loadingState.status)
-
+            advanceTimeBy(350L) // 300ms debounce fires for "witcher"
             advanceUntilIdle()
             val contentState = awaitItem()
             assertEquals("witcher", contentState.query)
-            assertEquals(SearchStatus.Content, contentState.status)
-            assertEquals(sampleGames, contentState.games)
+            assertEquals(SearchResultUiState.Content(sampleGames), contentState.result)
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -138,60 +144,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `clearing query cancels pending debounce and ensures no search occurs`() = runTest(testDispatcher) {
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            val initial = awaitItem()
-            assertEquals("", initial.query)
-            assertEquals(SearchStatus.Idle, initial.status)
-
-            viewModel.onQueryChanged("cyberpunk")
-            advanceTimeBy(100L) // Under 300ms debounce
-            viewModel.onClearQuery()
-            advanceUntilIdle()
-
-            assertEquals("", viewModel.uiState.value.query)
-            assertEquals(SearchStatus.Idle, viewModel.uiState.value.status)
-
-            cancelAndIgnoreRemainingEvents()
-        }
-
-        coVerify(exactly = 0) { repository.searchGames(any(), any(), any()) }
-    }
-
-    @Test
-    fun `clearing query after search immediately resets state to Idle and clears results`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("cyberpunk", any(), any()) } returns AppResult.Success(sampleGames)
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            awaitItem() // Initial Idle
-
-            viewModel.onQueryChanged("cyberpunk")
-            advanceTimeBy(350L)
-            awaitItem() // Loading
-            advanceUntilIdle()
-            val contentState = awaitItem()
-            assertEquals(SearchStatus.Content, contentState.status)
-            assertEquals(sampleGames, contentState.games)
-
-            viewModel.onClearQuery()
-            advanceUntilIdle()
-
-            val idleState = awaitItem()
-            assertEquals("", idleState.query)
-            assertEquals(SearchStatus.Idle, idleState.status)
-            assertTrue(idleState.games.isEmpty())
-
-            cancelAndIgnoreRemainingEvents()
-        }
-
-        coVerify(exactly = 1) { repository.searchGames("cyberpunk", 30, any()) }
-    }
-
-    @Test
-    fun `in-flight search is cancelled when a new query is entered`() = runTest(testDispatcher) {
+    fun `in-flight search is cancelled immediately when a new query is entered before debounce`() = runTest(testDispatcher) {
         val firstQueryCancelled = AtomicBoolean(false)
 
         coEvery { repository.searchGames("first", any(), any()) } coAnswers {
@@ -207,27 +160,94 @@ class SearchViewModelTest {
 
         viewModel.uiState.test {
             awaitItem() // Initial Idle
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("first")
-            advanceTimeBy(350L) // Triggers first query
-            val loadingFirst = awaitItem()
-            assertEquals("first", loadingFirst.query)
+            testScheduler.runCurrent()
+            awaitItem() // Loading "first"
+
+            advanceTimeBy(350L) // Triggers first search into in-flight execution
 
             viewModel.onQueryChanged("second")
-            advanceTimeBy(350L) // Triggers second query, cancelling first
-            val loadingSecond = awaitItem()
-            assertEquals("second", loadingSecond.query)
+            runCurrent() // Immediate cancellation before second query debounce passes
 
+            assertTrue(firstQueryCancelled.get())
+            coVerify(exactly = 0) { repository.searchGames("second", any(), any()) }
+
+            awaitItem() // Loading "second"
+
+            advanceTimeBy(350L) // Second query debounce passes
             advanceUntilIdle()
-            val contentState = awaitItem()
-            assertEquals("second", contentState.query)
-            assertEquals(SearchStatus.Content, contentState.status)
+            val secondContent = awaitItem()
+            assertEquals(SearchResultUiState.Content(sampleGames), secondContent.result)
 
             cancelAndIgnoreRemainingEvents()
         }
 
-        assertTrue(firstQueryCancelled.get())
         coVerify(exactly = 1) { repository.searchGames("second", 30, any()) }
+    }
+
+    @Test
+    fun `query change immediately stops displaying previous query content`() = runTest(testDispatcher) {
+        coEvery { repository.searchGames("first", any(), any()) } returns AppResult.Success(sampleGames)
+        coEvery { repository.searchGames("second", any(), any()) } returns AppResult.Success(emptyList())
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Initial Idle
+            testScheduler.runCurrent()
+
+            viewModel.onQueryChanged("first")
+            testScheduler.runCurrent()
+            awaitItem() // Loading "first"
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            val firstContent = awaitItem()
+            assertEquals(SearchResultUiState.Content(sampleGames), firstContent.result)
+
+            viewModel.onQueryChanged("second")
+            testScheduler.runCurrent()
+            val intermediateState = awaitItem()
+            assertEquals("second", intermediateState.query)
+            assertEquals(SearchResultUiState.Loading, intermediateState.result) // Never shows "first" games!
+
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            val secondContent = awaitItem()
+            assertEquals(SearchResultUiState.Empty("second"), secondContent.result)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `clearing query cancels pending debounce and immediately resets state to Idle`() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals("", initial.query)
+            assertEquals(SearchResultUiState.Idle, initial.result)
+            testScheduler.runCurrent()
+
+            viewModel.onQueryChanged("cyberpunk")
+            testScheduler.runCurrent()
+            awaitItem() // Loading "cyberpunk"
+
+            advanceTimeBy(100L) // Under 300ms debounce
+            viewModel.onClearQuery()
+            testScheduler.runCurrent()
+
+            val idleState = awaitItem()
+            assertEquals("", idleState.query)
+            assertEquals(SearchResultUiState.Idle, idleState.result)
+
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        coVerify(exactly = 0) { repository.searchGames(any(), any(), any()) }
     }
 
     @Test
@@ -237,10 +257,12 @@ class SearchViewModelTest {
 
         viewModel.uiState.test {
             awaitItem() // Initial Idle
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("zelda")
-            advanceTimeBy(350L)
+            testScheduler.runCurrent()
             awaitItem() // Loading
+            advanceTimeBy(350L)
             advanceUntilIdle()
             awaitItem() // Content
 
@@ -261,16 +283,17 @@ class SearchViewModelTest {
 
         viewModel.uiState.test {
             awaitItem() // Initial Idle
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("nonexistent")
-            advanceTimeBy(350L)
+            testScheduler.runCurrent()
             awaitItem() // Loading
 
+            advanceTimeBy(350L)
             advanceUntilIdle()
             val emptyState = awaitItem()
             assertEquals("nonexistent", emptyState.query)
-            assertEquals(SearchStatus.Empty, emptyState.status)
-            assertTrue(emptyState.games.isEmpty())
+            assertEquals(SearchResultUiState.Empty("nonexistent"), emptyState.result)
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -283,22 +306,24 @@ class SearchViewModelTest {
 
         viewModel.uiState.test {
             awaitItem() // Initial Idle
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("error_query")
-            advanceTimeBy(350L)
+            testScheduler.runCurrent()
             awaitItem() // Loading
 
+            advanceTimeBy(350L)
             advanceUntilIdle()
             val errorState = awaitItem()
             assertEquals("error_query", errorState.query)
-            assertEquals(SearchStatus.Error(AppError.NetworkError), errorState.status)
+            assertEquals(SearchResultUiState.Error(AppError.NetworkError), errorState.result)
 
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `retry re-executes search for the current query`() = runTest(testDispatcher) {
+    fun `retry re-executes search immediately without debounce`() = runTest(testDispatcher) {
         coEvery { repository.searchGames("retry_query", any(), any()) } returnsMany listOf(
             AppResult.Error(AppError.NetworkError),
             AppResult.Success(sampleGames)
@@ -307,20 +332,24 @@ class SearchViewModelTest {
 
         viewModel.uiState.test {
             awaitItem() // Initial Idle
+            testScheduler.runCurrent()
 
             viewModel.onQueryChanged("retry_query")
-            advanceTimeBy(350L)
+            testScheduler.runCurrent()
             awaitItem() // Loading
+            advanceTimeBy(350L)
             advanceUntilIdle()
             val errorState = awaitItem()
-            assertEquals(SearchStatus.Error(AppError.NetworkError), errorState.status)
+            assertEquals(SearchResultUiState.Error(AppError.NetworkError), errorState.result)
 
             viewModel.retry()
+            testScheduler.runCurrent()
+            val loadingState = awaitItem() // Retry emits Loading immediately
+            assertEquals(SearchResultUiState.Loading, loadingState.result)
+
             advanceUntilIdle()
-            awaitItem() // Loading
             val successState = awaitItem()
-            assertEquals(SearchStatus.Content, successState.status)
-            assertEquals(sampleGames, successState.games)
+            assertEquals(SearchResultUiState.Content(sampleGames), successState.result)
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -329,7 +358,47 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `restored query from SavedStateHandle automatically executes search`() = runTest(testDispatcher) {
+    fun `blank retry performs no repository call`() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.searchGames(any(), any(), any()) }
+    }
+
+    @Test
+    fun `unsubscribing for more than 5 seconds does not re-trigger search on resubscription`() = runTest(testDispatcher) {
+        coEvery { repository.searchGames("witcher", any(), any()) } returns AppResult.Success(sampleGames)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Initial Idle
+            testScheduler.runCurrent()
+            viewModel.onQueryChanged("witcher")
+            testScheduler.runCurrent()
+            awaitItem() // Loading
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            val contentState = awaitItem()
+            assertEquals(SearchResultUiState.Content(sampleGames), contentState.result)
+            cancelAndIgnoreRemainingEvents() // Detach subscriber (simulate navigating to Details)
+        }
+
+        advanceTimeBy(10_000L) // 10 seconds pass on Details screen
+
+        viewModel.uiState.test {
+            val item = awaitItem() // Re-subscribe (simulate navigating back to Search)
+            assertEquals(SearchResultUiState.Content(sampleGames), item.result)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // SharingStarted.Lazily keeps pipeline active, preventing redundant search on return
+        coVerify(exactly = 1) { repository.searchGames("witcher", 30, any()) }
+    }
+
+    @Test
+    fun `restored query from SavedStateHandle automatically executes search exactly once`() = runTest(testDispatcher) {
         val savedStateHandle = SavedStateHandle(mapOf(SearchViewModel.KEY_QUERY to "restored_game"))
         coEvery { repository.searchGames("restored_game", any(), any()) } returns AppResult.Success(sampleGames)
 
@@ -338,12 +407,12 @@ class SearchViewModelTest {
         viewModel.uiState.test {
             val initialState = awaitItem()
             assertEquals("restored_game", initialState.query)
+            assertEquals(SearchResultUiState.Loading, initialState.result)
 
             advanceTimeBy(350L)
             advanceUntilIdle()
             val contentState = awaitItem()
-            assertEquals(SearchStatus.Content, contentState.status)
-            assertEquals(sampleGames, contentState.games)
+            assertEquals(SearchResultUiState.Content(sampleGames), contentState.result)
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -352,13 +421,15 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `query length is clamped to maximum 100 characters`() = runTest(testDispatcher) {
+    fun `query length is clamped by Unicode code points without splitting surrogate pairs`() = runTest(testDispatcher) {
         val viewModel = createViewModel()
-        val overlyLongQuery = "a".repeat(150)
+        // Emoji 😀 is 2 UTF-16 code units but 1 Unicode code point
+        val emojiQuery = "😀".repeat(150)
 
-        viewModel.onQueryChanged(overlyLongQuery)
+        viewModel.onQueryChanged(emojiQuery)
 
-        assertEquals(100, viewModel.rawQuery.value.length)
-        assertEquals("a".repeat(100), viewModel.rawQuery.value)
+        val result = viewModel.rawQuery.value
+        assertEquals(100, result.codePointCount(0, result.length))
+        assertEquals("😀".repeat(100), result)
     }
 }
