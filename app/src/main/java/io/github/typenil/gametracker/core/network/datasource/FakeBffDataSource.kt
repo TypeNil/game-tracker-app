@@ -24,8 +24,10 @@ class FakeBffDataSource @Inject constructor(
                 .use { reader ->
                     json.decodeFromString<List<GameDto>>(reader.readText())
                 }
-        } catch (e: Exception) {
-            throw IllegalStateException("Failed to parse games.json fixture: ${e.message}", e)
+        } catch (e: java.io.IOException) {
+            throw IllegalStateException("Failed to read fixtures/v1/games.json fixture: ${e.message}", e)
+        } catch (e: kotlinx.serialization.SerializationException) {
+            throw IllegalStateException("Failed to parse fixtures/v1/games.json fixture: ${e.message}", e)
         }
     }
 

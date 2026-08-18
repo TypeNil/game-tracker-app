@@ -9,6 +9,8 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -55,11 +57,31 @@ class FakeBffDataSourceTest {
             isLenient = false
         }
 
+        // Validate exact keys for every object to prevent silent default-value fallbacks
+        val expectedKeys = setOf(
+            "id", "name", "coverUrl", "rating", "releaseDateEpochSeconds", "summary", "genres", "platforms"
+        )
+        val elements = strictJson.parseToJsonElement(jsonString).jsonArray
+        elements.forEachIndexed { index, element ->
+            assertEquals(
+                "Unexpected contract keys in fixture item $index",
+                expectedKeys,
+                element.jsonObject.keys
+            )
+        }
+
         // Will throw SerializationException if contract deviates (e.g. unknown keys, nulls in non-nullable)
         val parsed: List<GameDto> = strictJson.decodeFromString(jsonString)
 
         // Assert exactly 10 records
         assertEquals(10, parsed.size)
+        
+        // Assert invariants across all records
+        assertTrue(parsed.all { it.coverUrl?.startsWith("file:///android_asset/covers/") == true })
+        assertTrue(parsed.all { it.releaseDateEpochSeconds != null })
+        assertTrue(parsed.all { it.genres.isNotEmpty() })
+        assertTrue(parsed.all { it.platforms.isNotEmpty() })
+        assertEquals(parsed.size, parsed.map(GameDto::id).distinct().size)
 
         // Representative non-default assertions
         val witcher = parsed.first { it.id == 1942L }
