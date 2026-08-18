@@ -79,6 +79,9 @@ jobs:
       - name: Assemble Demo Debug APK
         run: ./gradlew assembleDemoDebug --stacktrace
 
+      - name: Assemble Live Debug APK
+        run: ./gradlew assembleLiveDebug --stacktrace
+
       - name: Verify Clean Working Tree
         run: git diff --exit-code
 
