@@ -1,0 +1,122 @@
+package io.github.typenil.gametracker.core.database
+
+import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.typenil.gametracker.core.database.dao.GameDao
+import io.github.typenil.gametracker.core.database.dao.LibraryDao
+import io.github.typenil.gametracker.core.database.entity.GameEntity
+import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.IOException
+
+@RunWith(AndroidJUnit4::class)
+class LibraryDaoTest {
+
+    private lateinit var database: GameTrackerDatabase
+    private lateinit var gameDao: GameDao
+    private lateinit var libraryDao: LibraryDao
+
+    @Before
+    fun createDb() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        database = Room.inMemoryDatabaseBuilder(context, GameTrackerDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        gameDao = database.gameDao()
+        libraryDao = database.libraryDao()
+    }
+
+    @After
+    @Throws(IOException::class)
+    fun closeDb() {
+        database.close()
+    }
+
+    @Test
+    fun upsertAndGetLibraryEntry_updatesStatusAndFavorites() = runTest {
+        val game = GameEntity(101L, "Elden Ring", null, null, null, null, emptyList(), emptyList(), 100L)
+        gameDao.upsertGame(game)
+
+        val entry = LibraryEntryEntity(
+            gameId = 101L,
+            status = LibraryStatus.PLAYING,
+            userRating = 10,
+            userNotes = "Got the Great Rune",
+            isFavorite = true,
+            addedAtEpochSeconds = 1000L,
+            updatedAtEpochSeconds = 1000L
+        )
+
+        libraryDao.upsertLibraryEntry(entry)
+
+        val retrieved = libraryDao.getLibraryEntryFlow(101L).first()
+        assertNotNull(retrieved)
+        assertEquals(LibraryStatus.PLAYING, retrieved?.status)
+        assertEquals(10, retrieved?.userRating)
+        assertEquals("Got the Great Rune", retrieved?.userNotes)
+        assertEquals(true, retrieved?.isFavorite)
+
+        // Update status to COMPLETED
+        libraryDao.upsertLibraryEntry(entry.copy(status = LibraryStatus.COMPLETED, updatedAtEpochSeconds = 2000L))
+        val updated = libraryDao.getLibraryEntry(101L)
+        assertEquals(LibraryStatus.COMPLETED, updated?.status)
+        assertEquals(2000L, updated?.updatedAtEpochSeconds)
+    }
+
+    @Test
+    fun getLibraryEntriesByStatus_filtersCorrectly() = runTest {
+        val g1 = GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L)
+        val g2 = GameEntity(2L, "G2", null, null, null, null, emptyList(), emptyList(), 100L)
+        gameDao.upsertGames(listOf(g1, g2))
+
+        libraryDao.upsertLibraryEntry(LibraryEntryEntity(1L, LibraryStatus.PLAYING, null, null, false, 100L, 200L))
+        libraryDao.upsertLibraryEntry(LibraryEntryEntity(2L, LibraryStatus.COMPLETED, null, null, false, 100L, 300L))
+
+        val playing = libraryDao.getLibraryEntriesByStatusFlow(LibraryStatus.PLAYING).first()
+        assertEquals(1, playing.size)
+        assertEquals(1L, playing[0].gameId)
+
+        val completed = libraryDao.getLibraryEntriesByStatusFlow(LibraryStatus.COMPLETED).first()
+        assertEquals(1, completed.size)
+        assertEquals(2L, completed[0].gameId)
+    }
+
+    @Test
+    fun foreignKeyRestrict_preventsDirectDeletionOfGameInLibrary() = runTest {
+        val game = GameEntity(101L, "Elden Ring", null, null, null, null, emptyList(), emptyList(), 100L)
+        gameDao.upsertGame(game)
+
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 101L,
+                status = LibraryStatus.PLAN_TO_PLAY,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L
+            )
+        )
+
+        var constraintViolated = false
+        try {
+            // Direct SQLite DELETE bypassing safe eviction
+            database.openHelper.writableDatabase.execSQL("DELETE FROM games WHERE id = 101")
+        } catch (e: SQLiteConstraintException) {
+            constraintViolated = true
+        }
+
+        assertTrue("Expected SQLiteConstraintException due to ForeignKey.RESTRICT", constraintViolated)
+        assertNotNull("Game must still exist in DB", gameDao.getGameById(101L))
+    }
+}
