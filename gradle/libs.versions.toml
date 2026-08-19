@@ -123,6 +123,7 @@ androidx-work-testing = { group = "androidx.work", name = "work-testing", versio
 androidx-paging-testing = { group = "androidx.paging", name = "paging-testing", version.ref = "paging" }
 ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host-jvm", version.ref = "ktor" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

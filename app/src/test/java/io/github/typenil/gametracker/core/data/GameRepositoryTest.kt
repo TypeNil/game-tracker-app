@@ -14,6 +14,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -107,5 +111,26 @@ class GameRepositoryTest {
 
         assertTrue(result is AppResult.Success)
         assertEquals("Cyberpunk 2077", (result as AppResult.Success).data.name)
+    }
+
+    @Test
+    fun `searchGames returns Error when dataSource throws HttpException`() = runTest {
+        val repository = DefaultGameRepository(
+            remoteDataSource = remoteDataSource,
+            ioDispatcher = StandardTestDispatcher(testScheduler)
+        )
+        val responseBody = """{"code":"RATE_LIMIT_EXCEEDED","message":"Too many requests"}"""
+            .toResponseBody("application/json".toMediaType())
+        val httpException = HttpException(Response.error<String>(429, responseBody))
+        coEvery { remoteDataSource.searchGames(any(), any(), any()) } throws httpException
+
+        val result = repository.searchGames("witcher", 20, 0)
+
+        assertTrue(result is AppResult.Error)
+        val error = (result as AppResult.Error).error
+        assertTrue(error is AppError.HttpError)
+        assertEquals(429, (error as AppError.HttpError).statusCode)
+        assertEquals("RATE_LIMIT_EXCEEDED", error.errorCode)
+        assertEquals("Too many requests", error.message)
     }
 }

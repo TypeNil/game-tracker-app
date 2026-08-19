@@ -45,6 +45,31 @@ class GameMappersTest {
     }
 
     @Test
+    fun `toDomain preserves explicit nulls and empty collections`() {
+        val dto = GameDto(
+            id = 1L,
+            name = "Minimal Game",
+            coverUrl = null,
+            rating = null,
+            releaseDateEpochSeconds = null,
+            summary = null,
+            genres = emptyList(),
+            platforms = emptyList()
+        )
+
+        val domain = dto.toDomain()
+
+        assertEquals(1L, domain.id)
+        assertEquals("Minimal Game", domain.name)
+        assertNull(domain.coverUrl)
+        assertNull(domain.rating)
+        assertNull(domain.releaseDateEpochSeconds)
+        assertNull(domain.summary)
+        assertTrue(domain.genres.isEmpty())
+        assertTrue(domain.platforms.isEmpty())
+    }
+
+    @Test
     fun `toAppError maps IOException to NetworkError`() {
         val exception = IOException("Connection reset")
         val error = exception.toAppError()
