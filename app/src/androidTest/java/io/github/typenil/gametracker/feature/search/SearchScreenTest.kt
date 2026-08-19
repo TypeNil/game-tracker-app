@@ -15,7 +15,6 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -219,7 +218,7 @@ class SearchScreenTest {
     }
 
     @Test
-    fun searchRoute_typingQuery_displaysLoading_thenDisplaysResultGames() = runTest {
+    fun searchRoute_typingQuery_displaysLoading_thenDisplaysResultGames() {
         val fakeRepository = FakeDeferredGameRepository()
         val savedStateHandle = SavedStateHandle()
         val viewModel = SearchViewModel(

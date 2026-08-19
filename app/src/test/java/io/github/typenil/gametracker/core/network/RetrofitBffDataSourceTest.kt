@@ -1,13 +1,9 @@
 package io.github.typenil.gametracker.core.network
 
-import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
-import io.github.typenil.gametracker.core.model.AppError
-import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.network.api.BffApiService
 import io.github.typenil.gametracker.core.network.datasource.RetrofitBffDataSource
 import io.github.typenil.gametracker.core.network.di.NetworkModule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
@@ -157,7 +153,7 @@ class RetrofitBffDataSourceTest {
     }
 
     @Test
-    fun `searchGames direct call throws HttpException on non-2xx with retained error body`() = runTest {
+    fun `searchGames direct call throws HttpException on 400 with retained error body`() = runTest {
         val errorPayload = """{"code":"INVALID_QUERY","message":"Query too short"}"""
         mockWebServer.enqueue(
             MockResponse()
@@ -177,15 +173,8 @@ class RetrofitBffDataSourceTest {
     }
 
     @Test
-    fun `searchGames full chain maps structured HTTP 429 into AppResult Error`() = runTest {
-        val rateLimitPayload = """
-            {
-                "code": "RATE_LIMIT_EXCEEDED",
-                "message": "Too many requests",
-                "timestamp": 1700000000
-            }
-        """.trimIndent()
-
+    fun `searchGames direct call throws HttpException on 429 with retained error body`() = runTest {
+        val rateLimitPayload = """{"code":"RATE_LIMIT_EXCEEDED","message":"Too many requests"}"""
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(429)
@@ -193,24 +182,18 @@ class RetrofitBffDataSourceTest {
                 .setBody(rateLimitPayload)
         )
 
-        val repository = DefaultGameRepository(
-            remoteDataSource = dataSource,
-            ioDispatcher = StandardTestDispatcher(testScheduler)
-        )
-
-        val result = repository.searchGames(query = "witcher", limit = 30, offset = 0)
-
-        assertTrue(result is AppResult.Error)
-        val appError = (result as AppResult.Error).error
-        assertTrue(appError is AppError.HttpError)
-        val httpError = appError as AppError.HttpError
-        assertEquals(429, httpError.statusCode)
-        assertEquals("RATE_LIMIT_EXCEEDED", httpError.errorCode)
-        assertEquals("Too many requests", httpError.message)
+        try {
+            dataSource.searchGames(query = "witcher", limit = 30, offset = 0)
+            fail("Expected HttpException to be thrown")
+        } catch (e: HttpException) {
+            assertEquals(429, e.code())
+            val body = e.response()?.errorBody()?.string()
+            assertTrue(body?.contains("RATE_LIMIT_EXCEEDED") == true)
+        }
     }
 
     @Test
-    fun `searchGames full chain maps malformed HTTP 502 HTML into AppResult Error without escaping`() = runTest {
+    fun `searchGames direct call throws HttpException on 502 with HTML body`() = runTest {
         val htmlPayload = "<html><head><title>502 Bad Gateway</title></head><body>Server error</body></html>"
         mockWebServer.enqueue(
             MockResponse()
@@ -219,19 +202,13 @@ class RetrofitBffDataSourceTest {
                 .setBody(htmlPayload)
         )
 
-        val repository = DefaultGameRepository(
-            remoteDataSource = dataSource,
-            ioDispatcher = StandardTestDispatcher(testScheduler)
-        )
-
-        val result = repository.searchGames(query = "witcher", limit = 30, offset = 0)
-
-        assertTrue(result is AppResult.Error)
-        val appError = (result as AppResult.Error).error
-        assertTrue(appError is AppError.HttpError)
-        val httpError = appError as AppError.HttpError
-        assertEquals(502, httpError.statusCode)
-        assertNull(httpError.errorCode)
-        assertNull(httpError.message)
+        try {
+            dataSource.searchGames(query = "witcher", limit = 30, offset = 0)
+            fail("Expected HttpException to be thrown")
+        } catch (e: HttpException) {
+            assertEquals(502, e.code())
+            val body = e.response()?.errorBody()?.string()
+            assertTrue(body?.contains("502 Bad Gateway") == true)
+        }
     }
 }
