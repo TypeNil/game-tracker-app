@@ -3,13 +3,19 @@ package io.github.typenil.gametracker.feature.search
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.lifecycle.SavedStateHandle
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -210,5 +216,70 @@ class SearchScreenTest {
         composeTestRule.onNodeWithContentDescription(backDescription).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription(backDescription).performClick()
         assertTrue(backClicked)
+    }
+
+    @Test
+    fun searchRoute_typingQuery_displaysLoading_thenDisplaysResultGames() = runTest {
+        val fakeRepository = FakeDeferredGameRepository()
+        val savedStateHandle = SavedStateHandle()
+        val viewModel = SearchViewModel(
+            gameRepository = fakeRepository,
+            savedStateHandle = savedStateHandle
+        )
+
+        composeTestRule.setContent {
+            SearchRoute(
+                onGameClick = {},
+                onBackClick = {},
+                viewModel = viewModel
+            )
+        }
+
+        val context = composeTestRule.activity
+        val searchHint = context.getString(R.string.search_hint)
+        val loadingText = context.getString(R.string.search_loading_games)
+
+        composeTestRule.onNodeWithText(context.getString(R.string.search_idle_title)).assertIsDisplayed()
+
+        composeTestRule.onNodeWithText(searchHint).performTextInput("witcher")
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(loadingText).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
+
+        assertEquals("witcher", fakeRepository.capturedQuery)
+        assertEquals(30, fakeRepository.capturedLimit)
+        assertEquals(0, fakeRepository.capturedOffset)
+
+        fakeRepository.deferredResult.complete(AppResult.Success(sampleGames))
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cyberpunk 2077").assertIsDisplayed()
+    }
+
+    private class FakeDeferredGameRepository : GameRepository {
+        var capturedQuery: String? = null
+        var capturedLimit: Int? = null
+        var capturedOffset: Int? = null
+        val deferredResult = CompletableDeferred<AppResult<List<Game>>>()
+
+        override suspend fun getTopRatedGames(limit: Int, offset: Int): AppResult<List<Game>> {
+            return AppResult.Success(emptyList())
+        }
+
+        override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<List<Game>> {
+            capturedQuery = query
+            capturedLimit = limit
+            capturedOffset = offset
+            return deferredResult.await()
+        }
+
+        override suspend fun getGameDetails(id: Long): AppResult<Game> {
+            return AppResult.Error(AppError.UnknownError(NoSuchElementException()))
+        }
     }
 }

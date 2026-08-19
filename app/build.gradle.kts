@@ -153,6 +153,7 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.androidx.paging.testing)
+    testImplementation(libs.okhttp.mockwebserver)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
