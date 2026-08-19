@@ -242,8 +242,9 @@ class SearchScreenTest {
 
         composeTestRule.onNodeWithText(searchHint).performTextInput("witcher")
 
+        // combine() maps Idle + non-blank query to Loading before debounce / searchGames().
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            composeTestRule.onAllNodesWithText(loadingText).fetchSemanticsNodes().isNotEmpty()
+            fakeRepository.capturedQuery != null
         }
         composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
 
@@ -261,8 +262,11 @@ class SearchScreenTest {
     }
 
     private class FakeDeferredGameRepository : GameRepository {
+        @Volatile
         var capturedQuery: String? = null
+        @Volatile
         var capturedLimit: Int? = null
+        @Volatile
         var capturedOffset: Int? = null
         val deferredResult = CompletableDeferred<AppResult<List<Game>>>()
 
