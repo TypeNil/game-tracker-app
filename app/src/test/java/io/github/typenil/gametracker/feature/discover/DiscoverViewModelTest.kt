@@ -9,13 +9,16 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -35,9 +38,19 @@ class DiscoverViewModelTest {
         )
     )
 
+    private val gamesFlow = MutableStateFlow<List<Game>>(emptyList())
+
+    @Before
+    fun setUp() {
+        every { repository.getTopRatedGamesFlow() } returns gamesFlow
+    }
+
     @Test
-    fun `init emits Success when repository succeeds`() = runTest {
-        coEvery { repository.getTopRatedGames() } returns AppResult.Success(sampleGames)
+    fun `init emits Success from Room Flow when repository refresh succeeds`() = runTest {
+        coEvery { repository.refreshTopRatedGames() } coAnswers {
+            gamesFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
 
@@ -49,12 +62,12 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 1) { repository.getTopRatedGames() }
+        coVerify(exactly = 1) { repository.refreshTopRatedGames() }
     }
 
     @Test
-    fun `init emits Error when repository fails on initial load`() = runTest {
-        coEvery { repository.getTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
+    fun `init emits Error when repository fails on initial load with empty cache`() = runTest {
+        coEvery { repository.refreshTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
 
@@ -66,17 +79,21 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 1) { repository.getTopRatedGames() }
+        coVerify(exactly = 1) { repository.refreshTopRatedGames() }
     }
 
     @Test
-    fun `refresh reloads data and updates games list`() = runTest {
-        coEvery { repository.getTopRatedGames() } returns AppResult.Success(sampleGames)
+    fun `refresh reloads data and updates games list via Room Flow`() = runTest {
+        gamesFlow.value = sampleGames
+        coEvery { repository.refreshTopRatedGames() } returns AppResult.Success(Unit)
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
 
         val updatedGames = sampleGames + Game(id = 2L, name = "Baldur's Gate 3", rating = 97.0)
-        coEvery { repository.getTopRatedGames() } returns AppResult.Success(updatedGames)
+        coEvery { repository.refreshTopRatedGames() } coAnswers {
+            gamesFlow.value = updatedGames
+            AppResult.Success(Unit)
+        }
 
         viewModel.refresh()
 
@@ -87,24 +104,26 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 2) { repository.getTopRatedGames() }
+        coVerify(exactly = 2) { repository.refreshTopRatedGames() }
     }
 
     @Test
     fun `refresh failure with existing data retains games and sets userMessageRes`() = runTest {
-        coEvery { repository.getTopRatedGames() } returns AppResult.Success(sampleGames)
+        gamesFlow.value = sampleGames
+        coEvery { repository.refreshTopRatedGames() } returns AppResult.Success(Unit)
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
 
-        coEvery { repository.getTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
+        coEvery { repository.refreshTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
 
         viewModel.refresh()
 
         viewModel.uiState.test {
             val item = awaitItem()
             assertFalse(item.isRefreshing)
-            assertEquals(sampleGames, item.games) // Preserves existing data
+            assertEquals(sampleGames, item.games) // Preserves existing data from Room
             assertEquals(R.string.error_refresh_failed, item.userMessageRes)
+            assertNull(item.error)
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -119,11 +138,14 @@ class DiscoverViewModelTest {
 
     @Test
     fun `retry reloads data after error state`() = runTest {
-        coEvery { repository.getTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
+        coEvery { repository.refreshTopRatedGames() } returns AppResult.Error(AppError.NetworkError)
 
         val viewModel = DiscoverViewModel(gameRepository = repository)
 
-        coEvery { repository.getTopRatedGames() } returns AppResult.Success(sampleGames)
+        coEvery { repository.refreshTopRatedGames() } coAnswers {
+            gamesFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
 
         viewModel.retry()
 
@@ -135,6 +157,7 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 2) { repository.getTopRatedGames() }
+        coVerify(exactly = 2) { repository.refreshTopRatedGames() }
     }
 }
+

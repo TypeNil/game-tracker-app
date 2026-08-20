@@ -2,24 +2,46 @@ package io.github.typenil.gametracker.core.data.repository
 
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import kotlinx.coroutines.flow.Flow
 
 /**
- * Single entry point for accessing video games catalog and search.
+ * Single entry point and SSOT for accessing video games catalog, search, and details.
  */
 interface GameRepository {
 
     /**
-     * Fetches top-rated games with pagination.
+     * Observes the reactive stream of server-ranked top-rated games from the local Room database (SSOT).
      */
-    suspend fun getTopRatedGames(limit: Int = 20, offset: Int = 0): AppResult<List<Game>>
+    fun getTopRatedGamesFlow(): Flow<List<Game>>
 
     /**
-     * Executes a single search query against the catalog.
+     * Refreshes the top-rated games catalog from remote BFF and updates Room SSOT.
      */
-    suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): AppResult<List<Game>>
+    suspend fun refreshTopRatedGames(limit: Int = 20, offset: Int = 0): AppResult<Unit>
 
     /**
-     * Fetches details for a specific game by its ID.
+     * Observes the reactive stream of server-ranked search results for the given [query] from Room SSOT.
      */
-    suspend fun getGameDetails(id: Long): AppResult<Game>
+    fun getSearchResultsFlow(query: String): Flow<List<Game>>
+
+    /**
+     * Fetches search results from remote BFF for [query] and updates Room SSOT.
+     */
+    suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): AppResult<Unit>
+
+    /**
+     * Observes a specific game by [id] from Room SSOT.
+     */
+    fun getGameDetailsFlow(id: Long): Flow<Game?>
+
+    /**
+     * Refreshes details for game with [id] from remote BFF and updates Room SSOT.
+     */
+    suspend fun refreshGameDetails(id: Long): AppResult<Unit>
+
+    /**
+     * Cleans up stale unreferenced cached games (excluding library and active search results).
+     */
+    suspend fun clearStaleCache(staleThresholdSeconds: Long): Int
 }
+

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -57,23 +58,27 @@ class SearchViewModel @Inject constructor(
             if (request.query.isBlank()) {
                 flowOf<SearchResult>(SearchResult.Idle)
             } else {
-                flow<SearchResult> {
+                flow {
                     if (request.shouldDebounce) {
                         delay(SEARCH_DEBOUNCE_MILLIS)
                     }
-                    emit(SearchResult.Loading(request.query))
-                    when (val result = gameRepository.searchGames(query = request.query, limit = SEARCH_LIMIT)) {
-                        is AppResult.Success -> {
-                            if (result.data.isEmpty()) {
-                                emit(SearchResult.Empty(request.query))
-                            } else {
-                                emit(SearchResult.Success(query = request.query, games = result.data))
+                    val localFlow = gameRepository.getSearchResultsFlow(request.query)
+                    val refreshFlow = flow {
+                        emit(RefreshStatus.Loading)
+                        val result = gameRepository.searchGames(query = request.query, limit = SEARCH_LIMIT)
+                        emit(RefreshStatus.Completed(result))
+                    }
+                    emitAll(
+                        combine(localFlow, refreshFlow) { games, status ->
+                            when {
+                                games.isNotEmpty() -> SearchResult.Success(query = request.query, games = games)
+                                status is RefreshStatus.Loading -> SearchResult.Loading(request.query)
+                                status is RefreshStatus.Completed && status.result is AppResult.Error ->
+                                    SearchResult.Error(query = request.query, error = status.result.error)
+                                else -> SearchResult.Empty(query = request.query)
                             }
                         }
-                        is AppResult.Error -> {
-                            emit(SearchResult.Error(query = request.query, error = result.error))
-                        }
-                    }
+                    )
                 }
             }
         }
@@ -165,6 +170,11 @@ class SearchViewModel @Inject constructor(
         val shouldDebounce: Boolean
     )
 
+    private sealed interface RefreshStatus {
+        data object Loading : RefreshStatus
+        data class Completed(val result: AppResult<Unit>) : RefreshStatus
+    }
+
     private sealed interface SearchResult {
         data object Idle : SearchResult
         data class Loading(val query: String) : SearchResult
@@ -186,3 +196,4 @@ class SearchViewModel @Inject constructor(
         }
     }
 }
+
