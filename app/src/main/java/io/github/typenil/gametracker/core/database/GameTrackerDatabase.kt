@@ -25,7 +25,7 @@ import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
         RemoteKeyEntity::class,
         LibraryEntryEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(GameTrackerTypeConverters::class)

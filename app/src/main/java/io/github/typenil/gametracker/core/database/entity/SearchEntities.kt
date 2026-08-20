@@ -43,7 +43,7 @@ data class SearchQueryEntity(
     ],
     indices = [
         Index("gameId"),
-        Index(value = ["query", "position"])
+        Index(value = ["query", "position"], unique = true)
     ]
 )
 data class SearchResultCrossRef(
