@@ -58,7 +58,8 @@ fun LibraryEntry.toEntity(): LibraryEntryEntity {
         userNotes = this.userNotes,
         isFavorite = this.isFavorite,
         addedAtEpochSeconds = this.addedAtEpochSeconds,
-        updatedAtEpochSeconds = this.updatedAtEpochSeconds
+        updatedAtEpochSeconds = this.updatedAtEpochSeconds,
+        hoursPlayed = this.hoursPlayed
     )
 }
 
@@ -73,6 +74,7 @@ fun LibraryEntryEntity.toDomain(): LibraryEntry {
         userNotes = this.userNotes,
         isFavorite = this.isFavorite,
         addedAtEpochSeconds = this.addedAtEpochSeconds,
-        updatedAtEpochSeconds = this.updatedAtEpochSeconds
+        updatedAtEpochSeconds = this.updatedAtEpochSeconds,
+        hoursPlayed = this.hoursPlayed
     )
 }

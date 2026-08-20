@@ -13,6 +13,7 @@ import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
+import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations
 import io.github.typenil.gametracker.core.database.transaction.RoomTransactionRunner
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
 import javax.inject.Singleton
@@ -35,7 +36,9 @@ abstract class DatabaseModule {
                 context,
                 GameTrackerDatabase::class.java,
                 GameTrackerDatabase.DATABASE_NAME
-            ).build()
+            )
+                .addMigrations(DatabaseMigrations.MIGRATION_1_2)
+                .build()
         }
 
         @Provides

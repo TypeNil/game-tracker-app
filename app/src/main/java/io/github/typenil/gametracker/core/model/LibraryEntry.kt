@@ -11,5 +11,6 @@ data class LibraryEntry(
     val userNotes: String? = null,
     val isFavorite: Boolean = false,
     val addedAtEpochSeconds: Long,
-    val updatedAtEpochSeconds: Long
+    val updatedAtEpochSeconds: Long,
+    val hoursPlayed: Int = 0
 )

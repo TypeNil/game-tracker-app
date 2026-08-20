@@ -93,7 +93,8 @@ class EntityMappersTest {
             userNotes = "Great game so far",
             isFavorite = true,
             addedAtEpochSeconds = 1600000000L,
-            updatedAtEpochSeconds = 1600001000L
+            updatedAtEpochSeconds = 1600001000L,
+            hoursPlayed = 55
         )
 
         val entity = entry.toEntity()
@@ -102,8 +103,10 @@ class EntityMappersTest {
         assertEquals(9, entity.userRating)
         assertEquals("Great game so far", entity.userNotes)
         assertEquals(true, entity.isFavorite)
+        assertEquals(55, entity.hoursPlayed)
 
         val mappedBack = entity.toDomain()
         assertEquals(entry, mappedBack)
+        assertEquals(55, mappedBack.hoursPlayed)
     }
 }

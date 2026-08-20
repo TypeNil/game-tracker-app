@@ -68,12 +68,20 @@ class LibraryDaoTest {
         assertEquals(10, retrieved?.userRating)
         assertEquals("Got the Great Rune", retrieved?.userNotes)
         assertEquals(true, retrieved?.isFavorite)
+        assertEquals(0, retrieved?.hoursPlayed)
 
-        // Update status to COMPLETED
-        libraryDao.upsertLibraryEntry(entry.copy(status = LibraryStatus.COMPLETED, updatedAtEpochSeconds = 2000L))
+        // Update status to COMPLETED and record hours played
+        libraryDao.upsertLibraryEntry(
+            entry.copy(
+                status = LibraryStatus.COMPLETED,
+                updatedAtEpochSeconds = 2000L,
+                hoursPlayed = 75
+            )
+        )
         val updated = libraryDao.getLibraryEntry(101L)
         assertEquals(LibraryStatus.COMPLETED, updated?.status)
         assertEquals(2000L, updated?.updatedAtEpochSeconds)
+        assertEquals(75, updated?.hoursPlayed)
     }
 
     @Test
