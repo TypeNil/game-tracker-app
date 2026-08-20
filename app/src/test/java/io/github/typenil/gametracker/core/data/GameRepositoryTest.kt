@@ -191,5 +191,8 @@ class GameRepositoryTest {
         assertEquals(429, (error as AppError.HttpError).statusCode)
         assertEquals("RATE_LIMIT_EXCEEDED", error.errorCode)
         assertEquals("Too many requests", error.message)
+
+        coVerify(exactly = 0) { gameDao.upsertGames(any()) }
+        coVerify(exactly = 0) { searchDao.insertSearchResults(any()) }
     }
 }

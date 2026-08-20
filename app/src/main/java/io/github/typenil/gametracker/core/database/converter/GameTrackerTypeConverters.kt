@@ -24,9 +24,7 @@ class GameTrackerTypeConverters {
     @TypeConverter
     fun toStringList(value: String?): List<String> {
         if (value.isNullOrBlank() || value == "[]") return emptyList()
-        return runCatching {
-            json.decodeFromString<List<String>>(value)
-        }.getOrDefault(emptyList())
+        return json.decodeFromString<List<String>>(value)
     }
 
     @TypeConverter
@@ -37,8 +35,6 @@ class GameTrackerTypeConverters {
     @TypeConverter
     fun toLibraryStatus(value: String?): LibraryStatus? {
         if (value.isNullOrBlank()) return null
-        return runCatching {
-            LibraryStatus.valueOf(value)
-        }.getOrNull()
+        return LibraryStatus.valueOf(value)
     }
 }

@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.core.database.transaction
 
 import androidx.room.withTransaction
 import io.github.typenil.gametracker.core.database.GameTrackerDatabase
+import javax.inject.Inject
 
 /**
  * Abstraction for executing database transactions within coroutines.
@@ -15,7 +16,7 @@ interface TransactionRunner {
 /**
  * Production implementation of [TransactionRunner] delegating to [GameTrackerDatabase.withTransaction].
  */
-class RoomTransactionRunner(
+class RoomTransactionRunner @Inject constructor(
     private val database: GameTrackerDatabase
 ) : TransactionRunner {
     override suspend fun <T> invoke(block: suspend () -> T): T {

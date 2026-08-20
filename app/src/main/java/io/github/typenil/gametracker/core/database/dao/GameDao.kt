@@ -1,6 +1,5 @@
 package io.github.typenil.gametracker.core.database.dao
 
-import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
@@ -30,9 +29,6 @@ interface GameDao {
 
     @Query("SELECT * FROM games WHERE id IN (:ids)")
     suspend fun getGamesByIds(ids: List<Long>): List<GameEntity>
-
-    @Query("SELECT * FROM games ORDER BY rating DESC")
-    fun getGamesPagingSource(): PagingSource<Int, GameEntity>
 
     @Query(
         """

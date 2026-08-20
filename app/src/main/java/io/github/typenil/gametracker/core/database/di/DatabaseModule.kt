@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.core.database.di
 
 import android.content.Context
 import androidx.room.Room
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,43 +19,43 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DatabaseModule {
+abstract class DatabaseModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideGameTrackerDatabase(
-        @ApplicationContext context: Context
-    ): GameTrackerDatabase {
-        return Room.databaseBuilder(
-            context,
-            GameTrackerDatabase::class.java,
-            GameTrackerDatabase.DATABASE_NAME
-        ).build()
-    }
+    abstract fun bindTransactionRunner(impl: RoomTransactionRunner): TransactionRunner
 
-    @Provides
-    fun provideGameDao(database: GameTrackerDatabase): GameDao {
-        return database.gameDao()
-    }
+    companion object {
+        @Provides
+        @Singleton
+        fun provideGameTrackerDatabase(
+            @ApplicationContext context: Context
+        ): GameTrackerDatabase {
+            return Room.databaseBuilder(
+                context,
+                GameTrackerDatabase::class.java,
+                GameTrackerDatabase.DATABASE_NAME
+            ).build()
+        }
 
-    @Provides
-    fun provideSearchDao(database: GameTrackerDatabase): SearchDao {
-        return database.searchDao()
-    }
+        @Provides
+        fun provideGameDao(database: GameTrackerDatabase): GameDao {
+            return database.gameDao()
+        }
 
-    @Provides
-    fun provideRemoteKeyDao(database: GameTrackerDatabase): RemoteKeyDao {
-        return database.remoteKeyDao()
-    }
+        @Provides
+        fun provideSearchDao(database: GameTrackerDatabase): SearchDao {
+            return database.searchDao()
+        }
 
-    @Provides
-    fun provideLibraryDao(database: GameTrackerDatabase): LibraryDao {
-        return database.libraryDao()
-    }
+        @Provides
+        fun provideRemoteKeyDao(database: GameTrackerDatabase): RemoteKeyDao {
+            return database.remoteKeyDao()
+        }
 
-    @Provides
-    @Singleton
-    fun provideTransactionRunner(database: GameTrackerDatabase): TransactionRunner {
-        return RoomTransactionRunner(database)
+        @Provides
+        fun provideLibraryDao(database: GameTrackerDatabase): LibraryDao {
+            return database.libraryDao()
+        }
     }
 }
