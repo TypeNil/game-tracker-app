@@ -53,8 +53,6 @@ sealed interface GameQueryKey {
         /**
          * Returns canonical search query key for raw text input.
          */
-        fun search(rawQuery: String): String {
-            return KEY_PREFIX_SEARCH + normalize(rawQuery)
-        }
+        fun search(rawQuery: String): String = Search(rawQuery).key
     }
 }

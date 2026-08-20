@@ -103,22 +103,23 @@ class DefaultGameRepository internal constructor(
                 val remoteGames = remoteDataSource.getTopRatedGames(limit = limit, offset = offset).toDomain()
                 val nowSeconds = nowEpochSeconds()
                 val queryKey = GameQueryKey.KEY_DISCOVER_TOP_RATED
-                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) >= GameQueryKey.MAX_BFF_OFFSET
+                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
                 val nextOffset = if (isEndOfList) null else offset + remoteGames.size
+                val distinctGames = remoteGames.distinctBy { it.id }
 
                 transactionRunner {
-                    gameDao.upsertGames(remoteGames.map { it.toEntity(nowSeconds) })
+                    gameDao.upsertGames(distinctGames.map { it.toEntity(nowSeconds) })
                     val existingQuery = searchDao.getSearchQuery(queryKey)
                     searchDao.upsertSearchQuery(
                         SearchQueryEntity(
                             query = queryKey,
                             createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
                             lastQueriedAtEpochSeconds = nowSeconds,
-                            resultCount = remoteGames.size
+                            resultCount = distinctGames.size
                         )
                     )
                     searchDao.deleteSearchResultsForQuery(queryKey)
-                    val crossRefs = remoteGames.mapIndexed { index, game ->
+                    val crossRefs = distinctGames.mapIndexed { index, game ->
                         SearchResultCrossRef(
                             query = queryKey,
                             gameId = game.id,
@@ -205,22 +206,23 @@ class DefaultGameRepository internal constructor(
                     offset = offset
                 ).toDomain()
                 val nowSeconds = nowEpochSeconds()
-                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) >= GameQueryKey.MAX_BFF_OFFSET
+                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
                 val nextOffset = if (isEndOfList) null else offset + remoteGames.size
+                val distinctGames = remoteGames.distinctBy { it.id }
 
                 transactionRunner {
-                    gameDao.upsertGames(remoteGames.map { it.toEntity(nowSeconds) })
+                    gameDao.upsertGames(distinctGames.map { it.toEntity(nowSeconds) })
                     val existingQuery = searchDao.getSearchQuery(cacheKey)
                     searchDao.upsertSearchQuery(
                         SearchQueryEntity(
                             query = cacheKey,
                             createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
                             lastQueriedAtEpochSeconds = nowSeconds,
-                            resultCount = remoteGames.size
+                            resultCount = distinctGames.size
                         )
                     )
                     searchDao.deleteSearchResultsForQuery(cacheKey)
-                    val crossRefs = remoteGames.mapIndexed { index, game ->
+                    val crossRefs = distinctGames.mapIndexed { index, game ->
                         SearchResultCrossRef(
                             query = cacheKey,
                             gameId = game.id,

@@ -444,4 +444,57 @@ class GamesRemoteMediatorTest {
             remoteKeyDao.upsert(any())
         }
     }
+
+    @Test
+    fun `load APPEND when remoteKey is missing returns Success end true without fetch`() = runTest {
+        val key = "discover:top-rated"
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns null
+        var fetcherCalled = false
+        val mediator = GamesRemoteMediator(
+            queryKey = key,
+            ttlSeconds = 3600L,
+            fetcher = { _, _ ->
+                fetcherCalled = true
+                emptyList()
+            },
+            gameDao = gameDao,
+            searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = transactionRunner
+        )
+
+        val result = mediator.load(LoadType.APPEND, testPagingState)
+        assertTrue(result is RemoteMediator.MediatorResult.Success)
+        assertTrue((result as RemoteMediator.MediatorResult.Success).endOfPaginationReached)
+        assertEquals(false, fetcherCalled)
+    }
+
+    @Test
+    fun `load APPEND when nextOffset is null returns Success end true without fetch`() = runTest {
+        val key = "discover:top-rated"
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = null,
+            lastUpdatedEpochSeconds = 1000L
+        )
+        var fetcherCalled = false
+        val mediator = GamesRemoteMediator(
+            queryKey = key,
+            ttlSeconds = 3600L,
+            fetcher = { _, _ ->
+                fetcherCalled = true
+                emptyList()
+            },
+            gameDao = gameDao,
+            searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = transactionRunner
+        )
+
+        val result = mediator.load(LoadType.APPEND, testPagingState)
+        assertTrue(result is RemoteMediator.MediatorResult.Success)
+        assertTrue((result as RemoteMediator.MediatorResult.Success).endOfPaginationReached)
+        assertEquals(false, fetcherCalled)
+    }
 }

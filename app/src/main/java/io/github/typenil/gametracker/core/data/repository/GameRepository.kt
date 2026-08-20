@@ -17,6 +17,7 @@ interface GameRepository {
 
     /**
      * Observes the paged stream of server-ranked top-rated games backed by Room SSOT and RemoteMediator.
+     * Caller should cache the flow (e.g. `cachedIn(viewModelScope)`) across UI subscriptions to prevent redundant mediator re-initialization.
      */
     fun getPagedTopRatedGames(pageSize: Int = 20): Flow<PagingData<Game>>
 
@@ -32,6 +33,7 @@ interface GameRepository {
 
     /**
      * Observes the paged stream of server-ranked search results backed by Room SSOT and RemoteMediator.
+     * Caller should cache the flow (e.g. `cachedIn(viewModelScope)`) across UI subscriptions to prevent redundant mediator re-initialization.
      */
     fun getPagedSearchResults(query: String, pageSize: Int = 20): Flow<PagingData<Game>>
 

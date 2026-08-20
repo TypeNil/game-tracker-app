@@ -146,6 +146,9 @@ class GameRepositoryTest {
         // 1 item returned < limit 20 -> nextOffset is null (end of list)
         assertEquals(null, remoteKeySlot.captured.nextOffset)
         assertEquals(1600000000L, remoteKeySlot.captured.lastUpdatedEpochSeconds)
+
+        coVerify(exactly = 1) { searchDao.deleteStaleSearchQueries(any(), any()) }
+        coVerify(exactly = 1) { remoteKeyDao.deleteStaleRemoteKeys(any(), any()) }
     }
 
     @Test

@@ -56,7 +56,7 @@ class GamesRemoteMediator(
                 LoadType.PREPEND -> return@runSuspendCatching MediatorResult.Success(endOfPaginationReached = true)
                 LoadType.REFRESH -> 0
                 LoadType.APPEND -> resolveAppendOffset() ?: return@runSuspendCatching MediatorResult.Success(
-                    endOfPaginationReached = isAppendEndOfPagination()
+                    endOfPaginationReached = true
                 )
             }
 
@@ -67,7 +67,7 @@ class GamesRemoteMediator(
             val loadSize = resolveLoadSize(loadType, state)
             val originalRemote = fetcher(loadSize, targetOffset)
             val isEndOfList = originalRemote.size < loadSize ||
-                (targetOffset + originalRemote.size) >= GameQueryKey.MAX_BFF_OFFSET
+                (targetOffset + originalRemote.size) > GameQueryKey.MAX_BFF_OFFSET
             val nextOffset = if (isEndOfList) null else targetOffset + originalRemote.size
             val distinctGames = originalRemote.distinctBy { it.id }
             val nowSeconds = nowEpochSeconds()
@@ -88,11 +88,6 @@ class GamesRemoteMediator(
     private suspend fun resolveAppendOffset(): Int? {
         val remoteKey = remoteKeyDao.getRemoteKey(queryKey) ?: return null
         return remoteKey.nextOffset
-    }
-
-    private suspend fun isAppendEndOfPagination(): Boolean {
-        val remoteKey = remoteKeyDao.getRemoteKey(queryKey)
-        return remoteKey != null && remoteKey.nextOffset == null
     }
 
     private fun resolveLoadSize(loadType: LoadType, state: PagingState<Int, GameEntity>): Int {
