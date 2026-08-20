@@ -1,10 +1,13 @@
 package io.github.typenil.gametracker.core.data
 
 import app.cash.turbine.test
+import io.github.typenil.gametracker.core.data.paging.GameQueryKey
 import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
 import io.github.typenil.gametracker.core.database.dao.GameDao
+import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
+import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
@@ -18,12 +21,14 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -37,6 +42,7 @@ class GameRepositoryTest {
     private val remoteDataSource: BffRemoteDataSource = mockk()
     private val gameDao: GameDao = mockk(relaxed = true)
     private val searchDao: SearchDao = mockk(relaxed = true)
+    private val remoteKeyDao: RemoteKeyDao = mockk(relaxed = true)
 
     private val passThroughTransactionRunner = object : TransactionRunner {
         override suspend fun <T> invoke(block: suspend () -> T): T = block()
@@ -68,17 +74,28 @@ class GameRepositoryTest {
     @Before
     fun setUp() {
         coEvery { searchDao.getSearchQuery(any()) } returns null
+        coEvery { searchDao.countSearchResultsForQuery(any()) } returns 0
         every { searchDao.getSearchResultsFlow(any()) } returns flowOf(emptyList())
+        coEvery { remoteKeyDao.getRemoteKey(any()) } returns null
         every { gameDao.getGameByIdFlow(any()) } returns flowOf(null)
     }
 
-    private fun createRepository(testDispatcher: kotlinx.coroutines.CoroutineDispatcher): DefaultGameRepository {
+    companion object {
+        private const val TEST_NOW_SECONDS = 1_600_000_000L
+    }
+
+    private fun createRepository(
+        testDispatcher: kotlinx.coroutines.CoroutineDispatcher,
+        nowEpochSeconds: () -> Long = { TEST_NOW_SECONDS }
+    ): DefaultGameRepository {
         return DefaultGameRepository(
             remoteDataSource = remoteDataSource,
             gameDao = gameDao,
             searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
             transactionRunner = passThroughTransactionRunner,
-            ioDispatcher = testDispatcher
+            ioDispatcher = testDispatcher,
+            nowEpochSeconds = nowEpochSeconds
         )
     }
 
@@ -86,7 +103,7 @@ class GameRepositoryTest {
     fun `getTopRatedGamesFlow observes searchDao with discover top-rated key and maps to domain`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
-        every { searchDao.getSearchResultsFlow(DefaultGameRepository.KEY_DISCOVER_TOP_RATED) } returns flowOf(
+        every { searchDao.getSearchResultsFlow(GameQueryKey.KEY_DISCOVER_TOP_RATED) } returns flowOf(
             listOf(sampleGameEntity)
         )
 
@@ -99,9 +116,9 @@ class GameRepositoryTest {
     }
 
     @Test
-    fun `refreshTopRatedGames saves results with discover top-rated key and positions`() = runTest {
+    fun `refreshTopRatedGames saves results with discover top-rated key and positions and updates remoteKey`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
-        val repository = createRepository(testDispatcher)
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { 1600000000L })
         coEvery { remoteDataSource.getTopRatedGames(20, 0) } returns listOf(sampleGameDto)
 
         val result = repository.refreshTopRatedGames(limit = 20, offset = 0)
@@ -111,17 +128,27 @@ class GameRepositoryTest {
 
         val querySlot = slot<SearchQueryEntity>()
         coVerify(exactly = 1) { searchDao.upsertSearchQuery(capture(querySlot)) }
-        assertEquals(DefaultGameRepository.KEY_DISCOVER_TOP_RATED, querySlot.captured.query)
+        assertEquals(GameQueryKey.KEY_DISCOVER_TOP_RATED, querySlot.captured.query)
         assertEquals(1, querySlot.captured.resultCount)
 
-        coVerify(exactly = 1) { searchDao.deleteSearchResultsForQuery(DefaultGameRepository.KEY_DISCOVER_TOP_RATED) }
+        coVerify(exactly = 1) { searchDao.deleteSearchResultsForQuery(GameQueryKey.KEY_DISCOVER_TOP_RATED) }
 
         val resultsSlot = slot<List<SearchResultCrossRef>>()
         coVerify(exactly = 1) { searchDao.insertSearchResults(capture(resultsSlot)) }
         assertEquals(1, resultsSlot.captured.size)
-        assertEquals(DefaultGameRepository.KEY_DISCOVER_TOP_RATED, resultsSlot.captured[0].query)
+        assertEquals(GameQueryKey.KEY_DISCOVER_TOP_RATED, resultsSlot.captured[0].query)
         assertEquals(1L, resultsSlot.captured[0].gameId)
         assertEquals(0, resultsSlot.captured[0].position)
+
+        val remoteKeySlot = slot<RemoteKeyEntity>()
+        coVerify(exactly = 1) { remoteKeyDao.upsert(capture(remoteKeySlot)) }
+        assertEquals(GameQueryKey.KEY_DISCOVER_TOP_RATED, remoteKeySlot.captured.queryKey)
+        // 1 item returned < limit 20 -> nextOffset is null (end of list)
+        assertEquals(null, remoteKeySlot.captured.nextOffset)
+        assertEquals(1600000000L, remoteKeySlot.captured.lastUpdatedEpochSeconds)
+
+        coVerify(exactly = 1) { searchDao.deleteStaleSearchQueries(any(), any()) }
+        coVerify(exactly = 1) { remoteKeyDao.deleteStaleRemoteKeys(any(), any()) }
     }
 
     @Test
@@ -136,6 +163,7 @@ class GameRepositoryTest {
         assertEquals(AppError.NetworkError, (result as AppResult.Error).error)
         coVerify(exactly = 0) { gameDao.upsertGames(any()) }
         coVerify(exactly = 0) { searchDao.insertSearchResults(any()) }
+        coVerify(exactly = 0) { remoteKeyDao.upsert(any()) }
     }
 
     @Test
@@ -166,6 +194,18 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `getPagedSearchResults returns empty PagingData flow when query is blank`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+
+        val flow = repository.getPagedSearchResults("   ")
+        val item = flow.first()
+        assertNotNull(item)
+        coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any()) }
+        coVerify(exactly = 0) { searchDao.getSearchResultsPagingSource(any()) }
+    }
+
+    @Test
     fun `searchGames returns Success without writes when query is blank`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
@@ -176,6 +216,7 @@ class GameRepositoryTest {
         coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any()) }
         coVerify(exactly = 0) { gameDao.upsertGames(any()) }
         coVerify(exactly = 0) { searchDao.insertSearchResults(any()) }
+        coVerify(exactly = 0) { remoteKeyDao.upsert(any()) }
     }
 
     @Test
@@ -198,6 +239,10 @@ class GameRepositoryTest {
         assertEquals("q:discover:top-rated", resultsSlot.captured[0].query)
         assertEquals(101L, resultsSlot.captured[0].gameId)
         assertEquals(0, resultsSlot.captured[0].position)
+
+        val remoteKeySlot = slot<RemoteKeyEntity>()
+        coVerify(exactly = 1) { remoteKeyDao.upsert(capture(remoteKeySlot)) }
+        assertEquals("q:discover:top-rated", remoteKeySlot.captured.queryKey)
     }
 
     @Test
@@ -241,6 +286,7 @@ class GameRepositoryTest {
 
         coVerify(exactly = 0) { gameDao.upsertGames(any()) }
         coVerify(exactly = 0) { searchDao.insertSearchResults(any()) }
+        coVerify(exactly = 0) { remoteKeyDao.upsert(any()) }
     }
 
     @Test
@@ -270,15 +316,30 @@ class GameRepositoryTest {
     }
 
     @Test
-    fun `clearStaleCache delegates to gameDao deleteStaleUnsavedGames`() = runTest {
+    fun `clearStaleCache cleans up stale search queries, remote keys and games`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
-        val repository = createRepository(testDispatcher)
-        coEvery { gameDao.deleteStaleUnsavedGames(1000L) } returns 5
+        val fixedNow = 1_000_000L
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { fixedNow })
+        coEvery { searchDao.deleteStaleSearchQueries(any(), any()) } returns 3
+        coEvery { remoteKeyDao.deleteStaleRemoteKeys(any(), any()) } returns 3
+        coEvery { gameDao.deleteStaleUnsavedGames(any()) } returns 5
 
-        val deletedCount = repository.clearStaleCache(1000L)
+        val deletedGamesCount = repository.clearStaleCache(500_000L)
 
-        assertEquals(5, deletedCount)
-        coVerify(exactly = 1) { gameDao.deleteStaleUnsavedGames(1000L) }
+        assertEquals(5, deletedGamesCount)
+        val expectedQueryCutoff = fixedNow - GameQueryKey.SEARCH_TTL_SECONDS
+        coVerify(exactly = 1) {
+            searchDao.deleteStaleSearchQueries(
+                expectedQueryCutoff,
+                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED)
+            )
+        }
+        coVerify(exactly = 1) {
+            remoteKeyDao.deleteStaleRemoteKeys(
+                expectedQueryCutoff,
+                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED)
+            )
+        }
+        coVerify(exactly = 1) { gameDao.deleteStaleUnsavedGames(500_000L) }
     }
 }
-

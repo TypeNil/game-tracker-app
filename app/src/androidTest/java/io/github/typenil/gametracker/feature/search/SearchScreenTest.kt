@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
+import androidx.paging.PagingData
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
@@ -278,11 +279,19 @@ class SearchScreenTest {
 
         override fun getTopRatedGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
 
+        override fun getPagedTopRatedGames(pageSize: Int): Flow<PagingData<Game>> {
+            return flowOf(PagingData.empty())
+        }
+
         override suspend fun refreshTopRatedGames(limit: Int, offset: Int): AppResult<Unit> {
             return AppResult.Success(Unit)
         }
 
         override fun getSearchResultsFlow(query: String): Flow<List<Game>> = searchFlow
+
+        override fun getPagedSearchResults(query: String, pageSize: Int): Flow<PagingData<Game>> {
+            return flowOf(PagingData.empty())
+        }
 
         override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<Unit> {
             capturedQuery = query

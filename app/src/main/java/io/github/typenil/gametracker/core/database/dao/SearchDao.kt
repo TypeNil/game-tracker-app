@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
  * Data Access Object for search queries and server-ranked search results.
  */
 @Dao
+@Suppress("TooManyFunctions")
 interface SearchDao {
 
     @Upsert
@@ -62,8 +63,17 @@ interface SearchDao {
     @Query("DELETE FROM search_results WHERE query = :query")
     suspend fun deleteSearchResultsForQuery(query: String): Int
 
+    @Query("DELETE FROM search_results WHERE query = :query AND position >= :fromPosition")
+    suspend fun deleteSearchResultsFromPosition(query: String, fromPosition: Int): Int
+
+    @Query("SELECT COUNT(*) FROM search_results WHERE query = :query")
+    suspend fun countSearchResultsForQuery(query: String): Int
+
     @Query("DELETE FROM search_queries WHERE query = :query")
     suspend fun deleteSearchQuery(query: String): Int
+
+    @Query("DELETE FROM search_queries WHERE lastQueriedAtEpochSeconds < :staleThreshold AND query NOT IN (:excludeQueries)")
+    suspend fun deleteStaleSearchQueries(staleThreshold: Long, excludeQueries: List<String>): Int
 
     @Query("DELETE FROM search_queries")
     suspend fun clearAllSearchHistory(): Int
