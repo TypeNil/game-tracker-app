@@ -9,9 +9,12 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -19,6 +22,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicBoolean
@@ -46,6 +50,13 @@ class SearchViewModelTest {
         )
     )
 
+    private val defaultSearchFlow = MutableStateFlow<List<Game>>(emptyList())
+
+    @Before
+    fun setUp() {
+        every { repository.getSearchResultsFlow(any()) } returns defaultSearchFlow
+    }
+
     private fun createViewModel(
         savedStateHandle: SavedStateHandle = SavedStateHandle()
     ): SearchViewModel {
@@ -71,7 +82,12 @@ class SearchViewModelTest {
 
     @Test
     fun `query does not trigger search before 300 ms debounce`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("witcher", any(), any()) } returns AppResult.Success(sampleGames)
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("witcher") } returns searchFlow
+        coEvery { repository.searchGames("witcher", any(), any()) } coAnswers {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -102,7 +118,12 @@ class SearchViewModelTest {
 
     @Test
     fun `rapid typing calls repository only once with final query`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("witcher", any(), any()) } returns AppResult.Success(sampleGames)
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("witcher") } returns searchFlow
+        coEvery { repository.searchGames("witcher", any(), any()) } coAnswers {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -146,6 +167,8 @@ class SearchViewModelTest {
     @Test
     fun `in-flight search is cancelled immediately when a new query is entered before debounce`() = runTest(testDispatcher) {
         val firstQueryCancelled = AtomicBoolean(false)
+        val secondSearchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("second") } returns secondSearchFlow
 
         coEvery { repository.searchGames("first", any(), any()) } coAnswers {
             try {
@@ -154,7 +177,10 @@ class SearchViewModelTest {
                 firstQueryCancelled.set(true)
             }
         }
-        coEvery { repository.searchGames("second", any(), any()) } returns AppResult.Success(sampleGames)
+        coEvery { repository.searchGames("second", any(), any()) } coAnswers {
+            secondSearchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
 
         val viewModel = createViewModel()
 
@@ -188,9 +214,70 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `cached search results are visible immediately while network search is in flight`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow(sampleGames)
+        every { repository.getSearchResultsFlow("witcher") } returns searchFlow
+        val searchDeferred = CompletableDeferred<AppResult<Unit>>()
+        coEvery { repository.searchGames("witcher", any(), any()) } coAnswers {
+            searchDeferred.await()
+        }
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Initial Idle
+            viewModel.onQueryChanged("witcher")
+            runCurrent()
+            advanceTimeBy(350L) // Debounce passes
+            runCurrent()
+
+            // Cached games appear immediately as Content without waiting for network to complete
+            val contentState = awaitItem()
+            assertEquals("witcher", contentState.query)
+            assertEquals(SearchResultUiState.Content(sampleGames), contentState.result)
+
+            // Now network completes with updated list
+            val freshGames = sampleGames + Game(id = 3L, name = "The Witcher: Enhanced Edition", rating = 86.0)
+            searchFlow.value = freshGames
+            searchDeferred.complete(AppResult.Success(Unit))
+            runCurrent()
+
+            val updatedState = awaitItem()
+            assertEquals(SearchResultUiState.Content(freshGames), updatedState.result)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `search failure retains cached games from Room Flow without showing Error`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow(sampleGames)
+        every { repository.getSearchResultsFlow("witcher") } returns searchFlow
+        coEvery { repository.searchGames("witcher", any(), any()) } returns AppResult.Error(AppError.NetworkError)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Initial Idle
+            viewModel.onQueryChanged("witcher")
+            runCurrent()
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+
+            val contentState = awaitItem()
+            assertEquals("witcher", contentState.query)
+            assertEquals(SearchResultUiState.Content(sampleGames), contentState.result)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `query change immediately stops displaying previous query content`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("first", any(), any()) } returns AppResult.Success(sampleGames)
-        coEvery { repository.searchGames("second", any(), any()) } returns AppResult.Success(emptyList())
+        val firstSearchFlow = MutableStateFlow(sampleGames)
+        val secondSearchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("first") } returns firstSearchFlow
+        every { repository.getSearchResultsFlow("second") } returns secondSearchFlow
+        coEvery { repository.searchGames("first", any(), any()) } returns AppResult.Success(Unit)
+        coEvery { repository.searchGames("second", any(), any()) } returns AppResult.Success(Unit)
 
         val viewModel = createViewModel()
 
@@ -200,7 +287,7 @@ class SearchViewModelTest {
 
             viewModel.onQueryChanged("first")
             testScheduler.runCurrent()
-            awaitItem() // Loading "first"
+            awaitItem() // Intermediate Loading for "first"
             advanceTimeBy(350L)
             advanceUntilIdle()
             val firstContent = awaitItem()
@@ -252,7 +339,12 @@ class SearchViewModelTest {
 
     @Test
     fun `whitespace changes do not trigger duplicate search requests`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("zelda", any(), any()) } returns AppResult.Success(sampleGames)
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("zelda") } returns searchFlow
+        coEvery { repository.searchGames("zelda", any(), any()) } coAnswers {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -278,7 +370,9 @@ class SearchViewModelTest {
 
     @Test
     fun `search returns Empty status when repository returns empty list`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("nonexistent", any(), any()) } returns AppResult.Success(emptyList())
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("nonexistent") } returns searchFlow
+        coEvery { repository.searchGames("nonexistent", any(), any()) } returns AppResult.Success(Unit)
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -300,7 +394,9 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `search returns Error status when repository fails`() = runTest(testDispatcher) {
+    fun `search returns Error status when repository fails with empty cache`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("error_query") } returns searchFlow
         coEvery { repository.searchGames("error_query", any(), any()) } returns AppResult.Error(AppError.NetworkError)
         val viewModel = createViewModel()
 
@@ -324,10 +420,14 @@ class SearchViewModelTest {
 
     @Test
     fun `retry re-executes search immediately without debounce`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("retry_query", any(), any()) } returnsMany listOf(
-            AppResult.Error(AppError.NetworkError),
-            AppResult.Success(sampleGames)
-        )
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("retry_query") } returns searchFlow
+        coEvery { repository.searchGames("retry_query", any(), any()) } returns AppResult.Error(
+            AppError.NetworkError
+        ) andThenAnswer {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -357,6 +457,7 @@ class SearchViewModelTest {
         coVerify(exactly = 2) { repository.searchGames("retry_query", 30, any()) }
     }
 
+
     @Test
     fun `blank retry performs no repository call`() = runTest(testDispatcher) {
         val viewModel = createViewModel()
@@ -369,7 +470,12 @@ class SearchViewModelTest {
 
     @Test
     fun `unsubscribing for more than 5 seconds does not re-trigger search on resubscription`() = runTest(testDispatcher) {
-        coEvery { repository.searchGames("witcher", any(), any()) } returns AppResult.Success(sampleGames)
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("witcher") } returns searchFlow
+        coEvery { repository.searchGames("witcher", any(), any()) } coAnswers {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -399,8 +505,13 @@ class SearchViewModelTest {
 
     @Test
     fun `restored query from SavedStateHandle automatically executes search exactly once`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow("restored_game") } returns searchFlow
+        coEvery { repository.searchGames("restored_game", any(), any()) } coAnswers {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
         val savedStateHandle = SavedStateHandle(mapOf(SearchViewModel.KEY_QUERY to "restored_game"))
-        coEvery { repository.searchGames("restored_game", any(), any()) } returns AppResult.Success(sampleGames)
 
         val viewModel = createViewModel(savedStateHandle = savedStateHandle)
 
@@ -433,3 +544,4 @@ class SearchViewModelTest {
         assertEquals("😀".repeat(100), result)
     }
 }
+

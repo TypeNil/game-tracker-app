@@ -15,10 +15,14 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+
 
 class SearchScreenTest {
 
@@ -252,7 +256,8 @@ class SearchScreenTest {
         assertEquals(30, fakeRepository.capturedLimit)
         assertEquals(0, fakeRepository.capturedOffset)
 
-        fakeRepository.deferredResult.complete(AppResult.Success(sampleGames))
+        fakeRepository.searchFlow.value = sampleGames
+        fakeRepository.deferredResult.complete(AppResult.Success(Unit))
 
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt").fetchSemanticsNodes().isNotEmpty()
@@ -268,21 +273,31 @@ class SearchScreenTest {
         var capturedLimit: Int? = null
         @Volatile
         var capturedOffset: Int? = null
-        val deferredResult = CompletableDeferred<AppResult<List<Game>>>()
+        val deferredResult = CompletableDeferred<AppResult<Unit>>()
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
 
-        override suspend fun getTopRatedGames(limit: Int, offset: Int): AppResult<List<Game>> {
-            return AppResult.Success(emptyList())
+        override fun getTopRatedGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
+
+        override suspend fun refreshTopRatedGames(limit: Int, offset: Int): AppResult<Unit> {
+            return AppResult.Success(Unit)
         }
 
-        override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<List<Game>> {
+        override fun getSearchResultsFlow(query: String): Flow<List<Game>> = searchFlow
+
+        override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<Unit> {
             capturedQuery = query
             capturedLimit = limit
             capturedOffset = offset
             return deferredResult.await()
         }
 
-        override suspend fun getGameDetails(id: Long): AppResult<Game> {
+        override fun getGameDetailsFlow(id: Long): Flow<Game?> = flowOf(null)
+
+        override suspend fun refreshGameDetails(id: Long): AppResult<Unit> {
             return AppResult.Error(AppError.UnknownError(NoSuchElementException()))
         }
+
+        override suspend fun clearStaleCache(staleThresholdSeconds: Long): Int = 0
     }
 }
+

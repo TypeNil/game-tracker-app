@@ -105,4 +105,28 @@ class SearchDaoTest {
         assertEquals("newest", recent[0].query)
         assertEquals("middle", recent[1].query)
     }
+
+    @Test
+    fun discoverKeyAndSearchKeyWithSameNameAreIsolated() = runTest {
+        val g1 = GameEntity(1L, "Top Rated Game", null, 99.0, null, null, emptyList(), emptyList(), 100L)
+        val g2 = GameEntity(2L, "Searched Game", null, 70.0, null, null, emptyList(), emptyList(), 100L)
+        gameDao.upsertGames(listOf(g1, g2))
+
+        searchDao.upsertSearchQuery(SearchQueryEntity("discover:top-rated", 100L, 100L, 1))
+        searchDao.insertSearchResults(listOf(SearchResultCrossRef("discover:top-rated", 1L, 0)))
+
+        searchDao.upsertSearchQuery(SearchQueryEntity("q:discover:top-rated", 100L, 100L, 1))
+        searchDao.insertSearchResults(listOf(SearchResultCrossRef("q:discover:top-rated", 2L, 0)))
+
+        val discoverResults = searchDao.getSearchResultsFlow("discover:top-rated").first()
+        assertEquals(1, discoverResults.size)
+        assertEquals(1L, discoverResults[0].id)
+        assertEquals("Top Rated Game", discoverResults[0].name)
+
+        val searchResults = searchDao.getSearchResultsFlow("q:discover:top-rated").first()
+        assertEquals(1, searchResults.size)
+        assertEquals(2L, searchResults[0].id)
+        assertEquals("Searched Game", searchResults[0].name)
+    }
 }
+
