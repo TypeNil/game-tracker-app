@@ -20,6 +20,9 @@ interface RemoteKeyDao {
     @Query("DELETE FROM remote_keys WHERE queryKey = :queryKey")
     suspend fun deleteRemoteKey(queryKey: String): Int
 
+    @Query("DELETE FROM remote_keys WHERE lastUpdatedEpochSeconds < :staleThreshold AND queryKey NOT IN (:excludeKeys)")
+    suspend fun deleteStaleRemoteKeys(staleThreshold: Long, excludeKeys: List<String>): Int
+
     @Query("DELETE FROM remote_keys")
     suspend fun clearAllRemoteKeys(): Int
 }
