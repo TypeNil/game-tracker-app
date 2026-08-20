@@ -20,6 +20,11 @@ val liveBaseUrl: String = localProperties.getProperty("bff.baseUrl")
     ?: (project.findProperty("BFF_BASE_URL") as? String)
     ?: "http://10.0.2.2:8080/"
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.generateKotlin", "true")
+}
+
 android {
     namespace = "io.github.typenil.gametracker"
     compileSdk = 37
