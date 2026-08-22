@@ -27,7 +27,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -78,9 +82,13 @@ import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -115,6 +123,10 @@ fun GameDetailsRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onUserMessageShown = viewModel::onUserMessageShown,
+        onEditLibraryClicked = viewModel::onEditLibraryClicked,
+        onDismissEditLibrary = viewModel::onDismissEditLibrary,
+        onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
+        onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
         modifier = modifier
     )
 }
@@ -133,6 +145,16 @@ fun GameDetailsScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onUserMessageShown: () -> Unit,
+    onEditLibraryClicked: () -> Unit = {},
+    onDismissEditLibrary: () -> Unit = {},
+    onSaveLibraryEntry: (
+        status: LibraryStatus,
+        rating: Int?,
+        hours: Int,
+        notes: String?,
+        isFavorite: Boolean
+    ) -> Unit = { _, _, _, _, _ -> },
+    onRemoveFromLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -220,11 +242,22 @@ fun GameDetailsScreen(
 
             else -> GameDetailsContent(
                 game = game,
+                libraryEntry = uiState.libraryEntry,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onRefresh,
                 onGameClick = onGameClick,
                 onVideoClick = onVideoClick,
+                onEditLibraryClicked = onEditLibraryClicked,
                 modifier = Modifier.padding(innerPadding)
+            )
+        }
+
+        if (uiState.isEditingLibrary) {
+            EditLibrarySheet(
+                initialEntry = uiState.libraryEntry,
+                onDismiss = onDismissEditLibrary,
+                onSave = onSaveLibraryEntry,
+                onRemove = onRemoveFromLibrary
             )
         }
     }
@@ -233,10 +266,12 @@ fun GameDetailsScreen(
 @Composable
 private fun GameDetailsContent(
     game: GameDetails?,
+    libraryEntry: LibraryEntry?,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onGameClick: (Long) -> Unit,
     onVideoClick: (GameVideo) -> Unit,
+    onEditLibraryClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Empty sections stay hidden so a catalog skeleton renders as a lean but
@@ -259,6 +294,14 @@ private fun GameDetailsContent(
             item(key = "header") {
                 GameDetailsHeader(
                     game = game,
+                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                )
+            }
+
+            item(key = "library-status") {
+                LibraryStatusCard(
+                    libraryEntry = libraryEntry,
+                    onEditClicked = onEditLibraryClicked,
                     modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                 )
             }
@@ -684,6 +727,128 @@ private fun ScreenshotViewerDialog(
                         tint = Color.White
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryStatusCard(
+    libraryEntry: LibraryEntry?,
+    onEditClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onEditClicked,
+        shape = RoundedCornerShape(12.dp),
+        color = if (libraryEntry != null) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            if (libraryEntry == null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BookmarkBorder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column {
+                        Text(
+                            text = stringResource(R.string.library_add_to_library),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.library_add_to_library_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.library_add_to_library),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = stringResource(libraryEntry.status.displayNameRes()),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (libraryEntry.isFavorite) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = stringResource(R.string.library_favorite),
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (libraryEntry.userRating != null) {
+                            Text(
+                                text = stringResource(R.string.library_rating_format, libraryEntry.userRating),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (libraryEntry.hoursPlayed > 0) {
+                            Text(
+                                text = stringResource(R.string.library_hours_format, libraryEntry.hoursPlayed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (!libraryEntry.userNotes.isNullOrBlank()) {
+                            Text(
+                                text = stringResource(R.string.library_has_notes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.library_edit_action_desc),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

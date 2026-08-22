@@ -2,8 +2,10 @@ package io.github.typenil.gametracker.core.database.dao
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEntity
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -30,6 +32,10 @@ interface LibraryDao {
 
     @Query("SELECT * FROM library_entries WHERE isFavorite = 1 ORDER BY updatedAtEpochSeconds DESC")
     fun getFavoriteLibraryEntriesFlow(): Flow<List<LibraryEntryEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM library_entries ORDER BY updatedAtEpochSeconds DESC")
+    fun getPopulatedLibraryEntriesFlow(): Flow<List<PopulatedLibraryGameEntity>>
 
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int

@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,17 +25,14 @@ import javax.inject.Inject
 @HiltViewModel
 class GameDetailsViewModel @Inject constructor(
     private val gameRepository: GameRepository,
+    private val libraryRepository: LibraryRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     val gameId: Long = savedStateHandle.get<Long>(KEY_GAME_ID)
         ?: error("GameDetailsViewModel requires a '$KEY_GAME_ID' Long argument")
 
-    private val _loading = MutableStateFlow(true)
-    private val _refreshing = MutableStateFlow(false)
-    // Pair of (error, userMessageRes): one container keeps the uiState combine within
-    // the five-flow overload while preserving Discover's snackbar semantics.
-    private val _message = MutableStateFlow<Pair<AppError?, Int?>?>(null)
+    private val _flags = MutableStateFlow(DetailsInternalFlags())
 
     /**
      * Lazily (not WhileSubscribed): this screen pushes another copy of itself onto
@@ -43,21 +43,22 @@ class GameDetailsViewModel @Inject constructor(
     val uiState: StateFlow<GameDetailsUiState> = combine(
         gameRepository.getGameDetailsFlow(gameId),
         gameRepository.isGameDetailsHydratedFlow(gameId),
-        _loading,
-        _refreshing,
-        _message
-    ) { game, isHydrated, isLoading, isRefreshing, message ->
-        val error = message?.first
+        libraryRepository.getLibraryEntryFlow(gameId),
+        _flags
+    ) { game, isHydrated, libraryEntry, flags ->
+        val error = flags.message?.first
         GameDetailsUiState(
             game = game,
+            libraryEntry = libraryEntry,
             isHydrated = isHydrated,
-            isLoading = isLoading,
-            isRefreshing = isRefreshing,
+            isLoading = flags.isLoading,
+            isRefreshing = flags.isRefreshing,
+            isEditingLibrary = flags.isEditingLibrary,
             error = if (game != null) null else error,
             userMessageRes = if (game != null && error != null) {
-                message?.second ?: R.string.error_refresh_failed
+                flags.message?.second ?: R.string.error_refresh_failed
             } else {
-                message?.second
+                flags.message?.second
             }
         )
     }.stateIn(
@@ -84,7 +85,69 @@ class GameDetailsViewModel @Inject constructor(
     }
 
     fun onUserMessageShown() {
-        _message.update { it?.copy(first = null, second = null) }
+        _flags.update { it.copy(message = null) }
+    }
+
+    fun onEditLibraryClicked() {
+        _flags.update { it.copy(isEditingLibrary = true) }
+    }
+
+    fun onDismissEditLibrary() {
+        _flags.update { it.copy(isEditingLibrary = false) }
+    }
+
+    fun onSaveLibraryEntry(
+        status: LibraryStatus,
+        userRating: Int?,
+        hoursPlayed: Int,
+        userNotes: String?,
+        isFavorite: Boolean
+    ) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis() / 1000
+            val existing = libraryRepository.getLibraryEntryFlow(gameId).first()
+            val entry = LibraryEntry(
+                gameId = gameId,
+                status = status,
+                userRating = userRating,
+                userNotes = userNotes?.trim()?.takeIf { it.isNotEmpty() },
+                isFavorite = isFavorite,
+                addedAtEpochSeconds = existing?.addedAtEpochSeconds ?: now,
+                updatedAtEpochSeconds = now,
+                hoursPlayed = hoursPlayed
+            )
+            when (val result = libraryRepository.saveLibraryEntry(entry)) {
+                is AppResult.Success -> {
+                    _flags.update { it.copy(isEditingLibrary = false, message = null) }
+                }
+                is AppResult.Error -> {
+                    _flags.update {
+                        it.copy(
+                            isEditingLibrary = true,
+                            message = result.error to R.string.error_library_update_failed
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun onRemoveFromLibrary() {
+        viewModelScope.launch {
+            when (val result = libraryRepository.removeGameFromLibrary(gameId)) {
+                is AppResult.Success -> {
+                    _flags.update { it.copy(isEditingLibrary = false, message = null) }
+                }
+                is AppResult.Error -> {
+                    _flags.update {
+                        it.copy(
+                            isEditingLibrary = true,
+                            message = result.error to R.string.error_library_remove_failed
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private fun refreshDetails(force: Boolean, isUserPullRefresh: Boolean = false) {
@@ -94,24 +157,23 @@ class GameDetailsViewModel @Inject constructor(
         refreshJob = viewModelScope.launch {
             val hasCachedData = gameRepository.getGameDetailsFlow(gameId).first() != null
             if (isUserPullRefresh) {
-                _refreshing.value = true
+                _flags.update { it.copy(isRefreshing = true) }
             } else if (!hasCachedData) {
-                _loading.value = true
-                _message.value = null to null
+                _flags.update { it.copy(isLoading = true, message = null) }
             } else {
-                _loading.value = false
+                _flags.update { it.copy(isLoading = false) }
             }
 
             try {
                 when (val result = gameRepository.refreshGameDetails(gameId, force = force)) {
-                    is AppResult.Success -> _message.value = null to null
-                    is AppResult.Error -> _message.value = result.error to null
+                    is AppResult.Success -> _flags.update { it.copy(message = null) }
+                    is AppResult.Error -> _flags.update { it.copy(message = result.error to null) }
                 }
             } finally {
                 if (isUserPullRefresh) {
-                    _refreshing.value = false
+                    _flags.update { it.copy(isRefreshing = false) }
                 } else {
-                    _loading.value = false
+                    _flags.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -134,6 +196,13 @@ class GameDetailsViewModel @Inject constructor(
             }
         }
     }
+
+    private data class DetailsInternalFlags(
+        val isLoading: Boolean = true,
+        val isRefreshing: Boolean = false,
+        val isEditingLibrary: Boolean = false,
+        val message: Pair<AppError?, Int?>? = null
+    )
 
     companion object {
         const val KEY_GAME_ID = "gameId"
