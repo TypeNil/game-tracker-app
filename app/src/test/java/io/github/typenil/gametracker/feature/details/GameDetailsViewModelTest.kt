@@ -90,7 +90,7 @@ class GameDetailsViewModelTest {
     }
 
     @Test
-    fun `initial fetch over catalog skeleton shows refresh indicator not fullscreen loading`() = runTest {
+    fun `init over catalog skeleton does not set isRefreshing`() = runTest {
         val gate = CompletableDeferred<Unit>()
         fakeRepository.delayRefresh = gate
         fakeRepository.detailsFlow.value = catalogSkeleton
@@ -100,12 +100,10 @@ class GameDetailsViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             assertNotNull(state.game)
-            assertTrue(state.isRefreshing)
+            assertFalse("Init with skeleton must not show PTR spinner", state.isRefreshing)
             assertFalse(state.isInitialLoading)
 
             gate.complete(Unit)
-            val settled = awaitItem()
-            assertFalse(settled.isRefreshing)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -145,7 +143,7 @@ class GameDetailsViewModelTest {
     }
 
     @Test
-    fun `pull-to-refresh forces network refresh`() = runTest {
+    fun `pull-to-refresh shows isRefreshing and forces network refresh`() = runTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -153,8 +151,21 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
+        val gate = CompletableDeferred<Unit>()
+        fakeRepository.delayRefresh = gate
+
         viewModel.refresh()
         assertEquals(listOf(1942L to false, 1942L to true), fakeRepository.refreshCalls)
+
+        viewModel.uiState.test {
+            val inFlightState = awaitItem()
+            assertTrue("User refresh must activate PTR spinner", inFlightState.isRefreshing)
+
+            gate.complete(Unit)
+            val settledState = awaitItem()
+            assertFalse("PTR spinner must dismiss on completion", settledState.isRefreshing)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

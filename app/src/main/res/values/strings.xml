@@ -41,4 +41,6 @@
     <string name="details_developed_and_published_format">Developed &amp; published by %1$s</string>
     <string name="details_screenshot_desc">In-game screenshot</string>
     <string name="details_similar_game_desc_format">Open details for %1$s</string>
+    <string name="details_viewer_close_desc">Close screenshot viewer</string>
+    <string name="details_viewer_page_format">%1$d / %2$d</string>
 </resources>

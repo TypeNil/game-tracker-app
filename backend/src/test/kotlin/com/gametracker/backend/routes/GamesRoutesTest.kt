@@ -277,8 +277,9 @@ class GamesRoutesTest {
             """{"id": $it, "name": "Trailer $it", "video_id": "vid$it"}"""
         }
         val similarGames = (1..11).joinToString(",") {
+            val ratingField = if (it == 2) """"rating": 85.0""" else """"total_rating": ${80.0 + it}"""
             """{"id": ${2000 + it}, "name": "Similar $it", """ +
-                """"cover": {"id": $it, "image_id": "co$it"}, "total_rating": ${80.0 + it}}"""
+                """"cover": {"id": $it, "image_id": "co$it"}, $ratingField}"""
         } + """, {"name": "Broken Similar", "cover": {"id": 99, "image_id": "co99"}}"""
         return """
             [
@@ -301,9 +302,9 @@ class GamesRoutesTest {
                     "themes": [{"id": 17, "name": "Fantasy"}, {"id": 38, "name": "Open world"}, {"id": 99}],
                     "game_modes": [{"id": 1, "name": "Single player"}, {"id": 2, "name": "Multiplayer"}],
                     "release_dates": [
-                        {"id": 1, "date": 1431993600, "y": 2015, "platform": {"id": 6, "abbreviation": "PC"}},
-                        {"id": 2, "y": 2015, "platform": {"id": 6, "abbreviation": "PC"}},
-                        {"id": 3, "date": 1611792000, "y": 2021, "platform": {"id": 130, "name": "Nintendo Switch"}}
+                        {"id": 1, "date": 1431993600, "y": 2015, "platform": {"id": 6, "name": "PC (Microsoft Windows)", "abbreviation": "PC"}},
+                        {"id": 2, "y": 2015, "platform": {"id": 6, "name": "PC (Microsoft Windows)", "abbreviation": "PC"}},
+                        {"id": 3, "date": 1611792000, "y": 2021, "platform": {"id": 130, "name": "Nintendo Switch", "abbreviation": "Switch"}}
                     ],
                     "involved_companies": [
                         {"id": 1, "company": {"id": 908, "name": "CD Projekt RED"}, "developer": true, "publisher": false},
@@ -361,9 +362,9 @@ class GamesRoutesTest {
 
             // Дедуп по (platform, year): запись с точной датой выигрывает у бездатой
             assertEquals(2, game.releaseDates.size)
-            assertEquals("PC", game.releaseDates[0].platform)
+            assertEquals("PC (Microsoft Windows)", game.releaseDates[0].platform)
             assertEquals(1431993600L, game.releaseDates[0].dateEpochSeconds)
-            // Отсутствие abbreviation у платформы откатывается на name
+            // Платформа предпочитает name перед abbreviation
             assertEquals("Nintendo Switch", game.releaseDates[1].platform)
             assertEquals(1611792000L, game.releaseDates[1].dateEpochSeconds)
 
@@ -378,6 +379,8 @@ class GamesRoutesTest {
             assertTrue(game.similarGames.none { it.name == "Broken Similar" })
             assertEquals(2001L, game.similarGames[0].id)
             assertEquals("https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg", game.similarGames[0].coverUrl)
+            // Fallback totalRating ?: rating
+            assertEquals(85.0, game.similarGames[1].totalRating!!, 0.01)
             cache.close()
         }
 

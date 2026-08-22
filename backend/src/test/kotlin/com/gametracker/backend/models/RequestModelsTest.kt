@@ -129,11 +129,16 @@ class RequestModelsTest {
         assertFalse(query.contains("cover != null"))
         assertTrue(query.contains("total_rating, total_rating_count, url"))
         assertTrue(query.contains("themes.name, game_modes.name"))
-        assertTrue(query.contains("release_dates.date, release_dates.y, release_dates.platform.abbreviation"))
+        assertTrue(query.contains("release_dates.date, release_dates.y, release_dates.platform.name, release_dates.platform.abbreviation"))
         assertTrue(query.contains("involved_companies.company.name, involved_companies.developer, involved_companies.publisher"))
         assertTrue(query.contains("screenshots.image_id"))
         assertTrue(query.contains("videos.video_id, videos.name"))
-        assertTrue(query.contains("similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating"))
+        assertTrue(
+            query.contains(
+                "similar_games.id, similar_games.name, similar_games.cover.image_id, " +
+                    "similar_games.total_rating, similar_games.rating"
+            )
+        )
         assertTrue(query.contains("limit 1;"))
     }
 }

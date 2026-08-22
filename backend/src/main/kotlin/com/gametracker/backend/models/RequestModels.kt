@@ -16,10 +16,10 @@ private const val QUERY_FIELDS =
 private const val DETAILS_FIELDS =
     "fields name, rating, total_rating, total_rating_count, url, summary, cover.url, cover.image_id, " +
         "first_release_date, genres.name, themes.name, game_modes.name, platforms.name, platforms.abbreviation, " +
-        "release_dates.date, release_dates.y, release_dates.platform.abbreviation, " +
+        "release_dates.date, release_dates.y, release_dates.platform.name, release_dates.platform.abbreviation, " +
         "involved_companies.company.name, involved_companies.developer, involved_companies.publisher, " +
         "screenshots.image_id, videos.video_id, videos.name, " +
-        "similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating;\n"
+        "similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.rating;\n"
 
 /**
  * Валидатор и канонический нормализатор поисковой строки.
