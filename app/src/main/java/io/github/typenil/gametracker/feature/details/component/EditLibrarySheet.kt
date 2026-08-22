@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -42,9 +44,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,10 +57,13 @@ import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val MAX_NOTES_LENGTH = 500
 private const val MAX_RATING = 10
 private const val MAX_HOURS_DIGITS = 6
+private const val BRING_INTO_VIEW_DELAY_MS = 250L
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -68,6 +75,8 @@ fun EditLibrarySheet(
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    val notesBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     var selectedStatus by remember(initialEntry) {
         mutableStateOf(initialEntry?.status ?: LibraryStatus.WISHLIST)
@@ -303,23 +312,38 @@ fun EditLibrarySheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             // 5. Notes
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { input ->
-                    if (input.codePointCount(0, input.length) <= MAX_NOTES_LENGTH) {
-                        notes = input
-                    }
-                },
-                label = { Text(stringResource(R.string.library_personal_notes)) },
-                supportingText = {
-                    Text(
-                        text = "${notes.codePointCount(0, notes.length)} / $MAX_NOTES_LENGTH",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewRequester(notesBringIntoViewRequester)
+            ) {
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { input ->
+                        if (input.codePointCount(0, input.length) <= MAX_NOTES_LENGTH) {
+                            notes = input
+                        }
+                    },
+                    label = { Text(stringResource(R.string.library_personal_notes)) },
+                    supportingText = {
+                        Text(
+                            text = "${notes.codePointCount(0, notes.length)} / $MAX_NOTES_LENGTH",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    maxLines = 4,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusEvent { focusState ->
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    delay(BRING_INTO_VIEW_DELAY_MS)
+                                    notesBringIntoViewRequester.bringIntoView()
+                                }
+                            }
+                        }
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
