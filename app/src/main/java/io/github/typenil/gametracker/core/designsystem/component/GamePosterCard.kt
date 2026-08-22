@@ -67,6 +67,7 @@ fun GamePosterCard(
         Text(
             text = game.name.orEmpty(),
             style = MaterialTheme.typography.labelLarge,
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)

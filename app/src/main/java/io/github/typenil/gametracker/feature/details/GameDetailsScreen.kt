@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -71,6 +72,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.launch
+
+/** Standard horizontal gutter for details sections. */
+private val DETAILS_GUTTER = 16.dp
+
+/** Fixed portrait cover width in the details header. */
+private val HEADER_COVER_WIDTH = 120.dp
 
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
 private val SCREENSHOT_ASPECT_RATIO = 16f / 9f
@@ -156,7 +163,8 @@ fun GameDetailsScreen(
                     Text(
                         text = game?.name ?: stringResource(R.string.details_title),
                         style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -230,14 +238,23 @@ private fun GameDetailsContent(
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(vertical = DETAILS_GUTTER),
+            verticalArrangement = Arrangement.spacedBy(DETAILS_GUTTER),
+            modifier = Modifier.fillMaxSize()
         ) {
-            item(key = "header") { GameDetailsHeader(game) }
+            item(key = "header") {
+                GameDetailsHeader(
+                    game = game,
+                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                )
+            }
 
             if (!game.summary.isNullOrBlank()) {
                 item(key = "about") {
-                    DetailsSection(title = stringResource(R.string.details_section_about)) {
+                    DetailsSection(
+                        title = stringResource(R.string.details_section_about),
+                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                    ) {
                         Text(
                             text = game.summary,
                             style = MaterialTheme.typography.bodyMedium,
@@ -248,7 +265,10 @@ private fun GameDetailsContent(
             }
 
             item(key = "tags") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     TagSection(
                         title = stringResource(R.string.details_section_genres),
                         tags = game.genres
@@ -267,13 +287,17 @@ private fun GameDetailsContent(
             item(key = "platforms") {
                 TagSection(
                     title = stringResource(R.string.details_section_platforms),
-                    tags = game.platforms
+                    tags = game.platforms,
+                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                 )
             }
 
             if (game.releaseDates.isNotEmpty()) {
                 item(key = "release-dates") {
-                    DetailsSection(title = stringResource(R.string.details_section_release_dates)) {
+                    DetailsSection(
+                        title = stringResource(R.string.details_section_release_dates),
+                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                    ) {
                         game.releaseDates.forEach { releaseDate ->
                             Row(
                                 modifier = Modifier
@@ -299,8 +323,16 @@ private fun GameDetailsContent(
 
             if (game.screenshots.isNotEmpty()) {
                 item(key = "screenshots") {
-                    DetailsSection(title = stringResource(R.string.details_section_screenshots)) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    DetailsSection(
+                        title = stringResource(R.string.details_section_screenshots),
+                        modifier = Modifier.fillMaxWidth(),
+                        titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                    ) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             items(items = game.screenshots, key = { it }) { screenshot ->
                                 AsyncImage(
                                     model = screenshot,
@@ -320,7 +352,10 @@ private fun GameDetailsContent(
 
             if (game.videos.isNotEmpty()) {
                 item(key = "videos") {
-                    DetailsSection(title = stringResource(R.string.details_section_videos)) {
+                    DetailsSection(
+                        title = stringResource(R.string.details_section_videos),
+                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                    ) {
                         game.videos.forEach { video ->
                             OutlinedButton(
                                 onClick = { onVideoClick(video) },
@@ -345,8 +380,16 @@ private fun GameDetailsContent(
 
             if (game.similarGames.isNotEmpty()) {
                 item(key = "similar") {
-                    DetailsSection(title = stringResource(R.string.details_section_similar)) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    DetailsSection(
+                        title = stringResource(R.string.details_section_similar),
+                        modifier = Modifier.fillMaxWidth(),
+                        titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                    ) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             items(items = game.similarGames, key = { it.id }) { similar ->
                                 GamePosterCard(
                                     game = similar,
@@ -362,11 +405,17 @@ private fun GameDetailsContent(
 }
 
 @Composable
-private fun GameDetailsHeader(game: GameDetails) {
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+private fun GameDetailsHeader(
+    game: GameDetails,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Box(
             modifier = Modifier
-                .width(140.dp)
+                .width(HEADER_COVER_WIDTH)
                 .aspectRatio(GAME_COVER_ASPECT_RATIO)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
@@ -382,7 +431,10 @@ private fun GameDetailsHeader(game: GameDetails) {
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Text(
                 text = game.name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -418,13 +470,15 @@ private fun GameDetailsHeader(game: GameDetails) {
 private fun DetailsSection(
     title: String,
     modifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            modifier = titleModifier
         )
         content()
     }
@@ -444,7 +498,10 @@ private fun TagSection(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             tags.forEach { tag ->
                 Surface(
                     shape = RoundedCornerShape(8.dp),
