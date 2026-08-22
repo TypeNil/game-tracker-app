@@ -28,6 +28,7 @@ import io.github.typenil.gametracker.core.network.mapper.toDomain
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -270,6 +271,13 @@ class DefaultGameRepository internal constructor(
                 else -> null
             }
         }.flowOn(ioDispatcher)
+    }
+
+    override fun isGameDetailsHydratedFlow(id: Long): Flow<Boolean> {
+        return gameDetailsDao.getGameDetailsFlow(id)
+            .map { it != null }
+            .distinctUntilChanged()
+            .flowOn(ioDispatcher)
     }
 
     override suspend fun refreshGameDetails(id: Long, force: Boolean): AppResult<Unit> {

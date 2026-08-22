@@ -51,6 +51,13 @@ interface GameRepository {
     fun getGameDetailsFlow(id: Long): Flow<GameDetails?>
 
     /**
+     * Observes whether the enriched details row is cached in Room. Lets the details
+     * screen distinguish a hydrated model from a catalog skeleton without leaking
+     * cache internals into the domain model, and detect eviction while visible.
+     */
+    fun isGameDetailsHydratedFlow(id: Long): Flow<Boolean>
+
+    /**
      * Refreshes details for game with [id] from remote BFF and updates Room SSOT.
      * Skips the network when the cached details row is younger than the details TTL
      * unless [force] is set (pull-to-refresh / retry).
