@@ -7,6 +7,21 @@ private const val QUERY_FIELDS =
     "fields name, rating, cover.url, cover.image_id, first_release_date, summary, genres.name, platforms.name;\n"
 
 /**
+ * Поля для деталей игры. Списковые запросы остаются на [QUERY_FIELDS] — список должен
+ * оставаться тощим, а details-ответ не должен менять URL-размер обложек списков.
+ * Каждый ref запрашивается с полной цепочкой expansion (например,
+ * similar_games.cover.image_id): неexpanded ref IGDB возвращает как int, и декод
+ * вложенного объекта упадёт (маскируясь под 502).
+ */
+private const val DETAILS_FIELDS =
+    "fields name, rating, total_rating, total_rating_count, url, summary, cover.url, cover.image_id, " +
+        "first_release_date, genres.name, themes.name, game_modes.name, platforms.name, platforms.abbreviation, " +
+        "release_dates.date, release_dates.y, release_dates.platform.abbreviation, " +
+        "involved_companies.company.name, involved_companies.developer, involved_companies.publisher, " +
+        "screenshots.image_id, videos.video_id, videos.name, " +
+        "similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating;\n"
+
+/**
  * Валидатор и канонический нормализатор поисковой строки.
  */
 object SearchQueryValidator {
@@ -111,9 +126,15 @@ class GameDetailsRequest(rawId: Long?) {
         id = rawId
     }
 
-    val cacheKey: String = "game_$id"
+    /**
+     * Версионированный ключ: BffCache хранит значения как Any, поэтому старые
+     * «тощие» записи кэша не должны десериализоваться под новый тип до истечения TTL.
+     */
+    val cacheKey: String = "game_v2_$id"
 
     fun toApicalypseQuery(): String {
-        return "${QUERY_FIELDS}where id = ($id) & cover != null;\nlimit 1;"
+        // Без фильтра cover != null: переход в details по похожей игре без обложки
+        // не должен отдавать 404 (списки по-прежнему фильтруют coverless-игры).
+        return "${DETAILS_FIELDS}where id = ($id);\nlimit 1;"
     }
 }

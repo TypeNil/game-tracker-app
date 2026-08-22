@@ -7,6 +7,8 @@ import com.gametracker.backend.models.TopRatedRequest
 /**
  * Утилитный построитель Apicalypse-запросов для IGDB API.
  * Делегирует каноническим моделям запросов для соблюдения согласованности.
+ * [DEFAULT_FIELDS] описывает только списковые запросы; details-запрос
+ * использует собственный набор полей в [com.gametracker.backend.models.GameDetailsRequest].
  */
 object IgdbQueryBuilder {
     const val DEFAULT_FIELDS = "name, rating, cover.url, cover.image_id, first_release_date, summary, genres.name, platforms.name"
