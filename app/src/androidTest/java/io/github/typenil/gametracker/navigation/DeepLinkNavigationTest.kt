@@ -5,9 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -32,7 +31,8 @@ class DeepLinkNavigationTest {
     fun coldStartDeepLink_opensGameDetails_andBackReturnsToDiscover() {
         val targetGameId = 1942L
         val targetTitle = "The Witcher 3: Wild Hunt"
-        val discoverLabel = context.getString(R.string.nav_discover)
+        val discoverTitle = context.getString(R.string.discover_title)
+        val discoverNavLabel = context.getString(R.string.nav_discover)
         val deepLinkUri = Uri.parse("gametracker://game/$targetGameId")
 
         val intent = Intent(Intent.ACTION_VIEW, deepLinkUri).apply {
@@ -48,8 +48,9 @@ class DeepLinkNavigationTest {
             }
             composeTestRule.onAllNodesWithText(targetTitle)[0].assertIsDisplayed()
 
-            // 2. Assert: Bottom navigation bar is hidden on sub-screen
-            composeTestRule.onNodeWithContentDescription(discoverLabel).assertDoesNotExist()
+            // 2. Assert: Discover screen and bottom navigation bar are not visible on details screen
+            composeTestRule.onNodeWithText(discoverTitle).assertDoesNotExist()
+            composeTestRule.onNodeWithText(discoverNavLabel).assertDoesNotExist()
 
             // 3. Press Back -> Synthetic back stack returns to Discover
             scenario.onActivity { activity ->
@@ -58,9 +59,10 @@ class DeepLinkNavigationTest {
 
             // 4. Assert: Discover screen and bottom navigation bar are displayed
             composeTestRule.waitUntil(timeoutMillis = 5_000) {
-                composeTestRule.onAllNodesWithContentDescription(discoverLabel).fetchSemanticsNodes().isNotEmpty()
+                composeTestRule.onAllNodesWithText(discoverTitle).fetchSemanticsNodes().isNotEmpty()
             }
-            composeTestRule.onNodeWithContentDescription(discoverLabel).assertIsDisplayed()
+            composeTestRule.onNodeWithText(discoverTitle).assertIsDisplayed()
+            composeTestRule.onNodeWithText(discoverNavLabel).assertIsDisplayed()
         }
     }
 
@@ -98,10 +100,15 @@ class DeepLinkNavigationTest {
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             // Switch to Library tab
-            composeTestRule.onNodeWithContentDescription(libraryNavLabel).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(libraryNavLabel).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(libraryNavLabel).performClick()
+
             composeTestRule.waitUntil(timeoutMillis = 5_000) {
                 composeTestRule.onAllNodesWithText(libraryTitle).fetchSemanticsNodes().isNotEmpty()
             }
+            composeTestRule.onNodeWithText(libraryTitle).assertIsDisplayed()
 
             // Recreate activity
             scenario.recreate()
@@ -110,7 +117,7 @@ class DeepLinkNavigationTest {
             composeTestRule.waitUntil(timeoutMillis = 5_000) {
                 composeTestRule.onAllNodesWithText(libraryTitle).fetchSemanticsNodes().isNotEmpty()
             }
-            composeTestRule.onAllNodesWithText(libraryTitle)[0].assertIsDisplayed()
+            composeTestRule.onNodeWithText(libraryTitle).assertIsDisplayed()
         }
     }
 }
