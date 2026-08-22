@@ -21,6 +21,9 @@ interface GameDetailsDao {
     @Query("SELECT * FROM game_details WHERE gameId = :gameId")
     suspend fun getGameDetails(gameId: Long): GameDetailsEntity?
 
+    @Query("SELECT * FROM game_details WHERE gameId IN (:ids)")
+    suspend fun getGameDetailsByIds(ids: List<Long>): List<GameDetailsEntity>
+
     @Query("DELETE FROM game_details WHERE cachedAtEpochSeconds < :staleThreshold")
     suspend fun deleteStaleDetails(staleThreshold: Long): Int
 }
