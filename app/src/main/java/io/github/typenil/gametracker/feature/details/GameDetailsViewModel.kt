@@ -75,33 +75,31 @@ class GameDetailsViewModel @Inject constructor(
 
     /** Pull-to-refresh. */
     fun refresh() {
-        refreshDetails(force = true)
+        refreshDetails(force = true, isUserPullRefresh = true)
     }
 
     /** Retry after a failed initial load. */
     fun retry() {
-        refreshDetails(force = true)
+        refreshDetails(force = true, isUserPullRefresh = false)
     }
 
     fun onUserMessageShown() {
         _message.update { it?.copy(first = null, second = null) }
     }
 
-    private fun refreshDetails(force: Boolean) {
+    private fun refreshDetails(force: Boolean, isUserPullRefresh: Boolean = false) {
         // Single-flight: a refresh in progress swallows retries, PTR and the
         // eviction guard alike; they are all idempotent over fresh data.
         if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch {
-            // Initial fetch over an existing catalog skeleton behaves like pull-to-refresh:
-            // the header is already on screen, so show the refresh indicator instead of a
-            // full-screen loader. One-shot repository read at refresh start (a stateIn
-            // flag would still hold its initialValue before the first UI subscription).
-            val asPullRefresh = gameRepository.getGameDetailsFlow(gameId).first() != null
-            if (asPullRefresh) {
+            val hasCachedData = gameRepository.getGameDetailsFlow(gameId).first() != null
+            if (isUserPullRefresh) {
                 _refreshing.value = true
-            } else {
+            } else if (!hasCachedData) {
                 _loading.value = true
                 _message.value = null to null
+            } else {
+                _loading.value = false
             }
 
             try {
@@ -110,7 +108,7 @@ class GameDetailsViewModel @Inject constructor(
                     is AppResult.Error -> _message.value = result.error to null
                 }
             } finally {
-                if (asPullRefresh) {
+                if (isUserPullRefresh) {
                     _refreshing.value = false
                 } else {
                     _loading.value = false

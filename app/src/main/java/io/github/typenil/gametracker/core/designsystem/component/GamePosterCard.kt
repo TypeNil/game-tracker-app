@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -67,10 +68,13 @@ fun GamePosterCard(
         Text(
             text = game.name.orEmpty(),
             style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
             minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         )
     }
 }

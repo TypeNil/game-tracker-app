@@ -29,7 +29,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "XONE",
+        "platform": "Xbox One",
         "dateEpochSeconds": 1431993600,
         "year": 2015
       },
@@ -39,17 +39,17 @@
         "year": 2015
       },
       {
-        "platform": "PS4",
+        "platform": "PlayStation 4",
         "dateEpochSeconds": 1431993600,
         "year": 2015
       },
       {
-        "platform": "Switch",
+        "platform": "Nintendo Switch",
         "dateEpochSeconds": 1611792000,
         "year": 2021
       },
       {
-        "platform": "Series X|S",
+        "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1670976000,
         "year": 2022
       }
@@ -111,13 +111,13 @@
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": null
+        "totalRating": 94.76679864490185
       }
     ]
   },
@@ -157,22 +157,22 @@
         "year": 2022
       },
       {
-        "platform": "PS4",
+        "platform": "PlayStation 4",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       },
       {
-        "platform": "PS5",
+        "platform": "PlayStation 5",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       },
       {
-        "platform": "XONE",
+        "platform": "Xbox One",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       },
       {
-        "platform": "Series X|S",
+        "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       }
@@ -220,7 +220,7 @@
         "id": 112875,
         "name": "God of War Ragnarök",
         "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
-        "totalRating": null
+        "totalRating": 92.75697496923962
       }
     ]
   },
@@ -277,7 +277,7 @@
         "year": 2023
       },
       {
-        "platform": "PS5",
+        "platform": "PlayStation 5",
         "dateEpochSeconds": 1693958400,
         "year": 2023
       }
@@ -318,19 +318,19 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 112875,
         "name": "God of War Ragnarök",
         "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
-        "totalRating": null
+        "totalRating": 92.75697496923962
       }
     ]
   },
@@ -364,12 +364,12 @@
     ],
     "releaseDates": [
       {
-        "platform": "PS4",
+        "platform": "PlayStation 4",
         "dateEpochSeconds": 1667952000,
         "year": 2022
       },
       {
-        "platform": "PS5",
+        "platform": "PlayStation 5",
         "dateEpochSeconds": 1667952000,
         "year": 2022
       },
@@ -436,13 +436,13 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       }
     ]
   },
@@ -482,7 +482,7 @@
         "year": 2020
       },
       {
-        "platform": "XONE",
+        "platform": "Xbox One",
         "dateEpochSeconds": 1607558400,
         "year": 2020
       },
@@ -492,12 +492,12 @@
         "year": 2020
       },
       {
-        "platform": "PS4",
+        "platform": "PlayStation 4",
         "dateEpochSeconds": 1607558400,
         "year": 2020
       },
       {
-        "platform": "Series X|S",
+        "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1644883200,
         "year": 2022
       }
@@ -553,19 +553,19 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": null
+        "totalRating": 94.76679864490185
       }
     ]
   },
@@ -599,7 +599,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "Switch",
+        "platform": "Nintendo Switch",
         "dateEpochSeconds": 1683849600,
         "year": 2023
       }
@@ -646,13 +646,13 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       }
     ]
   },
@@ -701,12 +701,12 @@
         "year": 2017
       },
       {
-        "platform": "WiiU",
+        "platform": "Nintendo Wii U",
         "dateEpochSeconds": 1514678400,
         "year": 2017
       },
       {
-        "platform": "Switch",
+        "platform": "Nintendo Switch",
         "dateEpochSeconds": 1528761600,
         "year": 2018
       }
@@ -737,19 +737,19 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": null
+        "totalRating": 94.76679864490185
       }
     ]
   },
@@ -783,7 +783,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "PS5",
+        "platform": "PlayStation 5",
         "dateEpochSeconds": 1662076800,
         "year": 2022
       },
@@ -829,19 +829,19 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": null
+        "totalRating": 94.76679864490185
       }
     ]
   },
@@ -877,12 +877,12 @@
     ],
     "releaseDates": [
       {
-        "platform": "PS4",
+        "platform": "PlayStation 4",
         "dateEpochSeconds": 1540512000,
         "year": 2018
       },
       {
-        "platform": "XONE",
+        "platform": "Xbox One",
         "dateEpochSeconds": 1540512000,
         "year": 2018
       },
@@ -934,13 +934,13 @@
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": null
+        "totalRating": 94.76679864490185
       }
     ]
   },
@@ -988,12 +988,12 @@
         "year": 2011
       },
       {
-        "platform": "PS3",
+        "platform": "PlayStation 3",
         "dateEpochSeconds": 1303257600,
         "year": 2011
       },
       {
-        "platform": "X360",
+        "platform": "Xbox 360",
         "dateEpochSeconds": 1303430400,
         "year": 2011
       },
@@ -1034,19 +1034,19 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": null
+        "totalRating": 92.75978573442862
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": null
+        "totalRating": 95.18151699273598
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": null
+        "totalRating": 94.76679864490185
       }
     ]
   }

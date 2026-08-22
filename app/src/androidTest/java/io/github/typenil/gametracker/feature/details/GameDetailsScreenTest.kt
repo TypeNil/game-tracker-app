@@ -2,7 +2,9 @@ package io.github.typenil.gametracker.feature.details
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -122,6 +124,25 @@ class GameDetailsScreenTest {
         composeTestRule.onNodeWithText("Red Dead Redemption 2").performClick()
 
         composeTestRule.runOnIdle { assertEquals(25076L, clickedGameId) }
+    }
+
+    @Test
+    fun screenshotClickOpensFullscreenViewerAndCanBeDismissed() {
+        val screenshotsDetails = compactDetails.copy(
+            screenshots = listOf("https://example.com/shot1.jpg", "https://example.com/shot2.jpg")
+        )
+        setContent(GameDetailsUiState(game = screenshotsDetails, isHydrated = true))
+
+        val screenshotDesc = composeTestRule.activity.getString(R.string.details_screenshot_desc)
+        composeTestRule.onAllNodesWithContentDescription(screenshotDesc)[0].performClick()
+
+        val page1Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 1, 2)
+        composeTestRule.onNodeWithText(page1Text).assertIsDisplayed()
+
+        val closeDesc = composeTestRule.activity.getString(R.string.details_viewer_close_desc)
+        composeTestRule.onNodeWithContentDescription(closeDesc).performClick()
+
+        composeTestRule.onNodeWithText(page1Text).assertDoesNotExist()
     }
 
     @Test
