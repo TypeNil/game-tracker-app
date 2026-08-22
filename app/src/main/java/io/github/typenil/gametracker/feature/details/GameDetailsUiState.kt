@@ -6,16 +6,6 @@ import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.LibraryEntry
 
 /**
- * Internal state container combining UI flags for the Game Details screen.
- */
-data class DetailsInternalFlags(
-    val isLoading: Boolean = true,
-    val isRefreshing: Boolean = false,
-    val isEditingLibrary: Boolean = false,
-    val message: Pair<AppError?, Int?>? = null
-)
-
-/**
  * UI State for the Game Details screen.
  *
  * [game] may be a hydrated model or a catalog skeleton (see GameRepository):

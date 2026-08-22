@@ -1,0 +1,164 @@
+package io.github.typenil.gametracker.feature.library
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import javax.inject.Inject
+
+@HiltViewModel
+class LibraryViewModel @Inject constructor(
+    private val libraryRepository: LibraryRepository
+) : ViewModel() {
+
+    private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
+    private val _filterFavoritesOnly = MutableStateFlow(false)
+    private val _searchQuery = MutableStateFlow("")
+    private val _isSearchActive = MutableStateFlow(false)
+    private val _sortOption = MutableStateFlow(LibrarySortOption.UPDATED_DESC)
+
+    private val _filterState = combine(
+        _selectedTab,
+        _filterFavoritesOnly,
+        _searchQuery,
+        _isSearchActive,
+        _sortOption
+    ) { selectedTab, favoritesOnly, query, isSearchActive, sortOption ->
+        FilterState(
+            selectedTab = selectedTab,
+            favoritesOnly = favoritesOnly,
+            query = query,
+            isSearchActive = isSearchActive,
+            sortOption = sortOption
+        )
+    }
+
+    val uiState: StateFlow<LibraryUiState> = combine(
+        libraryRepository.getLibraryGamesFlow(),
+        _filterState
+    ) { allGames, filterState ->
+        val counts = computeTabCounts(allGames)
+        val filtered = filterAndSortGames(allGames, filterState)
+
+        LibraryUiState(
+            allGames = allGames,
+            filteredGames = filtered,
+            selectedTab = filterState.selectedTab,
+            tabCounts = counts,
+            filterFavoritesOnly = filterState.favoritesOnly,
+            searchQuery = filterState.query,
+            isSearchActive = filterState.isSearchActive,
+            sortOption = filterState.sortOption,
+            isLoading = false
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = LibraryUiState(isLoading = true)
+    )
+
+    fun onTabSelected(tab: LibraryTab) {
+        _selectedTab.value = tab
+    }
+
+    fun onToggleFavoritesOnly() {
+        _filterFavoritesOnly.update { !it }
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun onToggleSearchActive(active: Boolean) {
+        _isSearchActive.value = active
+        if (!active) {
+            _searchQuery.value = ""
+        }
+    }
+
+    fun onSortOptionSelected(sortOption: LibrarySortOption) {
+        _sortOption.value = sortOption
+    }
+
+    fun onClearSearch() {
+        _searchQuery.value = ""
+    }
+
+    private fun computeTabCounts(allGames: List<LibraryGame>): Map<LibraryTab, Int> {
+        val playingCount = allGames.count { it.entry.status == LibraryStatus.PLAYING }
+        val wishlistCount = allGames.count { it.entry.status == LibraryStatus.WISHLIST }
+        val completedCount = allGames.count { it.entry.status == LibraryStatus.COMPLETED }
+        val droppedCount = allGames.count { it.entry.status == LibraryStatus.DROPPED }
+        val notInterestedCount = allGames.count { it.entry.status == LibraryStatus.NOT_INTERESTED }
+        val allCount = playingCount + wishlistCount + completedCount + droppedCount
+
+        return mapOf(
+            LibraryTab.ALL to allCount,
+            LibraryTab.PLAYING to playingCount,
+            LibraryTab.WISHLIST to wishlistCount,
+            LibraryTab.COMPLETED to completedCount,
+            LibraryTab.DROPPED to droppedCount,
+            LibraryTab.NOT_INTERESTED to notInterestedCount
+        )
+    }
+
+    private fun filterAndSortGames(
+        allGames: List<LibraryGame>,
+        filterState: FilterState
+    ): List<LibraryGame> {
+        val tabFiltered = when (filterState.selectedTab) {
+            LibraryTab.ALL -> allGames.filter { it.entry.status != LibraryStatus.NOT_INTERESTED }
+            LibraryTab.PLAYING -> allGames.filter { it.entry.status == LibraryStatus.PLAYING }
+            LibraryTab.WISHLIST -> allGames.filter { it.entry.status == LibraryStatus.WISHLIST }
+            LibraryTab.COMPLETED -> allGames.filter { it.entry.status == LibraryStatus.COMPLETED }
+            LibraryTab.DROPPED -> allGames.filter { it.entry.status == LibraryStatus.DROPPED }
+            LibraryTab.NOT_INTERESTED -> allGames.filter { it.entry.status == LibraryStatus.NOT_INTERESTED }
+        }
+
+        val favFiltered = if (filterState.favoritesOnly) {
+            tabFiltered.filter { it.entry.isFavorite }
+        } else {
+            tabFiltered
+        }
+
+        val searchFiltered = if (filterState.query.isNotBlank()) {
+            val trimmed = filterState.query.trim()
+            favFiltered.filter { it.game.name.contains(trimmed, ignoreCase = true) }
+        } else {
+            favFiltered
+        }
+
+        return when (filterState.sortOption) {
+            LibrarySortOption.UPDATED_DESC ->
+                searchFiltered.sortedByDescending { it.entry.updatedAtEpochSeconds }
+            LibrarySortOption.USER_RATING_DESC ->
+                searchFiltered.sortedWith(
+                    compareByDescending<LibraryGame> { it.entry.userRating ?: -1 }
+                        .thenByDescending { it.entry.updatedAtEpochSeconds }
+                )
+            LibrarySortOption.TITLE_ASC ->
+                searchFiltered.sortedBy { it.game.name.lowercase() }
+            LibrarySortOption.HOURS_PLAYED_DESC ->
+                searchFiltered.sortedWith(
+                    compareByDescending<LibraryGame> { it.entry.hoursPlayed }
+                        .thenByDescending { it.entry.updatedAtEpochSeconds }
+                )
+        }
+    }
+
+    private data class FilterState(
+        val selectedTab: LibraryTab,
+        val favoritesOnly: Boolean,
+        val query: String,
+        val isSearchActive: Boolean,
+        val sortOption: LibrarySortOption
+    )
+}

@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,6 +88,7 @@ import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+import io.github.typenil.gametracker.feature.details.util.displayNameRes
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -148,7 +148,7 @@ fun GameDetailsScreen(
     onEditLibraryClicked: () -> Unit = {},
     onDismissEditLibrary: () -> Unit = {},
     onSaveLibraryEntry: (
-        status: io.github.typenil.gametracker.core.model.LibraryStatus,
+        status: LibraryStatus,
         rating: Int?,
         hours: Int,
         notes: String?,
@@ -767,13 +767,13 @@ private fun LibraryStatusCard(
                     )
                     Column {
                         Text(
-                            text = "Добавить в библиотеку",
+                            text = stringResource(R.string.library_add_to_library),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Отслеживайте статус, ставьте оценку",
+                            text = stringResource(R.string.library_add_to_library_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -781,7 +781,7 @@ private fun LibraryStatusCard(
                 }
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Добавить",
+                    contentDescription = stringResource(R.string.library_add_to_library),
                     tint = MaterialTheme.colorScheme.primary
                 )
             } else {
@@ -798,7 +798,7 @@ private fun LibraryStatusCard(
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
-                                text = libraryEntry.status.displayName(),
+                                text = stringResource(libraryEntry.status.displayNameRes()),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -808,7 +808,7 @@ private fun LibraryStatusCard(
                         if (libraryEntry.isFavorite) {
                             Icon(
                                 imageVector = Icons.Default.Favorite,
-                                contentDescription = "Избранное",
+                                contentDescription = stringResource(R.string.library_favorite),
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -820,31 +820,23 @@ private fun LibraryStatusCard(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (libraryEntry.userRating != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${libraryEntry.userRating}/10",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
+                            Text(
+                                text = stringResource(R.string.library_rating_format, libraryEntry.userRating),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                         if (libraryEntry.hoursPlayed > 0) {
                             Text(
-                                text = "${libraryEntry.hoursPlayed} ч.",
+                                text = stringResource(R.string.library_hours_format, libraryEntry.hoursPlayed),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         if (!libraryEntry.userNotes.isNullOrBlank()) {
                             Text(
-                                text = "Есть заметка",
+                                text = stringResource(R.string.library_has_notes),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -853,19 +845,11 @@ private fun LibraryStatusCard(
                 }
                 Icon(
                     imageVector = Icons.Default.Edit,
-                    contentDescription = "Редактировать",
+                    contentDescription = stringResource(R.string.library_edit_action_desc),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
         }
     }
-}
-
-private fun LibraryStatus.displayName(): String = when (this) {
-    LibraryStatus.PLAYING -> "Играю"
-    LibraryStatus.WISHLIST -> "В планах"
-    LibraryStatus.COMPLETED -> "Пройдено"
-    LibraryStatus.DROPPED -> "Заброшено"
-    LibraryStatus.NOT_INTERESTED -> "Не интересует"
 }

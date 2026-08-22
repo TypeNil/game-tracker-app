@@ -309,6 +309,46 @@ class GameDetailsViewModelTest {
         }
     }
 
+    @Test
+    fun `saving library entry failure keeps sheet open and surfaces error message`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeLibraryRepository.saveResult = AppResult.Error(AppError.UnknownError(RuntimeException("DB fail")))
+        val viewModel = createViewModel()
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 10,
+            userNotes = null,
+            isFavorite = false
+        )
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue("Sheet must stay open on save failure", state.isEditingLibrary)
+            assertEquals(R.string.error_library_update_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `removing from library failure keeps sheet open and surfaces error message`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeLibraryRepository.removeResult = AppResult.Error(AppError.UnknownError(RuntimeException("DB fail")))
+        val viewModel = createViewModel()
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onRemoveFromLibrary()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue("Sheet must stay open on remove failure", state.isEditingLibrary)
+            assertEquals(R.string.error_library_remove_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun GameDetailsUiState.similarGamesShown(): Boolean = game?.similarGames?.isNotEmpty() == true
 
     private class FakeDetailsRepository : GameRepository {
@@ -350,6 +390,8 @@ class GameDetailsViewModelTest {
         val entryFlow = MutableStateFlow<LibraryEntry?>(null)
         val savedEntries = mutableListOf<LibraryEntry>()
         val deletedGameIds = mutableListOf<Long>()
+        var saveResult: AppResult<Unit> = AppResult.Success(Unit)
+        var removeResult: AppResult<Unit> = AppResult.Success(Unit)
 
         override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = flowOf(emptyList())
 
@@ -361,14 +403,18 @@ class GameDetailsViewModelTest {
 
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> {
             savedEntries += entry
-            entryFlow.value = entry
-            return AppResult.Success(Unit)
+            if (saveResult is AppResult.Success) {
+                entryFlow.value = entry
+            }
+            return saveResult
         }
 
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> {
             deletedGameIds += gameId
-            entryFlow.value = null
-            return AppResult.Success(Unit)
+            if (removeResult is AppResult.Success) {
+                entryFlow.value = null
+            }
+            return removeResult
         }
     }
 }

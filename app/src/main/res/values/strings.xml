@@ -43,4 +43,53 @@
     <string name="details_similar_game_desc_format">Open details for %1$s</string>
     <string name="details_viewer_close_desc">Close screenshot viewer</string>
     <string name="details_viewer_page_format">%1$d / %2$d</string>
+
+    <!-- Navigation -->
+    <string name="nav_discover">Discover</string>
+    <string name="nav_library">Library</string>
+
+    <!-- Library Status & Management -->
+    <string name="library_title">My Library</string>
+    <string name="library_status_wishlist">Wishlist</string>
+    <string name="library_status_playing">Playing</string>
+    <string name="library_status_completed">Completed</string>
+    <string name="library_status_dropped">Dropped</string>
+    <string name="library_status_not_interested">Not Interested</string>
+    <string name="library_tab_all">All</string>
+    <string name="library_filter_favorites">Favorites only</string>
+    <string name="library_search_hint">Search in library…</string>
+    <string name="library_empty_title">No games in this section</string>
+    <string name="library_empty_subtitle">Explore games in Discover and add them to your library</string>
+    <string name="library_empty_cta">Discover Games</string>
+    <string name="library_search_empty_title">No matching games</string>
+    <string name="library_search_empty_subtitle">Try adjusting your search query or filter</string>
+
+    <!-- Library Sort -->
+    <string name="library_sort_updated_desc">Recently Updated</string>
+    <string name="library_sort_rating_desc">Highest Rated</string>
+    <string name="library_sort_title_asc">Title (A–Z)</string>
+    <string name="library_sort_hours_desc">Most Played</string>
+    <string name="library_sort_menu_desc">Sort library</string>
+
+    <!-- Details Library Action & Sheet -->
+    <string name="library_add_to_library">Add to Library</string>
+    <string name="library_add_to_library_subtitle">Track your progress, rate, and take notes</string>
+    <string name="library_edit_entry_title">Edit in Library</string>
+    <string name="library_status_label">Status</string>
+    <string name="library_my_rating">My Rating (1–10)</string>
+    <string name="library_clear_rating">Clear</string>
+    <string name="library_hours_played">Hours Played</string>
+    <string name="library_hours_format">%1$d hrs</string>
+    <string name="library_hours_decrement_desc">Decrease hours played</string>
+    <string name="library_hours_increment_desc">Increase hours played</string>
+    <string name="library_favorite">Favorite</string>
+    <string name="library_favorite_subtitle">Highlight in your personal collection</string>
+    <string name="library_personal_notes">Personal Notes</string>
+    <string name="library_save">Save</string>
+    <string name="library_remove">Remove from Library</string>
+    <string name="library_has_notes">Has notes</string>
+    <string name="library_rating_format">★ %1$d/10</string>
+    <string name="library_edit_action_desc">Edit library entry</string>
+    <string name="error_library_update_failed">Failed to update library entry</string>
+    <string name="error_library_remove_failed">Failed to remove game from library</string>
 </resources>

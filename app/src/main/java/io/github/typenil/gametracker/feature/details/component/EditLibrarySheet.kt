@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -22,15 +24,16 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -38,18 +41,23 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 
 private const val MAX_NOTES_LENGTH = 500
+private const val MAX_RATING = 10
+private const val MAX_HOURS_DIGITS = 6
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -68,8 +76,8 @@ fun EditLibrarySheet(
     var selectedRating by remember(initialEntry) {
         mutableStateOf(initialEntry?.userRating)
     }
-    var hoursPlayed by remember(initialEntry) {
-        mutableIntStateOf(initialEntry?.hoursPlayed ?: 0)
+    var hoursText by remember(initialEntry) {
+        mutableStateOf((initialEntry?.hoursPlayed ?: 0).toString())
     }
     var isFavorite by remember(initialEntry) {
         mutableStateOf(initialEntry?.isFavorite ?: false)
@@ -78,20 +86,26 @@ fun EditLibrarySheet(
         mutableStateOf(initialEntry?.userNotes ?: "")
     }
 
+    val currentHours = hoursText.toIntOrNull() ?: 0
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
         modifier = modifier
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = if (initialEntry != null) "Редактировать в библиотеке" else "Добавить в библиотеку",
+                text = stringResource(
+                    if (initialEntry != null) R.string.library_edit_entry_title else R.string.library_add_to_library
+                ),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -101,7 +115,7 @@ fun EditLibrarySheet(
 
             // 1. Status selector
             Text(
-                text = "Статус",
+                text = stringResource(R.string.library_status_label),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -112,27 +126,27 @@ fun EditLibrarySheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatusChip(
-                    label = "В планах",
+                    label = stringResource(R.string.library_status_wishlist),
                     selected = selectedStatus == LibraryStatus.WISHLIST,
                     onClick = { selectedStatus = LibraryStatus.WISHLIST }
                 )
                 StatusChip(
-                    label = "Играю",
+                    label = stringResource(R.string.library_status_playing),
                     selected = selectedStatus == LibraryStatus.PLAYING,
                     onClick = { selectedStatus = LibraryStatus.PLAYING }
                 )
                 StatusChip(
-                    label = "Пройдено",
+                    label = stringResource(R.string.library_status_completed),
                     selected = selectedStatus == LibraryStatus.COMPLETED,
                     onClick = { selectedStatus = LibraryStatus.COMPLETED }
                 )
                 StatusChip(
-                    label = "Заброшено",
+                    label = stringResource(R.string.library_status_dropped),
                     selected = selectedStatus == LibraryStatus.DROPPED,
                     onClick = { selectedStatus = LibraryStatus.DROPPED }
                 )
                 StatusChip(
-                    label = "Не интересует",
+                    label = stringResource(R.string.library_status_not_interested),
                     selected = selectedStatus == LibraryStatus.NOT_INTERESTED,
                     onClick = { selectedStatus = LibraryStatus.NOT_INTERESTED }
                 )
@@ -147,14 +161,14 @@ fun EditLibrarySheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Моя оценка (1–10)",
+                    text = stringResource(R.string.library_my_rating),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )
                 if (selectedRating != null) {
                     TextButton(onClick = { selectedRating = null }) {
-                        Text("Очистить", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.library_clear_rating), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -165,7 +179,7 @@ fun EditLibrarySheet(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                for (rating in 1..10) {
+                for (rating in 1..MAX_RATING) {
                     val isSelected = selectedRating == rating
                     FilterChip(
                         selected = isSelected,
@@ -193,9 +207,9 @@ fun EditLibrarySheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 3. Hours Played
+            // 3. Hours Played (Direct numerical input + stepper)
             Text(
-                text = "Наиграно часов",
+                text = stringResource(R.string.library_hours_played),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -203,24 +217,47 @@ fun EditLibrarySheet(
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
-                    onClick = { if (hoursPlayed > 0) hoursPlayed-- },
-                    enabled = hoursPlayed > 0
+                IconButton(
+                    onClick = {
+                        val decremented = (currentHours - 1).coerceAtLeast(0)
+                        hoursText = decremented.toString()
+                    },
+                    enabled = currentHours > 0
                 ) {
-                    Icon(imageVector = Icons.Default.Remove, contentDescription = "Уменьшить часы")
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = stringResource(R.string.library_hours_decrement_desc)
+                    )
                 }
-                Text(
-                    text = "$hoursPlayed ч.",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+
+                OutlinedTextField(
+                    value = hoursText,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.all { it.isDigit() }) {
+                            hoursText = input.take(MAX_HOURS_DIGITS)
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.width(110.dp)
                 )
-                OutlinedButton(
-                    onClick = { hoursPlayed++ }
+
+                IconButton(
+                    onClick = {
+                        val incremented = currentHours + 1
+                        hoursText = incremented.toString()
+                    }
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Увеличить часы")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.library_hours_increment_desc)
+                    )
                 }
             }
 
@@ -232,18 +269,28 @@ fun EditLibrarySheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = null,
                         tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "В избранном",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = stringResource(R.string.library_favorite),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.library_favorite_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Switch(
                     checked = isFavorite,
@@ -261,7 +308,7 @@ fun EditLibrarySheet(
                         notes = input
                     }
                 },
-                label = { Text("Личные заметки") },
+                label = { Text(stringResource(R.string.library_personal_notes)) },
                 supportingText = {
                     Text(
                         text = "${notes.codePointCount(0, notes.length)} / $MAX_NOTES_LENGTH",
@@ -277,11 +324,11 @@ fun EditLibrarySheet(
             // 6. Action Buttons
             Button(
                 onClick = {
-                    onSave(selectedStatus, selectedRating, hoursPlayed, notes, isFavorite)
+                    onSave(selectedStatus, selectedRating, currentHours, notes, isFavorite)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Сохранить")
+                Text(stringResource(R.string.library_save))
             }
 
             if (initialEntry != null) {
@@ -295,7 +342,7 @@ fun EditLibrarySheet(
                 ) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Удалить из библиотеки")
+                    Text(stringResource(R.string.library_remove))
                 }
             }
         }

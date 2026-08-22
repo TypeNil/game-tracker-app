@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -115,15 +116,37 @@ class GameDetailsViewModel @Inject constructor(
                 updatedAtEpochSeconds = now,
                 hoursPlayed = hoursPlayed
             )
-            libraryRepository.saveLibraryEntry(entry)
-            _flags.update { it.copy(isEditingLibrary = false) }
+            when (val result = libraryRepository.saveLibraryEntry(entry)) {
+                is AppResult.Success -> {
+                    _flags.update { it.copy(isEditingLibrary = false, message = null) }
+                }
+                is AppResult.Error -> {
+                    _flags.update {
+                        it.copy(
+                            isEditingLibrary = true,
+                            message = result.error to R.string.error_library_update_failed
+                        )
+                    }
+                }
+            }
         }
     }
 
     fun onRemoveFromLibrary() {
         viewModelScope.launch {
-            libraryRepository.removeGameFromLibrary(gameId)
-            _flags.update { it.copy(isEditingLibrary = false) }
+            when (val result = libraryRepository.removeGameFromLibrary(gameId)) {
+                is AppResult.Success -> {
+                    _flags.update { it.copy(isEditingLibrary = false, message = null) }
+                }
+                is AppResult.Error -> {
+                    _flags.update {
+                        it.copy(
+                            isEditingLibrary = true,
+                            message = result.error to R.string.error_library_remove_failed
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -173,6 +196,13 @@ class GameDetailsViewModel @Inject constructor(
             }
         }
     }
+
+    private data class DetailsInternalFlags(
+        val isLoading: Boolean = true,
+        val isRefreshing: Boolean = false,
+        val isEditingLibrary: Boolean = false,
+        val message: Pair<AppError?, Int?>? = null
+    )
 
     companion object {
         const val KEY_GAME_ID = "gameId"
