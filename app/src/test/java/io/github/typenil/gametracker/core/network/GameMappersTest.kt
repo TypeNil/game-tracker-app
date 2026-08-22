@@ -9,6 +9,7 @@ import io.github.typenil.gametracker.core.network.model.GameDto
 import io.github.typenil.gametracker.core.network.model.ReleaseDateDto
 import io.github.typenil.gametracker.core.network.model.SimilarGameDto
 import io.github.typenil.gametracker.core.network.model.VideoDto
+import io.github.typenil.gametracker.core.network.model.RecommendationCandidateDto
 import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody
@@ -205,5 +206,28 @@ class GameMappersTest {
 
         assertTrue(error is AppError.UnknownError)
         assertEquals(exception, (error as AppError.UnknownError).cause)
+    }
+
+    @Test
+    fun toDomain_mapsRecommendationCandidateDto() {
+        val dto = RecommendationCandidateDto(
+            id = 99L,
+            name = "Similar",
+            coverUrl = "https://example.com/c.jpg",
+            rating = 88.0,
+            ratingCount = 12,
+            releaseDateEpochSeconds = 1431993600,
+            summary = "ok",
+            genres = listOf("RPG"),
+            themes = listOf("Fantasy"),
+            platforms = listOf("PC"),
+            similarToGameIds = listOf(1942L),
+        )
+        val domain = dto.toDomain()
+        assertEquals(99L, domain.gameId)
+        assertEquals("Similar", domain.name)
+        assertEquals(12L, domain.ratingCount)
+        assertEquals(listOf("Fantasy"), domain.themes)
+        assertEquals(listOf(1942L), domain.similarToGameIds)
     }
 }
