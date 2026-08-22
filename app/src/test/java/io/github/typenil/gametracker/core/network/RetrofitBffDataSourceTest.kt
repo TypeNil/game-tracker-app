@@ -266,4 +266,52 @@ class RetrofitBffDataSourceTest {
             assertTrue(body?.contains("502 Bad Gateway") == true)
         }
     }
+
+    @Test
+    fun getRecommendationCandidates_sendsCsvQueryAndParsesThemes() = runTest {
+        val jsonPayload = """
+            [
+                {
+                    "id": 99,
+                    "name": "Similar",
+                    "coverUrl": "https://example.com/c.jpg",
+                    "rating": 88.0,
+                    "ratingCount": 12,
+                    "releaseDateEpochSeconds": 1431993600,
+                    "summary": "ok",
+                    "genres": ["RPG"],
+                    "themes": ["Fantasy"],
+                    "platforms": ["PC"],
+                    "similarToGameIds": [1942]
+                }
+            ]
+        """.trimIndent()
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(jsonPayload)
+        )
+
+        val pool = dataSource.getRecommendationCandidates(
+            genres = listOf("RPG"),
+            themes = emptyList(),
+            platforms = emptyList(),
+            exclude = setOf(1L),
+            similarTo = listOf(1942L),
+            limit = 30,
+        )
+        val recorded = mockWebServer.takeRequest()
+        assertEquals("GET", recorded.method)
+        assertEquals("/v1/recommendations/candidates", recorded.requestUrl?.encodedPath)
+        assertEquals("RPG", recorded.requestUrl?.queryParameter("genres"))
+        assertEquals("1", recorded.requestUrl?.queryParameter("exclude"))
+        assertEquals("1942", recorded.requestUrl?.queryParameter("similarTo"))
+        assertEquals("30", recorded.requestUrl?.queryParameter("limit"))
+        assertNull(recorded.requestUrl?.queryParameter("themes"))
+        assertEquals(1, pool.size)
+        assertEquals(listOf("Fantasy"), pool[0].themes)
+        assertEquals(listOf(1942L), pool[0].similarToGameIds)
+        assertEquals(12L, pool[0].ratingCount)
+    }
 }

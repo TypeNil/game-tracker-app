@@ -141,4 +141,71 @@ class RequestModelsTest {
         )
         assertTrue(query.contains("limit 1;"))
     }
+
+    @Test
+    fun `RecommendationCandidatesRequest parses lists and builds cache key`() {
+        val req = RecommendationCandidatesRequest(
+            genresParam = " RPG, Shooter,RPG ",
+            themesParam = "Fantasy",
+            platformsParam = "PC",
+            excludeParam = "1,2",
+            similarToParam = "10",
+            limitParam = 30,
+        )
+        assertEquals(listOf("RPG", "Shooter"), req.genres)
+        assertEquals(listOf("Fantasy"), req.themes)
+        assertEquals(listOf("PC"), req.platforms)
+        assertEquals(listOf(1L, 2L), req.exclude)
+        assertEquals(listOf(10L), req.similarTo)
+        assertEquals(30, req.limit)
+        assertTrue(req.cacheKey.startsWith("rec_"))
+    }
+
+    @Test
+    fun `RecommendationCandidatesRequest accepts IGDB tag punctuation`() {
+        val req = RecommendationCandidatesRequest(
+            genresParam = "Role-playing (RPG),Hack and slash/Beat 'em up",
+            platformsParam = "Xbox Series X|S",
+        )
+        assertEquals(listOf("Role-playing (RPG)", "Hack and slash/Beat 'em up"), req.genres)
+        assertEquals(listOf("Xbox Series X|S"), req.platforms)
+    }
+
+    @Test
+    fun `RecommendationCandidatesRequest rejects quote in genre`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            RecommendationCandidatesRequest(genresParam = "RP\"G")
+        }
+    }
+
+    @Test
+    fun `RecommendationCandidatesRequest rejects non-positive ids`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            RecommendationCandidatesRequest(excludeParam = "0")
+        }
+    }
+
+    @Test
+    fun `RecommendationCandidatesRequest tag query omits empty axes and excludes seeds`() {
+        val req = RecommendationCandidatesRequest(
+            genresParam = "RPG",
+            excludeParam = "5",
+            similarToParam = "10",
+            limitParam = 10,
+        )
+        val q = req.toTagApicalypseQuery()
+        assertTrue(q.contains("fields ") && q.contains("themes.name") && q.contains("rating_count"))
+        assertTrue(q.contains("genres.name = (\"RPG\")"))
+        assertFalse(q.contains("themes.name ="))
+        assertTrue(q.contains("id != (5,10)") || q.contains("id != (10,5)"))
+        assertTrue(q.contains("limit 10;"))
+    }
+
+    @Test
+    fun `RecommendationCandidatesRequest similar seeds query expands similar_games id`() {
+        val req = RecommendationCandidatesRequest(similarToParam = "10,20")
+        val q = req.toSimilarSeedsApicalypseQuery()
+        assertTrue(q.contains("similar_games.id"))
+        assertTrue(q.contains("where id = (10,20)") || q.contains("where id = (20,10)"))
+    }
 }

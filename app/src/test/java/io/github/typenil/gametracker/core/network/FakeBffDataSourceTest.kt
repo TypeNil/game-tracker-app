@@ -212,4 +212,37 @@ class FakeBffDataSourceTest {
             // Expected
         }
     }
+
+    @Test
+    fun getRecommendationCandidates_emptySeedsAndTags_returnsEmpty() = runTest {
+        val pool = fakeDataSource.getRecommendationCandidates(
+            genres = emptyList(),
+            themes = emptyList(),
+            platforms = emptyList(),
+            exclude = emptySet(),
+            similarTo = emptyList(),
+            limit = 10,
+        )
+        assertTrue(pool.isEmpty())
+    }
+
+    @Test
+    fun getRecommendationCandidates_filtersExcludeDedupsAndMarksSimilar() = runTest {
+        val witcher = fakeDataSource.getGameDetails(1942L)
+        val similarId = witcher.similarGames.first().id
+        val pool = fakeDataSource.getRecommendationCandidates(
+            genres = witcher.genres.take(1),
+            themes = emptyList(),
+            platforms = emptyList(),
+            exclude = setOf(1942L),
+            similarTo = listOf(1942L),
+            limit = 30,
+        )
+        assertTrue(pool.none { it.id == 1942L })
+        val similar = pool.firstOrNull { it.id == similarId }
+        if (similar != null) {
+            assertTrue(1942L in similar.similarToGameIds)
+        }
+        assertTrue(pool.isNotEmpty())
+    }
 }
