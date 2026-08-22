@@ -4,6 +4,7 @@ import io.github.typenil.gametracker.core.database.entity.CompanyColumn
 import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEntity
 import io.github.typenil.gametracker.core.database.entity.ReleaseDateColumn
 import io.github.typenil.gametracker.core.database.entity.SimilarGameColumn
 import io.github.typenil.gametracker.core.database.entity.VideoColumn
@@ -14,6 +15,7 @@ import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameSummary
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryGame
 
 /**
  * Maps a domain [Game] model to a Room [GameEntity].
@@ -153,5 +155,15 @@ fun LibraryEntryEntity.toDomain(): LibraryEntry {
         addedAtEpochSeconds = this.addedAtEpochSeconds,
         updatedAtEpochSeconds = this.updatedAtEpochSeconds,
         hoursPlayed = this.hoursPlayed
+    )
+}
+
+/**
+ * Maps a Room [PopulatedLibraryGameEntity] to a domain [LibraryGame].
+ */
+fun PopulatedLibraryGameEntity.toDomain(): LibraryGame {
+    return LibraryGame(
+        game = this.game.toDomain(),
+        entry = this.entry.toDomain()
     )
 }

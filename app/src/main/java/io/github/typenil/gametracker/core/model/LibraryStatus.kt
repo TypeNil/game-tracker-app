@@ -5,7 +5,8 @@ package io.github.typenil.gametracker.core.model
  */
 enum class LibraryStatus {
     PLAYING,
-    PLAN_TO_PLAY,
+    WISHLIST,
     COMPLETED,
-    DROPPED
+    DROPPED,
+    NOT_INTERESTED
 }

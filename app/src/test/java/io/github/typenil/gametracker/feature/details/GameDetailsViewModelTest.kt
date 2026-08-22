@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
@@ -11,12 +12,15 @@ import io.github.typenil.gametracker.core.model.GameCompany
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameSummary
 import io.github.typenil.gametracker.core.model.GameVideo
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -33,7 +37,8 @@ class GameDetailsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
-    private val fakeRepository = FakeDetailsRepository()
+    private val fakeGameRepository = FakeDetailsRepository()
+    private val fakeLibraryRepository = FakeLibraryRepository()
 
     private val hydratedDetails = GameDetails(
         id = 1942L,
@@ -66,19 +71,20 @@ class GameDetailsViewModelTest {
 
     private fun createViewModel(gameId: Long = 1942L): GameDetailsViewModel {
         return GameDetailsViewModel(
-            gameRepository = fakeRepository,
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
             savedStateHandle = SavedStateHandle(mapOf(GameDetailsViewModel.KEY_GAME_ID to gameId))
         )
     }
 
     @Test
     fun `init triggers non-forced refresh and emits hydrated details`() = runTest {
-        fakeRepository.detailsFlow.value = hydratedDetails
-        fakeRepository.hydratedFlow.value = true
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
 
         val viewModel = createViewModel()
 
-        assertEquals(listOf(1942L to false), fakeRepository.refreshCalls)
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
         viewModel.uiState.test {
             val state = awaitItem()
@@ -92,8 +98,8 @@ class GameDetailsViewModelTest {
     @Test
     fun `init over catalog skeleton does not set isRefreshing`() = runTest {
         val gate = CompletableDeferred<Unit>()
-        fakeRepository.delayRefresh = gate
-        fakeRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.delayRefresh = gate
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
 
         val viewModel = createViewModel()
 
@@ -110,7 +116,7 @@ class GameDetailsViewModelTest {
 
     @Test
     fun `error without cache surfaces error state and retry forces network`() = runTest {
-        fakeRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
 
         val viewModel = createViewModel()
 
@@ -123,13 +129,13 @@ class GameDetailsViewModelTest {
         }
 
         viewModel.retry()
-        assertEquals(listOf(1942L to false, 1942L to true), fakeRepository.refreshCalls)
+        assertEquals(listOf(1942L to false, 1942L to true), fakeGameRepository.refreshCalls)
     }
 
     @Test
     fun `error with cached data keeps content and raises snackbar message`() = runTest {
-        fakeRepository.detailsFlow.value = catalogSkeleton
-        fakeRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
 
         val viewModel = createViewModel()
 
@@ -152,10 +158,10 @@ class GameDetailsViewModelTest {
         }
 
         val gate = CompletableDeferred<Unit>()
-        fakeRepository.delayRefresh = gate
+        fakeGameRepository.delayRefresh = gate
 
         viewModel.refresh()
-        assertEquals(listOf(1942L to false, 1942L to true), fakeRepository.refreshCalls)
+        assertEquals(listOf(1942L to false, 1942L to true), fakeGameRepository.refreshCalls)
 
         viewModel.uiState.test {
             val inFlightState = awaitItem()
@@ -170,40 +176,40 @@ class GameDetailsViewModelTest {
 
     @Test
     fun `eviction guard refetches once when hydrated row disappears`() = runTest {
-        fakeRepository.detailsFlow.value = hydratedDetails
-        fakeRepository.hydratedFlow.value = true
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
         val viewModel = createViewModel()
-        assertEquals(listOf(1942L to false), fakeRepository.refreshCalls)
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
         // Stale-cache eviction from another screen: hydrated -> skeleton
-        fakeRepository.hydratedFlow.value = false
-        fakeRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
 
         assertEquals(
             "Eviction must trigger exactly one forced refetch",
             listOf(1942L to false, 1942L to true),
-            fakeRepository.refreshCalls
+            fakeGameRepository.refreshCalls
         )
     }
 
     @Test
     fun `single-flight swallows concurrent refresh triggers`() = runTest {
         val gate = CompletableDeferred<Unit>()
-        fakeRepository.delayRefresh = gate
+        fakeGameRepository.delayRefresh = gate
 
         val viewModel = createViewModel()
 
         // Pull-to-refresh while the initial refresh is still in flight
         viewModel.refresh()
-        assertEquals(listOf(1942L to false), fakeRepository.refreshCalls)
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
         gate.complete(Unit)
     }
 
     @Test
     fun `state survives re-subscription after back-stack pop navigation`() = runTest {
-        fakeRepository.detailsFlow.value = hydratedDetails
-        fakeRepository.hydratedFlow.value = true
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -218,6 +224,87 @@ class GameDetailsViewModelTest {
             val retained = awaitItem()
             assertNotNull("Content must be retained across re-subscription", retained.game)
             assertFalse(retained.isInitialLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `libraryEntry is observed reactively and editor state toggles`() = runTest {
+        val initialEntry = LibraryEntry(
+            gameId = 1942L,
+            status = LibraryStatus.PLAYING,
+            userRating = 10,
+            userNotes = "Peak gaming",
+            isFavorite = true,
+            addedAtEpochSeconds = 100L,
+            updatedAtEpochSeconds = 100L,
+            hoursPlayed = 50
+        )
+        fakeLibraryRepository.entryFlow.value = initialEntry
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals(initialEntry, state.libraryEntry)
+            assertFalse(state.isEditingLibrary)
+
+            viewModel.onEditLibraryClicked()
+            val editingState = awaitItem()
+            assertTrue(editingState.isEditingLibrary)
+
+            viewModel.onDismissEditLibrary()
+            val dismissedState = awaitItem()
+            assertFalse(dismissedState.isEditingLibrary)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `saving library entry calls repository and closes sheet`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        val viewModel = createViewModel()
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.COMPLETED,
+            userRating = 9,
+            hoursPlayed = 120,
+            userNotes = "Finished main story",
+            isFavorite = true
+        )
+
+        val saved = fakeLibraryRepository.savedEntries.lastOrNull()
+        assertNotNull(saved)
+        assertEquals(1942L, saved?.gameId)
+        assertEquals(LibraryStatus.COMPLETED, saved?.status)
+        assertEquals(9, saved?.userRating)
+        assertEquals(120, saved?.hoursPlayed)
+        assertEquals("Finished main story", saved?.userNotes)
+        assertTrue(saved?.isFavorite == true)
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse("Sheet should close after save", state.isEditingLibrary)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `removing from library calls repository and closes sheet`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        val viewModel = createViewModel()
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onRemoveFromLibrary()
+
+        assertEquals(listOf(1942L), fakeLibraryRepository.deletedGameIds)
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse("Sheet should close after remove", state.isEditingLibrary)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -257,5 +344,31 @@ class GameDetailsViewModelTest {
             AppResult.Success(Unit)
 
         override suspend fun clearStaleCache(staleThresholdSeconds: Long): Int = 0
+    }
+
+    private class FakeLibraryRepository : LibraryRepository {
+        val entryFlow = MutableStateFlow<LibraryEntry?>(null)
+        val savedEntries = mutableListOf<LibraryEntry>()
+        val deletedGameIds = mutableListOf<Long>()
+
+        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = flowOf(emptyList())
+
+        override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = entryFlow
+
+        override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> {
+            return AppResult.Success(Unit)
+        }
+
+        override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> {
+            savedEntries += entry
+            entryFlow.value = entry
+            return AppResult.Success(Unit)
+        }
+
+        override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> {
+            deletedGameIds += gameId
+            entryFlow.value = null
+            return AppResult.Success(Unit)
+        }
     }
 }

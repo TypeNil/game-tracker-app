@@ -45,6 +45,7 @@ class GameTrackerTypeConverters {
     @TypeConverter
     fun toLibraryStatus(value: String?): LibraryStatus? {
         if (value.isNullOrBlank()) return null
+        if (value == "PLAN_TO_PLAY") return LibraryStatus.WISHLIST
         return LibraryStatus.valueOf(value)
     }
 }

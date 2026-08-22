@@ -27,10 +27,15 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,6 +86,9 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -115,6 +123,10 @@ fun GameDetailsRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onUserMessageShown = viewModel::onUserMessageShown,
+        onEditLibraryClicked = viewModel::onEditLibraryClicked,
+        onDismissEditLibrary = viewModel::onDismissEditLibrary,
+        onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
+        onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
         modifier = modifier
     )
 }
@@ -133,6 +145,16 @@ fun GameDetailsScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onUserMessageShown: () -> Unit,
+    onEditLibraryClicked: () -> Unit = {},
+    onDismissEditLibrary: () -> Unit = {},
+    onSaveLibraryEntry: (
+        status: io.github.typenil.gametracker.core.model.LibraryStatus,
+        rating: Int?,
+        hours: Int,
+        notes: String?,
+        isFavorite: Boolean
+    ) -> Unit = { _, _, _, _, _ -> },
+    onRemoveFromLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -220,11 +242,22 @@ fun GameDetailsScreen(
 
             else -> GameDetailsContent(
                 game = game,
+                libraryEntry = uiState.libraryEntry,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onRefresh,
                 onGameClick = onGameClick,
                 onVideoClick = onVideoClick,
+                onEditLibraryClicked = onEditLibraryClicked,
                 modifier = Modifier.padding(innerPadding)
+            )
+        }
+
+        if (uiState.isEditingLibrary) {
+            EditLibrarySheet(
+                initialEntry = uiState.libraryEntry,
+                onDismiss = onDismissEditLibrary,
+                onSave = onSaveLibraryEntry,
+                onRemove = onRemoveFromLibrary
             )
         }
     }
@@ -233,10 +266,12 @@ fun GameDetailsScreen(
 @Composable
 private fun GameDetailsContent(
     game: GameDetails?,
+    libraryEntry: LibraryEntry?,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onGameClick: (Long) -> Unit,
     onVideoClick: (GameVideo) -> Unit,
+    onEditLibraryClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Empty sections stay hidden so a catalog skeleton renders as a lean but
@@ -259,6 +294,14 @@ private fun GameDetailsContent(
             item(key = "header") {
                 GameDetailsHeader(
                     game = game,
+                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                )
+            }
+
+            item(key = "library-status") {
+                LibraryStatusCard(
+                    libraryEntry = libraryEntry,
+                    onEditClicked = onEditLibraryClicked,
                     modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                 )
             }
@@ -687,4 +730,142 @@ private fun ScreenshotViewerDialog(
             }
         }
     }
+}
+
+@Composable
+private fun LibraryStatusCard(
+    libraryEntry: LibraryEntry?,
+    onEditClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onEditClicked,
+        shape = RoundedCornerShape(12.dp),
+        color = if (libraryEntry != null) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            if (libraryEntry == null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BookmarkBorder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column {
+                        Text(
+                            text = "Добавить в библиотеку",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Отслеживайте статус, ставьте оценку",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Добавить",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = libraryEntry.status.displayName(),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (libraryEntry.isFavorite) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Избранное",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (libraryEntry.userRating != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${libraryEntry.userRating}/10",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        if (libraryEntry.hoursPlayed > 0) {
+                            Text(
+                                text = "${libraryEntry.hoursPlayed} ч.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (!libraryEntry.userNotes.isNullOrBlank()) {
+                            Text(
+                                text = "Есть заметка",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Редактировать",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun LibraryStatus.displayName(): String = when (this) {
+    LibraryStatus.PLAYING -> "Играю"
+    LibraryStatus.WISHLIST -> "В планах"
+    LibraryStatus.COMPLETED -> "Пройдено"
+    LibraryStatus.DROPPED -> "Заброшено"
+    LibraryStatus.NOT_INTERESTED -> "Не интересует"
 }

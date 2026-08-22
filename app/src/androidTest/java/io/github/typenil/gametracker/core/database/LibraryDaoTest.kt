@@ -110,7 +110,7 @@ class LibraryDaoTest {
         libraryDao.upsertLibraryEntry(
             LibraryEntryEntity(
                 gameId = 101L,
-                status = LibraryStatus.PLAN_TO_PLAY,
+                status = LibraryStatus.WISHLIST,
                 addedAtEpochSeconds = 100L,
                 updatedAtEpochSeconds = 100L
             )
@@ -126,5 +126,40 @@ class LibraryDaoTest {
 
         assertTrue("Expected SQLiteConstraintException due to ForeignKey.RESTRICT", constraintViolated)
         assertNotNull("Game must still exist in DB", gameDao.getGameById(101L))
+    }
+
+    @Test
+    fun getPopulatedLibraryEntriesFlow_emitsJoinedGameAndEntry() = runTest {
+        val game = GameEntity(101L, "Elden Ring", null, 95.0, 1600000000L, "Summary", emptyList(), emptyList(), 100L)
+        gameDao.upsertGame(game)
+
+        val entry = LibraryEntryEntity(
+            gameId = 101L,
+            status = LibraryStatus.WISHLIST,
+            userRating = 9,
+            addedAtEpochSeconds = 1000L,
+            updatedAtEpochSeconds = 1000L
+        )
+        libraryDao.upsertLibraryEntry(entry)
+
+        val populated = libraryDao.getPopulatedLibraryEntriesFlow().first()
+        assertEquals(1, populated.size)
+        assertEquals("Elden Ring", populated[0].game.name)
+        assertEquals(LibraryStatus.WISHLIST, populated[0].entry.status)
+        assertEquals(9, populated[0].entry.userRating)
+    }
+
+    @Test
+    fun rawSqlPlanToPlay_deserializesAsWishlist() = runTest {
+        val game = GameEntity(102L, "Bloodborne", null, null, null, null, emptyList(), emptyList(), 100L)
+        gameDao.upsertGame(game)
+
+        database.openHelper.writableDatabase.execSQL(
+            "INSERT INTO library_entries (gameId, status, addedAtEpochSeconds, updatedAtEpochSeconds, isFavorite, hoursPlayed) VALUES (102, 'PLAN_TO_PLAY', 100, 100, 0, 0)"
+        )
+
+        val entry = libraryDao.getLibraryEntry(102L)
+        assertNotNull(entry)
+        assertEquals(LibraryStatus.WISHLIST, entry?.status)
     }
 }
