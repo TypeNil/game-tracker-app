@@ -77,10 +77,11 @@ private val SCREENSHOT_ASPECT_RATIO = 16f / 9f
 
 /**
  * Host composable wiring the [GameDetailsViewModel] into the stateless screen.
+ * The gameId arrives via SavedStateHandle from the type-safe route argument,
+ * not through composition parameters.
  */
 @Composable
 fun GameDetailsRoute(
-    gameId: Long,
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -516,7 +517,9 @@ private fun GameDetails.companiesLine(): String? {
                 }
             }
         }
-        if (others.isNotEmpty() && developers.isEmpty() && publishers.isEmpty()) {
+        // Porting/supporting studios (both flags false) are still credited,
+        // appended as plain names so they never hide behind dev/pub lines.
+        if (others.isNotEmpty()) {
             add(others.joinToString())
         }
     }

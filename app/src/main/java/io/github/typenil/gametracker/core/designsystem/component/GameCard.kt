@@ -34,9 +34,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val COVER_ASPECT_RATIO_WIDTH = 3f
-private const val COVER_ASPECT_RATIO_HEIGHT = 4f
-private const val COVER_ASPECT_RATIO = COVER_ASPECT_RATIO_WIDTH / COVER_ASPECT_RATIO_HEIGHT
 private const val COVER_WIDTH_DP = 96
 private const val MAX_GENRES_DISPLAYED = 2
 
@@ -69,7 +66,7 @@ fun GameCard(
             Box(
                 modifier = Modifier
                     .width(COVER_WIDTH_DP.dp)
-                    .aspectRatio(COVER_ASPECT_RATIO)
+                    .aspectRatio(GAME_COVER_ASPECT_RATIO)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             ) {

@@ -4,7 +4,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
 import io.github.typenil.gametracker.feature.details.GameDetailsRoute
 
 /**
@@ -18,15 +17,14 @@ fun NavController.navigateToGameDetails(gameId: Long, navOptions: NavOptions? = 
 
 /**
  * Registers the Game Details destination in the type-safe [NavGraphBuilder].
+ * The gameId flows to the ViewModel through SavedStateHandle route arguments.
  */
 fun NavGraphBuilder.gameDetailsEntry(
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit
 ) {
-    composable<GameDetailsKey> { backStackEntry ->
-        val key = backStackEntry.toRoute<GameDetailsKey>()
+    composable<GameDetailsKey> {
         GameDetailsRoute(
-            gameId = key.gameId,
             onGameClick = onGameClick,
             onBackClick = onBackClick
         )
