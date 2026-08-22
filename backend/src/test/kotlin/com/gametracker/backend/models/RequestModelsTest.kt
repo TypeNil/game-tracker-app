@@ -1,6 +1,7 @@
 package com.gametracker.backend.models
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -121,10 +122,18 @@ class RequestModelsTest {
     fun `GameDetailsRequest accepts positive id and formats query`() {
         val request = GameDetailsRequest(1020L)
         assertEquals(1020L, request.id)
-        assertEquals("game_1020", request.cacheKey)
+        assertEquals("game_v2_1020", request.cacheKey)
 
         val query = request.toApicalypseQuery()
-        assertTrue(query.contains("where id = (1020) & cover != null;"))
-        assertTrue(query.contains("cover.image_id"))
+        assertTrue(query.contains("where id = (1020);"))
+        assertFalse(query.contains("cover != null"))
+        assertTrue(query.contains("total_rating, total_rating_count, url"))
+        assertTrue(query.contains("themes.name, game_modes.name"))
+        assertTrue(query.contains("release_dates.date, release_dates.y, release_dates.platform.abbreviation"))
+        assertTrue(query.contains("involved_companies.company.name, involved_companies.developer, involved_companies.publisher"))
+        assertTrue(query.contains("screenshots.image_id"))
+        assertTrue(query.contains("videos.video_id, videos.name"))
+        assertTrue(query.contains("similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating"))
+        assertTrue(query.contains("limit 1;"))
     }
 }
