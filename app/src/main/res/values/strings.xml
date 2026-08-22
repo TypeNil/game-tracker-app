@@ -94,4 +94,11 @@
     <string name="library_edit_action_desc">Edit library entry</string>
     <string name="error_library_update_failed">Failed to update library entry</string>
     <string name="error_library_remove_failed">Failed to remove game from library</string>
+
+    <!-- About / Attribution -->
+    <string name="settings_title">About</string>
+    <string name="settings_action_desc">About</string>
+    <string name="settings_igdb_attribution">Game data provided by IGDB</string>
+    <string name="settings_igdb_link">IGDB</string>
+    <string name="settings_igdb_open_error">No app available to open this link.</string>
 </resources>

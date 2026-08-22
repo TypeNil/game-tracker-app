@@ -22,7 +22,8 @@ fun NavController.navigateToDiscover(navOptions: NavOptions? = null) {
  */
 fun NavGraphBuilder.discoverEntry(
     onGameClick: (Long) -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    onAboutClick: () -> Unit
 ) {
     composable<DiscoverKey> {
         val viewModel: DiscoverViewModel = hiltViewModel()
@@ -32,6 +33,7 @@ fun NavGraphBuilder.discoverEntry(
             uiState = uiState,
             onGameClick = onGameClick,
             onSearchClick = onSearchClick,
+            onAboutClick = onAboutClick,
             onRefresh = viewModel::refresh,
             onRetry = viewModel::retry,
             onUserMessageShown = viewModel::onUserMessageShown

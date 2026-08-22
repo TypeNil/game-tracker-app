@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
@@ -51,6 +52,7 @@ fun DiscoverScreen(
     uiState: DiscoverUiState,
     onGameClick: (Long) -> Unit,
     onSearchClick: () -> Unit,
+    onAboutClick: () -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onUserMessageShown: () -> Unit,
@@ -87,6 +89,12 @@ fun DiscoverScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = stringResource(R.string.search_action_desc)
+                        )
+                    }
+                    IconButton(onClick = onAboutClick) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = stringResource(R.string.settings_action_desc)
                         )
                     }
                 },
