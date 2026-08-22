@@ -1,8 +1,18 @@
 package io.github.typenil.gametracker.core.database.mapper
 
+import io.github.typenil.gametracker.core.database.entity.CompanyColumn
+import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.database.entity.ReleaseDateColumn
+import io.github.typenil.gametracker.core.database.entity.SimilarGameColumn
+import io.github.typenil.gametracker.core.database.entity.VideoColumn
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.GameCompany
+import io.github.typenil.gametracker.core.model.GameDetails
+import io.github.typenil.gametracker.core.model.GameReleaseDate
+import io.github.typenil.gametracker.core.model.GameSummary
+import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 
 /**
@@ -45,6 +55,73 @@ fun GameEntity.toDomain(): Game {
  */
 fun List<GameEntity>.toDomain(): List<Game> {
     return this.map { it.toDomain() }
+}
+
+/**
+ * Maps a domain [GameDetails] model to a Room [GameDetailsEntity].
+ */
+fun GameDetails.toEntity(
+    cachedAtEpochSeconds: Long = System.currentTimeMillis() / 1000
+): GameDetailsEntity {
+    return GameDetailsEntity(
+        gameId = this.id,
+        name = this.name,
+        coverUrl = this.coverUrl,
+        rating = this.rating,
+        totalRating = this.totalRating,
+        totalRatingCount = this.totalRatingCount,
+        releaseDateEpochSeconds = this.releaseDateEpochSeconds,
+        summary = this.summary,
+        url = this.url,
+        genres = this.genres,
+        themes = this.themes,
+        gameModes = this.gameModes,
+        platforms = this.platforms,
+        releaseDates = this.releaseDates.map {
+            ReleaseDateColumn(platform = it.platform, dateEpochSeconds = it.dateEpochSeconds, year = it.year)
+        },
+        companies = this.companies.map {
+            CompanyColumn(name = it.name, isDeveloper = it.isDeveloper, isPublisher = it.isPublisher)
+        },
+        screenshots = this.screenshots,
+        videos = this.videos.map { VideoColumn(videoId = it.videoId, name = it.name) },
+        similarGames = this.similarGames.map {
+            SimilarGameColumn(id = it.id, name = it.name, coverUrl = it.coverUrl, totalRating = it.totalRating)
+        },
+        cachedAtEpochSeconds = cachedAtEpochSeconds
+    )
+}
+
+/**
+ * Maps a Room [GameDetailsEntity] to a pure domain [GameDetails] model.
+ */
+fun GameDetailsEntity.toDomain(): GameDetails {
+    return GameDetails(
+        id = this.gameId,
+        name = this.name,
+        coverUrl = this.coverUrl,
+        rating = this.rating,
+        totalRating = this.totalRating,
+        totalRatingCount = this.totalRatingCount,
+        releaseDateEpochSeconds = this.releaseDateEpochSeconds,
+        summary = this.summary,
+        genres = this.genres,
+        themes = this.themes,
+        gameModes = this.gameModes,
+        platforms = this.platforms,
+        releaseDates = this.releaseDates.map {
+            GameReleaseDate(platform = it.platform, dateEpochSeconds = it.dateEpochSeconds, year = it.year)
+        },
+        companies = this.companies.map {
+            GameCompany(name = it.name, isDeveloper = it.isDeveloper, isPublisher = it.isPublisher)
+        },
+        screenshots = this.screenshots,
+        videos = this.videos.map { GameVideo(videoId = it.videoId, name = it.name) },
+        similarGames = this.similarGames.map {
+            GameSummary(id = it.id, name = it.name, coverUrl = it.coverUrl, totalRating = it.totalRating)
+        },
+        url = this.url
+    )
 }
 
 /**

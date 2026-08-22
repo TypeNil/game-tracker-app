@@ -126,12 +126,22 @@ class RetrofitBffDataSourceTest {
     }
 
     @Test
-    fun `getGameDetails sends GET with path substitution and parses object`() = runTest {
+    fun `getGameDetails sends GET with path substitution and parses enriched object`() = runTest {
         val payload = """
             {
                 "id": 42,
                 "name": "Cyberpunk 2077",
-                "rating": 88.0
+                "rating": 88.0,
+                "totalRating": 86.5,
+                "totalRatingCount": 2187,
+                "url": "https://www.igdb.com/games/cyberpunk-2077",
+                "themes": ["Science fiction", "Open world"],
+                "gameModes": ["Single player"],
+                "releaseDates": [{"platform": "PC", "dateEpochSeconds": 1607558400, "year": 2020}],
+                "companies": [{"name": "CD Projekt RED", "isDeveloper": true, "isPublisher": true}],
+                "screenshots": ["https://images.igdb.com/igdb/image/upload/t_720p/sc1.jpg"],
+                "videos": [{"videoId": "qIcTM8WXFjk", "name": "Official E3 Trailer"}],
+                "similarGames": [{"id": 1942, "name": "The Witcher 3: Wild Hunt", "totalRating": 92.7}]
             }
         """.trimIndent()
 
@@ -150,6 +160,51 @@ class RetrofitBffDataSourceTest {
         assertEquals(42L, game.id)
         assertEquals("Cyberpunk 2077", game.name)
         assertEquals(88.0, game.rating)
+        assertEquals(86.5, game.totalRating)
+        assertEquals(2187L, game.totalRatingCount)
+        assertEquals("https://www.igdb.com/games/cyberpunk-2077", game.url)
+        assertEquals(listOf("Science fiction", "Open world"), game.themes)
+        assertEquals(listOf("Single player"), game.gameModes)
+        assertEquals(1, game.releaseDates.size)
+        assertEquals("PC", game.releaseDates[0].platform)
+        assertEquals(1607558400L, game.releaseDates[0].dateEpochSeconds)
+        assertEquals("CD Projekt RED", game.companies[0].name)
+        assertTrue(game.companies[0].isDeveloper)
+        assertTrue(game.companies[0].isPublisher)
+        assertEquals(1, game.screenshots.size)
+        assertEquals("qIcTM8WXFjk", game.videos[0].videoId)
+        assertEquals(1942L, game.similarGames[0].id)
+    }
+
+    @Test
+    fun `getGameDetails parses minimal JSON with omitted fields into defaults`() = runTest {
+        val minimalPayload = """
+            {
+                "id": 7,
+                "name": "Sparse Game"
+            }
+        """.trimIndent()
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(minimalPayload)
+        )
+
+        val game = dataSource.getGameDetails(id = 7L)
+
+        assertEquals(7L, game.id)
+        assertEquals("Sparse Game", game.name)
+        assertNull(game.totalRating)
+        assertNull(game.totalRatingCount)
+        assertNull(game.url)
+        assertTrue(game.themes.isEmpty())
+        assertTrue(game.releaseDates.isEmpty())
+        assertTrue(game.companies.isEmpty())
+        assertTrue(game.screenshots.isEmpty())
+        assertTrue(game.videos.isEmpty())
+        assertTrue(game.similarGames.isEmpty())
     }
 
     @Test

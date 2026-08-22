@@ -3,6 +3,7 @@ package io.github.typenil.gametracker.core.data.repository
 import androidx.paging.PagingData
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.GameDetails
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -43,14 +44,18 @@ interface GameRepository {
     suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): AppResult<Unit>
 
     /**
-     * Observes a specific game by [id] from Room SSOT.
+     * Observes details for game with [id] from Room SSOT. Emits the full cached
+     * details when present, otherwise a skeleton built from the catalog row
+     * (so a first open offline still shows header data), otherwise null.
      */
-    fun getGameDetailsFlow(id: Long): Flow<Game?>
+    fun getGameDetailsFlow(id: Long): Flow<GameDetails?>
 
     /**
      * Refreshes details for game with [id] from remote BFF and updates Room SSOT.
+     * Skips the network when the cached details row is younger than the details TTL
+     * unless [force] is set (pull-to-refresh / retry).
      */
-    suspend fun refreshGameDetails(id: Long): AppResult<Unit>
+    suspend fun refreshGameDetails(id: Long, force: Boolean = false): AppResult<Unit>
 
     /**
      * Cleans up stale unreferenced cached games (excluding library and active search results).

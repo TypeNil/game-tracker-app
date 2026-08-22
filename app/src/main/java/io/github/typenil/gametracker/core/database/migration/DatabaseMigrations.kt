@@ -36,4 +36,40 @@ object DatabaseMigrations {
             )
         }
     }
+
+    /**
+     * Migration from Room schema version 2 to 3: adds the `game_details` cache table.
+     * New table only — no legacy data to deduplicate, no column-order concerns.
+     * Column order matches the GameDetailsEntity property order (standard 4.3.8).
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `game_details` (
+                `gameId` INTEGER NOT NULL,
+                `name` TEXT NOT NULL,
+                `coverUrl` TEXT,
+                `rating` REAL,
+                `totalRating` REAL,
+                `totalRatingCount` INTEGER,
+                `releaseDateEpochSeconds` INTEGER,
+                `summary` TEXT,
+                `url` TEXT,
+                `genres` TEXT NOT NULL,
+                `themes` TEXT NOT NULL,
+                `gameModes` TEXT NOT NULL,
+                `platforms` TEXT NOT NULL,
+                `releaseDates` TEXT NOT NULL,
+                `companies` TEXT NOT NULL,
+                `screenshots` TEXT NOT NULL,
+                `videos` TEXT NOT NULL,
+                `similarGames` TEXT NOT NULL,
+                `cachedAtEpochSeconds` INTEGER NOT NULL,
+                PRIMARY KEY (`gameId`)
+                )
+                """.trimIndent()
+            )
+        }
+    }
 }

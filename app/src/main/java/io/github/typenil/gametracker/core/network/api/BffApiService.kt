@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.core.network.api
 
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -26,5 +27,5 @@ interface BffApiService {
     @GET("v1/games/{id}")
     suspend fun getGameDetails(
         @Path("id") id: Long
-    ): GameDto
+    ): GameDetailsDto
 }

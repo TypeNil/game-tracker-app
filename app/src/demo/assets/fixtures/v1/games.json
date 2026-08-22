@@ -20,7 +20,7 @@
     "platforms": ["PC", "PlayStation 5", "Xbox Series X|S"]
   },
   {
-    "id": 125174,
+    "id": 119171,
     "name": "Baldur's Gate 3",
     "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
     "rating": 96.1,
@@ -50,7 +50,7 @@
     "platforms": ["PC", "PlayStation 5", "Xbox Series X|S"]
   },
   {
-    "id": 119277,
+    "id": 119388,
     "name": "The Legend of Zelda: Tears of the Kingdom",
     "coverUrl": "file:///android_asset/covers/cover_zelda_totk.jpg",
     "rating": 95.5,
@@ -60,7 +60,7 @@
     "platforms": ["Nintendo Switch"]
   },
   {
-    "id": 9927,
+    "id": 14593,
     "name": "Hollow Knight",
     "coverUrl": "file:///android_asset/covers/cover_hollow_knight.jpg",
     "rating": 91.8,
@@ -70,7 +70,7 @@
     "platforms": ["PC", "PlayStation 4", "Xbox One", "Nintendo Switch"]
   },
   {
-    "id": 1009,
+    "id": 204350,
     "name": "The Last of Us Part I",
     "coverUrl": "file:///android_asset/covers/cover_tlou.jpg",
     "rating": 92.4,
@@ -90,7 +90,7 @@
     "platforms": ["PC", "PlayStation 4", "Xbox One"]
   },
   {
-    "id": 7331,
+    "id": 72,
     "name": "Portal 2",
     "coverUrl": "file:///android_asset/covers/cover_portal2.jpg",
     "rating": 94.6,

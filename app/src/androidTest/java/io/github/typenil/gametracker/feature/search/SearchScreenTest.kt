@@ -15,6 +15,7 @@ import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.GameDetails
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -300,9 +301,9 @@ class SearchScreenTest {
             return deferredResult.await()
         }
 
-        override fun getGameDetailsFlow(id: Long): Flow<Game?> = flowOf(null)
+        override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> = flowOf(null)
 
-        override suspend fun refreshGameDetails(id: Long): AppResult<Unit> {
+        override suspend fun refreshGameDetails(id: Long, force: Boolean): AppResult<Unit> {
             return AppResult.Error(AppError.UnknownError(NoSuchElementException()))
         }
 

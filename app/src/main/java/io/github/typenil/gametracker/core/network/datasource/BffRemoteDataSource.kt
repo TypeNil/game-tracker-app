@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.core.network.datasource
 
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
 
 /**
@@ -8,5 +9,5 @@ import io.github.typenil.gametracker.core.network.model.GameDto
 interface BffRemoteDataSource {
     suspend fun getTopRatedGames(limit: Int = 20, offset: Int = 0): List<GameDto>
     suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): List<GameDto>
-    suspend fun getGameDetails(id: Long): GameDto
+    suspend fun getGameDetails(id: Long): GameDetailsDto
 }

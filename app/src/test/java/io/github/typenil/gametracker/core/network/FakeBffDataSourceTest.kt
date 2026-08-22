@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.AssetManager
 import io.github.typenil.gametracker.core.network.datasource.FakeBffDataSource
 import io.github.typenil.gametracker.core.network.di.NetworkModule
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
 import io.mockk.every
 import io.mockk.mockk
@@ -33,13 +34,18 @@ class FakeBffDataSourceTest {
         val assetsDir = System.getProperty("demoAssetsDir")
             ?: throw IllegalStateException("System property 'demoAssetsDir' is missing. Run via Gradle.")
 
-        val fixtureFile = File(assetsDir, "fixtures/v1/games.json")
-        if (!fixtureFile.exists()) {
-            throw java.lang.IllegalStateException("Fixture file not found at ${fixtureFile.absolutePath}")
+        val gamesFixture = File(assetsDir, "fixtures/v1/games.json")
+        val detailsFixture = File(assetsDir, "fixtures/v1/game-details.json")
+        if (!gamesFixture.exists()) {
+            throw java.lang.IllegalStateException("Fixture file not found at ${gamesFixture.absolutePath}")
+        }
+        if (!detailsFixture.exists()) {
+            throw java.lang.IllegalStateException("Fixture file not found at ${detailsFixture.absolutePath}")
         }
 
         every { context.assets } returns assetManager
-        every { assetManager.open("fixtures/v1/games.json") } answers { fixtureFile.inputStream() }
+        every { assetManager.open("fixtures/v1/games.json") } answers { gamesFixture.inputStream() }
+        every { assetManager.open("fixtures/v1/game-details.json") } answers { detailsFixture.inputStream() }
 
         fakeDataSource = FakeBffDataSource(context, json)
     }
@@ -135,9 +141,69 @@ class FakeBffDataSourceTest {
     }
 
     @Test
-    fun `getGameDetails returns game by ID or throws when not found`() = runTest {
-        val game = fakeDataSource.getGameDetails(1942L)
+    fun `details fixture strictly matches GameDetailsDto contract with offline navigation closure`() {
+        val assetsDir = System.getProperty("demoAssetsDir")!!
+        val detailsString = File(assetsDir, "fixtures/v1/game-details.json").readText()
+        val gamesString = File(assetsDir, "fixtures/v1/games.json").readText()
+
+        val strictJson = Json {
+            ignoreUnknownKeys = false
+            coerceInputValues = false
+            isLenient = false
+        }
+
+        val expectedKeys = setOf(
+            "id", "name", "coverUrl", "rating", "releaseDateEpochSeconds", "summary", "genres", "platforms",
+            "url", "totalRating", "totalRatingCount", "themes", "gameModes", "releaseDates",
+            "companies", "screenshots", "videos", "similarGames"
+        )
+        val releaseDateKeys = setOf("platform", "dateEpochSeconds", "year")
+        val companyKeys = setOf("name", "isDeveloper", "isPublisher")
+        val videoKeys = setOf("videoId", "name")
+        val similarKeys = setOf("id", "name", "coverUrl", "totalRating")
+
+        val elements = strictJson.parseToJsonElement(detailsString).jsonArray
+        elements.forEachIndexed { index, element ->
+            val obj = element.jsonObject
+            assertEquals("Unexpected contract keys in details item $index", expectedKeys, obj.keys)
+            obj["releaseDates"]!!.jsonArray.forEach { assertEquals(releaseDateKeys, it.jsonObject.keys) }
+            obj["companies"]!!.jsonArray.forEach { assertEquals(companyKeys, it.jsonObject.keys) }
+            obj["videos"]!!.jsonArray.forEach { assertEquals(videoKeys, it.jsonObject.keys) }
+            obj["similarGames"]!!.jsonArray.forEach { assertEquals(similarKeys, it.jsonObject.keys) }
+        }
+
+        val details: List<GameDetailsDto> = strictJson.decodeFromString(detailsString)
+        val listGames: List<GameDto> = strictJson.decodeFromString(gamesString)
+        assertEquals(10, details.size)
+        assertEquals(details.size, details.map(GameDetailsDto::id).distinct().size)
+
+        // Offline navigation closure: same id set as the list fixture and every
+        // similarGames reference resolvable without network.
+        assertEquals(listGames.map(GameDto::id).toSet(), details.map(GameDetailsDto::id).toSet())
+        val detailIds = details.map(GameDetailsDto::id).toSet()
+        assertTrue(details.all { game -> game.similarGames.all { it.id in detailIds } })
+
+        assertTrue(details.all { it.coverUrl?.startsWith("file:///android_asset/covers/") == true })
+        assertTrue(details.all { it.screenshots.all { shot -> shot.startsWith("file:///android_asset/screenshots/") } })
+        assertTrue(details.all { it.genres.isNotEmpty() && it.platforms.isNotEmpty() })
+        assertTrue(details.all { it.videos.all { video -> video.videoId.isNotBlank() } })
+        assertTrue(details.all { it.similarGames.isNotEmpty() && it.similarGames.all { s -> !s.name.isNullOrBlank() } })
+
+        // Representative non-default assertions against live-verified IGDB data
+        val witcher = details.first { it.id == 1942L }
+        assertEquals("The Witcher 3: Wild Hunt", witcher.name)
+        assertEquals("https://www.igdb.com/games/the-witcher-3-wild-hunt", witcher.url)
+        assertEquals(5451L, witcher.totalRatingCount)
+        assertTrue(witcher.themes.contains("Fantasy"))
+        assertTrue(witcher.companies.any { it.name == "CD Projekt RED" && it.isDeveloper })
+    }
+
+    @Test
+    fun `getGameDetails returns enriched game by ID or throws when not found`() = runTest {
+        val game: GameDetailsDto = fakeDataSource.getGameDetails(1942L)
         assertEquals("The Witcher 3: Wild Hunt", game.name)
+        assertTrue(game.screenshots.isNotEmpty())
+        assertTrue(game.similarGames.isNotEmpty())
 
         try {
             fakeDataSource.getGameDetails(999999L)

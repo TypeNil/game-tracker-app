@@ -1,0 +1,502 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "dfca111cbca726659eec0711cbc9d0c4",
+    "entities": [
+      {
+        "tableName": "games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `coverUrl` TEXT, `rating` REAL, `releaseDateEpochSeconds` INTEGER, `summary` TEXT, `genres` TEXT NOT NULL, `platforms` TEXT NOT NULL, `cachedAtEpochSeconds` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverUrl",
+            "columnName": "coverUrl",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "releaseDateEpochSeconds",
+            "columnName": "releaseDateEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "genres",
+            "columnName": "genres",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platforms",
+            "columnName": "platforms",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAtEpochSeconds",
+            "columnName": "cachedAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_games_name",
+            "unique": false,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_games_name` ON `${TABLE_NAME}` (`name`)"
+          },
+          {
+            "name": "index_games_rating",
+            "unique": false,
+            "columnNames": [
+              "rating"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_games_rating` ON `${TABLE_NAME}` (`rating`)"
+          },
+          {
+            "name": "index_games_releaseDateEpochSeconds",
+            "unique": false,
+            "columnNames": [
+              "releaseDateEpochSeconds"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_games_releaseDateEpochSeconds` ON `${TABLE_NAME}` (`releaseDateEpochSeconds`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "search_queries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`query` TEXT NOT NULL, `createdAtEpochSeconds` INTEGER NOT NULL, `lastQueriedAtEpochSeconds` INTEGER NOT NULL, `resultCount` INTEGER NOT NULL, PRIMARY KEY(`query`))",
+        "fields": [
+          {
+            "fieldPath": "query",
+            "columnName": "query",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochSeconds",
+            "columnName": "createdAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastQueriedAtEpochSeconds",
+            "columnName": "lastQueriedAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resultCount",
+            "columnName": "resultCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "query"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_search_queries_lastQueriedAtEpochSeconds",
+            "unique": false,
+            "columnNames": [
+              "lastQueriedAtEpochSeconds"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_search_queries_lastQueriedAtEpochSeconds` ON `${TABLE_NAME}` (`lastQueriedAtEpochSeconds`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "search_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`query` TEXT NOT NULL, `gameId` INTEGER NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`query`, `gameId`), FOREIGN KEY(`query`) REFERENCES `search_queries`(`query`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "query",
+            "columnName": "query",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "query",
+            "gameId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_search_results_gameId",
+            "unique": false,
+            "columnNames": [
+              "gameId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_search_results_gameId` ON `${TABLE_NAME}` (`gameId`)"
+          },
+          {
+            "name": "index_search_results_query_position",
+            "unique": true,
+            "columnNames": [
+              "query",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_search_results_query_position` ON `${TABLE_NAME}` (`query`, `position`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "search_queries",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "query"
+            ],
+            "referencedColumns": [
+              "query"
+            ]
+          },
+          {
+            "table": "games",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "remote_keys",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`queryKey` TEXT NOT NULL, `prevOffset` INTEGER, `nextOffset` INTEGER, `lastUpdatedEpochSeconds` INTEGER NOT NULL, PRIMARY KEY(`queryKey`))",
+        "fields": [
+          {
+            "fieldPath": "queryKey",
+            "columnName": "queryKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prevOffset",
+            "columnName": "prevOffset",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nextOffset",
+            "columnName": "nextOffset",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastUpdatedEpochSeconds",
+            "columnName": "lastUpdatedEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "queryKey"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "library_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gameId` INTEGER NOT NULL, `status` TEXT NOT NULL, `userRating` INTEGER, `userNotes` TEXT, `isFavorite` INTEGER NOT NULL, `addedAtEpochSeconds` INTEGER NOT NULL, `updatedAtEpochSeconds` INTEGER NOT NULL, `hoursPlayed` INTEGER NOT NULL, PRIMARY KEY(`gameId`), FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userRating",
+            "columnName": "userRating",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "userNotes",
+            "columnName": "userNotes",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "isFavorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAtEpochSeconds",
+            "columnName": "addedAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochSeconds",
+            "columnName": "updatedAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hoursPlayed",
+            "columnName": "hoursPlayed",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gameId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_library_entries_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_entries_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_library_entries_isFavorite",
+            "unique": false,
+            "columnNames": [
+              "isFavorite"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_entries_isFavorite` ON `${TABLE_NAME}` (`isFavorite`)"
+          },
+          {
+            "name": "index_library_entries_updatedAtEpochSeconds",
+            "unique": false,
+            "columnNames": [
+              "updatedAtEpochSeconds"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_entries_updatedAtEpochSeconds` ON `${TABLE_NAME}` (`updatedAtEpochSeconds`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "games",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "game_details",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gameId` INTEGER NOT NULL, `name` TEXT NOT NULL, `coverUrl` TEXT, `rating` REAL, `totalRating` REAL, `totalRatingCount` INTEGER, `releaseDateEpochSeconds` INTEGER, `summary` TEXT, `url` TEXT, `genres` TEXT NOT NULL, `themes` TEXT NOT NULL, `gameModes` TEXT NOT NULL, `platforms` TEXT NOT NULL, `releaseDates` TEXT NOT NULL, `companies` TEXT NOT NULL, `screenshots` TEXT NOT NULL, `videos` TEXT NOT NULL, `similarGames` TEXT NOT NULL, `cachedAtEpochSeconds` INTEGER NOT NULL, PRIMARY KEY(`gameId`))",
+        "fields": [
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverUrl",
+            "columnName": "coverUrl",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalRating",
+            "columnName": "totalRating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalRatingCount",
+            "columnName": "totalRatingCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "releaseDateEpochSeconds",
+            "columnName": "releaseDateEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "genres",
+            "columnName": "genres",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "themes",
+            "columnName": "themes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameModes",
+            "columnName": "gameModes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platforms",
+            "columnName": "platforms",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseDates",
+            "columnName": "releaseDates",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "companies",
+            "columnName": "companies",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "screenshots",
+            "columnName": "screenshots",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videos",
+            "columnName": "videos",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "similarGames",
+            "columnName": "similarGames",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAtEpochSeconds",
+            "columnName": "cachedAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gameId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dfca111cbca726659eec0711cbc9d0c4')"
+    ]
+  }
+}

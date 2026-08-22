@@ -3,7 +3,12 @@ package io.github.typenil.gametracker.core.network
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.network.mapper.toAppError
 import io.github.typenil.gametracker.core.network.mapper.toDomain
+import io.github.typenil.gametracker.core.network.model.CompanyDto
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.network.model.ReleaseDateDto
+import io.github.typenil.gametracker.core.network.model.SimilarGameDto
+import io.github.typenil.gametracker.core.network.model.VideoDto
 import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody
@@ -67,6 +72,65 @@ class GameMappersTest {
         assertNull(domain.summary)
         assertTrue(domain.genres.isEmpty())
         assertTrue(domain.platforms.isEmpty())
+    }
+
+    @Test
+    fun `toDomain maps enriched GameDetailsDto keeping both rating scales`() {
+        val dto = GameDetailsDto(
+            id = 1942L,
+            name = "The Witcher 3: Wild Hunt",
+            coverUrl = "https://example.com/cover.jpg",
+            rating = 93.7,
+            releaseDateEpochSeconds = 1431993600L,
+            summary = "RPG masterpiece",
+            genres = listOf("RPG"),
+            platforms = listOf("PC"),
+            url = "https://www.igdb.com/games/the-witcher-3-wild-hunt",
+            totalRating = 92.7,
+            totalRatingCount = 5451L,
+            themes = listOf("Fantasy"),
+            gameModes = listOf("Single player"),
+            releaseDates = listOf(ReleaseDateDto(platform = "PC", dateEpochSeconds = 1431993600L, year = 2015)),
+            companies = listOf(CompanyDto(name = "CD Projekt RED", isDeveloper = true)),
+            screenshots = listOf("https://example.com/shot.jpg"),
+            videos = listOf(VideoDto(videoId = "abc123", name = "Trailer")),
+            similarGames = listOf(SimilarGameDto(id = 25076L, name = "Red Dead Redemption 2", totalRating = 93.6))
+        )
+
+        val domain = dto.toDomain()
+
+        assertEquals(1942L, domain.id)
+        assertEquals(93.7, domain.rating!!, 0.001)
+        assertEquals(92.7, domain.totalRating!!, 0.001)
+        assertEquals(5451L, domain.totalRatingCount)
+        assertEquals("https://www.igdb.com/games/the-witcher-3-wild-hunt", domain.url)
+        assertEquals(listOf("Fantasy"), domain.themes)
+        assertEquals(listOf("Single player"), domain.gameModes)
+        assertEquals("PC", domain.releaseDates.single().platform)
+        assertEquals(1431993600L, domain.releaseDates.single().dateEpochSeconds)
+        assertEquals("CD Projekt RED", domain.companies.single().name)
+        assertTrue(domain.companies.single().isDeveloper)
+        assertEquals("abc123", domain.videos.single().videoId)
+        assertEquals(25076L, domain.similarGames.single().id)
+        assertEquals(93.6, domain.similarGames.single().totalRating!!, 0.001)
+    }
+
+    @Test
+    fun `toDomain maps sparse GameDetailsDto into defaults`() {
+        val dto = GameDetailsDto(id = 7L, name = "Sparse Game")
+
+        val domain = dto.toDomain()
+
+        assertEquals(7L, domain.id)
+        assertNull(domain.totalRating)
+        assertNull(domain.totalRatingCount)
+        assertNull(domain.url)
+        assertTrue(domain.themes.isEmpty())
+        assertTrue(domain.releaseDates.isEmpty())
+        assertTrue(domain.companies.isEmpty())
+        assertTrue(domain.screenshots.isEmpty())
+        assertTrue(domain.videos.isEmpty())
+        assertTrue(domain.similarGames.isEmpty())
     }
 
     @Test

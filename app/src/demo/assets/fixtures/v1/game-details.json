@@ -1,0 +1,1053 @@
+[
+  {
+    "id": 1942,
+    "name": "The Witcher 3: Wild Hunt",
+    "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+    "rating": 95.8,
+    "releaseDateEpochSeconds": 1431993600,
+    "summary": "The Witcher: Wild Hunt is a story-driven open world RPG set in a fantasy universe.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Adventure"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S",
+      "Nintendo Switch"
+    ],
+    "url": "https://www.igdb.com/games/the-witcher-3-wild-hunt",
+    "totalRating": 92.75978573442862,
+    "totalRatingCount": 5451,
+    "themes": [
+      "Action",
+      "Fantasy",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "XONE",
+        "dateEpochSeconds": 1431993600,
+        "year": 2015
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1431993600,
+        "year": 2015
+      },
+      {
+        "platform": "PS4",
+        "dateEpochSeconds": 1431993600,
+        "year": 2015
+      },
+      {
+        "platform": "Switch",
+        "dateEpochSeconds": 1611792000,
+        "year": 2021
+      },
+      {
+        "platform": "Series X|S",
+        "dateEpochSeconds": 1670976000,
+        "year": 2022
+      }
+    ],
+    "companies": [
+      {
+        "name": "WB Games",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "cdp.pl",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Spike Chunsoft",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Bandai Namco Entertainment",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "CD Projekt RED",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "D3T Limited",
+        "isDeveloper": false,
+        "isPublisher": false
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_witcher3_1.jpg",
+      "file:///android_asset/screenshots/shot_witcher3_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "yowv6_rspoM",
+        "name": "Developer Diary: Creating the Sound"
+      },
+      {
+        "videoId": "xQGam9OHSUo",
+        "name": "TV Spot"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 25076,
+        "name": "Red Dead Redemption 2",
+        "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
+        "totalRating": 93.65229910765777
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 119133,
+    "name": "Elden Ring",
+    "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+    "rating": 95.2,
+    "releaseDateEpochSeconds": 1645747200,
+    "summary": "Elden Ring is an action-RPG developed by FromSoftware, set in the Lands Between.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Action"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ],
+    "url": "https://www.igdb.com/games/elden-ring",
+    "totalRating": 95.18151699273598,
+    "totalRatingCount": 2256,
+    "themes": [
+      "Action",
+      "Fantasy",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1645747200,
+        "year": 2022
+      },
+      {
+        "platform": "PS4",
+        "dateEpochSeconds": 1645747200,
+        "year": 2022
+      },
+      {
+        "platform": "PS5",
+        "dateEpochSeconds": 1645747200,
+        "year": 2022
+      },
+      {
+        "platform": "XONE",
+        "dateEpochSeconds": 1645747200,
+        "year": 2022
+      },
+      {
+        "platform": "Series X|S",
+        "dateEpochSeconds": 1645747200,
+        "year": 2022
+      }
+    ],
+    "companies": [
+      {
+        "name": "Bandai Namco Entertainment",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "FromSoftware",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_eldenring_1.jpg",
+      "file:///android_asset/screenshots/shot_eldenring_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "D1mDo1CEMuE",
+        "name": "Trailer"
+      },
+      {
+        "videoId": "E3Huy2cdih0",
+        "name": "Gameplay Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": 92.75978573442862
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": 94.76679864490185
+      },
+      {
+        "id": 112875,
+        "name": "God of War Ragnarök",
+        "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 119171,
+    "name": "Baldur's Gate 3",
+    "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+    "rating": 96.1,
+    "releaseDateEpochSeconds": 1691020800,
+    "summary": "An ancient evil has returned to Baldur's Gate, intent on devouring it from the inside out.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Strategy",
+      "Turn-based strategy (TBS)"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S",
+      "Mac"
+    ],
+    "url": "https://www.igdb.com/games/baldurs-gate-iii",
+    "totalRating": 94.76679864490185,
+    "totalRatingCount": 1592,
+    "themes": [
+      "Action",
+      "Fantasy"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative",
+      "Split screen"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1601942400,
+        "year": 2020
+      },
+      {
+        "platform": "Mac",
+        "dateEpochSeconds": 1601942400,
+        "year": 2020
+      },
+      {
+        "platform": "Stadia",
+        "dateEpochSeconds": 1601942400,
+        "year": 2020
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1691020800,
+        "year": 2023
+      },
+      {
+        "platform": "PS5",
+        "dateEpochSeconds": 1693958400,
+        "year": 2023
+      }
+    ],
+    "companies": [
+      {
+        "name": "Wushu Studios",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Anshar Studios",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Larian Studios",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_bg3_1.jpg",
+      "file:///android_asset/screenshots/shot_bg3_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "jNY7AEQ59-8",
+        "name": "Cinematic Trailer"
+      },
+      {
+        "videoId": "o5xpbAsly48",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 112875,
+        "name": "God of War Ragnarök",
+        "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 112875,
+    "name": "God of War Ragnarök",
+    "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
+    "rating": 93.7,
+    "releaseDateEpochSeconds": 1667952000,
+    "summary": "Kratos and Atreus must journey to each of the Nine Realms in search of answers.",
+    "genres": [
+      "Action",
+      "Adventure",
+      "Hack and slash/Beat 'em up"
+    ],
+    "platforms": [
+      "PlayStation 4",
+      "PlayStation 5",
+      "PC"
+    ],
+    "url": "https://www.igdb.com/games/god-of-war-ragnarok",
+    "totalRating": 92.75697496923962,
+    "totalRatingCount": 1145,
+    "themes": [
+      "Action",
+      "Fantasy",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PS4",
+        "dateEpochSeconds": 1667952000,
+        "year": 2022
+      },
+      {
+        "platform": "PS5",
+        "dateEpochSeconds": 1667952000,
+        "year": 2022
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1726704000,
+        "year": 2024
+      }
+    ],
+    "companies": [
+      {
+        "name": "Sony Interactive Entertainment",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "SIE Santa Monica Studio",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Valkyrie Entertainment",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Jetpack Interactive",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Bluepoint Games",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "RedHot Software",
+        "isDeveloper": false,
+        "isPublisher": false
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_gow_ragnarok_1.jpg",
+      "file:///android_asset/screenshots/shot_gow_ragnarok_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "EE-4GvjKcfs",
+        "name": "Trailer"
+      },
+      {
+        "videoId": "g1wr0DfV73E",
+        "name": "Launch Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 25076,
+        "name": "Red Dead Redemption 2",
+        "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
+        "totalRating": 93.65229910765777
+      },
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 1877,
+    "name": "Cyberpunk 2077",
+    "coverUrl": "file:///android_asset/covers/cover_cyberpunk.jpg",
+    "rating": 87.4,
+    "releaseDateEpochSeconds": 1607558400,
+    "summary": "Cyberpunk 2077 is an open-world, action-adventure RPG set in Night City.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Shooter",
+      "Action"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ],
+    "url": "https://www.igdb.com/games/cyberpunk-2077",
+    "totalRating": 79.04731748051057,
+    "totalRatingCount": 1629,
+    "themes": [
+      "Action",
+      "Science fiction",
+      "Sandbox",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1607558400,
+        "year": 2020
+      },
+      {
+        "platform": "XONE",
+        "dateEpochSeconds": 1607558400,
+        "year": 2020
+      },
+      {
+        "platform": "Stadia",
+        "dateEpochSeconds": 1607558400,
+        "year": 2020
+      },
+      {
+        "platform": "PS4",
+        "dateEpochSeconds": 1607558400,
+        "year": 2020
+      },
+      {
+        "platform": "Series X|S",
+        "dateEpochSeconds": 1644883200,
+        "year": 2022
+      }
+    ],
+    "companies": [
+      {
+        "name": "QLOC",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Digital Scapes Studios",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "CD Projekt Red Wrocław",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "CD Projekt",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "CD Projekt RED",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Frame Machine",
+        "isDeveloper": false,
+        "isPublisher": false
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_cyberpunk_1.jpg",
+      "file:///android_asset/screenshots/shot_cyberpunk_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "vjF9GgrY9c0",
+        "name": "Gameplay Video"
+      },
+      {
+        "videoId": "FknHjl7eQ6o",
+        "name": "Deep Dive Video"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 119388,
+    "name": "The Legend of Zelda: Tears of the Kingdom",
+    "coverUrl": "file:///android_asset/covers/cover_zelda_totk.jpg",
+    "rating": 95.5,
+    "releaseDateEpochSeconds": 1683849600,
+    "summary": "An epic adventure across the land and skies of Hyrule awaits in Tears of the Kingdom.",
+    "genres": [
+      "Adventure",
+      "Action",
+      "Puzzle"
+    ],
+    "platforms": [
+      "Nintendo Switch"
+    ],
+    "url": "https://www.igdb.com/games/the-legend-of-zelda-tears-of-the-kingdom",
+    "totalRating": 94.0285475344884,
+    "totalRatingCount": 909,
+    "themes": [
+      "Action",
+      "Fantasy",
+      "Science fiction",
+      "Sandbox",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "Switch",
+        "dateEpochSeconds": 1683849600,
+        "year": 2023
+      }
+    ],
+    "companies": [
+      {
+        "name": "Monolith Soft",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Nintendo EPD Production Group No. 3",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Nintendo",
+        "isDeveloper": false,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_zelda_totk_1.jpg",
+      "file:///android_asset/screenshots/shot_zelda_totk_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "3fr1Z07AV00",
+        "name": "Trailer"
+      },
+      {
+        "videoId": "Pi-MRZBP91I",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 25076,
+        "name": "Red Dead Redemption 2",
+        "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
+        "totalRating": 93.65229910765777
+      },
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 14593,
+    "name": "Hollow Knight",
+    "coverUrl": "file:///android_asset/covers/cover_hollow_knight.jpg",
+    "rating": 91.8,
+    "releaseDateEpochSeconds": 1487894400,
+    "summary": "Forge your own path in Hollow Knight! An epic action adventure through an insect kingdom.",
+    "genres": [
+      "Platform",
+      "Adventure",
+      "Indie"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 4",
+      "Xbox One",
+      "Nintendo Switch"
+    ],
+    "url": "https://www.igdb.com/games/hollow-knight",
+    "totalRating": 91.53768705635827,
+    "totalRatingCount": 2221,
+    "themes": [
+      "Action",
+      "Fantasy"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "Linux",
+        "dateEpochSeconds": 1487894400,
+        "year": 2017
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1487894400,
+        "year": 2017
+      },
+      {
+        "platform": "Mac",
+        "dateEpochSeconds": 1491868800,
+        "year": 2017
+      },
+      {
+        "platform": "WiiU",
+        "dateEpochSeconds": 1514678400,
+        "year": 2017
+      },
+      {
+        "platform": "Switch",
+        "dateEpochSeconds": 1528761600,
+        "year": 2018
+      }
+    ],
+    "companies": [
+      {
+        "name": "Team Cherry",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_hollow_knight_1.jpg",
+      "file:///android_asset/screenshots/shot_hollow_knight_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "Y2amTl5lBYM",
+        "name": "Trailer"
+      },
+      {
+        "videoId": "UAO2urG23S4",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 204350,
+    "name": "The Last of Us Part I",
+    "coverUrl": "file:///android_asset/covers/cover_tlou.jpg",
+    "rating": 92.4,
+    "releaseDateEpochSeconds": 1662076800,
+    "summary": "Joel is hired to smuggle 14-year-old Ellie out of a military quarantine zone.",
+    "genres": [
+      "Shooter",
+      "Adventure",
+      "Action"
+    ],
+    "platforms": [
+      "PlayStation 5",
+      "PC"
+    ],
+    "url": "https://www.igdb.com/games/the-last-of-us-part-i",
+    "totalRating": 85.08809373035893,
+    "totalRatingCount": 815,
+    "themes": [
+      "Action",
+      "Horror",
+      "Survival",
+      "Stealth"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PS5",
+        "dateEpochSeconds": 1662076800,
+        "year": 2022
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1679961600,
+        "year": 2023
+      }
+    ],
+    "companies": [
+      {
+        "name": "Sony Interactive Entertainment",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Iron Galaxy Studios",
+        "isDeveloper": false,
+        "isPublisher": false
+      },
+      {
+        "name": "Naughty Dog",
+        "isDeveloper": true,
+        "isPublisher": false
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_tlou_1.jpg",
+      "file:///android_asset/screenshots/shot_tlou_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "JNrqyml09yA",
+        "name": "Trailer"
+      },
+      {
+        "videoId": "LW5NwaUXgIA",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 25076,
+    "name": "Red Dead Redemption 2",
+    "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
+    "rating": 96.0,
+    "releaseDateEpochSeconds": 1540512000,
+    "summary": "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run.",
+    "genres": [
+      "Shooter",
+      "Role-playing (RPG)",
+      "Adventure"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 4",
+      "Xbox One"
+    ],
+    "url": "https://www.igdb.com/games/red-dead-redemption-2",
+    "totalRating": 93.65229910765777,
+    "totalRatingCount": 3809,
+    "themes": [
+      "Action",
+      "Drama",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PS4",
+        "dateEpochSeconds": 1540512000,
+        "year": 2018
+      },
+      {
+        "platform": "XONE",
+        "dateEpochSeconds": 1540512000,
+        "year": 2018
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1572912000,
+        "year": 2019
+      },
+      {
+        "platform": "Stadia",
+        "dateEpochSeconds": 1574121600,
+        "year": 2019
+      }
+    ],
+    "companies": [
+      {
+        "name": "Take-Two Interactive",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Rockstar Games",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_rdr2_1.jpg",
+      "file:///android_asset/screenshots/shot_rdr2_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "94B-38sX5fs",
+        "name": "Announcement Trailer"
+      },
+      {
+        "videoId": "HVRzx17WHVk",
+        "name": "Launch Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": 92.75978573442862
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": null
+      }
+    ]
+  },
+  {
+    "id": 72,
+    "name": "Portal 2",
+    "coverUrl": "file:///android_asset/covers/cover_portal2.jpg",
+    "rating": 94.6,
+    "releaseDateEpochSeconds": 1303171200,
+    "summary": "Sequel to the acclaimed Portal (2007), Portal 2 pits the protagonist against a corrupt AI.",
+    "genres": [
+      "Shooter",
+      "Platform",
+      "Puzzle"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 3",
+      "Xbox 360",
+      "Nintendo Switch"
+    ],
+    "url": "https://www.igdb.com/games/portal-2",
+    "totalRating": 91.86809791031709,
+    "totalRatingCount": 4451,
+    "themes": [
+      "Action",
+      "Science fiction",
+      "Comedy"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative",
+      "Split screen"
+    ],
+    "releaseDates": [
+      {
+        "platform": "Mac",
+        "dateEpochSeconds": 1303084800,
+        "year": 2011
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1303084800,
+        "year": 2011
+      },
+      {
+        "platform": "PS3",
+        "dateEpochSeconds": 1303257600,
+        "year": 2011
+      },
+      {
+        "platform": "X360",
+        "dateEpochSeconds": 1303430400,
+        "year": 2011
+      },
+      {
+        "platform": "Linux",
+        "dateEpochSeconds": 1393372800,
+        "year": 2014
+      }
+    ],
+    "companies": [
+      {
+        "name": "Valve",
+        "isDeveloper": true,
+        "isPublisher": true
+      },
+      {
+        "name": "Electronic Arts",
+        "isDeveloper": false,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/shot_portal2_1.jpg",
+      "file:///android_asset/screenshots/shot_portal2_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "mC_u9ZwlIUc",
+        "name": "Trailer"
+      },
+      {
+        "videoId": "9r0rlRqpkOw",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 1942,
+        "name": "The Witcher 3: Wild Hunt",
+        "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": null
+      },
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
+        "totalRating": null
+      }
+    ]
+  }
+]
