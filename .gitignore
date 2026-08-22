@@ -61,9 +61,16 @@ fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
 
-# AI Agent Local Context & Rules (Local to developer machine only)
+# Local-only: agent context, plans, IDE/agent caches
 .agents/
 AGENTS.md
 AGENTS.android.md
 .gemini/
+.grok/
+.zcode/
+.cursor/
+.claude/
+CLAUDE.md
+.codex/
+.omp/
 docs/
