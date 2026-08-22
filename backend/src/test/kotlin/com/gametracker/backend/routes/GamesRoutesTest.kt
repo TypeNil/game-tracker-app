@@ -279,7 +279,7 @@ class GamesRoutesTest {
         val similarGames = (1..11).joinToString(",") {
             """{"id": ${2000 + it}, "name": "Similar $it", """ +
                 """"cover": {"id": $it, "image_id": "co$it"}, "total_rating": ${80.0 + it}}"""
-        }
+        } + """, {"name": "Broken Similar", "cover": {"id": 99, "image_id": "co99"}}"""
         return """
             [
                 {
@@ -374,6 +374,8 @@ class GamesRoutesTest {
             assertEquals("vid1", game.videos[0].videoId)
             assertEquals("Trailer 1", game.videos[0].name)
             assertEquals(10, game.similarGames.size)
+            // Similar без id (невозможна навигация) пропускается вместе с тримом
+            assertTrue(game.similarGames.none { it.name == "Broken Similar" })
             assertEquals(2001L, game.similarGames[0].id)
             assertEquals("https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg", game.similarGames[0].coverUrl)
             cache.close()

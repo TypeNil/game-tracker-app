@@ -70,7 +70,7 @@ data class IgdbSimilarCover(
 
 @Serializable
 data class IgdbSimilarGame(
-    val id: Long,
+    val id: Long? = null,
     val name: String? = null,
     val cover: IgdbSimilarCover? = null,
     @SerialName("total_rating")
@@ -239,9 +239,11 @@ private fun List<IgdbVideo>?.toVideoList(): List<GameVideoDto> =
 
 private fun List<IgdbSimilarGame>?.toSimilarGameList(): List<SimilarGameDto> =
     orEmpty()
-        .map { similar ->
+        // A similar game without an id cannot be navigated to - skip it
+        .mapNotNull { similar ->
+            val id = similar.id ?: return@mapNotNull null
             SimilarGameDto(
-                id = similar.id,
+                id = id,
                 name = similar.name?.trim()?.takeIf(String::isNotEmpty),
                 coverUrl = similar.cover?.let { igdbImageUrl(it.imageId, rawUrl = null, IMAGE_SIZE_COVER_BIG) },
                 totalRating = similar.totalRating
