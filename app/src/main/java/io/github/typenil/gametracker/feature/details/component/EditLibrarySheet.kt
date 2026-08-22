@@ -106,10 +106,14 @@ fun EditLibrarySheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
-                .verticalScroll(rememberScrollState())
         ) {
-            Text(
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
                 text = stringResource(
                     if (initialEntry != null) R.string.library_edit_entry_title else R.string.library_add_to_library
                 ),
@@ -345,9 +349,11 @@ fun EditLibrarySheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            }
 
-            // 6. Action Buttons
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 6. Sticky Action Buttons
             Button(
                 onClick = {
                     onSave(selectedStatus, selectedRating, currentHours, notes, isFavorite)
@@ -371,6 +377,8 @@ fun EditLibrarySheet(
                     Text(stringResource(R.string.library_remove))
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
