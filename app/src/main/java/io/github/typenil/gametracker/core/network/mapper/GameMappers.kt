@@ -6,10 +6,12 @@ import io.github.typenil.gametracker.core.model.GameCompany
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameSummary
+import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.network.model.ErrorResponseDto
 import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.network.model.RecommendationCandidateDto
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
@@ -41,6 +43,20 @@ fun GameDto.toDomain(): Game {
  * Maps a list of [GameDto]s to a list of domain [Game]s.
  */
 fun List<GameDto>.toDomain(): List<Game> = map { it.toDomain() }
+
+fun RecommendationCandidateDto.toDomain() = RecommendationCandidate(
+    gameId = id,
+    name = name,
+    coverUrl = coverUrl,
+    rating = rating,
+    ratingCount = ratingCount,
+    releaseDateEpochSeconds = releaseDateEpochSeconds,
+    summary = summary,
+    genres = genres,
+    themes = themes,
+    platforms = platforms,
+    similarToGameIds = similarToGameIds,
+)
 
 /**
  * Maps the enriched details [GameDetailsDto] to a pure domain [GameDetails] model.
