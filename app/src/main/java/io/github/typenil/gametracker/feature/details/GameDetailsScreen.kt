@@ -82,13 +82,13 @@ import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
-import io.github.typenil.gametracker.feature.details.util.displayNameRes
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

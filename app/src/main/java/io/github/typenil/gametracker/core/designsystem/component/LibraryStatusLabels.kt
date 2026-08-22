@@ -1,4 +1,4 @@
-package io.github.typenil.gametracker.feature.details.util
+package io.github.typenil.gametracker.core.designsystem.component
 
 import androidx.annotation.StringRes
 import io.github.typenil.gametracker.R

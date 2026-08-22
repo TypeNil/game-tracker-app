@@ -275,9 +275,15 @@ fun LibraryScreen(
                 }
 
                 uiState.isFilteredEmpty -> {
-                    LibrarySearchEmptyState(
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    if (uiState.isSearchOrFilterActive) {
+                        LibrarySearchEmptyState(
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        LibraryTabEmptyState(
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 else -> {
@@ -366,6 +372,40 @@ private fun LibrarySearchEmptyState(
             )
             Text(
                 text = stringResource(R.string.library_search_empty_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryTabEmptyState(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.BookmarkBorder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(56.dp)
+            )
+            Text(
+                text = stringResource(R.string.library_tab_empty_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = stringResource(R.string.library_tab_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center

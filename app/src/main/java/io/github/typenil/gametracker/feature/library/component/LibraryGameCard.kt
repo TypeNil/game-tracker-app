@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
+import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.model.LibraryGame
-import io.github.typenil.gametracker.feature.details.util.displayNameRes
 
 /**
  * Grid card representing a game in the user's library.

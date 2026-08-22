@@ -19,6 +19,9 @@ data class LibraryUiState(
     val isCatalogEmpty: Boolean
         get() = !isLoading && allGames.isEmpty()
 
+    val isSearchOrFilterActive: Boolean
+        get() = searchQuery.isNotBlank() || filterFavoritesOnly
+
     val isFilteredEmpty: Boolean
         get() = !isLoading && filteredGames.isEmpty()
 }
