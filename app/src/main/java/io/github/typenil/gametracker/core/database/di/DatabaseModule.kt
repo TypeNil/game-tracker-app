@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.typenil.gametracker.core.database.GameTrackerDatabase
 import io.github.typenil.gametracker.core.database.dao.GameDao
+import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
@@ -37,13 +38,18 @@ abstract class DatabaseModule {
                 GameTrackerDatabase::class.java,
                 GameTrackerDatabase.DATABASE_NAME
             )
-                .addMigrations(DatabaseMigrations.MIGRATION_1_2)
+                .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3)
                 .build()
         }
 
         @Provides
         fun provideGameDao(database: GameTrackerDatabase): GameDao {
             return database.gameDao()
+        }
+
+        @Provides
+        fun provideGameDetailsDao(database: GameTrackerDatabase): GameDetailsDao {
+            return database.gameDetailsDao()
         }
 
         @Provides

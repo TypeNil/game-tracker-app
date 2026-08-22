@@ -2,9 +2,15 @@ package io.github.typenil.gametracker.core.database.mapper
 
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.GameCompany
+import io.github.typenil.gametracker.core.model.GameDetails
+import io.github.typenil.gametracker.core.model.GameReleaseDate
+import io.github.typenil.gametracker.core.model.GameSummary
+import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EntityMappersTest {
@@ -108,5 +114,41 @@ class EntityMappersTest {
         val mappedBack = entity.toDomain()
         assertEquals(entry, mappedBack)
         assertEquals(55, mappedBack.hoursPlayed)
+    }
+
+    @Test
+    fun `GameDetails toEntity and toDomain round-trip keeps both rating scales and nested lists`() {
+        val details = GameDetails(
+            id = 1942L,
+            name = "The Witcher 3: Wild Hunt",
+            coverUrl = "https://example.com/cover.jpg",
+            rating = 93.7,
+            totalRating = 92.7,
+            totalRatingCount = 5451L,
+            releaseDateEpochSeconds = 1431993600L,
+            summary = "RPG masterpiece",
+            genres = listOf("RPG"),
+            themes = listOf("Fantasy"),
+            gameModes = listOf("Single player"),
+            platforms = listOf("PC"),
+            releaseDates = listOf(GameReleaseDate(platform = "PC", dateEpochSeconds = 1431993600L, year = 2015)),
+            companies = listOf(GameCompany(name = "CD Projekt RED", isDeveloper = true)),
+            screenshots = listOf("https://example.com/shot1.jpg"),
+            videos = listOf(GameVideo(videoId = "abc123", name = "Trailer")),
+            similarGames = listOf(GameSummary(id = 25076L, name = "Red Dead Redemption 2", totalRating = 93.6)),
+            url = "https://www.igdb.com/games/the-witcher-3-wild-hunt"
+        )
+
+        val entity = details.toEntity(cachedAtEpochSeconds = 1700000000L)
+        assertEquals(1942L, entity.gameId)
+        assertEquals(93.7, entity.rating!!, 0.001)
+        assertEquals(92.7, entity.totalRating!!, 0.001)
+        assertEquals(5451L, entity.totalRatingCount)
+        assertEquals("CD Projekt RED", entity.companies.single().name)
+        assertTrue(entity.companies.single().isDeveloper)
+        assertEquals(1700000000L, entity.cachedAtEpochSeconds)
+
+        val mappedBack = entity.toDomain()
+        assertEquals(details, mappedBack)
     }
 }

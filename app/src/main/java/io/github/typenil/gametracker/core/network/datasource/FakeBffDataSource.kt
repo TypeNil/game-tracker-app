@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.core.network.datasource
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -31,6 +32,25 @@ class FakeBffDataSource @Inject constructor(
         }
     }
 
+    /**
+     * Enriched details fixture. Deliberately a separate file: list payloads stay
+     * lean exactly like the real BFF contract, and details ids must cover every
+     * `similarGames` reference of both fixtures (offline navigation closure).
+     */
+    private val mockDetails: List<GameDetailsDto> by lazy {
+        try {
+            context.assets.open("fixtures/v1/game-details.json")
+                .bufferedReader(Charsets.UTF_8)
+                .use { reader ->
+                    json.decodeFromString<List<GameDetailsDto>>(reader.readText())
+                }
+        } catch (e: java.io.IOException) {
+            throw IllegalStateException("Failed to read fixtures/v1/game-details.json fixture: ${e.message}", e)
+        } catch (e: kotlinx.serialization.SerializationException) {
+            throw IllegalStateException("Failed to parse fixtures/v1/game-details.json fixture: ${e.message}", e)
+        }
+    }
+
     override suspend fun getTopRatedGames(limit: Int, offset: Int): List<GameDto> {
         validatePagination(limit, offset)
         if (offset >= mockGames.size) return emptyList()
@@ -52,11 +72,12 @@ class FakeBffDataSource @Inject constructor(
         return filtered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
     }
 
-    override suspend fun getGameDetails(id: Long): GameDto {
+    override suspend fun getGameDetails(id: Long): GameDetailsDto {
         if (id <= 0) {
             throw IllegalArgumentException("Game ID must be a positive integer")
         }
-        return mockGames.firstOrNull { it.id == id }
+        // No fallback into mockGames: serving a skinny object would hide fixture drift.
+        return mockDetails.firstOrNull { it.id == id }
             ?: throw NoSuchElementException("Game with id $id not found")
     }
 

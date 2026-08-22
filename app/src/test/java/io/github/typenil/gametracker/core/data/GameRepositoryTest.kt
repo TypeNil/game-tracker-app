@@ -4,8 +4,10 @@ import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.paging.GameQueryKey
 import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
 import io.github.typenil.gametracker.core.database.dao.GameDao
+import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
+import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
@@ -14,7 +16,12 @@ import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
+import io.github.typenil.gametracker.core.network.model.CompanyDto
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.network.model.ReleaseDateDto
+import io.github.typenil.gametracker.core.network.model.SimilarGameDto
+import io.github.typenil.gametracker.core.network.model.VideoDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -29,6 +36,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -41,6 +49,7 @@ class GameRepositoryTest {
 
     private val remoteDataSource: BffRemoteDataSource = mockk()
     private val gameDao: GameDao = mockk(relaxed = true)
+    private val gameDetailsDao: GameDetailsDao = mockk(relaxed = true)
     private val searchDao: SearchDao = mockk(relaxed = true)
     private val remoteKeyDao: RemoteKeyDao = mockk(relaxed = true)
 
@@ -71,6 +80,49 @@ class GameRepositoryTest {
         cachedAtEpochSeconds = 1600000000L
     )
 
+    private val sampleDetailsDto = GameDetailsDto(
+        id = 1L,
+        name = "Cyberpunk 2077",
+        coverUrl = "https://example.com/cover.jpg",
+        rating = 88.0,
+        releaseDateEpochSeconds = 1600000000L,
+        summary = "Night city RPG",
+        genres = listOf("RPG"),
+        platforms = listOf("PC", "PS5"),
+        url = "https://www.igdb.com/games/cyberpunk-2077",
+        totalRating = 86.5,
+        totalRatingCount = 2187L,
+        themes = listOf("Science fiction"),
+        gameModes = listOf("Single player"),
+        releaseDates = listOf(ReleaseDateDto(platform = "PC", dateEpochSeconds = 1600000000L, year = 2020)),
+        companies = listOf(CompanyDto(name = "CD Projekt RED", isDeveloper = true)),
+        screenshots = listOf("https://example.com/shot.jpg"),
+        videos = listOf(VideoDto(videoId = "abc123", name = "Trailer")),
+        similarGames = listOf(SimilarGameDto(id = 2L, name = "The Witcher 3", totalRating = 92.7))
+    )
+
+    private val sampleDetailsEntity = GameDetailsEntity(
+        gameId = 1L,
+        name = "Cyberpunk 2077",
+        coverUrl = "https://example.com/cover.jpg",
+        rating = 88.0,
+        totalRating = 86.5,
+        totalRatingCount = 2187L,
+        releaseDateEpochSeconds = 1600000000L,
+        summary = "Night city RPG",
+        url = "https://www.igdb.com/games/cyberpunk-2077",
+        genres = listOf("RPG"),
+        themes = listOf("Science fiction"),
+        gameModes = listOf("Single player"),
+        platforms = listOf("PC", "PS5"),
+        releaseDates = emptyList(),
+        companies = emptyList(),
+        screenshots = listOf("https://example.com/shot.jpg"),
+        videos = emptyList(),
+        similarGames = emptyList(),
+        cachedAtEpochSeconds = TEST_NOW_SECONDS
+    )
+
     @Before
     fun setUp() {
         coEvery { searchDao.getSearchQuery(any()) } returns null
@@ -78,6 +130,8 @@ class GameRepositoryTest {
         every { searchDao.getSearchResultsFlow(any()) } returns flowOf(emptyList())
         coEvery { remoteKeyDao.getRemoteKey(any()) } returns null
         every { gameDao.getGameByIdFlow(any()) } returns flowOf(null)
+        every { gameDetailsDao.getGameDetailsFlow(any()) } returns flowOf(null)
+        coEvery { gameDetailsDao.getGameDetails(any()) } returns null
     }
 
     companion object {
@@ -91,6 +145,7 @@ class GameRepositoryTest {
         return DefaultGameRepository(
             remoteDataSource = remoteDataSource,
             gameDao = gameDao,
+            gameDetailsDao = gameDetailsDao,
             searchDao = searchDao,
             remoteKeyDao = remoteKeyDao,
             transactionRunner = passThroughTransactionRunner,
@@ -290,29 +345,134 @@ class GameRepositoryTest {
     }
 
     @Test
-    fun `getGameDetailsFlow observes gameDao and maps to domain`() = runTest {
+    fun `getGameDetailsFlow emits full details when details row is present`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
-        every { gameDao.getGameByIdFlow(1L) } returns flowOf(sampleGameEntity)
+        every { gameDetailsDao.getGameDetailsFlow(1L) } returns flowOf(sampleDetailsEntity)
 
         repository.getGameDetailsFlow(1L).test {
-            val game = awaitItem()
-            assertEquals(1L, game?.id)
-            assertEquals("Cyberpunk 2077", game?.name)
+            val details = awaitItem()
+            assertEquals(1L, details?.id)
+            assertEquals("Cyberpunk 2077", details?.name)
+            assertEquals(86.5, details?.totalRating ?: 0.0, 0.001)
+            assertEquals(listOf("Science fiction"), details?.themes)
+            assertEquals(0, details?.releaseDates?.size)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `refreshGameDetails writes to gameDao when game is found`() = runTest {
+    fun `getGameDetailsFlow falls back to catalog skeleton when only games row exists`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
-        coEvery { remoteDataSource.getGameDetails(1L) } returns sampleGameDto
+        every { gameDao.getGameByIdFlow(1L) } returns flowOf(sampleGameEntity)
+
+        repository.getGameDetailsFlow(1L).test {
+            val skeleton = awaitItem()
+            assertEquals(1L, skeleton?.id)
+            assertEquals("Cyberpunk 2077", skeleton?.name)
+            // Skeleton keeps the catalog critic rating so the badge does not disappear
+            assertEquals(88.0, skeleton?.rating ?: 0.0, 0.001)
+            assertNull(skeleton?.totalRating)
+            assertTrue(skeleton?.themes.isNullOrEmpty())
+            assertTrue(skeleton?.screenshots.isNullOrEmpty())
+            assertTrue(skeleton?.similarGames.isNullOrEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `getGameDetailsFlow emits null when neither details nor catalog row exists`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+
+        repository.getGameDetailsFlow(1L).test {
+            assertNull(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `refreshGameDetails writes parent-first slim catalog row and details row`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { remoteDataSource.getGameDetails(1L) } returns sampleDetailsDto
 
         val result = repository.refreshGameDetails(1L)
 
         assertTrue(result is AppResult.Success)
-        coVerify(exactly = 1) { gameDao.upsertGame(match { it.id == 1L && it.name == "Cyberpunk 2077" }) }
+        // Slim catalog projection keeps the critic rating, never the aggregate
+        coVerify(exactly = 1) {
+            gameDao.upsertGame(match { it.id == 1L && it.rating == 88.0 && it.name == "Cyberpunk 2077" })
+        }
+        val detailsSlot = slot<GameDetailsEntity>()
+        coVerify(exactly = 1) { gameDetailsDao.upsertDetails(capture(detailsSlot)) }
+        assertEquals(1L, detailsSlot.captured.gameId)
+        assertEquals(86.5, detailsSlot.captured.totalRating ?: 0.0, 0.001)
+        assertEquals(TEST_NOW_SECONDS, detailsSlot.captured.cachedAtEpochSeconds)
+        coVerify(exactly = 1) { gameDetailsDao.deleteStaleDetails(any()) }
+    }
+
+    @Test
+    fun `refreshGameDetails skips network when cached details are fresh`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { gameDetailsDao.getGameDetails(1L) } returns sampleDetailsEntity.copy(
+            cachedAtEpochSeconds = TEST_NOW_SECONDS - 100L
+        )
+
+        val result = repository.refreshGameDetails(1L)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { remoteDataSource.getGameDetails(any()) }
+        coVerify(exactly = 0) { gameDetailsDao.upsertDetails(any()) }
+        coVerify(exactly = 0) { gameDao.upsertGame(any()) }
+    }
+
+    @Test
+    fun `refreshGameDetails refetches when cached details exceed TTL`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { gameDetailsDao.getGameDetails(1L) } returns sampleDetailsEntity.copy(
+            cachedAtEpochSeconds = TEST_NOW_SECONDS - DefaultGameRepository.DETAILS_TTL_SECONDS - 10L
+        )
+        coEvery { remoteDataSource.getGameDetails(1L) } returns sampleDetailsDto
+
+        val result = repository.refreshGameDetails(1L)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { remoteDataSource.getGameDetails(1L) }
+        coVerify(exactly = 1) { gameDetailsDao.upsertDetails(any()) }
+    }
+
+    @Test
+    fun `refreshGameDetails with force bypasses the TTL gate`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { gameDetailsDao.getGameDetails(1L) } returns sampleDetailsEntity.copy(
+            cachedAtEpochSeconds = TEST_NOW_SECONDS - 100L
+        )
+        coEvery { remoteDataSource.getGameDetails(1L) } returns sampleDetailsDto
+
+        val result = repository.refreshGameDetails(1L, force = true)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { remoteDataSource.getGameDetails(1L) }
+        coVerify(exactly = 1) { gameDetailsDao.upsertDetails(any()) }
+    }
+
+    @Test
+    fun `refreshGameDetails returns Error without writes when network fails`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { remoteDataSource.getGameDetails(1L) } throws IOException("Network down")
+
+        val result = repository.refreshGameDetails(1L)
+
+        assertTrue(result is AppResult.Error)
+        assertEquals(AppError.NetworkError, (result as AppResult.Error).error)
+        coVerify(exactly = 0) { gameDao.upsertGame(any()) }
+        coVerify(exactly = 0) { gameDetailsDao.upsertDetails(any()) }
     }
 
     @Test
@@ -341,5 +501,6 @@ class GameRepositoryTest {
             )
         }
         coVerify(exactly = 1) { gameDao.deleteStaleUnsavedGames(500_000L) }
+        coVerify(exactly = 1) { gameDetailsDao.deleteStaleDetails(500_000L) }
     }
 }

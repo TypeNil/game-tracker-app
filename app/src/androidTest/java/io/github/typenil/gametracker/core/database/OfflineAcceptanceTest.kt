@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
 import io.github.typenil.gametracker.core.database.dao.GameDao
+import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
@@ -17,9 +18,15 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
+import io.github.typenil.gametracker.core.network.model.CompanyDto
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.network.model.ReleaseDateDto
+import io.github.typenil.gametracker.core.network.model.SimilarGameDto
+import io.github.typenil.gametracker.core.network.model.VideoDto
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -38,6 +45,7 @@ class OfflineAcceptanceTest {
 
     private lateinit var database: GameTrackerDatabase
     private lateinit var gameDao: GameDao
+    private lateinit var gameDetailsDao: GameDetailsDao
     private lateinit var searchDao: SearchDao
     private lateinit var remoteKeyDao: RemoteKeyDao
     private lateinit var libraryDao: LibraryDao
@@ -45,6 +53,13 @@ class OfflineAcceptanceTest {
     private lateinit var testRemoteDataSource: TestRemoteDataSource
 
     private val testNow = 1_700_000_000L
+
+    /**
+     * Single shared scheduler: the repository's ioDispatcher and each runTest scope
+     * must use the same TestCoroutineScheduler, otherwise combine/yield inside the
+     * details flow detects "different schedulers" and throws.
+     */
+    private val testScheduler = TestCoroutineScheduler()
 
     private val topRatedDtos = listOf(
         GameDto(id = 10L, name = "Elden Ring", coverUrl = "https://example.com/er.jpg", rating = 96.0, releaseDateEpochSeconds = 1645747200L, summary = "FromSoftware", genres = listOf("Action", "RPG"), platforms = listOf("PC", "PS5")),
@@ -57,6 +72,34 @@ class OfflineAcceptanceTest {
         GameDto(id = 101L, name = "The Witcher 2: Assassins of Kings", coverUrl = "https://example.com/w2.jpg", rating = 88.0, releaseDateEpochSeconds = 1305590400L, summary = "CD Projekt Red", genres = listOf("RPG"), platforms = listOf("PC"))
     )
 
+    private val detailsDtos = listOf(
+        GameDetailsDto(
+            id = 10L,
+            name = "Elden Ring",
+            coverUrl = "https://example.com/er.jpg",
+            rating = 96.0,
+            releaseDateEpochSeconds = 1645747200L,
+            summary = "FromSoftware",
+            genres = listOf("Action", "RPG"),
+            platforms = listOf("PC", "PS5"),
+            url = "https://www.igdb.com/games/elden-ring",
+            totalRating = 96.5,
+            totalRatingCount = 1024L,
+            themes = listOf("Fantasy", "Open world"),
+            gameModes = listOf("Single player", "Multiplayer"),
+            releaseDates = listOf(ReleaseDateDto(platform = "PC", dateEpochSeconds = 1645747200L, year = 2022)),
+            companies = listOf(
+                CompanyDto(name = "FromSoftware", isDeveloper = true),
+                CompanyDto(name = "Bandai Namco Entertainment", isPublisher = true)
+            ),
+            screenshots = listOf("https://example.com/er-shot1.jpg", "https://example.com/er-shot2.jpg"),
+            videos = listOf(VideoDto(videoId = "abc123", name = "Gameplay Trailer")),
+            similarGames = listOf(
+                SimilarGameDto(id = 20L, name = "Baldur's Gate 3", coverUrl = "https://example.com/bg3.jpg", totalRating = 95.0)
+            )
+        )
+    )
+
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -65,16 +108,18 @@ class OfflineAcceptanceTest {
             .build()
 
         gameDao = database.gameDao()
+        gameDetailsDao = database.gameDetailsDao()
         searchDao = database.searchDao()
         remoteKeyDao = database.remoteKeyDao()
         libraryDao = database.libraryDao()
 
-        testRemoteDataSource = TestRemoteDataSource(topRatedDtos, searchDtos)
-        val testDispatcher = UnconfinedTestDispatcher()
+        testRemoteDataSource = TestRemoteDataSource(topRatedDtos, searchDtos, detailsDtos)
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
 
         repository = DefaultGameRepository(
             remoteDataSource = testRemoteDataSource,
             gameDao = gameDao,
+            gameDetailsDao = gameDetailsDao,
             searchDao = searchDao,
             remoteKeyDao = remoteKeyDao,
             transactionRunner = RoomTransactionRunner(database),
@@ -89,7 +134,7 @@ class OfflineAcceptanceTest {
     }
 
     @Test
-    fun offlineAcceptance_endToEndDataFlow() = runTest {
+    fun offlineAcceptance_endToEndDataFlow() = runTest(testScheduler) {
         // Step 1: Online sync for Discover (Top Rated) and Search
         val refreshDiscoverResult = repository.refreshTopRatedGames(limit = 20, offset = 0)
         assertTrue("Discover refresh must succeed online", refreshDiscoverResult is AppResult.Success)
@@ -193,9 +238,53 @@ class OfflineAcceptanceTest {
         assertNotNull("Game with library entry must still exist in DB", gameDao.getGameById(20L))
     }
 
+    @Test
+    fun offlineAcceptance_detailsFirstOpenOfflineFallsBackToCatalogSkeleton() = runTest(testScheduler) {
+        // Online: sync Discover so the slim catalog row exists in `games`
+        val refreshDiscover = repository.refreshTopRatedGames(limit = 20, offset = 0)
+        assertTrue("Discover refresh must succeed online", refreshDiscover is AppResult.Success)
+
+        // Airplane mode BEFORE details were ever fetched
+        testRemoteDataSource.isOffline = true
+
+        val refreshDetails = repository.refreshGameDetails(10L)
+        assertTrue(refreshDetails is AppResult.Error)
+        assertEquals(AppError.NetworkError, (refreshDetails as AppResult.Error).error)
+
+        // First open offline must still render the header from the catalog row
+        val skeleton = repository.getGameDetailsFlow(10L).first()
+        assertNotNull("Skeleton must be emitted from the catalog row", skeleton)
+        assertEquals("Elden Ring", skeleton?.name)
+        assertNull("Aggregate rating is unknown before hydration", skeleton?.totalRating)
+        assertTrue(skeleton?.screenshots.isNullOrEmpty())
+        assertTrue(skeleton?.similarGames.isNullOrEmpty())
+        assertTrue(skeleton?.companies.isNullOrEmpty())
+    }
+
+    @Test
+    fun offlineAcceptance_detailsHydrationSurvivesOfflineReopenWithFreshTtl() = runTest(testScheduler) {
+        assertTrue(repository.refreshTopRatedGames(limit = 20, offset = 0) is AppResult.Success)
+        assertTrue(repository.refreshGameDetails(10L) is AppResult.Success)
+
+        val hydrated = repository.getGameDetailsFlow(10L).first()
+        assertEquals("Elden Ring", hydrated?.name)
+        assertEquals(96.5, hydrated?.totalRating ?: 0.0, 0.001)
+        assertTrue(hydrated?.screenshots?.size == 2)
+        assertTrue(hydrated?.companies?.any { it.isDeveloper } == true)
+
+        testRemoteDataSource.isOffline = true
+        // Fresh TTL: refresh returns Success without touching the dead network
+        val offlineRefresh = repository.refreshGameDetails(10L)
+        assertTrue("Fresh cache must skip network", offlineRefresh is AppResult.Success)
+
+        val cached = repository.getGameDetailsFlow(10L).first()
+        assertEquals(hydrated, cached)
+    }
+
     private class TestRemoteDataSource(
         private val topRated: List<GameDto>,
-        private val search: List<GameDto>
+        private val search: List<GameDto>,
+        private val details: List<GameDetailsDto>
     ) : BffRemoteDataSource {
         var isOffline = false
 
@@ -209,10 +298,9 @@ class OfflineAcceptanceTest {
             return search
         }
 
-        override suspend fun getGameDetails(id: Long): GameDto {
+        override suspend fun getGameDetails(id: Long): GameDetailsDto {
             if (isOffline) throw IOException("Simulated Airplane Mode")
-            return topRated.firstOrNull { it.id == id }
-                ?: search.firstOrNull { it.id == id }
+            return details.firstOrNull { it.id == id }
                 ?: throw IOException("Game not found")
         }
     }

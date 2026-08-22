@@ -10,6 +10,7 @@ import io.github.typenil.gametracker.core.common.runSuspendCatching
 import io.github.typenil.gametracker.core.data.paging.GameQueryKey
 import io.github.typenil.gametracker.core.data.paging.GamesRemoteMediator
 import io.github.typenil.gametracker.core.database.dao.GameDao
+import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
 import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
@@ -20,11 +21,13 @@ import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
 import io.github.typenil.gametracker.core.network.mapper.toAppError
 import io.github.typenil.gametracker.core.network.mapper.toDomain
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -37,6 +40,7 @@ import javax.inject.Inject
 class DefaultGameRepository internal constructor(
     private val remoteDataSource: BffRemoteDataSource,
     private val gameDao: GameDao,
+    private val gameDetailsDao: GameDetailsDao,
     private val searchDao: SearchDao,
     private val remoteKeyDao: RemoteKeyDao,
     private val transactionRunner: TransactionRunner,
@@ -48,6 +52,7 @@ class DefaultGameRepository internal constructor(
     constructor(
         remoteDataSource: BffRemoteDataSource,
         gameDao: GameDao,
+        gameDetailsDao: GameDetailsDao,
         searchDao: SearchDao,
         remoteKeyDao: RemoteKeyDao,
         transactionRunner: TransactionRunner,
@@ -55,6 +60,7 @@ class DefaultGameRepository internal constructor(
     ) : this(
         remoteDataSource = remoteDataSource,
         gameDao = gameDao,
+        gameDetailsDao = gameDetailsDao,
         searchDao = searchDao,
         remoteKeyDao = remoteKeyDao,
         transactionRunner = transactionRunner,
@@ -250,18 +256,45 @@ class DefaultGameRepository internal constructor(
         }
     }
 
-    override fun getGameDetailsFlow(id: Long): Flow<Game?> {
-        return gameDao.getGameByIdFlow(id)
-            .map { it?.toDomain() }
-            .flowOn(ioDispatcher)
+    override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> {
+        // Full details row wins; otherwise the catalog row renders a skeleton, so a
+        // first open offline still shows the header the user just saw on a list.
+        // Both DAO flows emit immediately on subscription (combine gating, standard 3.5).
+        return combine(
+            gameDetailsDao.getGameDetailsFlow(id),
+            gameDao.getGameByIdFlow(id)
+        ) { details, game ->
+            when {
+                details != null -> details.toDomain()
+                game != null -> game.toDomain().toDetailsSkeleton()
+                else -> null
+            }
+        }.flowOn(ioDispatcher)
     }
 
-    override suspend fun refreshGameDetails(id: Long): AppResult<Unit> {
+    override suspend fun refreshGameDetails(id: Long, force: Boolean): AppResult<Unit> {
         return withContext(ioDispatcher) {
             runSuspendCatching {
-                val remoteGame = remoteDataSource.getGameDetails(id = id).toDomain()
+                // TTL gate reads ONLY game_details.cachedAt: the `games` catalog row is
+                // refreshed by every Discover/Search fetch, so gating on it would pin
+                // the screen to the skeleton for the whole TTL window.
+                val cached = gameDetailsDao.getGameDetails(id)
+                val isFresh = cached != null &&
+                    nowEpochSeconds() - cached.cachedAtEpochSeconds < DETAILS_TTL_SECONDS
+                if (!force && isFresh) return@runSuspendCatching
+
+                val remoteDetails = remoteDataSource.getGameDetails(id = id).toDomain()
                 val nowSeconds = nowEpochSeconds()
-                gameDao.upsertGame(remoteGame.toEntity(nowSeconds))
+                transactionRunner {
+                    // Parent-first: the slim catalog row must exist before anything may
+                    // reference it (future library RESTRICT FK); details are written second.
+                    gameDao.upsertGame(remoteDetails.toCatalogGame().toEntity(nowSeconds))
+                    gameDetailsDao.upsertDetails(remoteDetails.toEntity(nowSeconds))
+                }
+
+                runSuspendCatching {
+                    clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
+                }
             }.fold(
                 onSuccess = { AppResult.Success(Unit) },
                 onFailure = { AppResult.Error(it.toAppError()) }
@@ -276,7 +309,53 @@ class DefaultGameRepository internal constructor(
             val excludeKeys = listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED)
             searchDao.deleteStaleSearchQueries(queryCutoffEpoch, excludeKeys)
             remoteKeyDao.deleteStaleRemoteKeys(queryCutoffEpoch, excludeKeys)
+            gameDetailsDao.deleteStaleDetails(staleThresholdSeconds)
             gameDao.deleteStaleUnsavedGames(staleThresholdSeconds)
         }
     }
+
+    companion object {
+        /**
+         * Client-side TTL of the enriched details cache (2 hours), mirroring the BFF
+         * CachePolicy.GAME_DETAILS. Lives here and not in GameQueryKey: that type is
+         * the SSOT of paged query keys, not of cache TTLs.
+         */
+        const val DETAILS_TTL_SECONDS = 2 * 60 * 60L
+    }
+}
+
+/**
+ * Skeleton details from a catalog row: eight list-contract fields, everything
+ * else empty/null. rating is the critic rating the catalog already stores —
+ * the UI falls back to it while the aggregate is unknown.
+ */
+private fun Game.toDetailsSkeleton(): GameDetails {
+    return GameDetails(
+        id = id,
+        name = name,
+        coverUrl = coverUrl,
+        rating = rating,
+        releaseDateEpochSeconds = releaseDateEpochSeconds,
+        summary = summary,
+        genres = genres,
+        platforms = platforms
+    )
+}
+
+/**
+ * Slim catalog projection of details. Copies the critic `rating`, NEVER
+ * `totalRating`: they are different IGDB scales, and writing the aggregate
+ * here would silently rewrite the ratings of Discover/Search cards.
+ */
+private fun GameDetails.toCatalogGame(): Game {
+    return Game(
+        id = id,
+        name = name,
+        coverUrl = coverUrl,
+        rating = rating,
+        releaseDateEpochSeconds = releaseDateEpochSeconds,
+        summary = summary,
+        genres = genres,
+        platforms = platforms
+    )
 }

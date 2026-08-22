@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.core.network.datasource
 
 import io.github.typenil.gametracker.core.network.api.BffApiService
+import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
 import javax.inject.Inject
 
@@ -19,7 +20,7 @@ class RetrofitBffDataSource @Inject constructor(
         return apiService.searchGames(query = query, limit = limit, offset = offset)
     }
 
-    override suspend fun getGameDetails(id: Long): GameDto {
+    override suspend fun getGameDetails(id: Long): GameDetailsDto {
         return apiService.getGameDetails(id = id)
     }
 }
