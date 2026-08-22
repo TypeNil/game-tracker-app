@@ -13,6 +13,7 @@ import io.github.typenil.gametracker.feature.details.navigation.navigateToGameDe
 import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.search.navigation.navigateToSearch
+import io.github.typenil.gametracker.feature.settings.navigation.SettingsKey
 
 /**
  * State holder managing top-level navigation, tab switching, and back stack state (ADR-006).
@@ -53,6 +54,10 @@ class GameTrackerAppState(
 
     fun navigateToSearch() {
         navController.navigateToSearch()
+    }
+
+    fun navigateToSettings() {
+        navController.navigate(SettingsKey)
     }
 
     fun navigateToGameDetails(gameId: Long) {

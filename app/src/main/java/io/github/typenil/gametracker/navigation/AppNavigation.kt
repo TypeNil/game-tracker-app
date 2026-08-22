@@ -31,6 +31,7 @@ import io.github.typenil.gametracker.feature.discover.navigation.discoverEntry
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.library.navigation.libraryEntry
 import io.github.typenil.gametracker.feature.search.navigation.searchEntry
+import io.github.typenil.gametracker.feature.settings.navigation.settingsEntry
 
 /**
  * Root Navigation Host coordinating destinations, bottom navigation, deep links, and transitions.
@@ -95,7 +96,8 @@ fun AppNavHost(
         ) {
             discoverEntry(
                 onGameClick = appState::navigateToGameDetails,
-                onSearchClick = appState::navigateToSearch
+                onSearchClick = appState::navigateToSearch,
+                onAboutClick = appState::navigateToSettings
             )
 
             libraryEntry(
@@ -110,6 +112,10 @@ fun AppNavHost(
 
             gameDetailsEntry(
                 onGameClick = appState::navigateToGameDetails,
+                onBackClick = appState::navigateBack
+            )
+
+            settingsEntry(
                 onBackClick = appState::navigateBack
             )
         }
