@@ -73,7 +73,7 @@ class GameDetailsViewModelTest {
         return GameDetailsViewModel(
             gameRepository = fakeGameRepository,
             libraryRepository = fakeLibraryRepository,
-            savedStateHandle = SavedStateHandle(mapOf(GameDetailsViewModel.KEY_GAME_ID to gameId))
+            savedStateHandle = SavedStateHandle(mapOf("gameId" to gameId))
         )
     }
 
