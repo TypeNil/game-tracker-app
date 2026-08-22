@@ -3,6 +3,7 @@ package io.github.typenil.gametracker.feature.details
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
@@ -11,7 +12,9 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.feature.details.navigation.GameDetailsKey
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,8 +32,12 @@ class GameDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    val gameId: Long = savedStateHandle.get<Long>(KEY_GAME_ID)
-        ?: error("GameDetailsViewModel requires a '$KEY_GAME_ID' Long argument")
+    val gameId: Long = when (val raw = savedStateHandle.get<Any>("gameId")) {
+        is Long -> raw
+        is Number -> raw.toLong()
+        is String -> raw.toLongOrNull()
+        else -> null
+    } ?: savedStateHandle.toRoute<GameDetailsKey>().gameId
 
     private val _flags = MutableStateFlow(DetailsInternalFlags())
 
@@ -204,7 +211,4 @@ class GameDetailsViewModel @Inject constructor(
         val message: Pair<AppError?, Int?>? = null
     )
 
-    companion object {
-        const val KEY_GAME_ID = "gameId"
-    }
 }

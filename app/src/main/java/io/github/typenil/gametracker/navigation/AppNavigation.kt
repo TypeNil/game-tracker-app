@@ -1,5 +1,9 @@
 package io.github.typenil.gametracker.navigation
 
+import android.content.Intent
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
+import androidx.core.app.OnNewIntentProvider
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,38 +16,44 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.util.Consumer
 import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.feature.details.navigation.gameDetailsEntry
-import io.github.typenil.gametracker.feature.details.navigation.navigateToGameDetails
 import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
 import io.github.typenil.gametracker.feature.discover.navigation.discoverEntry
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.library.navigation.libraryEntry
-import io.github.typenil.gametracker.feature.search.navigation.navigateToSearch
 import io.github.typenil.gametracker.feature.search.navigation.searchEntry
 
 /**
- * Root Navigation Host coordinating destinations, bottom navigation, and cross-feature transitions.
+ * Root Navigation Host coordinating destinations, bottom navigation, deep links, and transitions.
  */
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    appState: GameTrackerAppState = rememberGameTrackerAppState()
 ) {
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
+    val activity = LocalActivity.current ?: (LocalContext.current as? ComponentActivity)
+    DisposableEffect(activity, appState.navController) {
+        val provider = activity as? OnNewIntentProvider
+        val listener = Consumer<Intent> { intent ->
+            appState.navController.handleDeepLink(intent)
+        }
+        provider?.addOnNewIntentListener(listener)
+        onDispose {
+            provider?.removeOnNewIntentListener(listener)
+        }
+    }
 
-    val isTopLevelDestination = currentDestination?.hasRoute<DiscoverKey>() == true ||
-        currentDestination?.hasRoute<LibraryKey>() == true
+    val isTopLevelDestination = appState.isTopLevelDestination
+    val currentDestination = appState.currentDestination
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -52,15 +62,7 @@ fun AppNavHost(
                 NavigationBar {
                     NavigationBarItem(
                         selected = currentDestination?.hasRoute<DiscoverKey>() == true,
-                        onClick = {
-                            navController.navigate(DiscoverKey) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = appState::navigateToDiscover,
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.Explore,
@@ -72,15 +74,7 @@ fun AppNavHost(
 
                     NavigationBarItem(
                         selected = currentDestination?.hasRoute<LibraryKey>() == true,
-                        onClick = {
-                            navController.navigate(LibraryKey) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = appState::navigateToLibrary,
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.CollectionsBookmark,
@@ -95,50 +89,28 @@ fun AppNavHost(
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         NavHost(
-            navController = navController,
+            navController = appState.navController,
             startDestination = DiscoverKey,
             modifier = Modifier.padding(innerPadding)
         ) {
             discoverEntry(
-                onGameClick = { gameId ->
-                    navController.navigateToGameDetails(gameId = gameId)
-                },
-                onSearchClick = {
-                    navController.navigateToSearch()
-                }
+                onGameClick = appState::navigateToGameDetails,
+                onSearchClick = appState::navigateToSearch
             )
 
             libraryEntry(
-                onGameClick = { gameId ->
-                    navController.navigateToGameDetails(gameId = gameId)
-                },
-                onNavigateToDiscover = {
-                    navController.navigate(DiscoverKey) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
+                onGameClick = appState::navigateToGameDetails,
+                onNavigateToDiscover = appState::navigateToDiscover
             )
 
             searchEntry(
-                onGameClick = { gameId ->
-                    navController.navigateToGameDetails(gameId = gameId)
-                },
-                onBackClick = {
-                    navController.popBackStack()
-                }
+                onGameClick = appState::navigateToGameDetails,
+                onBackClick = appState::navigateBack
             )
 
             gameDetailsEntry(
-                onGameClick = { gameId ->
-                    navController.navigateToGameDetails(gameId = gameId)
-                },
-                onBackClick = {
-                    navController.popBackStack()
-                }
+                onGameClick = appState::navigateToGameDetails,
+                onBackClick = appState::navigateBack
             )
         }
     }

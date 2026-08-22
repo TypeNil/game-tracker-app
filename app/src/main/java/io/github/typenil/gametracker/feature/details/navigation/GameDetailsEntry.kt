@@ -4,6 +4,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
+import androidx.navigation.navDeepLink
 import io.github.typenil.gametracker.feature.details.GameDetailsRoute
 
 /**
@@ -23,7 +24,13 @@ fun NavGraphBuilder.gameDetailsEntry(
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit
 ) {
-    composable<GameDetailsKey> {
+    composable<GameDetailsKey>(
+        deepLinks = listOf(
+            navDeepLink<GameDetailsKey>(
+                basePath = "gametracker://game"
+            )
+        )
+    ) {
         GameDetailsRoute(
             onGameClick = onGameClick,
             onBackClick = onBackClick
