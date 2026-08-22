@@ -30,6 +30,9 @@ interface LibraryDao {
     @Query("SELECT * FROM library_entries ORDER BY updatedAtEpochSeconds DESC")
     fun getAllLibraryEntriesFlow(): Flow<List<LibraryEntryEntity>>
 
+    @Query("SELECT * FROM library_entries")
+    suspend fun getAllLibraryEntries(): List<LibraryEntryEntity>
+
     @Query("SELECT * FROM library_entries WHERE isFavorite = 1 ORDER BY updatedAtEpochSeconds DESC")
     fun getFavoriteLibraryEntriesFlow(): Flow<List<LibraryEntryEntity>>
 
