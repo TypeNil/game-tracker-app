@@ -303,6 +303,8 @@ class SearchScreenTest {
 
         override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> = flowOf(null)
 
+        override fun isGameDetailsHydratedFlow(id: Long): Flow<Boolean> = flowOf(false)
+
         override suspend fun refreshGameDetails(id: Long, force: Boolean): AppResult<Unit> {
             return AppResult.Error(AppError.UnknownError(NoSuchElementException()))
         }

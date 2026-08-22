@@ -44,6 +44,9 @@ fun AppNavHost(
         )
 
         gameDetailsEntry(
+            onGameClick = { gameId ->
+                navController.navigateToGameDetails(gameId = gameId)
+            },
             onBackClick = {
                 navController.popBackStack()
             }
