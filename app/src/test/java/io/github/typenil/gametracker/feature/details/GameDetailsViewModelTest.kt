@@ -1,6 +1,5 @@
 package io.github.typenil.gametracker.feature.details
 
-import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
@@ -73,7 +72,7 @@ class GameDetailsViewModelTest {
         return GameDetailsViewModel(
             gameRepository = fakeGameRepository,
             libraryRepository = fakeLibraryRepository,
-            savedStateHandle = SavedStateHandle(mapOf("gameId" to gameId))
+            gameId = gameId
         )
     }
 

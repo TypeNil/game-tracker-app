@@ -26,18 +26,22 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class GameDetailsViewModel @Inject constructor(
+class GameDetailsViewModel(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
-    savedStateHandle: SavedStateHandle
+    val gameId: Long
 ) : ViewModel() {
 
-    val gameId: Long = when (val raw = savedStateHandle.get<Any>("gameId")) {
-        is Long -> raw
-        is Number -> raw.toLong()
-        is String -> raw.toLongOrNull()
-        else -> null
-    } ?: savedStateHandle.toRoute<GameDetailsKey>().gameId
+    @Inject
+    constructor(
+        gameRepository: GameRepository,
+        libraryRepository: LibraryRepository,
+        savedStateHandle: SavedStateHandle
+    ) : this(
+        gameRepository,
+        libraryRepository,
+        savedStateHandle.toRoute<GameDetailsKey>().gameId
+    )
 
     private val _flags = MutableStateFlow(DetailsInternalFlags())
 

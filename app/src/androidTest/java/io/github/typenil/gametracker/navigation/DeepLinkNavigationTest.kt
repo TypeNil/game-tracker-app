@@ -4,16 +4,22 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.BuildConfig
 import io.github.typenil.gametracker.MainActivity
 import io.github.typenil.gametracker.R
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -119,5 +125,118 @@ class DeepLinkNavigationTest {
             }
             composeTestRule.onNodeWithText(libraryTitle).assertIsDisplayed()
         }
+    }
+
+    @Test
+    fun coldStartDeepLink_secondBackFinishesActivity() {
+        val discoverTitle = context.getString(R.string.discover_title)
+
+        launchDetailsDeepLink().use { scenario ->
+            waitForText(WITCHER_TITLE)
+            pressBack(scenario)
+            waitForText(discoverTitle)
+
+            pressBack(scenario)
+
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                scenario.state == Lifecycle.State.DESTROYED
+            }
+            assertEquals(Lifecycle.State.DESTROYED, scenario.state)
+        }
+    }
+
+    @Test
+    fun similarGame_stacksDetails_andBackPopsOneScreen() {
+        val discoverTitle = context.getString(R.string.discover_title)
+        val discoverNavLabel = context.getString(R.string.nav_discover)
+
+        launchDetailsDeepLink().use { scenario ->
+            waitForText(WITCHER_TITLE)
+
+            composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
+                .performScrollToNode(hasText(RDR2_TITLE))
+            composeTestRule.onAllNodesWithText(RDR2_TITLE).onFirst().performClick()
+            waitForText(RDR2_TITLE)
+            composeTestRule.onNodeWithText(discoverTitle).assertDoesNotExist()
+            composeTestRule.onNodeWithText(discoverNavLabel).assertDoesNotExist()
+
+            pressBack(scenario)
+
+            waitForText(WITCHER_TITLE)
+            composeTestRule.onNodeWithText(discoverTitle).assertDoesNotExist()
+
+            pressBack(scenario)
+
+            waitForText(discoverTitle)
+            composeTestRule.onNodeWithText(discoverNavLabel).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun libraryToDetails_backReturnsToLibrary() {
+        val libraryNavLabel = context.getString(R.string.nav_library)
+        val libraryTitle = context.getString(R.string.library_title)
+        val addToLibrary = context.getString(R.string.library_add_to_library)
+        val save = context.getString(R.string.library_save)
+        val discoverTitle = context.getString(R.string.discover_title)
+
+        launchDetailsDeepLink().use { scenario ->
+            waitForText(WITCHER_TITLE)
+
+            if (existsOnScreen(addToLibrary)) {
+                composeTestRule.onNodeWithText(addToLibrary).performClick()
+                composeTestRule.onNodeWithText(save).performClick()
+                composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                    !existsOnScreen(save)
+                }
+            }
+
+            pressBack(scenario)
+            waitForText(discoverTitle)
+
+            composeTestRule.onNodeWithText(libraryNavLabel).performClick()
+            waitForText(libraryTitle)
+            waitForText(WITCHER_TITLE)
+
+            composeTestRule.onAllNodesWithText(WITCHER_TITLE).onFirst().performClick()
+            waitForText(WITCHER_TITLE)
+            composeTestRule.onNodeWithText(libraryTitle).assertDoesNotExist()
+            composeTestRule.onNodeWithText(libraryNavLabel).assertDoesNotExist()
+
+            pressBack(scenario)
+
+            waitForText(libraryTitle)
+            composeTestRule.onNodeWithText(libraryNavLabel).assertIsDisplayed()
+            composeTestRule.onAllNodesWithText(WITCHER_TITLE)[0].assertIsDisplayed()
+        }
+    }
+
+    private fun launchDetailsDeepLink(gameId: Long = 1942L): ActivityScenario<MainActivity> {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("gametracker://game/$gameId")).apply {
+            setClass(context, MainActivity::class.java)
+            setPackage(BuildConfig.APPLICATION_ID)
+        }
+        return ActivityScenario.launch(intent)
+    }
+
+    private fun waitForText(text: String) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun pressBack(scenario: ActivityScenario<MainActivity>) {
+        scenario.onActivity { activity ->
+            activity.onBackPressedDispatcher.onBackPressed()
+        }
+    }
+
+    private fun existsOnScreen(text: String): Boolean {
+        return composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    private companion object {
+        const val WITCHER_TITLE = "The Witcher 3: Wild Hunt"
+        const val RDR2_TITLE = "Red Dead Redemption 2"
     }
 }
