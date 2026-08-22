@@ -5,11 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -97,7 +96,6 @@ fun EditLibrarySheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp)
                 .verticalScroll(rememberScrollState())
@@ -156,7 +154,9 @@ fun EditLibrarySheet(
 
             // 2. User Rating (1-10)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -167,8 +167,14 @@ fun EditLibrarySheet(
                     fontWeight = FontWeight.SemiBold
                 )
                 if (selectedRating != null) {
-                    TextButton(onClick = { selectedRating = null }) {
-                        Text(stringResource(R.string.library_clear_rating), style = MaterialTheme.typography.bodySmall)
+                    TextButton(
+                        onClick = { selectedRating = null },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.library_clear_rating),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
@@ -188,26 +194,17 @@ fun EditLibrarySheet(
                         },
                         label = {
                             Text(
-                                text = "$rating",
+                                text = if (isSelected) "★ $rating" else "$rating",
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
-                        },
-                        leadingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        } else null
+                        }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 3. Hours Played (Direct numerical input + stepper)
+            // 3. Hours Played (Direct numerical input + stepper, centered)
             Text(
                 text = stringResource(R.string.library_hours_played),
                 style = MaterialTheme.typography.titleSmall,
@@ -216,8 +213,9 @@ fun EditLibrarySheet(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
                 IconButton(
                     onClick = {
@@ -231,6 +229,8 @@ fun EditLibrarySheet(
                         contentDescription = stringResource(R.string.library_hours_decrement_desc)
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 OutlinedTextField(
                     value = hoursText,
@@ -247,6 +247,8 @@ fun EditLibrarySheet(
                     ),
                     modifier = Modifier.width(110.dp)
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 IconButton(
                     onClick = {
