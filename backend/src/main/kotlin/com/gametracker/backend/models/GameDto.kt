@@ -83,6 +83,8 @@ data class IgdbGame(
     val id: Long,
     val name: String,
     val rating: Double? = null,
+    @SerialName("rating_count")
+    val ratingCount: Long? = null,
     val cover: IgdbCover? = null,
     val summary: String? = null,
     @SerialName("first_release_date")
@@ -121,6 +123,7 @@ data class GameDto(
     val genres: List<String> = emptyList(),
     val platforms: List<String> = emptyList()
 )
+
 
 @Serializable
 data class GameReleaseDateDto(
@@ -177,22 +180,21 @@ data class GameDetailsDto(
     val similarGames: List<SimilarGameDto> = emptyList()
 )
 
-private const val IMAGE_SIZE_COVER_BIG = "t_cover_big"
-private const val IMAGE_SIZE_720P = "t_720p"
-
 // Apicalypse не умеет лимитить sub-запросы: IGDB отдаёт все связанные сущности,
 // поэтому трим делается на стороне BFF до отдачи клиенту.
+internal const val IMAGE_SIZE_COVER_BIG = "t_cover_big"
+private const val IMAGE_SIZE_720P = "t_720p"
 private const val MAX_SCREENSHOTS = 8
 private const val MAX_VIDEOS = 5
 private const val MAX_SIMILAR_GAMES = 10
 private const val MAX_RELEASE_DATES = 12
 
-private fun igdbImageUrl(imageId: String?, rawUrl: String?, size: String): String? =
+internal fun igdbImageUrl(imageId: String?, rawUrl: String?, size: String): String? =
     imageId?.takeIf { it.isNotBlank() }
         ?.let { "https://images.igdb.com/igdb/image/upload/$size/$it.jpg" }
         ?: rawUrl?.replace("t_thumb", size)?.let { if (it.startsWith("//")) "https:$it" else it }
 
-private fun List<IgdbNamedExpansion>?.toNameList(): List<String> =
+internal fun List<IgdbNamedExpansion>?.toNameList(): List<String> =
     orEmpty().mapNotNull { item -> item.name?.trim()?.takeIf(String::isNotEmpty) }
 
 private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto> =
@@ -264,6 +266,7 @@ fun IgdbGame.toDto(): GameDto = GameDto(
 )
 
 fun IgdbGame.toGameDto(): GameDto = toDto()
+
 
 fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
     id = this.id,

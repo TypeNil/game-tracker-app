@@ -50,6 +50,12 @@ class BffCache(
         .ticker(ticker)
         .build<String, Any>()
 
+    private val recommendCache = Caffeine.newBuilder()
+        .maximumSize(MAX_CACHE_SIZE)
+        .expireAfterWrite(CachePolicy.RECOMMEND.ttlMinutes, TimeUnit.MINUTES)
+        .ticker(ticker)
+        .build<String, Any>()
+
     private val pendingComputations = ConcurrentHashMap<CacheKey, CompletableDeferred<Any>>()
 
     @Suppress("UNCHECKED_CAST")
@@ -96,6 +102,7 @@ class BffCache(
         CachePolicy.POPULAR -> popularCache
         CachePolicy.SEARCH -> searchCache
         CachePolicy.GAME_DETAILS -> gameDetailsCache
+        CachePolicy.RECOMMEND -> recommendCache
     }
 
     override fun close() {
@@ -105,6 +112,7 @@ class BffCache(
             popularCache.invalidateAll()
             searchCache.invalidateAll()
             gameDetailsCache.invalidateAll()
+            recommendCache.invalidateAll()
             pendingComputations.clear()
         }
     }

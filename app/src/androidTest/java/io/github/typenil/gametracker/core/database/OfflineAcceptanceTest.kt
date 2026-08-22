@@ -21,6 +21,7 @@ import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
 import io.github.typenil.gametracker.core.network.model.CompanyDto
 import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.network.model.RecommendationCandidateDto
 import io.github.typenil.gametracker.core.network.model.ReleaseDateDto
 import io.github.typenil.gametracker.core.network.model.SimilarGameDto
 import io.github.typenil.gametracker.core.network.model.VideoDto
@@ -302,6 +303,18 @@ class OfflineAcceptanceTest {
             if (isOffline) throw IOException("Simulated Airplane Mode")
             return details.firstOrNull { it.id == id }
                 ?: throw IOException("Game not found")
+        }
+
+        override suspend fun getRecommendationCandidates(
+            genres: List<String>,
+            themes: List<String>,
+            platforms: List<String>,
+            exclude: Set<Long>,
+            similarTo: List<Long>,
+            limit: Int,
+        ): List<RecommendationCandidateDto> {
+            if (isOffline) throw IOException("Simulated Airplane Mode")
+            return emptyList()
         }
     }
 }

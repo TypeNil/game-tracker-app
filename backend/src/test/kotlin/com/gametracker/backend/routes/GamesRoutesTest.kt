@@ -4,6 +4,7 @@ import com.gametracker.backend.application.IgdbConfig
 import com.gametracker.backend.auth.IgdbTokenManager
 import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.error.ErrorResponse
+import com.gametracker.backend.models.RecommendationCandidateDto
 import com.gametracker.backend.error.configureErrorHandling
 import com.gametracker.backend.igdb.IgdbService
 import com.gametracker.backend.models.GameDetailsDto
@@ -17,6 +18,7 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.http.content.TextContent
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -424,4 +426,154 @@ class GamesRoutesTest {
             assertTrue(game.similarGames.isEmpty())
             cache.close()
         }
+
+    private fun createInspectingService(
+        handler: (String) -> String,
+    ): Pair<IgdbService, MutableList<String>> {
+        val seen = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            val text = (request.body as TextContent).text
+            seen += text
+            respond(
+                content = handler(text),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val client = HttpClient(engine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+        return IgdbService(client, mockTokenManager, mockConfig) to seen
+    }
+
+    private fun candidateJson(id: Long, name: String = "Game $id") = """
+        {
+            "id": $id,
+            "name": "$name",
+            "rating": 88.0,
+            "rating_count": 12,
+            "summary": "ok",
+            "first_release_date": 1431993600,
+            "cover": {"id": 1, "image_id": "co1"},
+            "genres": [{"id": 1, "name": "Role-playing (RPG)"}],
+            "themes": [{"id": 1, "name": "Fantasy"}],
+            "platforms": [{"id": 6, "name": "PC"}]
+        }
+    """.trimIndent()
+
+    @Test
+    fun `candidates similarTo hydrates similar games and marks seeds`() = testApplication {
+        val (service, seen) = createInspectingService { body ->
+            if (body.contains("similar_games.id") && !body.contains("genres.name")) {
+                """[{"id":10,"name":"Seed","similar_games":[{"id":99}]}]"""
+            } else {
+                "[${candidateJson(99, "Similar")}]"
+            }
+        }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/recommendations/candidates?similarTo=10")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val games = response.body<List<RecommendationCandidateDto>>()
+        assertEquals(1, games.size)
+        assertEquals(99L, games[0].id)
+        assertEquals(listOf(10L), games[0].similarToGameIds)
+        assertTrue(seen[0].contains("similar_games.id"))
+        assertTrue(seen[1].contains("id = (99)"))
+        cache.close()
+    }
+
+    @Test
+    fun `candidates tag query returns themes and ratingCount`() = testApplication {
+        val (service, seen) = createInspectingService { "[${candidateJson(7)}]" }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/recommendations/candidates?genres=RPG")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val games = response.body<List<RecommendationCandidateDto>>()
+        assertEquals(1, games.size)
+        assertEquals(listOf("Fantasy"), games[0].themes)
+        assertEquals(12L, games[0].ratingCount)
+        assertTrue(seen.single().contains("genres.name = (\"RPG\")"))
+        cache.close()
+    }
+
+    @Test
+    fun `candidates exclude removes hydrated id`() = testApplication {
+        val (service, _) = createInspectingService { body ->
+            if (body.contains("similar_games.id") && !body.contains("genres.name")) {
+                """[{"id":10,"name":"Seed","similar_games":[{"id":99}]}]"""
+            } else {
+                "[${candidateJson(99)}]"
+            }
+        }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/recommendations/candidates?similarTo=10&exclude=99")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.body<List<RecommendationCandidateDto>>().isEmpty())
+        cache.close()
+    }
+
+    @Test
+    fun `candidates empty request returns empty without upstream`() = testApplication {
+        val (service, seen) = createInspectingService { error("upstream should not be called") }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/recommendations/candidates")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.body<List<RecommendationCandidateDto>>().isEmpty())
+        assertTrue(seen.isEmpty())
+        cache.close()
+    }
+
+    @Test
+    fun `candidates reject quoted genre`() = testApplication {
+        val service = createMockService()
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/recommendations/candidates?genres=RP%22G")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals("BAD_REQUEST", response.body<ErrorResponse>().code)
+        cache.close()
+    }
+
+    @Test
+    fun `candidates cache second identical request`() = testApplication {
+        val (service, seen) = createInspectingService { "[${candidateJson(7)}]" }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        repeat(2) {
+            val response = client.get("/v1/recommendations/candidates?genres=RPG")
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+        assertEquals(1, seen.size)
+        cache.close()
+    }
 }

@@ -10,6 +10,8 @@ package com.gametracker.backend.cache
  *   и подавлением повторной нагрузки при одинаковых поисковых запросах.
  * - [GAME_DETAILS]: TTL 120 минут. Детальная информация об играх (жанры, платформы, описания)
  *   практически неизменна после релиза.
+ * - [RECOMMEND]: TTL 15 минут. Кандидатский пул зависит от тегов пользователя;
+ *   короткий TTL как у поиска, чтобы не держать персональные ключи часами.
  *
  * Каждый регион кэша ограничен 1 000 записями (MAX_CACHE_SIZE), что удерживает ориентировочный объем
  * используемой heap-памяти в пределах единиц мегабайт (исходя из среднего размера DTO ~1-3 КБ).
@@ -17,5 +19,6 @@ package com.gametracker.backend.cache
 enum class CachePolicy(val ttlMinutes: Long) {
     POPULAR(ttlMinutes = 60),
     SEARCH(ttlMinutes = 15),
-    GAME_DETAILS(ttlMinutes = 120)
+    GAME_DETAILS(ttlMinutes = 120),
+    RECOMMEND(ttlMinutes = 15)
 }

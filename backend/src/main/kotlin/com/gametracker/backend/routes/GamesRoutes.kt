@@ -6,6 +6,9 @@ import com.gametracker.backend.igdb.IgdbService
 import com.gametracker.backend.models.GameDetailsDto
 import com.gametracker.backend.models.GameDetailsRequest
 import com.gametracker.backend.models.GameDto
+import com.gametracker.backend.models.RecommendationCandidateDto
+import com.gametracker.backend.models.RecommendationCandidatesRequest
+import com.gametracker.backend.models.toCandidateDto
 import com.gametracker.backend.models.SearchRequest
 import com.gametracker.backend.models.TopRatedRequest
 import com.gametracker.backend.models.toDetailsDto
@@ -67,6 +70,8 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
 
                 call.respond<GameDetailsDto>(game)
             }
+
+            recommendationCandidatesRoute(igdbService, cache)
         }
     }
 }
@@ -79,4 +84,70 @@ private fun parseIntegerParam(raw: String?, paramName: String): Int? {
 private fun parseLongParam(raw: String?, paramName: String): Long {
     if (raw == null) throw IllegalArgumentException("Path parameter '$paramName' is required")
     return raw.toLongOrNull() ?: throw IllegalArgumentException("Parameter '$paramName' must be a valid integer")
+}
+
+private fun Route.recommendationCandidatesRoute(igdbService: IgdbService, cache: BffCache) {
+    get("/recommendations/candidates") {
+        val request = RecommendationCandidatesRequest(
+            genresParam = call.request.queryParameters["genres"],
+            themesParam = call.request.queryParameters["themes"],
+            platformsParam = call.request.queryParameters["platforms"],
+            excludeParam = call.request.queryParameters["exclude"],
+            similarToParam = call.request.queryParameters["similarTo"],
+            limitParam = parseIntegerParam(call.request.queryParameters["limit"], "limit"),
+        )
+        logger.info(
+            "Fetching recommendation candidates (genres={}, themes={}, platforms={}, exclude={}, similarTo={}, limit={})",
+            request.genres.size,
+            request.themes.size,
+            request.platforms.size,
+            request.exclude.size,
+            request.similarTo.size,
+            request.limit,
+        )
+        if (!request.hasTags && request.similarTo.isEmpty()) {
+            call.respond<List<RecommendationCandidateDto>>(emptyList())
+            return@get
+        }
+        val games = cache.getOrPut(request.cacheKey, CachePolicy.RECOMMEND) {
+            loadCandidates(igdbService, request)
+        }
+        call.respond(games)
+    }
+}
+
+private suspend fun loadCandidates(
+    igdbService: IgdbService,
+    request: RecommendationCandidatesRequest,
+): List<RecommendationCandidateDto> {
+    val similarOwners = linkedMapOf<Long, MutableSet<Long>>()
+    if (request.similarTo.isNotEmpty()) {
+        igdbService.queryGames(request.toSimilarSeedsApicalypseQuery()).forEach { seed ->
+            seed.similarGames.orEmpty().forEach { similar ->
+                val similarId = similar.id ?: return@forEach
+                if (similarId == seed.id || similarId in request.blockedIds) return@forEach
+                similarOwners.getOrPut(similarId) { mutableSetOf() }.add(seed.id)
+            }
+        }
+    }
+
+    val merged = linkedMapOf<Long, RecommendationCandidateDto>()
+    if (similarOwners.isNotEmpty()) {
+        igdbService.queryGames(request.toHydrateApicalypseQuery(similarOwners.keys.toList())).forEach { game ->
+            merged[game.id] = game.toCandidateDto(similarOwners[game.id].orEmpty().sorted())
+        }
+    }
+    if (request.hasTags) {
+        igdbService.queryGames(request.toTagApicalypseQuery()).forEach { game ->
+            val existing = merged[game.id]
+            if (existing == null) {
+                merged[game.id] = game.toCandidateDto()
+            } else {
+                merged[game.id] = existing
+            }
+        }
+    }
+    return merged.values
+        .filterNot { it.id in request.blockedIds }
+        .take(request.limit)
 }
