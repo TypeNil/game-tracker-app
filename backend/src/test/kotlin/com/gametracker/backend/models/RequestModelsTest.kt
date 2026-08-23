@@ -106,6 +106,21 @@ class RequestModelsTest {
     }
 
     @Test
+    fun `TrendingRequest uses visits popularity type and isolated cache key`() {
+        val request = TrendingRequest(limitParam = 10, offsetParam = 5)
+        assertEquals(10, request.limit)
+        assertEquals(5, request.offset)
+        assertEquals("trending_10_5", request.cacheKey)
+        val primitives = request.toPrimitivesApicalypseQuery()
+        assertTrue(primitives.contains("popularity_type = 1"))
+        assertTrue(primitives.contains("sort value desc"))
+        assertTrue(primitives.contains("limit 15;"))
+        assertFalse(primitives.contains("rating >= 80"))
+        val hydrate = request.toHydrateApicalypseQuery(listOf(72L, 14593L))
+        assertTrue(hydrate.contains("limit 2;"))
+    }
+
+    @Test
     fun `GameDetailsRequest rejects non-positive id`() {
         assertThrows(IllegalArgumentException::class.java) {
             GameDetailsRequest(null)

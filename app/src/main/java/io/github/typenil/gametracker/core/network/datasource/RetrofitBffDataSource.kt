@@ -17,6 +17,10 @@ class RetrofitBffDataSource @Inject constructor(
         return apiService.getTopRatedGames(limit = limit, offset = offset)
     }
 
+    override suspend fun getTrendingGames(limit: Int, offset: Int): List<GameDto> {
+        return apiService.getTrendingGames(limit = limit, offset = offset)
+    }
+
     override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
         return apiService.searchGames(query = query, limit = limit, offset = offset)
     }

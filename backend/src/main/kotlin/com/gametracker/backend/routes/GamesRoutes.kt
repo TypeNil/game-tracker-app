@@ -11,6 +11,7 @@ import com.gametracker.backend.models.RecommendationCandidatesRequest
 import com.gametracker.backend.models.toCandidateDto
 import com.gametracker.backend.models.SearchRequest
 import com.gametracker.backend.models.TopRatedRequest
+import com.gametracker.backend.models.TrendingRequest
 import com.gametracker.backend.models.toDetailsDto
 import com.gametracker.backend.models.toGameDto
 import io.ktor.server.plugins.ratelimit.RateLimitName
@@ -41,6 +42,8 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
 
                 call.respond<List<GameDto>>(games)
             }
+
+            trendingRoute(igdbService, cache)
 
             get("/games/search") {
                 val query = call.request.queryParameters["q"]
@@ -74,6 +77,37 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             recommendationCandidatesRoute(igdbService, cache)
         }
     }
+}
+
+private fun Route.trendingRoute(igdbService: IgdbService, cache: BffCache) {
+    get("/discover/trending") {
+        val request = TrendingRequest(
+            limitParam = parseIntegerParam(call.request.queryParameters["limit"], "limit"),
+            offsetParam = parseIntegerParam(call.request.queryParameters["offset"], "offset"),
+        )
+        logger.info("Fetching trending games (limit={}, offset={})", request.limit, request.offset)
+        val games = cache.getOrPut(request.cacheKey, CachePolicy.POPULAR) {
+            loadTrending(igdbService, request)
+        }
+        call.respond<List<GameDto>>(games)
+    }
+}
+
+private suspend fun loadTrending(
+    igdbService: IgdbService,
+    request: TrendingRequest,
+): List<GameDto> {
+    val primitives = igdbService.queryPopularityPrimitives(request.toPrimitivesApicalypseQuery())
+    val orderedIds = primitives.mapNotNull { primitive ->
+        primitive.gameId?.takeIf { it > 0L }
+    }.distinct()
+        .drop(request.offset)
+        .take(request.limit)
+    if (orderedIds.isEmpty()) return emptyList()
+    val byId = igdbService.queryGames(request.toHydrateApicalypseQuery(orderedIds))
+        .mapNotNull { it.toGameDto() }
+        .associateBy { it.id }
+    return orderedIds.mapNotNull { byId[it] }
 }
 
 private fun parseIntegerParam(raw: String?, paramName: String): Int? {

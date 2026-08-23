@@ -576,4 +576,46 @@ class GamesRoutesTest {
         assertEquals(1, seen.size)
         cache.close()
     }
+
+    @Test
+    fun `trending endpoint hydrates primitives in popularity order`() = testApplication {
+        val seenPaths = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            seenPaths += request.url.encodedPath
+            val body = (request.body as TextContent).text
+            val json = if (request.url.encodedPath.contains("popularity_primitives")) {
+                assertTrue(body.contains("popularity_type = 1"))
+                """[{"game_id":72,"value":0.9},{"game_id":14593,"value":0.5}]"""
+            } else {
+                """[
+                    {"id":14593,"name":"Hollow Knight","rating":91.8,
+                     "cover":{"id":1,"image_id":"cohk"},
+                     "genres":[{"id":1,"name":"Adventure"}],
+                     "platforms":[{"id":6,"name":"PC"}]},
+                    {"id":72,"name":"Portal 2","rating":94.6,
+                     "cover":{"id":2,"image_id":"cop2"},
+                     "genres":[{"id":1,"name":"Puzzle"}],
+                     "platforms":[{"id":6,"name":"PC"}]}
+                ]"""
+            }
+            respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val http = HttpClient(engine) {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        val service = IgdbService(http, mockTokenManager, mockConfig)
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/discover/trending?limit=10")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val games = response.body<List<GameDto>>()
+        assertEquals(listOf(72L, 14593L), games.map { it.id })
+        assertTrue(seenPaths[0].contains("popularity_primitives"))
+        assertTrue(seenPaths[1].contains("/v4/games") || seenPaths[1].endsWith("/games"))
+        cache.close()
+    }
 }

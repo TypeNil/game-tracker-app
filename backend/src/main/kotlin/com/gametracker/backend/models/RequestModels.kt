@@ -123,6 +123,33 @@ class TopRatedRequest(
 }
 
 /**
+ * Trending games from IGDB PopScore visits (popularity_type = 1).
+ */
+class TrendingRequest(
+    limitParam: Int? = null,
+    offsetParam: Int? = null,
+) {
+    val limit: Int = (limitParam ?: 20).coerceIn(1, 30)
+    val offset: Int = (offsetParam ?: 0).coerceIn(0, 1000)
+    val cacheKey: String = "trending_${limit}_${offset}"
+
+    fun toPrimitivesApicalypseQuery(): String {
+        val fetch = (limit + offset).coerceAtMost(MAX_PRIMITIVE_FETCH)
+        return "fields game_id,value;\nsort value desc;\nlimit $fetch;\nwhere popularity_type = $VISITS_TYPE;"
+    }
+
+    fun toHydrateApicalypseQuery(ids: List<Long>): String {
+        require(ids.isNotEmpty())
+        return "${QUERY_FIELDS}where id = (${ids.joinToString(",")}) & cover != null;\nlimit ${ids.size};"
+    }
+
+    companion object {
+        const val VISITS_TYPE = 1
+        const val MAX_PRIMITIVE_FETCH = 50
+    }
+}
+
+/**
  * Каноническая модель запроса детальной информации об игре.
  */
 class GameDetailsRequest(rawId: Long?) {

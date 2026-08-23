@@ -46,6 +46,11 @@ class FakeBffDataSourceTest {
         every { context.assets } returns assetManager
         every { assetManager.open("fixtures/v1/games.json") } answers { gamesFixture.inputStream() }
         every { assetManager.open("fixtures/v1/game-details.json") } answers { detailsFixture.inputStream() }
+        val trendingFixture = File(assetsDir, "fixtures/v1/trending.json")
+        if (!trendingFixture.exists()) {
+            throw java.lang.IllegalStateException("Fixture file not found at ${trendingFixture.absolutePath}")
+        }
+        every { assetManager.open("fixtures/v1/trending.json") } answers { trendingFixture.inputStream() }
 
         fakeDataSource = FakeBffDataSource(context, json)
     }
@@ -244,5 +249,13 @@ class FakeBffDataSourceTest {
             assertTrue(1942L in similar.similarToGameIds)
         }
         assertTrue(pool.isNotEmpty())
+    }
+
+    @Test
+    fun getTrendingGames_preservesFixtureOrder_notRatingDesc() = runTest {
+        val trending = fakeDataSource.getTrendingGames(limit = 6, offset = 0)
+        val topRated = fakeDataSource.getTopRatedGames(limit = 10, offset = 0)
+        assertEquals(listOf(72L, 14593L, 1877L, 119388L, 204350L, 25076L), trending.map { it.id })
+        assertTrue(trending.map { it.id } != topRated.take(trending.size).map { it.id })
     }
 }

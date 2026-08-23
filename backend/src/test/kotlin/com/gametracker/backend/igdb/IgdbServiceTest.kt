@@ -93,6 +93,22 @@ class IgdbServiceTest {
     }
 
     @Test
+    fun `queryPopularityPrimitives posts to popularity_primitives`() = runTest {
+        val engine = MockEngine { request ->
+            assertTrue(request.url.encodedPath.endsWith("/v4/popularity_primitives"))
+            respond(
+                content = """[{"game_id":72,"value":0.9,"popularity_type":1}]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val rows = service.queryPopularityPrimitives("fields game_id,value;")
+        assertEquals(1, rows.size)
+        assertEquals(72L, rows[0].gameId)
+    }
+
+    @Test
     fun `queryGames retries once upon 401 Unauthorized with token invalidation`() = runTest {
         var attempt = 0
         val engine = MockEngine { request ->

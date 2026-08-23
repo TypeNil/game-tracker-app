@@ -87,6 +87,21 @@ class RetrofitBffDataSourceTest {
     }
 
     @Test
+    fun getTrendingGames_hitsDiscoverTrending() = runTest {
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("""[{"id":72,"name":"Portal 2","genres":["Puzzle"],"platforms":["PC"]}]""")
+        )
+        val games = dataSource.getTrendingGames(limit = 20, offset = 0)
+        val recorded = mockWebServer.takeRequest()
+        assertEquals("/v1/discover/trending", recorded.requestUrl?.encodedPath)
+        assertEquals("20", recorded.requestUrl?.queryParameter("limit"))
+        assertEquals(72L, games.single().id)
+    }
+
+    @Test
     fun `searchGames deserializes minimal JSON with omitted fields into defaults`() = runTest {
         val minimalPayload = """
             [
