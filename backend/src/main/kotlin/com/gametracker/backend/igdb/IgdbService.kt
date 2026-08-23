@@ -7,6 +7,7 @@ import com.gametracker.backend.error.UpstreamRateLimitException
 import com.gametracker.backend.error.UpstreamServiceUnavailableException
 import com.gametracker.backend.error.UpstreamTimeoutException
 import com.gametracker.backend.models.IgdbGame
+import com.gametracker.backend.models.IgdbPopularityPrimitive
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.network.sockets.ConnectTimeoutException
@@ -47,10 +48,10 @@ class IgdbService(
     private val logger = LoggerFactory.getLogger("IgdbService")
 
     suspend fun queryGames(apicalypseQuery: String): List<IgdbGame> {
-        logger.info("Executing IGDB query (length={})", apicalypseQuery.length)
-        val response = executeWithRetry(apicalypseQuery)
+        logger.info("Executing IGDB query (path={}, length={})", IGDB_GAMES_PATH, apicalypseQuery.length)
+        val response = executeWithRetry(IGDB_GAMES_PATH, apicalypseQuery)
         return try {
-            response.body<List<IgdbGame>>()
+            response.body()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             logger.error("Failed to deserialize IGDB response", e)
@@ -60,13 +61,27 @@ class IgdbService(
         }
     }
 
-    private suspend fun executeWithRetry(apicalypseQuery: String): HttpResponse {
+    suspend fun queryPopularityPrimitives(apicalypseQuery: String): List<IgdbPopularityPrimitive> {
+        logger.info("Executing IGDB query (path={}, length={})", IGDB_POPULARITY_PATH, apicalypseQuery.length)
+        val response = executeWithRetry(IGDB_POPULARITY_PATH, apicalypseQuery)
+        return try {
+            response.body()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.error("Failed to deserialize IGDB response", e)
+            throw UpstreamBadGatewayException("Failed to deserialize IGDB popularity response", e)
+        } finally {
+            response.discardRemaining()
+        }
+    }
+
+    private suspend fun executeWithRetry(path: String, apicalypseQuery: String): HttpResponse {
         var authRetried = false
         var transientRetries = 0
 
         while (true) {
             val token = tokenManager.getValidAccessToken()
-            val responseResult = runCatching { sendRawQuery(token, apicalypseQuery) }
+            val responseResult = runCatching { sendRawQuery(token, path, apicalypseQuery) }
 
             if (responseResult.isFailure) {
                 transientRetries = handleNetworkFailure(responseResult.exceptionOrNull()!!, transientRetries)
@@ -102,16 +117,22 @@ class IgdbService(
         }
     }
 
-    private suspend fun sendRawQuery(token: String, apicalypseQuery: String): HttpResponse {
+    private suspend fun sendRawQuery(token: String, path: String, apicalypseQuery: String): HttpResponse {
         return concurrencySemaphore.withPermit {
             rateLimiter.acquire()
-            httpClient.post("https://api.igdb.com/v4/games") {
+            httpClient.post("https://api.igdb.com$path") {
                 header("Client-ID", config.clientId)
                 header("Authorization", "Bearer $token")
                 header("Accept", "application/json")
                 setBody(apicalypseQuery)
             }
         }
+    }
+
+    companion object {
+        const val IGDB_GAMES_PATH = "/v4/games"
+        const val IGDB_POPULARITY_PATH = "/v4/popularity_primitives"
+        const val TRENDING_POPULARITY_TYPE = 1
     }
 
     private suspend fun handleAuthUnauthorized(response: HttpResponse, token: String, authRetried: Boolean): Boolean {

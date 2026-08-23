@@ -9,6 +9,7 @@ import io.github.typenil.gametracker.core.network.model.RecommendationCandidateD
  */
 interface BffRemoteDataSource {
     suspend fun getTopRatedGames(limit: Int = 20, offset: Int = 0): List<GameDto>
+    suspend fun getTrendingGames(limit: Int = 20, offset: Int = 0): List<GameDto>
     suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): List<GameDto>
     suspend fun getGameDetails(id: Long): GameDetailsDto
     suspend fun getRecommendationCandidates(

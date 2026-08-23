@@ -52,10 +52,32 @@ class FakeBffDataSource @Inject constructor(
         }
     }
 
+    private val trendingIds: List<Long> by lazy {
+        try {
+            context.assets.open("fixtures/v1/trending.json")
+                .bufferedReader(Charsets.UTF_8)
+                .use { reader ->
+                    json.decodeFromString<List<Long>>(reader.readText())
+                }
+        } catch (e: java.io.IOException) {
+            throw IllegalStateException("Failed to read fixtures/v1/trending.json fixture: ${e.message}", e)
+        } catch (e: kotlinx.serialization.SerializationException) {
+            throw IllegalStateException("Failed to parse fixtures/v1/trending.json fixture: ${e.message}", e)
+        }
+    }
+
     override suspend fun getTopRatedGames(limit: Int, offset: Int): List<GameDto> {
         validatePagination(limit, offset)
         if (offset >= mockGames.size) return emptyList()
         return mockGames.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
+    }
+
+    override suspend fun getTrendingGames(limit: Int, offset: Int): List<GameDto> {
+        validatePagination(limit, offset)
+        val byId = mockGames.associateBy { it.id }
+        val ordered = trendingIds.mapNotNull { byId[it] }
+        if (offset >= ordered.size) return emptyList()
+        return ordered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
     }
 
     override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {

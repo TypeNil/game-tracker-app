@@ -18,6 +18,12 @@ interface BffApiService {
         @Query("offset") offset: Int? = null
     ): List<GameDto>
 
+    @GET("v1/discover/trending")
+    suspend fun getTrendingGames(
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+    ): List<GameDto>
+
     @GET("v1/games/search")
     suspend fun searchGames(
         @Query("q") query: String,

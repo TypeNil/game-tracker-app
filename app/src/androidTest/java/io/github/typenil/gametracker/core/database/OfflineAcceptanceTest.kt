@@ -294,6 +294,11 @@ class OfflineAcceptanceTest {
             return topRated
         }
 
+        override suspend fun getTrendingGames(limit: Int, offset: Int): List<GameDto> {
+            if (isOffline) throw IOException("Simulated Airplane Mode")
+            return topRated
+        }
+
         override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
             if (isOffline) throw IOException("Simulated Airplane Mode")
             return search
