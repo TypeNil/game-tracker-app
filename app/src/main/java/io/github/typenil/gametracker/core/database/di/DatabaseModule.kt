@@ -12,6 +12,7 @@ import io.github.typenil.gametracker.core.database.GameTrackerDatabase
 import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
+import io.github.typenil.gametracker.core.database.dao.NotificationEventDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations
@@ -38,7 +39,7 @@ abstract class DatabaseModule {
                 GameTrackerDatabase::class.java,
                 GameTrackerDatabase.DATABASE_NAME
             )
-                .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3)
+                .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4)
                 .build()
         }
 
@@ -65,6 +66,11 @@ abstract class DatabaseModule {
         @Provides
         fun provideLibraryDao(database: GameTrackerDatabase): LibraryDao {
             return database.libraryDao()
+        }
+
+        @Provides
+        fun provideNotificationEventDao(database: GameTrackerDatabase): NotificationEventDao {
+            return database.notificationEventDao()
         }
     }
 }

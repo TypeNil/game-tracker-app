@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_1_2
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_2_3
+import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_3_4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -196,6 +197,59 @@ class MigrationTest {
         assertTrue(companiesCursor.moveToFirst())
         assertTrue(companiesCursor.getString(0).contains("CD Projekt RED"))
         companiesCursor.close()
+
+        db.close()
+    }
+
+    @Test
+    fun migration3To4_createsNotificationEventsTableAndPreservesExistingData() {
+        var db = helper.createDatabase(testDbName, 3)
+
+        // Seed v3 rows
+        db.execSQL(
+            """
+            INSERT INTO games (id, name, coverUrl, rating, releaseDateEpochSeconds, summary, genres, platforms, cachedAtEpochSeconds)
+            VALUES (1, 'The Witcher 3', 'https://example.com/w3.jpg', 95.0, 1430000000, 'Geralt of Rivia', '["RPG"]', '["PC", "PS5"]', 1000)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO library_entries (gameId, status, userRating, userNotes, isFavorite, addedAtEpochSeconds, updatedAtEpochSeconds, hoursPlayed)
+            VALUES (1, 'WISHLIST', NULL, NULL, 1, 1000, 1000, 0)
+            """.trimIndent()
+        )
+        db.close()
+
+        // Run migration to schema v4 and validate schema identity against 4.json
+        db = helper.runMigrationsAndValidate(testDbName, 4, true, MIGRATION_3_4)
+
+        // Games and library data preserved
+        val gameCursor = db.query("SELECT id, name FROM games WHERE id = 1")
+        assertTrue(gameCursor.moveToFirst())
+        assertEquals("The Witcher 3", gameCursor.getString(1))
+        gameCursor.close()
+
+        // notification_events table starts empty
+        val emptyCursor = db.query("SELECT COUNT(*) FROM notification_events")
+        assertTrue(emptyCursor.moveToFirst())
+        assertEquals(0, emptyCursor.getInt(0))
+        emptyCursor.close()
+
+        // Insert into notification_events
+        db.execSQL(
+            """
+            INSERT INTO notification_events (eventKey, gameId, eventType, releaseDateEpochSeconds, notifiedAtEpochSeconds)
+            VALUES ('RELEASE_TODAY_1_1430000000', 1, 'RELEASE_TODAY', 1430000000, 1000)
+            """.trimIndent()
+        )
+        val eventCursor = db.query("SELECT eventKey, gameId, eventType, releaseDateEpochSeconds, notifiedAtEpochSeconds FROM notification_events WHERE eventKey = 'RELEASE_TODAY_1_1430000000'")
+        assertTrue(eventCursor.moveToFirst())
+        assertEquals("RELEASE_TODAY_1_1430000000", eventCursor.getString(0))
+        assertEquals(1L, eventCursor.getLong(1))
+        assertEquals("RELEASE_TODAY", eventCursor.getString(2))
+        assertEquals(1430000000L, eventCursor.getLong(3))
+        assertEquals(1000L, eventCursor.getLong(4))
+        eventCursor.close()
 
         db.close()
     }

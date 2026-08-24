@@ -101,4 +101,20 @@
     <string name="settings_igdb_attribution">Game data provided by IGDB</string>
     <string name="settings_igdb_link">IGDB</string>
     <string name="settings_igdb_open_error">No app available to open this link.</string>
+
+    <!-- Release Notifications -->
+    <string name="notification_channel_releases_name">Game Releases</string>
+    <string name="notification_channel_releases_desc">Notifications for upcoming and new game releases in your library</string>
+    <string name="notification_release_today_title">Game Released Today!</string>
+    <string name="notification_release_today_body">%1$s is out today!</string>
+    <string name="notification_release_soon_title">Upcoming Release</string>
+    <string name="notification_release_soon_body">%1$s is releasing soon on %2$s.</string>
+    <string name="notification_date_changed_title">Release Date Changed</string>
+    <string name="notification_date_changed_body">%1$s release date changed to %2$s.</string>
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_notifications_desc">Get notified when tracked games release or change dates</string>
+    <string name="settings_notifications_enable">Enable Notifications</string>
+    <string name="settings_notifications_enabled">Notifications Enabled</string>
+    <string name="settings_notifications_disabled">Notifications Disabled</string>
+    <string name="settings_notifications_permission_rationale">Enable notifications to track release dates for your wishlist and library games.</string>
 </resources>

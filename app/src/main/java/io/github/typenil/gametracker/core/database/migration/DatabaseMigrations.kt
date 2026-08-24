@@ -72,4 +72,29 @@ object DatabaseMigrations {
             )
         }
     }
+
+    /**
+     * Migration from Room schema version 3 to 4: adds the `notification_events` table for release deduplication.
+     * Cascades delete when the parent game entity is deleted.
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `notification_events` (
+                `eventKey` TEXT NOT NULL,
+                `gameId` INTEGER NOT NULL,
+                `eventType` TEXT NOT NULL,
+                `releaseDateEpochSeconds` INTEGER,
+                `notifiedAtEpochSeconds` INTEGER NOT NULL,
+                PRIMARY KEY (`eventKey`),
+                FOREIGN KEY (`gameId`) REFERENCES `games` (`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_notification_events_gameId` ON `notification_events` (`gameId`)"
+            )
+        }
+    }
 }
