@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -77,6 +78,7 @@ fun EditLibrarySheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
     val notesBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val notificationPermissionState = rememberNotificationPermissionState()
 
     var selectedStatus by remember(initialEntry) {
         mutableStateOf(initialEntry?.status ?: LibraryStatus.WISHLIST)
@@ -139,7 +141,12 @@ fun EditLibrarySheet(
                 StatusChip(
                     label = stringResource(R.string.library_status_wishlist),
                     selected = selectedStatus == LibraryStatus.WISHLIST,
-                    onClick = { selectedStatus = LibraryStatus.WISHLIST }
+                    onClick = {
+                        selectedStatus = LibraryStatus.WISHLIST
+                        if (!notificationPermissionState.hasPermission) {
+                            notificationPermissionState.requestPermission()
+                        }
+                    }
                 )
                 StatusChip(
                     label = stringResource(R.string.library_status_playing),
