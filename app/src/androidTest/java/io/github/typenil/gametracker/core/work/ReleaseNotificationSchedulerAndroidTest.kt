@@ -75,6 +75,8 @@ class ReleaseNotificationSchedulerAndroidTest {
 
     @Test
     fun testDriver_meetsConstraintsAndPeriodWithoutFailingPeriodicWork() {
+        // Dummy factory: drives constraints/period only. Hilt worker is covered in JVM tests.
+
         ReleaseNotificationScheduler.schedulePeriodicCheck(context)
 
         val workInfo = requireUniqueWork()

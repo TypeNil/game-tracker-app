@@ -20,6 +20,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,9 +65,8 @@ class SystemReleaseNotifierAndroidTest {
 
     @Test
     fun postReleaseNotification_deniedPermission_returnsFalseWithoutCrashing() {
-        if (notifier.hasNotificationPermission()) {
-            return
-        }
+        Assume.assumeFalse(notifier.hasNotificationPermission())
+
 
         val posted = notifier.postReleaseNotification(sampleTodayEvent())
 
@@ -95,9 +95,8 @@ class SystemReleaseNotifierAndroidTest {
 
     @Test
     fun postReleaseNotification_whenPermitted_postsMetadataAndContentIntent() {
-        if (!notifier.hasNotificationPermission()) {
-            return
-        }
+        Assume.assumeTrue(notifier.hasNotificationPermission())
+
 
         val posted = notifier.postReleaseNotification(sampleTodayEvent())
         assertTrue(posted)
