@@ -6,8 +6,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class IgdbNamedItem(
     val id: Long? = null,
-    val name: String
+    val name: String,
+    val abbreviation: String? = null
 )
+
 
 @Serializable
 data class IgdbCover(
@@ -194,15 +196,19 @@ internal fun igdbImageUrl(imageId: String?, rawUrl: String?, size: String): Stri
         ?.let { "https://images.igdb.com/igdb/image/upload/$size/$it.jpg" }
         ?: rawUrl?.replace("t_thumb", size)?.let { if (it.startsWith("//")) "https:$it" else it }
 
+
 internal fun List<IgdbNamedExpansion>?.toNameList(): List<String> =
     orEmpty().mapNotNull { item -> item.name?.trim()?.takeIf(String::isNotEmpty) }
+
+
 
 private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto> =
     orEmpty()
         .mapNotNull { releaseDate ->
-            val platform = releaseDate.platform?.name?.trim()?.takeIf(String::isNotEmpty)
-                ?: releaseDate.platform?.abbreviation?.trim()?.takeIf(String::isNotEmpty)
-                ?: return@mapNotNull null
+            val platform = displayPlatformName(
+                releaseDate.platform?.name,
+                releaseDate.platform?.abbreviation,
+            ) ?: return@mapNotNull null
             GameReleaseDateDto(
                 platform = platform,
                 dateEpochSeconds = releaseDate.date,
@@ -262,7 +268,7 @@ fun IgdbGame.toDto(): GameDto = GameDto(
     releaseDateEpochSeconds = this.firstReleaseDate,
     summary = this.summary,
     genres = this.genres?.map { it.name } ?: emptyList(),
-    platforms = this.platforms?.map { it.name } ?: emptyList()
+    platforms = this.platforms?.mapNotNull { displayPlatformName(it.name, it.abbreviation) } ?: emptyList()
 )
 
 fun IgdbGame.toGameDto(): GameDto = toDto()
@@ -276,7 +282,7 @@ fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
     releaseDateEpochSeconds = this.firstReleaseDate,
     summary = this.summary,
     genres = this.genres?.map { it.name } ?: emptyList(),
-    platforms = this.platforms?.map { it.name } ?: emptyList(),
+    platforms = this.platforms?.mapNotNull { displayPlatformName(it.name, it.abbreviation) } ?: emptyList(),
     url = this.url,
     totalRating = this.totalRating,
     totalRatingCount = this.totalRatingCount,

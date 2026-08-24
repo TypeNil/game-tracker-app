@@ -4,11 +4,13 @@ import java.text.Normalizer
 
 private val SAFE_PUNCTUATION = setOf('-', '_', ':', '\'', '!', '?', '.', ',', '&', '+')
 private const val QUERY_FIELDS =
-    "fields name, rating, cover.url, cover.image_id, first_release_date, summary, genres.name, platforms.name;\n"
+    "fields name, rating, cover.url, cover.image_id, first_release_date, summary, " +
+        "genres.name, platforms.name, platforms.abbreviation;\n"
 
 private const val CANDIDATE_FIELDS =
     "fields name, rating, rating_count, cover.url, cover.image_id, first_release_date, summary, " +
-        "genres.name, themes.name, platforms.name;\n"
+        "genres.name, themes.name, platforms.name, platforms.abbreviation;\n"
+
 
 private val TAG_PUNCTUATION = setOf(
     '-', '_', ':', '\'', '!', '?', '.', '&', '+',
