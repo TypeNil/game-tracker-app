@@ -167,54 +167,55 @@ private fun DiscoverContent(
                 )
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 if (showForYou) {
-                    item(key = "for_you_header") {
-                        Text(
-                            text = stringResource(R.string.discover_for_you),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    items(
-                        items = recommendations,
-                        key = { "rec_${it.game.id}" }
-                    ) { rec ->
-                        GameCard(
-                            game = rec.game,
-                            onClick = { onGameClick(rec.game.id) },
-                            supportingLines = rec.reasons.map { reasonLabel(it) },
-                        )
-                    }
-
+                    Text(
+                        text = stringResource(R.string.discover_for_you),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                    )
                 }
-                if (trending.isNotEmpty()) {
-                    item(key = "trending_header") {
-                        Text(
-                            text = stringResource(R.string.discover_trending),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (showForYou) {
+                        items(
+                            items = recommendations,
+                            key = { "rec_${it.game.id}" }
+                        ) { rec ->
+                            GameCard(
+                                game = rec.game,
+                                onClick = { onGameClick(rec.game.id) },
+                                supportingLines = rec.reasons.map { reasonLabel(it) },
+                            )
+                        }
                     }
-                    itemsIndexed(
-                        items = trending,
-                        key = { _, game -> "trend_${game.id}" }
-                    ) { index, game ->
-                        GameCard(
-                            game = game,
-                            onClick = { onGameClick(game.id) }
-                        )
-                        if (index == trending.lastIndex) {
-                            LaunchedEffect(trending.size) {
-                                onLoadMoreTrending()
+                    if (trending.isNotEmpty()) {
+                        item(key = "trending_header") {
+                            Text(
+                                text = stringResource(R.string.discover_trending),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        itemsIndexed(
+                            items = trending,
+                            key = { _, game -> "trend_${game.id}" }
+                        ) { index, game ->
+                            GameCard(
+                                game = game,
+                                onClick = { onGameClick(game.id) }
+                            )
+                            if (index == trending.lastIndex) {
+                                LaunchedEffect(trending.size) {
+                                    onLoadMoreTrending()
+                                }
                             }
                         }
                     }
-
                 }
             }
         }
