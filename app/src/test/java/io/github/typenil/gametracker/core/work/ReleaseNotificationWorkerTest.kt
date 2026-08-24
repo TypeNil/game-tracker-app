@@ -84,15 +84,15 @@ class ReleaseNotificationWorkerTest {
     }
 
     @Test
-    fun doWork_whenLibraryIsEmpty_returnsSuccessAndDoesNotFetch() = runTest(testDispatcher) {
+    fun doWork_whenLibraryIsEmpty_returnsSuccessAndDoesNotFetch_butCleansUpOldEvents() = runTest(testDispatcher) {
         coEvery { libraryDao.getAllLibraryEntries() } returns emptyList()
 
         val result = worker.doWork()
 
         assertEquals(Result.success(), result)
         coVerify(exactly = 0) { gameRepository.refreshGameDetails(any(), any()) }
+        coVerify(exactly = 1) { notificationEventDao.deleteOldEvents(any()) }
     }
-
     @Test
     fun doWork_filtersOutDroppedAndNotInterestedStatuses() = runTest(testDispatcher) {
         coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
@@ -157,6 +157,23 @@ class ReleaseNotificationWorkerTest {
         val result = worker.doWork()
 
         // 4xx is a client error, should not retry
+        assertEquals(Result.success(), result)
+    }
+
+    @Test
+    fun doWork_whenSerializationErrorOccurs_doesNotRetry() = runTest(testDispatcher) {
+        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns AppResult.Error(
+            AppError.SerializationError("Malformed payload")
+        )
+
+        val result = worker.doWork()
+
+        // SerializationError is deterministic, should not trigger retry
         assertEquals(Result.success(), result)
     }
 

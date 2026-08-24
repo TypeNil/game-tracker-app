@@ -1,23 +1,25 @@
 package io.github.typenil.gametracker.core.notification
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
+import io.github.typenil.gametracker.feature.settings.SettingsIntents
 
 /**
  * State holder managing notification permission status and request triggering.
@@ -29,7 +31,8 @@ class NotificationPermissionState(
 )
 
 /**
- * Reusable Compose hook for querying and requesting Android 13+ (POST_NOTIFICATIONS) permission.
+ * Reusable Compose hook for querying and requesting Android 13+ (POST_NOTIFICATIONS) permission,
+ * with fallback to app notification settings on pre-Tiramisu platforms.
  */
 @Composable
 fun rememberNotificationPermissionState(
@@ -72,10 +75,19 @@ fun rememberNotificationPermissionState(
         hasPermission = checkPermission()
         onPermissionResult(isGranted)
     }
-    val requestPermission: () -> Unit = remember(launcher) {
+
+    val requestPermission: () -> Unit = remember(launcher, context) {
         {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                try {
+                    context.startActivity(
+                        SettingsIntents.appNotificationSettingsIntent(context.packageName)
+                    )
+                } catch (_: ActivityNotFoundException) {
+                    // Ignored on platforms where intent cannot resolve
+                }
             }
         }
     }

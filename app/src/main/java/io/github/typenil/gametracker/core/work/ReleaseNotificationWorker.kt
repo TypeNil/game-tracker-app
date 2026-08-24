@@ -40,13 +40,13 @@ class ReleaseNotificationWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = withContext(ioDispatcher) {
-        val allEntries = libraryDao.getAllLibraryEntries()
-        val trackedEntries = allEntries.filter { isTrackedStatus(it.status) }
-        if (trackedEntries.isEmpty()) return@withContext Result.success()
-
         val nowEpochSeconds = Instant.now().epochSecond
         val retentionThreshold = nowEpochSeconds - RETENTION_DAYS * SECONDS_PER_DAY
         notificationEventDao.deleteOldEvents(retentionThreshold)
+
+        val allEntries = libraryDao.getAllLibraryEntries()
+        val trackedEntries = allEntries.filter { isTrackedStatus(it.status) }
+        if (trackedEntries.isEmpty()) return@withContext Result.success()
 
         var hasRetryableError = false
 
@@ -77,7 +77,7 @@ class ReleaseNotificationWorker @AssistedInject constructor(
                 // Room SSOT updated
             }
             is AppResult.Error -> {
-                if (!isNonRetryableClientError(refreshResult.error)) {
+                if (isRetryableError(refreshResult.error)) {
                     retryableError = true
                 }
             }
@@ -130,8 +130,12 @@ class ReleaseNotificationWorker @AssistedInject constructor(
             status == LibraryStatus.COMPLETED
     }
 
-    private fun isNonRetryableClientError(error: AppError): Boolean {
-        return error is AppError.HttpError && error.statusCode in HTTP_CLIENT_ERROR_RANGE
+    private fun isRetryableError(error: AppError): Boolean {
+        return when (error) {
+            is AppError.NetworkError -> true
+            is AppError.HttpError -> error.statusCode in HTTP_SERVER_ERROR_RANGE
+            else -> false
+        }
     }
 
     companion object {
@@ -139,6 +143,6 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         const val RETENTION_DAYS = 90L
         const val SECONDS_PER_DAY = 86_400L
         const val BATCH_SIZE = 20
-        private val HTTP_CLIENT_ERROR_RANGE = 400..499
+        private val HTTP_SERVER_ERROR_RANGE = 500..599
     }
 }
