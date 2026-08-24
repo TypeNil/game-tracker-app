@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -42,6 +44,8 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
@@ -95,6 +100,25 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    val pagerState = rememberPagerState(
+        initialPage = uiState.selectedTab.ordinal,
+        pageCount = { LibraryTab.entries.size },
+    )
+    val pagerScope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.selectedTab) {
+        val index = uiState.selectedTab.ordinal
+        if (pagerState.currentPage != index) {
+            pagerState.animateScrollToPage(index)
+        }
+    }
+    LaunchedEffect(pagerState.settledPage) {
+        val tab = LibraryTab.entries[pagerState.settledPage]
+        if (tab != uiState.selectedTab) {
+            onTabSelected(tab)
+        }
+    }
+
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -202,7 +226,10 @@ fun LibraryScreen(
                     val count = uiState.tabCounts[tab] ?: 0
                     Tab(
                         selected = isSelected,
-                        onClick = { onTabSelected(tab) },
+                        onClick = {
+                            onTabSelected(tab)
+                            pagerScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+                        },
                         text = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -274,35 +301,39 @@ fun LibraryScreen(
                     )
                 }
 
-                uiState.isFilteredEmpty -> {
-                    if (uiState.isSearchOrFilterActive) {
-                        LibrarySearchEmptyState(
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        LibraryTabEmptyState(
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-
                 else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items = uiState.filteredGames, key = { it.game.id }) { item ->
-                            LibraryGameCard(
-                                libraryGame = item,
-                                onClick = { onGameClick(item.game.id) }
-                            )
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        val tab = LibraryTab.entries[page]
+                        val pageGames = uiState.gamesFor(tab)
+                        if (pageGames.isEmpty()) {
+                            if (uiState.isSearchOrFilterActive) {
+                                LibrarySearchEmptyState(modifier = Modifier.fillMaxSize())
+                            } else {
+                                LibraryTabEmptyState(modifier = Modifier.fillMaxSize())
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(items = pageGames, key = { it.game.id }) { item ->
+                                    LibraryGameCard(
+                                        libraryGame = item,
+                                        onClick = { onGameClick(item.game.id) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
+
         }
     }
 }

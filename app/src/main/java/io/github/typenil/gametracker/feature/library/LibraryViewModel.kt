@@ -46,7 +46,14 @@ class LibraryViewModel @Inject constructor(
         _filterState
     ) { allGames, filterState ->
         val counts = computeTabCounts(allGames)
-        val filtered = filterAndSortGames(allGames, filterState)
+        val filtered = filterLibraryGames(
+            allGames = allGames,
+            selectedTab = filterState.selectedTab,
+            favoritesOnly = filterState.favoritesOnly,
+            query = filterState.query,
+            sortOption = filterState.sortOption,
+        )
+
 
         LibraryUiState(
             allGames = allGames,
@@ -110,49 +117,6 @@ class LibraryViewModel @Inject constructor(
         )
     }
 
-    private fun filterAndSortGames(
-        allGames: List<LibraryGame>,
-        filterState: FilterState
-    ): List<LibraryGame> {
-        val tabFiltered = when (filterState.selectedTab) {
-            LibraryTab.ALL -> allGames.filter { it.entry.status != LibraryStatus.NOT_INTERESTED }
-            LibraryTab.PLAYING -> allGames.filter { it.entry.status == LibraryStatus.PLAYING }
-            LibraryTab.WISHLIST -> allGames.filter { it.entry.status == LibraryStatus.WISHLIST }
-            LibraryTab.COMPLETED -> allGames.filter { it.entry.status == LibraryStatus.COMPLETED }
-            LibraryTab.DROPPED -> allGames.filter { it.entry.status == LibraryStatus.DROPPED }
-            LibraryTab.NOT_INTERESTED -> allGames.filter { it.entry.status == LibraryStatus.NOT_INTERESTED }
-        }
-
-        val favFiltered = if (filterState.favoritesOnly) {
-            tabFiltered.filter { it.entry.isFavorite }
-        } else {
-            tabFiltered
-        }
-
-        val searchFiltered = if (filterState.query.isNotBlank()) {
-            val trimmed = filterState.query.trim()
-            favFiltered.filter { it.game.name.contains(trimmed, ignoreCase = true) }
-        } else {
-            favFiltered
-        }
-
-        return when (filterState.sortOption) {
-            LibrarySortOption.UPDATED_DESC ->
-                searchFiltered.sortedByDescending { it.entry.updatedAtEpochSeconds }
-            LibrarySortOption.USER_RATING_DESC ->
-                searchFiltered.sortedWith(
-                    compareByDescending<LibraryGame> { it.entry.userRating ?: -1 }
-                        .thenByDescending { it.entry.updatedAtEpochSeconds }
-                )
-            LibrarySortOption.TITLE_ASC ->
-                searchFiltered.sortedBy { it.game.name.lowercase() }
-            LibrarySortOption.HOURS_PLAYED_DESC ->
-                searchFiltered.sortedWith(
-                    compareByDescending<LibraryGame> { it.entry.hoursPlayed }
-                        .thenByDescending { it.entry.updatedAtEpochSeconds }
-                )
-        }
-    }
 
     private data class FilterState(
         val selectedTab: LibraryTab,
