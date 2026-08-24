@@ -77,18 +77,60 @@ class DiscoverFeedAssemblerTest {
     }
 
     @Test
-    fun similarSeedIds_prefersFavoritesThenId() {
+    fun similarSeedIds_includesWishlistAndPrefersFavorites() {
         val seeds = DiscoverFeedAssembler.similarSeedIds(
             listOf(
                 signal(3L, favorite = false, status = LibraryStatus.PLAYING),
                 signal(1L, favorite = true, status = LibraryStatus.COMPLETED),
                 signal(2L, favorite = true, status = LibraryStatus.WISHLIST),
+                signal(5L, favorite = false, status = LibraryStatus.WISHLIST),
                 signal(4L, favorite = false, status = LibraryStatus.DROPPED),
             ),
         )
 
-        assertEquals(listOf(1L, 2L, 3L), seeds)
+        assertEquals(listOf(1L, 2L, 3L, 5L), seeds)
     }
+
+    @Test
+    fun assemble_skipsShownIdsThenWraps() {
+        val profile = RecommendationProfile(
+            genreWeights = mapOf("RPG" to 1f),
+            themeWeights = emptyMap(),
+            platformWeights = emptyMap(),
+            excludedGameIds = emptySet(),
+            isColdStart = false,
+        )
+        val candidates = listOf(
+            candidate(10L, "A", listOf("RPG")),
+            candidate(11L, "B", listOf("RPG")),
+            candidate(12L, "C", listOf("RPG")),
+        )
+
+        val first = DiscoverFeedAssembler.assemble(
+            profile, candidates, emptyList(), now, pageSize = 2,
+        )
+        val second = DiscoverFeedAssembler.assemble(
+            profile,
+            candidates,
+            emptyList(),
+            now,
+            shownIds = first.recommendations.map { it.game.id }.toSet(),
+            pageSize = 2,
+        )
+        val wrapped = DiscoverFeedAssembler.assemble(
+            profile,
+            candidates,
+            emptyList(),
+            now,
+            shownIds = (first.recommendations + second.recommendations).map { it.game.id }.toSet(),
+            pageSize = 2,
+        )
+
+        assertEquals(2, first.recommendations.size)
+        assertTrue(second.recommendations.none { it.game.id in first.recommendations.map { rec -> rec.game.id } })
+        assertEquals(2, wrapped.recommendations.size)
+    }
+
 
     private fun game(id: Long, name: String) = Game(id = id, name = name)
 

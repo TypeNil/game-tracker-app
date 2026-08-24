@@ -41,6 +41,9 @@ class DiscoverViewModel @Inject constructor(
     private val refreshing = MutableStateFlow(false)
     private val error = MutableStateFlow<AppError?>(null)
     private val userMessageRes = MutableStateFlow<Int?>(null)
+    private val lastShownRecIds = MutableStateFlow<Set<Long>>(emptySet())
+    private val rotateShownIds = MutableStateFlow(false)
+
     private val rebuildMutex = Mutex()
 
     val uiState: StateFlow<DiscoverUiState> = combine(
@@ -101,6 +104,7 @@ class DiscoverViewModel @Inject constructor(
     private suspend fun performHydrate(isUserPullToRefresh: Boolean) {
         if (isUserPullToRefresh) {
             refreshing.value = true
+            rotateShownIds.value = true
         } else if (recommendations.value.isEmpty()) {
             loading.value = true
         }
@@ -109,6 +113,7 @@ class DiscoverViewModel @Inject constructor(
         loading.value = false
         refreshing.value = false
     }
+
 
     private suspend fun refreshTrending() {
         when (val result = gameRepository.refreshTrendingGames()) {
@@ -134,15 +139,19 @@ class DiscoverViewModel @Inject constructor(
             } else {
                 fetchCandidates(profile, signals, inLibraryIds)
             }
+            val shownIds = if (rotateShownIds.value) lastShownRecIds.value else emptySet()
             val feed = DiscoverFeedAssembler.assemble(
                 profile = profile,
                 candidates = candidates,
                 trending = emptyList(),
                 nowEpochSeconds = System.currentTimeMillis() / 1000,
                 inLibraryIds = inLibraryIds,
+                shownIds = shownIds,
             )
             recommendations.value = feed.recommendations
-            hiddenFromTrending.value = feed.recommendations.map { it.game.id }.toSet() + profile.excludedGameIds
+            lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
+            hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
+            rotateShownIds.value = false
         }
     }
 

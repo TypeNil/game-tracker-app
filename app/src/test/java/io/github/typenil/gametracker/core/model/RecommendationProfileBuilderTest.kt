@@ -18,13 +18,14 @@ class RecommendationProfileBuilderTest {
     }
 
     @Test
-    fun wishlist_isNotASignal() {
+    fun wishlist_isAWeakPositiveSignal() {
         val profile = RecommendationProfileBuilder.build(
             listOf(signal(status = LibraryStatus.WISHLIST, genres = listOf("RPG")))
         )
-        assertTrue(profile.isColdStart)
-        assertTrue(profile.genreWeights.isEmpty())
+        assertFalse(profile.isColdStart)
+        assertEquals(1f, profile.genreWeights.getValue("RPG"))
     }
+
 
     @Test
     fun favorite_playing_andHighRating_stack_thenNormalize() {
@@ -43,7 +44,7 @@ class RecommendationProfileBuilderTest {
         )
         assertEquals(1f, profile.genreWeights.getValue("RPG"))
         assertEquals(1f, profile.themeWeights.getValue("Fantasy"))
-        assertEquals(1f, profile.platformWeights.getValue("PC"))
+        assertTrue(profile.platformWeights.isEmpty())
         assertFalse(profile.isColdStart)
         assertTrue(profile.excludedGameIds.isEmpty())
     }
@@ -102,8 +103,9 @@ class RecommendationProfileBuilderTest {
             coldStartPlatforms = setOf("PS5"),
         )
         assertEquals(1f, onlyPlatforms.genreWeights.getValue("Indie"))
-        assertEquals(1f, onlyPlatforms.platformWeights.getValue("PC"))
+        assertTrue(onlyPlatforms.platformWeights.isEmpty())
         assertTrue("PS5" !in onlyPlatforms.platformWeights)
+
         assertFalse(onlyPlatforms.isColdStart)
 
         val empty = RecommendationProfileBuilder.build(
@@ -152,6 +154,37 @@ class RecommendationProfileBuilderTest {
         assertFalse(profile.isColdStart)
         assertTrue(profile.excludedGameIds.isEmpty())
     }
+
+    @Test
+    fun oneMultiplatGame_clearsPlatformWeights() {
+        val profile = RecommendationProfileBuilder.build(
+            listOf(
+                signal(
+                    status = LibraryStatus.COMPLETED,
+                    genres = listOf("RPG"),
+                    platforms = listOf("PC", "PlayStation 5", "Xbox Series X"),
+                )
+            )
+        )
+        assertFalse(profile.isColdStart)
+        assertEquals(1f, profile.genreWeights.getValue("RPG"))
+        assertTrue(profile.platformWeights.isEmpty())
+    }
+
+    @Test
+    fun fivePs5AndOnePc_keepsOnlyPs5() {
+        val signals = (1L..5L).map { id ->
+            signal(
+                gameId = id,
+                status = LibraryStatus.COMPLETED,
+                genres = listOf("RPG"),
+                platforms = if (id == 1L) listOf("PlayStation 5", "PC") else listOf("PlayStation 5"),
+            )
+        }
+        val profile = RecommendationProfileBuilder.build(signals)
+        assertEquals(setOf("PlayStation 5"), profile.platformWeights.keys)
+    }
+
 
     private fun signal(
         gameId: Long = 1L,
