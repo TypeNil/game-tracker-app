@@ -48,6 +48,7 @@ class DiscoverViewModel @Inject constructor(
     private var hydrateJob: Job? = null
     private var appendJob: Job? = null
     private var trendingEndReached = false
+    private val trendingMutex = Mutex()
 
     val uiState: StateFlow<DiscoverUiState> = combine(
         recommendations,
@@ -103,21 +104,24 @@ class DiscoverViewModel @Inject constructor(
     fun loadMoreTrending() {
         if (appendJob?.isActive == true || trendingEndReached || refreshing.value) return
         appendJob = viewModelScope.launch {
-            val offset = gameRepository.getTrendingGamesFlow().first().size
-            if (offset == 0 || offset >= TRENDING_CAP) {
-                trendingEndReached = offset >= TRENDING_CAP
-                return@launch
-            }
-            val pageSize = minOf(TRENDING_PAGE, TRENDING_CAP - offset)
-            when (val result = gameRepository.refreshTrendingGames(pageSize, offset, append = true)) {
-                is AppResult.Success -> {
-                    val newSize = gameRepository.getTrendingGamesFlow().first().size
-                    if (newSize <= offset || newSize >= TRENDING_CAP || newSize - offset < pageSize) {
-                        trendingEndReached = true
-                    }
+            trendingMutex.withLock {
+                if (trendingEndReached || refreshing.value) return@withLock
+                val offset = gameRepository.getTrendingGamesFlow().first().size
+                if (offset == 0 || offset >= TRENDING_CAP) {
+                    trendingEndReached = offset >= TRENDING_CAP
+                    return@withLock
                 }
-                is AppResult.Error -> {
-                    userMessageRes.value = R.string.error_refresh_failed
+                val pageSize = minOf(TRENDING_PAGE, TRENDING_CAP - offset)
+                when (val result = gameRepository.refreshTrendingGames(pageSize, offset, append = true)) {
+                    is AppResult.Success -> {
+                        val newSize = gameRepository.getTrendingGamesFlow().first().size
+                        if (newSize <= offset || newSize >= TRENDING_CAP || newSize - offset < pageSize) {
+                            trendingEndReached = true
+                        }
+                    }
+                    is AppResult.Error -> {
+                        userMessageRes.value = R.string.error_refresh_failed
+                    }
                 }
             }
         }
@@ -125,6 +129,7 @@ class DiscoverViewModel @Inject constructor(
 
 
     private fun hydrate(isUserPullToRefresh: Boolean) {
+        appendJob?.cancel()
         hydrateJob?.cancel()
         hydrateJob = viewModelScope.launch {
             performHydrate(isUserPullToRefresh)
@@ -144,23 +149,26 @@ class DiscoverViewModel @Inject constructor(
     }
 
     private suspend fun refreshTrending() {
-        trendingEndReached = false
-        when (val result = gameRepository.refreshTrendingGames()) {
-            is AppResult.Success -> {
-                error.value = null
-                val size = gameRepository.getTrendingGamesFlow().first().size
-                if (size < TRENDING_PAGE || size >= TRENDING_CAP) {
-                    trendingEndReached = true
+        trendingMutex.withLock {
+            trendingEndReached = false
+            when (val result = gameRepository.refreshTrendingGames()) {
+                is AppResult.Success -> {
+                    error.value = null
+                    val size = gameRepository.getTrendingGamesFlow().first().size
+                    if (size < TRENDING_PAGE || size >= TRENDING_CAP) {
+                        trendingEndReached = true
+                    }
                 }
-            }
-            is AppResult.Error -> {
-                error.value = result.error
-                if (recommendations.value.isNotEmpty()) {
-                    userMessageRes.value = R.string.error_refresh_failed
+                is AppResult.Error -> {
+                    error.value = result.error
+                    if (recommendations.value.isNotEmpty()) {
+                        userMessageRes.value = R.string.error_refresh_failed
+                    }
                 }
             }
         }
     }
+
 
     private suspend fun rebuildRecommendations(rotate: Boolean) {
         rebuildMutex.withLock {
