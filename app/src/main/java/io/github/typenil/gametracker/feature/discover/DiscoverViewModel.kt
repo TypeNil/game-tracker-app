@@ -42,9 +42,9 @@ class DiscoverViewModel @Inject constructor(
     private val error = MutableStateFlow<AppError?>(null)
     private val userMessageRes = MutableStateFlow<Int?>(null)
     private val lastShownRecIds = MutableStateFlow<Set<Long>>(emptySet())
-    private val rotateShownIds = MutableStateFlow(false)
-
+    private var lastLibraryIds: Set<Long>? = null
     private val rebuildMutex = Mutex()
+    private var hydrateJob: Job? = null
 
     val uiState: StateFlow<DiscoverUiState> = combine(
         recommendations,
@@ -68,15 +68,19 @@ class DiscoverViewModel @Inject constructor(
         initialValue = DiscoverUiState(isLoading = true),
     )
 
-    private var hydrateJob: Job? = null
-
     init {
         viewModelScope.launch {
             librarySeeder.seedIfEmpty()
             loading.value = true
             refreshTrending()
-            libraryRepository.getLibraryGamesFlow().collect {
-                rebuildRecommendations()
+            libraryRepository.getLibraryGamesFlow().collect { games ->
+                val ids = games.map { it.game.id }.toSet()
+                val membershipChanged = lastLibraryIds != ids
+                lastLibraryIds = ids
+                if (refreshing.value && !membershipChanged) {
+                    return@collect
+                }
+                rebuildRecommendations(rotate = false)
                 loading.value = false
             }
         }
@@ -104,16 +108,14 @@ class DiscoverViewModel @Inject constructor(
     private suspend fun performHydrate(isUserPullToRefresh: Boolean) {
         if (isUserPullToRefresh) {
             refreshing.value = true
-            rotateShownIds.value = true
         } else if (recommendations.value.isEmpty()) {
             loading.value = true
         }
         refreshTrending()
-        rebuildRecommendations()
+        rebuildRecommendations(rotate = isUserPullToRefresh)
         loading.value = false
         refreshing.value = false
     }
-
 
     private suspend fun refreshTrending() {
         when (val result = gameRepository.refreshTrendingGames()) {
@@ -129,7 +131,7 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-    private suspend fun rebuildRecommendations() {
+    private suspend fun rebuildRecommendations(rotate: Boolean) {
         rebuildMutex.withLock {
             val signals = signalCollector.collect()
             val profile = RecommendationProfileBuilder.build(signals)
@@ -139,7 +141,7 @@ class DiscoverViewModel @Inject constructor(
             } else {
                 fetchCandidates(profile, signals, inLibraryIds)
             }
-            val shownIds = if (rotateShownIds.value) lastShownRecIds.value else emptySet()
+            val shownIds = if (rotate) lastShownRecIds.value else emptySet()
             val feed = DiscoverFeedAssembler.assemble(
                 profile = profile,
                 candidates = candidates,
@@ -151,7 +153,6 @@ class DiscoverViewModel @Inject constructor(
             recommendations.value = feed.recommendations
             lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
             hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
-            rotateShownIds.value = false
         }
     }
 
