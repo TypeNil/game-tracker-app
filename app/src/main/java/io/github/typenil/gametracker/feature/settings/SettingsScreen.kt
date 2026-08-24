@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 
 @Composable
@@ -140,7 +141,7 @@ fun SettingsScreen(
                                 onClick = {
                                     try {
                                         context.startActivity(
-                                            SettingsIntents.appNotificationSettingsIntent(context.packageName)
+                                            NotificationIntents.appNotificationSettingsIntent(context.packageName)
                                         )
                                     } catch (_: ActivityNotFoundException) {
                                         // Ignore

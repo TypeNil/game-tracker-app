@@ -10,7 +10,6 @@ import android.os.Build
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.github.typenil.gametracker.BuildConfig
 import io.github.typenil.gametracker.MainActivity
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.model.NotificationEventType
@@ -19,6 +18,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Before
@@ -76,15 +76,16 @@ class SystemReleaseNotifierAndroidTest {
 
     @Test
     fun buildTapIntent_targetsGameDetailsDeepLink() {
-        val intent = notifier.buildTapIntent(GAME_ID).apply {
-            setPackage(BuildConfig.APPLICATION_ID)
-        }
+        val intent = notifier.buildTapIntent(GAME_ID)
 
         assertEquals(Intent.ACTION_VIEW, intent.action)
         assertEquals(Uri.parse("gametracker://game/$GAME_ID"), intent.data)
-        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertEquals(context.packageName, intent.`package`)
+        assertNull(intent.component)
+        assertEquals(MainActivity::class.java.name, intent.resolveActivity(context.packageManager)?.className)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+
 
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
             scenario.onActivity { activity ->

@@ -19,7 +19,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import io.github.typenil.gametracker.feature.settings.SettingsIntents
 
 /**
  * State holder managing notification permission status and request triggering.
@@ -83,7 +82,7 @@ fun rememberNotificationPermissionState(
             } else {
                 try {
                     context.startActivity(
-                        SettingsIntents.appNotificationSettingsIntent(context.packageName)
+                        NotificationIntents.appNotificationSettingsIntent(context.packageName)
                     )
                 } catch (_: ActivityNotFoundException) {
                     // Ignored on platforms where intent cannot resolve
