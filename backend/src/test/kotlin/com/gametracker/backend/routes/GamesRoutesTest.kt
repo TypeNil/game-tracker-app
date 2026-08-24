@@ -122,7 +122,7 @@ class GamesRoutesTest {
         assertEquals(92.5, game.rating!!, 0.01)
         assertEquals(1431993600L, game.releaseDateEpochSeconds)
         assertEquals(listOf("Role-playing (RPG)"), game.genres)
-        assertEquals(listOf("PC (Microsoft Windows)"), game.platforms)
+        assertEquals(listOf("PC"), game.platforms)
         cache.close()
     }
 
@@ -364,9 +364,10 @@ class GamesRoutesTest {
 
             // Дедуп по (platform, year): запись с точной датой выигрывает у бездатой
             assertEquals(2, game.releaseDates.size)
-            assertEquals("PC (Microsoft Windows)", game.releaseDates[0].platform)
+            assertEquals("PC", game.releaseDates[0].platform)
             assertEquals(1431993600L, game.releaseDates[0].dateEpochSeconds)
-            // Платформа предпочитает name перед abbreviation
+            // PC (Microsoft Windows) + abbreviation PC → canonical "PC"
+
             assertEquals("Nintendo Switch", game.releaseDates[1].platform)
             assertEquals(1611792000L, game.releaseDates[1].dateEpochSeconds)
 

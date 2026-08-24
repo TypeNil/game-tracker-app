@@ -27,6 +27,6 @@ fun IgdbGame.toCandidateDto(similarToGameIds: List<Long> = emptyList()) = Recomm
     summary = summary,
     genres = genres?.map { it.name } ?: emptyList(),
     themes = themes.toNameList(),
-    platforms = platforms?.map { it.name } ?: emptyList(),
+    platforms = platforms?.mapNotNull { displayPlatformName(it.name, it.abbreviation) } ?: emptyList(),
     similarToGameIds = similarToGameIds,
 )
