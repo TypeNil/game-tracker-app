@@ -1,18 +1,19 @@
 package io.github.typenil.gametracker.feature.discover
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
@@ -128,7 +129,7 @@ fun DiscoverScreen(
                     onGameClick = onGameClick,
                     onRefresh = onRefresh,
                     onLoadMoreTrending = onLoadMoreTrending,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
         }
@@ -167,30 +168,21 @@ private fun DiscoverContent(
                 )
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    // ponytail: Scaffold innerPadding.top is 0 here; 72.dp clears the top app bar
-                    top = 72.dp,
-                    bottom = 16.dp,
-                ),
-
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-
                 if (showForYou) {
-                    item(key = "for_you_header") {
-                        Text(
-                            text = stringResource(R.string.discover_for_you),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    items(
-                        items = recommendations,
-                        key = { "rec_${it.game.id}" }
-                    ) { rec ->
+                    Text(
+                        text = stringResource(R.string.discover_for_you),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    recommendations.forEach { rec ->
                         GameCard(
                             game = rec.game,
                             onClick = { onGameClick(rec.game.id) },
@@ -199,20 +191,15 @@ private fun DiscoverContent(
                     }
                 }
                 if (trending.isNotEmpty()) {
-                    item(key = "trending_header") {
-                        Text(
-                            text = stringResource(R.string.discover_trending),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    itemsIndexed(
-                        items = trending,
-                        key = { _, game -> "trend_${game.id}" }
-                    ) { index, game ->
+                    Text(
+                        text = stringResource(R.string.discover_trending),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    trending.forEachIndexed { index, game ->
                         GameCard(
                             game = game,
-                            onClick = { onGameClick(game.id) }
+                            onClick = { onGameClick(game.id) },
                         )
                         if (index == trending.lastIndex) {
                             LaunchedEffect(trending.size) {

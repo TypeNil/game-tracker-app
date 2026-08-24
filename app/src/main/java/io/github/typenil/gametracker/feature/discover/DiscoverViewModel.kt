@@ -161,9 +161,12 @@ class DiscoverViewModel @Inject constructor(
                 }
                 is AppResult.Error -> {
                     error.value = result.error
-                    if (recommendations.value.isNotEmpty()) {
+                    if (recommendations.value.isNotEmpty() ||
+                        gameRepository.getTrendingGamesFlow().first().isNotEmpty()
+                    ) {
                         userMessageRes.value = R.string.error_refresh_failed
                     }
+
                 }
             }
         }
