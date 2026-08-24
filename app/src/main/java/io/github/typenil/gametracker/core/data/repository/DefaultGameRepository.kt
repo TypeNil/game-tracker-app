@@ -163,7 +163,7 @@ class DefaultGameRepository internal constructor(
         }
     }
 
-    override suspend fun refreshTrendingGames(limit: Int, offset: Int): AppResult<Unit> {
+    override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<Unit> {
         return withContext(ioDispatcher) {
             runSuspendCatching {
                 val remoteGames = remoteDataSource.getTrendingGames(limit = limit, offset = offset).toDomain()
@@ -176,15 +176,22 @@ class DefaultGameRepository internal constructor(
                 transactionRunner {
                     gameDao.upsertGames(distinctGames.map { it.toEntity(nowSeconds) })
                     val existingQuery = searchDao.getSearchQuery(queryKey)
+                    val resultCount = if (append) {
+                        (existingQuery?.resultCount ?: 0) + distinctGames.size
+                    } else {
+                        distinctGames.size
+                    }
                     searchDao.upsertSearchQuery(
                         SearchQueryEntity(
                             query = queryKey,
                             createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
                             lastQueriedAtEpochSeconds = nowSeconds,
-                            resultCount = distinctGames.size
+                            resultCount = resultCount
                         )
                     )
-                    searchDao.deleteSearchResultsForQuery(queryKey)
+                    if (!append) {
+                        searchDao.deleteSearchResultsForQuery(queryKey)
+                    }
                     val crossRefs = distinctGames.mapIndexed { index, game ->
                         SearchResultCrossRef(
                             query = queryKey,

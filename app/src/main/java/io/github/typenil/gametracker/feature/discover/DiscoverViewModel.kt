@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -45,6 +46,8 @@ class DiscoverViewModel @Inject constructor(
     private var lastLibraryIds: Set<Long>? = null
     private val rebuildMutex = Mutex()
     private var hydrateJob: Job? = null
+    private var appendJob: Job? = null
+    private var trendingEndReached = false
 
     val uiState: StateFlow<DiscoverUiState> = combine(
         recommendations,
@@ -97,6 +100,29 @@ class DiscoverViewModel @Inject constructor(
     fun onUserMessageShown() {
         userMessageRes.value = null
     }
+    fun loadMoreTrending() {
+        if (appendJob?.isActive == true || trendingEndReached || refreshing.value) return
+        appendJob = viewModelScope.launch {
+            val offset = gameRepository.getTrendingGamesFlow().first().size
+            if (offset == 0 || offset >= TRENDING_CAP) {
+                trendingEndReached = offset >= TRENDING_CAP
+                return@launch
+            }
+            val pageSize = minOf(TRENDING_PAGE, TRENDING_CAP - offset)
+            when (val result = gameRepository.refreshTrendingGames(pageSize, offset, append = true)) {
+                is AppResult.Success -> {
+                    val newSize = gameRepository.getTrendingGamesFlow().first().size
+                    if (newSize <= offset || newSize >= TRENDING_CAP || newSize - offset < pageSize) {
+                        trendingEndReached = true
+                    }
+                }
+                is AppResult.Error -> {
+                    userMessageRes.value = R.string.error_refresh_failed
+                }
+            }
+        }
+    }
+
 
     private fun hydrate(isUserPullToRefresh: Boolean) {
         hydrateJob?.cancel()
@@ -118,9 +144,14 @@ class DiscoverViewModel @Inject constructor(
     }
 
     private suspend fun refreshTrending() {
+        trendingEndReached = false
         when (val result = gameRepository.refreshTrendingGames()) {
             is AppResult.Success -> {
                 error.value = null
+                val size = gameRepository.getTrendingGamesFlow().first().size
+                if (size < TRENDING_PAGE || size >= TRENDING_CAP) {
+                    trendingEndReached = true
+                }
             }
             is AppResult.Error -> {
                 error.value = result.error
@@ -185,3 +216,7 @@ class DiscoverViewModel @Inject constructor(
         val userMessageRes: Int?,
     )
 }
+
+private const val TRENDING_PAGE = 20
+private const val TRENDING_CAP = 50
+

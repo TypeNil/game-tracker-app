@@ -21,7 +21,7 @@ interface GameRepository {
 
     fun getTrendingGamesFlow(): Flow<List<Game>>
 
-    suspend fun refreshTrendingGames(limit: Int = 20, offset: Int = 0): AppResult<Unit>
+    suspend fun refreshTrendingGames(limit: Int = 20, offset: Int = 0, append: Boolean = false): AppResult<Unit>
 
     suspend fun getRecommendationCandidates(
         genres: List<String> = emptyList(),

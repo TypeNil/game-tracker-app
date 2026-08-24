@@ -36,7 +36,8 @@ fun NavGraphBuilder.discoverEntry(
             onAboutClick = onAboutClick,
             onRefresh = viewModel::refresh,
             onRetry = viewModel::retry,
-            onUserMessageShown = viewModel::onUserMessageShown
+            onUserMessageShown = viewModel::onUserMessageShown,
+            onLoadMoreTrending = viewModel::loadMoreTrending,
         )
     }
 }

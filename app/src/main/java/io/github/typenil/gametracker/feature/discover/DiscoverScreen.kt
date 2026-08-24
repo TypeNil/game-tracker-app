@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
@@ -58,6 +59,7 @@ fun DiscoverScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onUserMessageShown: () -> Unit,
+    onLoadMoreTrending: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -125,6 +127,7 @@ fun DiscoverScreen(
                     isRefreshing = uiState.isRefreshing,
                     onGameClick = onGameClick,
                     onRefresh = onRefresh,
+                    onLoadMoreTrending = onLoadMoreTrending,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -141,6 +144,7 @@ private fun DiscoverContent(
     isRefreshing: Boolean,
     onGameClick: (Long) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMoreTrending: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
@@ -196,15 +200,21 @@ private fun DiscoverContent(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    items(
+                    itemsIndexed(
                         items = trending,
-                        key = { "trend_${it.id}" }
-                    ) { game ->
+                        key = { _, game -> "trend_${game.id}" }
+                    ) { index, game ->
                         GameCard(
                             game = game,
                             onClick = { onGameClick(game.id) }
                         )
+                        if (index == trending.lastIndex) {
+                            LaunchedEffect(trending.size) {
+                                onLoadMoreTrending()
+                            }
+                        }
                     }
+
                 }
             }
         }

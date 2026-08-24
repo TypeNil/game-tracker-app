@@ -51,7 +51,7 @@ class DiscoverViewModelTest {
         every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow
         coEvery { librarySeeder.seedIfEmpty() } returns Unit
         coEvery { signalCollector.collect() } returns emptyList()
-        coEvery { gameRepository.refreshTrendingGames(any(), any()) } coAnswers {
+        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
             trendingFlow.value = trendingGames
             AppResult.Success(Unit)
         }
@@ -72,12 +72,12 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
         coVerify(exactly = 1) { librarySeeder.seedIfEmpty() }
-        coVerify(exactly = 1) { gameRepository.refreshTrendingGames(any(), any()) }
+        coVerify(exactly = 1) { gameRepository.refreshTrendingGames(any(), any(), any()) }
     }
 
     @Test
     fun init_whenTrendingFailsAndEmpty_emitsError() = runTest {
-        coEvery { gameRepository.refreshTrendingGames(any(), any()) } returns AppResult.Error(AppError.NetworkError)
+        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } returns AppResult.Error(AppError.NetworkError)
 
         val viewModel = createViewModel()
 
@@ -120,7 +120,7 @@ class DiscoverViewModelTest {
         advanceUntilIdle()
 
         val gate = CompletableDeferred<Unit>()
-        coEvery { gameRepository.refreshTrendingGames(any(), any()) } coAnswers {
+        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
             gate.await()
             AppResult.Success(Unit)
         }
@@ -170,6 +170,32 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun loadMoreTrending_appendsWithoutRefreshing() = runTest {
+        val pageOne = (1L..20L).map { Game(id = it, name = "T$it") }
+        val pageTwo = (21L..40L).map { Game(id = it, name = "T$it") }
+        trendingFlow.value = pageOne
+        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
+            val offset = args[1] as Int
+            val append = args[2] as Boolean
+            trendingFlow.value = if (append && offset == 20) pageOne + pageTwo else pageOne
+            AppResult.Success(Unit)
+        }
+
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.trending.size == 20 && !it.isLoading }
+            viewModel.loadMoreTrending()
+            val appended = awaitItemUntil { it.trending.size == 40 }
+            assertFalse(appended.isRefreshing)
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { gameRepository.refreshTrendingGames(20, 20, true) }
+
+    }
+
 
     private fun createViewModel(): DiscoverViewModel {
         return DiscoverViewModel(

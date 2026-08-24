@@ -201,6 +201,25 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `refreshTrendingGames append does not delete existing page`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { 1600000000L })
+        val pageTwo = sampleGameDto.copy(id = 2L, name = "Second")
+        coEvery { remoteDataSource.getTrendingGames(20, 20) } returns listOf(pageTwo)
+
+        val result = repository.refreshTrendingGames(limit = 20, offset = 20, append = true)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { searchDao.deleteSearchResultsForQuery(any()) }
+        val resultsSlot = slot<List<SearchResultCrossRef>>()
+        coVerify(exactly = 1) { searchDao.insertSearchResults(capture(resultsSlot)) }
+        assertEquals(GameQueryKey.KEY_DISCOVER_TRENDING, resultsSlot.captured.single().query)
+        assertEquals(2L, resultsSlot.captured.single().gameId)
+        assertEquals(20, resultsSlot.captured.single().position)
+    }
+
+
+    @Test
     fun `getRecommendationCandidates maps remote DTOs without Room writes`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
