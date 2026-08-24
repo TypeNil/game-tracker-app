@@ -149,7 +149,7 @@ class NotificationEventDaoTest {
         notificationEventDao.upsertEvent(event)
         assertTrue(notificationEventDao.hasEvent("RELEASE_TODAY_100_1645747200"))
 
-        gameDao.deleteGame(100L)
+        gameDao.deleteGameById(100L)
         assertFalse(notificationEventDao.hasEvent("RELEASE_TODAY_100_1645747200"))
     }
 }
