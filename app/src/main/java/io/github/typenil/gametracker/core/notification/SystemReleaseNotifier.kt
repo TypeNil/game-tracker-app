@@ -13,7 +13,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.github.typenil.gametracker.MainActivity
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.model.ReleaseEvent
 import javax.inject.Inject
@@ -99,11 +98,10 @@ class SystemReleaseNotifier @Inject constructor(
     fun buildTapIntent(gameId: Long): Intent {
         return Intent(
             Intent.ACTION_VIEW,
-            Uri.parse(ReleaseNotificationPayload.buildDeepLinkUri(gameId)),
-            context,
-            MainActivity::class.java
+            Uri.parse(ReleaseNotificationPayload.buildDeepLinkUri(gameId))
         ).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            setPackage(context.packageName)
         }
     }
 
