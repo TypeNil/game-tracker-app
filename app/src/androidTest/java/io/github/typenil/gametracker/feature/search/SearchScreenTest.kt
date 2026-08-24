@@ -268,6 +268,7 @@ class SearchScreenTest {
         composeTestRule.onNodeWithText("Cyberpunk 2077").assertIsDisplayed()
     }
 
+    @Suppress("TooManyFunctions")
     private class FakeDeferredGameRepository : GameRepository {
         @Volatile
         var capturedQuery: String? = null
@@ -287,6 +288,22 @@ class SearchScreenTest {
         override suspend fun refreshTopRatedGames(limit: Int, offset: Int): AppResult<Unit> {
             return AppResult.Success(Unit)
         }
+
+        override fun getTrendingGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
+
+        override suspend fun refreshTrendingGames(limit: Int, offset: Int): AppResult<Unit> {
+            return AppResult.Success(Unit)
+        }
+
+        override suspend fun getRecommendationCandidates(
+            genres: List<String>,
+            themes: List<String>,
+            platforms: List<String>,
+            exclude: Set<Long>,
+            similarTo: List<Long>,
+            limit: Int,
+        ) = AppResult.Success(emptyList<io.github.typenil.gametracker.core.model.RecommendationCandidate>())
+
 
         override fun getSearchResultsFlow(query: String): Flow<List<Game>> = searchFlow
 

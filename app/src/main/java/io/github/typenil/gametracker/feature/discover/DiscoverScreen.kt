@@ -41,10 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.RecommendationReason
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,7 +110,7 @@ fun DiscoverScreen(
             uiState.isInitialLoading -> {
                 DiscoverLoadingState(modifier = Modifier.padding(innerPadding))
             }
-            uiState.error != null && uiState.games.isEmpty() -> {
+            uiState.error != null && !uiState.hasContent -> {
                 DiscoverErrorState(
                     error = uiState.error,
                     onRetry = onRetry,
@@ -117,7 +119,9 @@ fun DiscoverScreen(
             }
             else -> {
                 DiscoverContent(
-                    games = uiState.games,
+                    recommendations = uiState.recommendations,
+                    trending = uiState.trending,
+                    showForYou = uiState.showForYou,
                     isRefreshing = uiState.isRefreshing,
                     onGameClick = onGameClick,
                     onRefresh = onRefresh,
@@ -131,7 +135,9 @@ fun DiscoverScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DiscoverContent(
-    games: List<Game>,
+    recommendations: List<DiscoverRecommendation>,
+    trending: List<Game>,
+    showForYou: Boolean,
     isRefreshing: Boolean,
     onGameClick: (Long) -> Unit,
     onRefresh: () -> Unit,
@@ -145,13 +151,13 @@ private fun DiscoverContent(
         state = pullToRefreshState,
         modifier = modifier.fillMaxSize()
     ) {
-        if (games.isEmpty()) {
+        if (recommendations.isEmpty() && trending.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = stringResource(R.string.no_games_found),
+                    text = stringResource(R.string.discover_trending_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -162,19 +168,71 @@ private fun DiscoverContent(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(
-                    items = games,
-                    key = { it.id }
-                ) { game ->
-                    GameCard(
-                        game = game,
-                        onClick = { onGameClick(game.id) }
-                    )
+                if (showForYou) {
+                    item(key = "for_you_header") {
+                        Text(
+                            text = stringResource(R.string.discover_for_you),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    items(
+                        items = recommendations,
+                        key = { "rec_${it.game.id}" }
+                    ) { rec ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            GameCard(
+                                game = rec.game,
+                                onClick = { onGameClick(rec.game.id) }
+                            )
+                            rec.reasons.forEach { reason ->
+                                Text(
+                                    text = reasonLabel(reason),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                if (trending.isNotEmpty()) {
+                    item(key = "trending_header") {
+                        Text(
+                            text = stringResource(R.string.discover_trending),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    items(
+                        items = trending,
+                        key = { "trend_${it.id}" }
+                    ) { game ->
+                        GameCard(
+                            game = game,
+                            onClick = { onGameClick(game.id) }
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun reasonLabel(reason: RecommendationReason): String {
+    return when (reason) {
+        is RecommendationReason.GenreOverlap ->
+            stringResource(R.string.reason_genre, reason.tags.first())
+        is RecommendationReason.ThemeOverlap ->
+            stringResource(R.string.reason_theme, reason.tags.first())
+        is RecommendationReason.PlatformOverlap ->
+            stringResource(R.string.reason_platform, reason.tags.first())
+        RecommendationReason.SimilarGame -> stringResource(R.string.reason_similar)
+        RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
+        RecommendationReason.RecentRelease -> stringResource(R.string.reason_recency)
+    }
+}
+
 
 @Composable
 private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
@@ -192,7 +250,7 @@ private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.loading_games),
+                text = stringResource(R.string.discover_loading),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

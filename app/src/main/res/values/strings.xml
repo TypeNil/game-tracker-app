@@ -1,6 +1,17 @@
 <resources>
     <string name="app_name">GameTracker</string>
     <string name="discover_title">Discover Games</string>
+    <string name="discover_for_you">For you</string>
+    <string name="discover_trending">Trending</string>
+    <string name="discover_trending_empty">No trending games right now</string>
+    <string name="discover_loading">Loading recommendations…</string>
+    <string name="reason_genre">Because you like %1$s</string>
+    <string name="reason_theme">Matches your %1$s games</string>
+    <string name="reason_platform">For %1$s</string>
+    <string name="reason_similar">Similar to games you play</string>
+    <string name="reason_rating">Highly rated</string>
+    <string name="reason_recency">Recently released</string>
+
     <string name="search_action_desc">Search games</string>
     <string name="back_action_desc">Navigate back</string>
     <string name="loading_games">Loading top rated games…</string>

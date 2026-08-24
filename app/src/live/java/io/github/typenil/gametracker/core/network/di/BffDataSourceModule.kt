@@ -6,6 +6,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
 import io.github.typenil.gametracker.core.network.datasource.RetrofitBffDataSource
+import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
+import io.github.typenil.gametracker.core.data.recommendations.NoOpLibrarySeeder
 import javax.inject.Singleton
 
 @Module
@@ -16,4 +18,8 @@ abstract class BffDataSourceModule {
     abstract fun bindBffRemoteDataSource(
         retrofitDataSource: RetrofitBffDataSource
     ): BffRemoteDataSource
+
+    @Binds
+    abstract fun bindLibrarySeeder(impl: NoOpLibrarySeeder): LibrarySeeder
+
 }

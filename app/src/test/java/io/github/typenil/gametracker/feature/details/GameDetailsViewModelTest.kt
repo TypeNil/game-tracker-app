@@ -350,6 +350,7 @@ class GameDetailsViewModelTest {
 
     private fun GameDetailsUiState.similarGamesShown(): Boolean = game?.similarGames?.isNotEmpty() == true
 
+    @Suppress("TooManyFunctions")
     private class FakeDetailsRepository : GameRepository {
         val detailsFlow = MutableStateFlow<GameDetails?>(null)
         val hydratedFlow = MutableStateFlow(false)
@@ -373,6 +374,21 @@ class GameDetailsViewModelTest {
 
         override suspend fun refreshTopRatedGames(limit: Int, offset: Int): AppResult<Unit> =
             AppResult.Success(Unit)
+
+        override fun getTrendingGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
+
+        override suspend fun refreshTrendingGames(limit: Int, offset: Int): AppResult<Unit> =
+            AppResult.Success(Unit)
+
+        override suspend fun getRecommendationCandidates(
+            genres: List<String>,
+            themes: List<String>,
+            platforms: List<String>,
+            exclude: Set<Long>,
+            similarTo: List<Long>,
+            limit: Int,
+        ) = AppResult.Success(emptyList<io.github.typenil.gametracker.core.model.RecommendationCandidate>())
+
 
         override fun getSearchResultsFlow(query: String): Flow<List<Game>> = flowOf(emptyList())
 

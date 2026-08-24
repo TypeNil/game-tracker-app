@@ -7,11 +7,12 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.model.RecommendationSignal
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 /**
  * Reads library rows from Room and joins catalog/details tags into [RecommendationSignal]s.
  */
-class RoomRecommendationSignalCollector(
+class RoomRecommendationSignalCollector @Inject constructor(
     private val libraryDao: LibraryDao,
     private val gameDao: GameDao,
     private val gameDetailsDao: GameDetailsDao,

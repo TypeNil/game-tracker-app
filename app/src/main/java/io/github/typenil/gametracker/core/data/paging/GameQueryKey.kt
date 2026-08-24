@@ -13,6 +13,11 @@ sealed interface GameQueryKey {
         override val key: String = KEY_DISCOVER_TOP_RATED
     }
 
+    data object DiscoverTrending : GameQueryKey {
+        override val key: String = KEY_DISCOVER_TRENDING
+    }
+
+
     data class Search(
         val query: String,
         val sort: String? = null,
@@ -34,6 +39,8 @@ sealed interface GameQueryKey {
 
     companion object {
         const val KEY_DISCOVER_TOP_RATED = "discover:top-rated"
+        const val KEY_DISCOVER_TRENDING = "discover:trending"
+
         const val KEY_PREFIX_SEARCH = "q:"
 
         const val SEARCH_TTL_SECONDS = 15 * 60L // 15 minutes
