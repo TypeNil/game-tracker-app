@@ -46,7 +46,8 @@ private const val MAX_GENRES_DISPLAYED = 2
 fun GameCard(
     game: Game,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    supportingLines: List<String> = emptyList(),
 ) {
     Card(
         onClick = onClick,
@@ -140,6 +141,20 @@ fun GameCard(
                         }
                     }
                 }
+
+                if (supportingLines.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    supportingLines.forEach { line ->
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
             }
         }
     }

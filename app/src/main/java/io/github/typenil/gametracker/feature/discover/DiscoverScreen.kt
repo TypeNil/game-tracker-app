@@ -180,20 +180,13 @@ private fun DiscoverContent(
                         items = recommendations,
                         key = { "rec_${it.game.id}" }
                     ) { rec ->
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            GameCard(
-                                game = rec.game,
-                                onClick = { onGameClick(rec.game.id) }
-                            )
-                            rec.reasons.forEach { reason ->
-                                Text(
-                                    text = reasonLabel(reason),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                        GameCard(
+                            game = rec.game,
+                            onClick = { onGameClick(rec.game.id) },
+                            supportingLines = rec.reasons.map { reasonLabel(it) },
+                        )
                     }
+
                 }
                 if (trending.isNotEmpty()) {
                     item(key = "trending_header") {
