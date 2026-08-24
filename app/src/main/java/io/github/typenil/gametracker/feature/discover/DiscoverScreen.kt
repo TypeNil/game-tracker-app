@@ -128,7 +128,7 @@ fun DiscoverScreen(
                     onGameClick = onGameClick,
                     onRefresh = onRefresh,
                     onLoadMoreTrending = onLoadMoreTrending,
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -167,52 +167,56 @@ private fun DiscoverContent(
                 )
             }
         } else {
-            Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    // ponytail: Scaffold innerPadding.top is 0 here; 72.dp clears the top app bar
+                    top = 72.dp,
+                    bottom = 16.dp,
+                ),
+
+            ) {
+
                 if (showForYou) {
-                    Text(
-                        text = stringResource(R.string.discover_for_you),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-                    )
-                }
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (showForYou) {
-                        items(
-                            items = recommendations,
-                            key = { "rec_${it.game.id}" }
-                        ) { rec ->
-                            GameCard(
-                                game = rec.game,
-                                onClick = { onGameClick(rec.game.id) },
-                                supportingLines = rec.reasons.map { reasonLabel(it) },
-                            )
-                        }
+                    item(key = "for_you_header") {
+                        Text(
+                            text = stringResource(R.string.discover_for_you),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
-                    if (trending.isNotEmpty()) {
-                        item(key = "trending_header") {
-                            Text(
-                                text = stringResource(R.string.discover_trending),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        itemsIndexed(
-                            items = trending,
-                            key = { _, game -> "trend_${game.id}" }
-                        ) { index, game ->
-                            GameCard(
-                                game = game,
-                                onClick = { onGameClick(game.id) }
-                            )
-                            if (index == trending.lastIndex) {
-                                LaunchedEffect(trending.size) {
-                                    onLoadMoreTrending()
-                                }
+                    items(
+                        items = recommendations,
+                        key = { "rec_${it.game.id}" }
+                    ) { rec ->
+                        GameCard(
+                            game = rec.game,
+                            onClick = { onGameClick(rec.game.id) },
+                            supportingLines = rec.reasons.map { reasonLabel(it) },
+                        )
+                    }
+                }
+                if (trending.isNotEmpty()) {
+                    item(key = "trending_header") {
+                        Text(
+                            text = stringResource(R.string.discover_trending),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    itemsIndexed(
+                        items = trending,
+                        key = { _, game -> "trend_${game.id}" }
+                    ) { index, game ->
+                        GameCard(
+                            game = game,
+                            onClick = { onGameClick(game.id) }
+                        )
+                        if (index == trending.lastIndex) {
+                            LaunchedEffect(trending.size) {
+                                onLoadMoreTrending()
                             }
                         }
                     }
