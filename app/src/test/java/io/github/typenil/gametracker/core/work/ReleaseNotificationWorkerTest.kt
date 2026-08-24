@@ -212,6 +212,41 @@ class ReleaseNotificationWorkerTest {
     }
 
     @Test
+    fun doWork_whenHttp5xxServerErrorOccurs_retriesUnderMaxAttemptLimit() = runTest(testDispatcher) {
+        every { workerParams.runAttemptCount } returns 1
+        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns AppResult.Error(
+            AppError.HttpError(statusCode = 503, errorCode = "UPSTREAM")
+        )
+
+        val result = worker.doWork()
+
+        assertEquals(Result.retry(), result)
+    }
+
+    @Test
+    fun doWork_whenNotificationPermissionDenied_doesNotCrashAndDoesNotRecordEvent() = runTest(testDispatcher) {
+        val todayEpoch = Instant.now().epochSecond
+        every { releaseNotifier.postReleaseNotification(any()) } returns false
+        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns AppResult.Success(Unit)
+
+        val result = worker.doWork()
+
+        assertEquals(Result.success(), result)
+        coVerify(exactly = 1) { releaseNotifier.postReleaseNotification(any()) }
+        coVerify(exactly = 0) { notificationEventDao.upsertEvent(any()) }
+    }
+
+    @Test
     fun doWork_cleansUpOldNotificationEvents() = runTest(testDispatcher) {
         coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)

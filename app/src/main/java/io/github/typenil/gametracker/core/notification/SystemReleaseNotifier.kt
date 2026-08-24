@@ -66,11 +66,7 @@ class SystemReleaseNotifier @Inject constructor(
         createNotificationChannels()
 
         val notificationId = ReleaseNotificationPayload.computeNotificationId(event.gameId, event.eventType)
-        val deepLinkUri = Uri.parse(ReleaseNotificationPayload.buildDeepLinkUri(event.gameId))
-
-        val intent = Intent(Intent.ACTION_VIEW, deepLinkUri, context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
+        val intent = buildTapIntent(event.gameId)
 
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -99,6 +95,18 @@ class SystemReleaseNotifier @Inject constructor(
             return false
         }
     }
+
+    fun buildTapIntent(gameId: Long): Intent {
+        return Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse(ReleaseNotificationPayload.buildDeepLinkUri(gameId)),
+            context,
+            MainActivity::class.java
+        ).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+    }
+
 
     companion object {
         const val CHANNEL_ID_RELEASES = "game_releases"
