@@ -183,15 +183,15 @@ class DiscoverViewModel @Inject constructor(
             } else {
                 fetchCandidates(profile, signals, inLibraryIds)
             }
+            val shownIds = if (rotate) lastShownRecIds.value else emptySet()
             val feed = DiscoverFeedAssembler.assemble(
                 profile = profile,
                 candidates = candidates,
                 trending = emptyList(),
                 nowEpochSeconds = System.currentTimeMillis() / 1000,
                 inLibraryIds = inLibraryIds,
-                rotate = rotate,
+                shownIds = shownIds,
             )
-
             recommendations.value = feed.recommendations
             lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
             hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
