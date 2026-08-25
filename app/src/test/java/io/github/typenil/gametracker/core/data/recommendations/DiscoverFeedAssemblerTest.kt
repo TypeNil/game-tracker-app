@@ -92,7 +92,7 @@ class DiscoverFeedAssemblerTest {
     }
 
     @Test
-    fun assemble_skipsShownIdsThenWraps() {
+    fun assemble_rotateShufflesFromFullPool() {
         val profile = RecommendationProfile(
             genreWeights = mapOf("RPG" to 1f),
             themeWeights = emptyMap(),
@@ -100,36 +100,21 @@ class DiscoverFeedAssemblerTest {
             excludedGameIds = emptySet(),
             isColdStart = false,
         )
-        val candidates = listOf(
-            candidate(10L, "A", listOf("RPG")),
-            candidate(11L, "B", listOf("RPG")),
-            candidate(12L, "C", listOf("RPG")),
+        val candidates = (1L..20L).map { candidate(it, "G$it", listOf("RPG")) }
+
+        val ranked = DiscoverFeedAssembler.assemble(
+            profile, candidates, emptyList(), now, rotate = false, pageSize = 8,
+        )
+        val shuffled = DiscoverFeedAssembler.assemble(
+            profile, candidates, emptyList(), now, rotate = true, pageSize = 8,
+            random = kotlin.random.Random(2),
         )
 
-        val first = DiscoverFeedAssembler.assemble(
-            profile, candidates, emptyList(), now, pageSize = 2,
-        )
-        val second = DiscoverFeedAssembler.assemble(
-            profile,
-            candidates,
-            emptyList(),
-            now,
-            shownIds = first.recommendations.map { it.game.id }.toSet(),
-            pageSize = 2,
-        )
-        val wrapped = DiscoverFeedAssembler.assemble(
-            profile,
-            candidates,
-            emptyList(),
-            now,
-            shownIds = (first.recommendations + second.recommendations).map { it.game.id }.toSet(),
-            pageSize = 2,
-        )
-
-        assertEquals(2, first.recommendations.size)
-        assertTrue(second.recommendations.none { it.game.id in first.recommendations.map { rec -> rec.game.id } })
-        assertEquals(2, wrapped.recommendations.size)
+        assertEquals((1L..8L).toList(), ranked.recommendations.map { it.game.id })
+        assertEquals(8, shuffled.recommendations.size)
+        assertTrue(shuffled.recommendations.map { it.game.id } != ranked.recommendations.map { it.game.id })
     }
+
 
 
     private fun game(id: Long, name: String) = Game(id = id, name = name)

@@ -8,6 +8,7 @@ import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationRanker
 import io.github.typenil.gametracker.core.model.RecommendationReason
 import io.github.typenil.gametracker.core.model.RecommendationSignal
+import kotlin.random.Random
 
 data class DiscoverRecommendation(
     val game: Game,
@@ -51,8 +52,9 @@ object DiscoverFeedAssembler {
         trending: List<Game>,
         nowEpochSeconds: Long,
         inLibraryIds: Set<Long> = emptySet(),
-        shownIds: Set<Long> = emptySet(),
+        rotate: Boolean = false,
         pageSize: Int = FOR_YOU_PAGE_SIZE,
+        random: Random = Random.Default,
     ): DiscoverFeed {
         val ranked = RecommendationRanker.rank(profile, candidates, nowEpochSeconds)
         val eligible = ranked.mapNotNull { item ->
@@ -62,8 +64,11 @@ object DiscoverFeedAssembler {
                 reasons = RecommendationExplainer.explain(item, profile),
             )
         }
-        val unseen = eligible.filter { it.game.id !in shownIds }
-        val recommendations = (if (unseen.isEmpty()) eligible else unseen).take(pageSize)
+        val recommendations = if (rotate) {
+            eligible.shuffled(random).take(pageSize)
+        } else {
+            eligible.take(pageSize)
+        }
         val recIds = recommendations.map { it.game.id }.toSet()
         val hiddenFromTrending = recIds + profile.excludedGameIds
         return DiscoverFeed(
