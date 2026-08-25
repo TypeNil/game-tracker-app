@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -115,22 +116,43 @@ private fun DiscoverContent(
                     RecommendationCard(recommendation, onGameClick)
                 }
             }
-            uiState.rails.forEach { railState ->
-                item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
-                if (railState.isLoading) {
-                    item(key = "loading:${railState.rail.type}") {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+            uiState.rails.forEachIndexed { index, railState ->
+                val canShowRail = index == 0 ||
+                    uiState.rails[index - 1].games.isNotEmpty() ||
+                    uiState.rails[index - 1].endReached
+                if (canShowRail) {
+                    item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
+                    if (railState.games.isEmpty() && railState.isLoading) {
+                        item(key = "loading-initial:${railState.rail.type}") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
-                    }
-                } else {
-                    items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
-                        GameCard(game = game, onClick = { onGameClick(game.id) })
-                    }
-                    if (!railState.endReached) {
-                        item(key = "load-more:${railState.rail.type}") {
-                            LaunchedEffect(railState.rail, railState.games.size) {
-                                onLoadMoreRail(railState.rail)
+                    } else {
+                        items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
+                            GameCard(game = game, onClick = { onGameClick(game.id) })
+                        }
+                        if (railState.isLoading) {
+                            item(key = "loading-append:${railState.rail.type}") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        } else if (!railState.endReached) {
+                            item(key = "load-more:${railState.rail.type}") {
+                                LaunchedEffect(railState.rail, railState.games.size) {
+                                    onLoadMoreRail(railState.rail)
+                                }
                             }
                         }
                     }

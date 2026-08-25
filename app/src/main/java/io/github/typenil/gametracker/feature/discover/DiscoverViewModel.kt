@@ -12,6 +12,7 @@ import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
@@ -46,7 +47,7 @@ class DiscoverViewModel @Inject constructor(
     private val error = MutableStateFlow<AppError?>(null)
     private val userMessageRes = MutableStateFlow<Int?>(null)
     private val lastShownRecIds = MutableStateFlow<Set<Long>>(emptySet())
-    private var lastLibraryIds: Set<Long>? = null
+    private var lastLibraryEntries: Set<LibraryEntry>? = null
     private val rebuildMutex = Mutex()
     private val trendingMutex = Mutex()
     private var hydrateJob: Job? = null
@@ -86,10 +87,12 @@ class DiscoverViewModel @Inject constructor(
             loading.value = true
             refreshTrending()
             libraryRepository.getLibraryGamesFlow().collect { games ->
-                val ids = games.map { it.game.id }.toSet()
-                val membershipChanged = lastLibraryIds != ids
-                lastLibraryIds = ids
-                if (refreshing.value && !membershipChanged) return@collect
+                val entries = games.map { it.entry }.toSet()
+                val isInitial = lastLibraryEntries == null
+                val libraryChanged = lastLibraryEntries != entries
+                lastLibraryEntries = entries
+                if (!isInitial && !libraryChanged) return@collect
+                if (refreshing.value && !libraryChanged) return@collect
                 rebuildRecommendations(rotate = false)
                 loading.value = false
             }

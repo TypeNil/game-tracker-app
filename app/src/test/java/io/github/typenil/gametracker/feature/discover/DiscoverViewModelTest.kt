@@ -208,6 +208,60 @@ class DiscoverViewModelTest {
         }
     }
 
+    @Test
+    fun `library flow emission without entry change does not refetch candidates`() = runTest {
+        val entry = io.github.typenil.gametracker.core.model.LibraryEntry(
+            gameId = 1942L,
+            status = LibraryStatus.COMPLETED,
+            isFavorite = true,
+            addedAtEpochSeconds = 1000L,
+            updatedAtEpochSeconds = 1000L,
+        )
+        val game = Game(id = 1942L, name = "Game 1942")
+        coEvery { signalCollector.collect() } answers {
+            if (libraryFlow.value.isEmpty()) emptyList()
+            else listOf(
+                RecommendationSignal(
+                    gameId = 1942L,
+                    status = LibraryStatus.COMPLETED,
+                    isFavorite = true,
+                    genres = listOf("RPG"),
+                )
+            )
+        }
+        coEvery {
+            gameRepository.getRecommendationCandidates(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(
+            listOf(
+                RecommendationCandidate(
+                    gameId = 11L,
+                    name = "Candidate",
+                    genres = listOf("RPG"),
+                    rating = 90.0,
+                    ratingCount = 200L,
+                )
+            )
+        )
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { !it.isLoading }
+            // Populate library
+            libraryFlow.value = listOf(LibraryGame(game = game, entry = entry))
+            awaitItemUntil { it.recommendations.isNotEmpty() }
+
+            // Simulate Room re-emitting after games table upsert (same entry, game name updated)
+            libraryFlow.value = listOf(LibraryGame(game = game.copy(name = "Updated Game 1942"), entry = entry))
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // getRecommendationCandidates should only have been called ONCE (when library was populated), not on redundant emission
+        coVerify(exactly = 1) {
+            gameRepository.getRecommendationCandidates(any(), any(), any(), any(), any(), any())
+        }
+    }
+
 
     private fun createViewModel(): DiscoverViewModel {
         return DiscoverViewModel(
