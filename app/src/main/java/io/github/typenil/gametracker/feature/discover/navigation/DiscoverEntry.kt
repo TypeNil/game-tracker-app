@@ -38,6 +38,8 @@ fun NavGraphBuilder.discoverEntry(
             onUserMessageShown = viewModel::onUserMessageShown,
             onLoadMoreTrending = viewModel::loadMoreTrending,
             onLoadMoreRail = viewModel::loadMoreRail,
+            onSelectTab = viewModel::selectTab,
+            onLoadMoreForYou = viewModel::loadMoreForYou,
         )
     }
 }

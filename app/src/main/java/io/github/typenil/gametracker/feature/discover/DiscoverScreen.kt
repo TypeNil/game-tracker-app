@@ -7,26 +7,35 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -41,15 +50,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.RecommendationReason
-
+import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen(
@@ -62,6 +71,8 @@ fun DiscoverScreen(
     onUserMessageShown: () -> Unit,
     onLoadMoreTrending: () -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit = {},
+    onSelectTab: (DiscoverTab) -> Unit = {},
+    onLoadMoreForYou: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -93,7 +104,16 @@ fun DiscoverScreen(
         when {
             uiState.isInitialLoading -> DiscoverLoadingState(Modifier.padding(innerPadding))
             uiState.error != null && !uiState.hasContent -> DiscoverErrorState(uiState.error, onRetry, Modifier.padding(innerPadding))
-            else -> DiscoverContent(uiState, onGameClick, onRefresh, onLoadMoreTrending, onLoadMoreRail, Modifier.padding(innerPadding))
+            else -> DiscoverContent(
+                uiState = uiState,
+                onGameClick = onGameClick,
+                onRefresh = onRefresh,
+                onLoadMoreTrending = onLoadMoreTrending,
+                onLoadMoreRail = onLoadMoreRail,
+                onSelectTab = onSelectTab,
+                onLoadMoreForYou = onLoadMoreForYou,
+                modifier = Modifier.padding(innerPadding),
+            )
         }
     }
 }
@@ -106,82 +126,59 @@ private fun DiscoverContent(
     onRefresh: () -> Unit,
     onLoadMoreTrending: () -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit,
+    onSelectTab: (DiscoverTab) -> Unit,
+    onLoadMoreForYou: () -> Unit,
     modifier: Modifier,
 ) {
-    val listState = rememberLazyListState()
+    val forYouListState = rememberLazyListState()
+    val chartsListState = rememberLazyListState()
+    val activeListState = if (uiState.selectedTab == DiscoverTab.FOR_YOU) forYouListState else chartsListState
     val pullState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
     val showScrollToTop by remember {
-        derivedStateOf { listState.firstVisibleItemIndex > 2 }
+        derivedStateOf { activeListState.firstVisibleItemIndex > 2 }
     }
     Box(modifier = modifier.fillMaxSize()) {
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = onRefresh,
-            state = pullState,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        Column(modifier = Modifier.fillMaxSize()) {
+            PrimaryTabRow(
+                selectedTabIndex = uiState.selectedTab.ordinal,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                if (uiState.recommendations.isNotEmpty()) {
-                    item(key = "header:for-you") { SectionHeader(R.string.discover_for_you) }
-                    items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
-                        RecommendationCard(recommendation, onGameClick)
-                    }
+                DiscoverTab.entries.forEach { tab ->
+                    Tab(
+                        selected = uiState.selectedTab == tab,
+                        onClick = { onSelectTab(tab) },
+                        text = {
+                            Text(
+                                text = stringResource(tab.titleRes),
+                                fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                    )
                 }
-                uiState.rails.forEachIndexed { index, railState ->
-                    val canShowRail = index == 0 ||
-                        uiState.rails[index - 1].games.isNotEmpty() ||
-                        uiState.rails[index - 1].endReached
-                    if (canShowRail) {
-                        item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
-                        if (railState.games.isEmpty() && railState.isLoading) {
-                            item(key = "loading-initial:${railState.rail.type}") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 24.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        } else {
-                            items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
-                                GameCard(game = game, onClick = { onGameClick(game.id) })
-                            }
-                            if (railState.isLoading) {
-                                item(key = "loading-append:${railState.rail.type}") {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                }
-                            } else if (!railState.endReached) {
-                                item(key = "load-more:${railState.rail.type}") {
-                                    LaunchedEffect(railState.rail, railState.games.size) {
-                                        onLoadMoreRail(railState.rail)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (uiState.trending.isNotEmpty()) {
-                    item(key = "header:trending") { SectionHeader(R.string.discover_trending) }
-                    items(uiState.trending, key = { "trending:${it.id}" }) { game ->
-                        GameCard(game = game, onClick = { onGameClick(game.id) })
-                    }
-                    item(key = "load-more:trending") {
-                        LaunchedEffect(uiState.trending.size) { onLoadMoreTrending() }
-                    }
+            }
+
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = onRefresh,
+                state = pullState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (uiState.selectedTab) {
+                    DiscoverTab.FOR_YOU -> ForYouFeed(
+                        uiState = uiState,
+                        listState = forYouListState,
+                        onGameClick = onGameClick,
+                        onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
+                        onLoadMoreForYou = onLoadMoreForYou,
+                    )
+                    DiscoverTab.CHARTS -> ChartsFeed(
+                        uiState = uiState,
+                        listState = chartsListState,
+                        onGameClick = onGameClick,
+                        onLoadMoreRail = onLoadMoreRail,
+                        onLoadMoreTrending = onLoadMoreTrending,
+                    )
                 }
             }
         }
@@ -196,7 +193,7 @@ private fun DiscoverContent(
             FloatingActionButton(
                 onClick = {
                     coroutineScope.launch {
-                        listState.scrollToItem(0)
+                        activeListState.scrollToItem(0)
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -206,6 +203,155 @@ private fun DiscoverContent(
                     imageVector = Icons.Default.KeyboardArrowUp,
                     contentDescription = stringResource(R.string.scroll_to_top_desc),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForYouFeed(
+    uiState: DiscoverUiState,
+    listState: LazyListState,
+    onGameClick: (Long) -> Unit,
+    onBrowseChartsClick: () -> Unit,
+    onLoadMoreForYou: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
+        ColdStartCard(
+            onBrowseChartsClick = onBrowseChartsClick,
+            modifier = modifier.padding(16.dp),
+        )
+    } else {
+        LazyColumn(
+            state = listState,
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
+                RecommendationCard(recommendation, onGameClick)
+            }
+            if (uiState.forYouLoading) {
+                item(key = "loading-append:for-you") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            } else if (!uiState.forYouEndReached) {
+                item(key = "load-more:for-you") {
+                    LaunchedEffect(uiState.recommendations.size, uiState.forYouLoading, uiState.forYouEndReached) {
+                        onLoadMoreForYou()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColdStartCard(
+    onBrowseChartsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.discover_cold_start_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.discover_cold_start_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onBrowseChartsClick) {
+                Text(stringResource(R.string.discover_cold_start_action))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartsFeed(
+    uiState: DiscoverUiState,
+    listState: LazyListState,
+    onGameClick: (Long) -> Unit,
+    onLoadMoreRail: (DiscoverRail) -> Unit,
+    onLoadMoreTrending: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        uiState.rails.forEachIndexed { index, railState ->
+            val canShowRail = index == 0 ||
+                uiState.rails[index - 1].games.isNotEmpty() ||
+                uiState.rails[index - 1].endReached
+            if (canShowRail) {
+                item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
+                if (railState.games.isEmpty() && railState.isLoading) {
+                    item(key = "loading-initial:${railState.rail.type}") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
+                        GameCard(game = game, onClick = { onGameClick(game.id) })
+                    }
+                    if (railState.isLoading) {
+                        item(key = "loading-append:${railState.rail.type}") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    } else if (!railState.endReached) {
+                        item(key = "load-more:${railState.rail.type}") {
+                            LaunchedEffect(railState.rail, railState.games.size) {
+                                onLoadMoreRail(railState.rail)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (uiState.trending.isNotEmpty()) {
+            item(key = "header:trending") { SectionHeader(R.string.discover_trending) }
+            items(uiState.trending, key = { "trending:${it.id}" }) { game ->
+                GameCard(game = game, onClick = { onGameClick(game.id) })
+            }
+            item(key = "load-more:trending") {
+                LaunchedEffect(uiState.trending.size) { onLoadMoreTrending() }
             }
         }
     }
