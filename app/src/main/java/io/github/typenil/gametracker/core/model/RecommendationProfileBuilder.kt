@@ -4,7 +4,10 @@ import io.github.typenil.gametracker.core.model.LibraryStatus.COMPLETED
 import io.github.typenil.gametracker.core.model.LibraryStatus.DROPPED
 import io.github.typenil.gametracker.core.model.LibraryStatus.NOT_INTERESTED
 import io.github.typenil.gametracker.core.model.LibraryStatus.PLAYING
+import io.github.typenil.gametracker.core.model.LibraryStatus.WISHLIST
 import kotlin.math.abs
+import kotlin.math.ceil
+
 
 /**
  * Pure builder: library signals + optional cold-start prefs → normalized profile.
@@ -12,10 +15,14 @@ import kotlin.math.abs
 object RecommendationProfileBuilder {
     const val FAVORITE = 3f
     const val PLAYING_OR_COMPLETED = 2f
+    const val WISHLIST_WEIGHT = 1f
     const val EXPLICIT_NEGATIVE = 2f
     const val COLD_START = 1f
     const val HIGH_RATING_MIN = 7
     const val LOW_RATING_MAX = 4
+    const val PLATFORM_MIN_POSITIVE_GAMES = 3
+    const val PLATFORM_MIN_SHARE = 0.5f
+
 
     fun build(
         signals: List<RecommendationSignal>,
@@ -30,6 +37,7 @@ object RecommendationProfileBuilder {
         val themes = mutableMapOf<String, Float>()
         val platforms = mutableMapOf<String, Float>()
         var anyPositiveScalar = false
+        val positiveSignals = mutableListOf<RecommendationSignal>()
 
         for (signal in signals) {
             val rating = signal.userRating?.takeIf { it in 1..10 }
@@ -43,10 +51,16 @@ object RecommendationProfileBuilder {
                     if (signal.status == PLAYING || signal.status == COMPLETED) {
                         positive += PLAYING_OR_COMPLETED
                     }
+                    if (signal.status == WISHLIST) {
+                        positive += WISHLIST_WEIGHT
+                    }
                     if (rating != null && rating >= HIGH_RATING_MIN) {
                         positive += (rating - 6)
                     }
-                    if (positive > 0f) anyPositiveScalar = true
+                    if (positive > 0f) {
+                        anyPositiveScalar = true
+                        positiveSignals += signal
+                    }
                     positive
                 }
             }
@@ -56,8 +70,14 @@ object RecommendationProfileBuilder {
             apply(platforms, signal.platforms, delta)
         }
 
+        retainDominantPlatforms(positiveSignals, platforms)
+
+
         fillColdStart(genres, coldStartGenres)
-        fillColdStart(platforms, coldStartPlatforms)
+        if (positiveSignals.isEmpty()) {
+            fillColdStart(platforms, coldStartPlatforms)
+        }
+
 
         return RecommendationProfile(
             genreWeights = normalize(genres),
@@ -80,6 +100,29 @@ object RecommendationProfileBuilder {
             target[tag] = (target[tag] ?: 0f) + COLD_START
         }
     }
+
+    private fun retainDominantPlatforms(
+        positiveSignals: List<RecommendationSignal>,
+        platforms: MutableMap<String, Float>,
+    ) {
+        if (positiveSignals.size < PLATFORM_MIN_POSITIVE_GAMES) {
+            platforms.clear()
+            return
+        }
+        val counts = mutableMapOf<String, Int>()
+        for (signal in positiveSignals) {
+            for (platform in distinctTags(signal.platforms)) {
+                counts[platform] = (counts[platform] ?: 0) + 1
+            }
+        }
+        val threshold = maxOf(
+            2,
+            ceil(positiveSignals.size * PLATFORM_MIN_SHARE).toInt(),
+        )
+        val keep = counts.filterValues { it >= threshold }.keys
+        platforms.keys.retainAll(keep)
+    }
+
 
     private fun distinctTags(tags: Iterable<String>): Set<String> =
         tags.map { it.trim() }.filter { it.isNotEmpty() }.toSet()

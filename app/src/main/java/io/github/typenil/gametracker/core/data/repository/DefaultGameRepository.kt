@@ -22,6 +22,7 @@ import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameDetails
+import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
 import io.github.typenil.gametracker.core.network.mapper.toAppError
 import io.github.typenil.gametracker.core.network.mapper.toDomain
@@ -38,6 +39,7 @@ import javax.inject.Inject
 /**
  * Default implementation of [GameRepository] with Room database Single Source of Truth (SSOT).
  */
+@Suppress("TooManyFunctions")
 class DefaultGameRepository internal constructor(
     private val remoteDataSource: BffRemoteDataSource,
     private val gameDao: GameDao,
@@ -74,6 +76,13 @@ class DefaultGameRepository internal constructor(
             .map { it.toDomain() }
             .flowOn(ioDispatcher)
     }
+
+    override fun getTrendingGamesFlow(): Flow<List<Game>> {
+        return searchDao.getSearchResultsFlow(GameQueryKey.KEY_DISCOVER_TRENDING)
+            .map { it.toDomain() }
+            .flowOn(ioDispatcher)
+    }
+
 
     @OptIn(ExperimentalPagingApi::class)
     override fun getPagedTopRatedGames(pageSize: Int): Flow<PagingData<Game>> {
@@ -153,6 +162,89 @@ class DefaultGameRepository internal constructor(
             )
         }
     }
+
+    override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<Unit> {
+        return withContext(ioDispatcher) {
+            runSuspendCatching {
+                val remoteGames = remoteDataSource.getTrendingGames(limit = limit, offset = offset).toDomain()
+                val nowSeconds = nowEpochSeconds()
+                val queryKey = GameQueryKey.KEY_DISCOVER_TRENDING
+                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
+                val nextOffset = if (isEndOfList) null else offset + remoteGames.size
+                val distinctGames = remoteGames.distinctBy { it.id }
+
+                transactionRunner {
+                    gameDao.upsertGames(distinctGames.map { it.toEntity(nowSeconds) })
+                    val existingQuery = searchDao.getSearchQuery(queryKey)
+                    val resultCount = if (append) {
+                        (existingQuery?.resultCount ?: 0) + distinctGames.size
+                    } else {
+                        distinctGames.size
+                    }
+                    searchDao.upsertSearchQuery(
+                        SearchQueryEntity(
+                            query = queryKey,
+                            createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
+                            lastQueriedAtEpochSeconds = nowSeconds,
+                            resultCount = resultCount
+                        )
+                    )
+                    if (!append) {
+                        searchDao.deleteSearchResultsForQuery(queryKey)
+                    }
+                    val crossRefs = distinctGames.mapIndexed { index, game ->
+                        SearchResultCrossRef(
+                            query = queryKey,
+                            gameId = game.id,
+                            position = offset + index
+                        )
+                    }
+                    searchDao.insertSearchResults(crossRefs)
+                    remoteKeyDao.upsert(
+                        RemoteKeyEntity(
+                            queryKey = queryKey,
+                            prevOffset = null,
+                            nextOffset = nextOffset,
+                            lastUpdatedEpochSeconds = nowSeconds
+                        )
+                    )
+                }
+
+                runSuspendCatching {
+                    clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
+                }
+            }.fold(
+                onSuccess = { AppResult.Success(Unit) },
+                onFailure = { AppResult.Error(it.toAppError()) }
+            )
+        }
+    }
+
+    override suspend fun getRecommendationCandidates(
+        genres: List<String>,
+        themes: List<String>,
+        platforms: List<String>,
+        exclude: Set<Long>,
+        similarTo: List<Long>,
+        limit: Int,
+    ): AppResult<List<RecommendationCandidate>> {
+        return withContext(ioDispatcher) {
+            runSuspendCatching {
+                remoteDataSource.getRecommendationCandidates(
+                    genres = genres,
+                    themes = themes,
+                    platforms = platforms,
+                    exclude = exclude,
+                    similarTo = similarTo,
+                    limit = limit,
+                ).map { it.toDomain() }
+            }.fold(
+                onSuccess = { AppResult.Success(it) },
+                onFailure = { AppResult.Error(it.toAppError()) }
+            )
+        }
+    }
+
 
     override fun getSearchResultsFlow(query: String): Flow<List<Game>> {
         val trimmed = query.trim()
@@ -314,7 +406,10 @@ class DefaultGameRepository internal constructor(
         return withContext(ioDispatcher) {
             val now = nowEpochSeconds()
             val queryCutoffEpoch = now - GameQueryKey.SEARCH_TTL_SECONDS
-            val excludeKeys = listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED)
+            val excludeKeys = listOf(
+                GameQueryKey.KEY_DISCOVER_TOP_RATED,
+                GameQueryKey.KEY_DISCOVER_TRENDING,
+            )
             searchDao.deleteStaleSearchQueries(queryCutoffEpoch, excludeKeys)
             remoteKeyDao.deleteStaleRemoteKeys(queryCutoffEpoch, excludeKeys)
             gameDetailsDao.deleteStaleDetails(staleThresholdSeconds)

@@ -171,6 +171,85 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `getTrendingGamesFlow observes searchDao with discover trending key`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        every { searchDao.getSearchResultsFlow(GameQueryKey.KEY_DISCOVER_TRENDING) } returns flowOf(
+            listOf(sampleGameEntity)
+        )
+
+        val games = repository.getTrendingGamesFlow().first()
+
+        assertEquals(1, games.size)
+        assertEquals(1L, games[0].id)
+        assertEquals("Cyberpunk 2077", games[0].name)
+    }
+
+    @Test
+    fun `refreshTrendingGames writes discover trending key`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { 1600000000L })
+        coEvery { remoteDataSource.getTrendingGames(20, 0) } returns listOf(sampleGameDto)
+
+        val result = repository.refreshTrendingGames(limit = 20, offset = 0)
+
+        assertTrue(result is AppResult.Success)
+        val querySlot = slot<SearchQueryEntity>()
+        coVerify(exactly = 1) { searchDao.upsertSearchQuery(capture(querySlot)) }
+        assertEquals(GameQueryKey.KEY_DISCOVER_TRENDING, querySlot.captured.query)
+        coVerify(exactly = 1) { searchDao.deleteSearchResultsForQuery(GameQueryKey.KEY_DISCOVER_TRENDING) }
+    }
+
+    @Test
+    fun `refreshTrendingGames append does not delete existing page`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { 1600000000L })
+        val pageTwo = sampleGameDto.copy(id = 2L, name = "Second")
+        coEvery { remoteDataSource.getTrendingGames(20, 20) } returns listOf(pageTwo)
+
+        val result = repository.refreshTrendingGames(limit = 20, offset = 20, append = true)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { searchDao.deleteSearchResultsForQuery(any()) }
+        val resultsSlot = slot<List<SearchResultCrossRef>>()
+        coVerify(exactly = 1) { searchDao.insertSearchResults(capture(resultsSlot)) }
+        assertEquals(GameQueryKey.KEY_DISCOVER_TRENDING, resultsSlot.captured.single().query)
+        assertEquals(2L, resultsSlot.captured.single().gameId)
+        assertEquals(20, resultsSlot.captured.single().position)
+    }
+
+
+    @Test
+    fun `getRecommendationCandidates maps remote DTOs without Room writes`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery {
+            remoteDataSource.getRecommendationCandidates(any(), any(), any(), any(), any(), any())
+        } returns listOf(
+            io.github.typenil.gametracker.core.network.model.RecommendationCandidateDto(
+                id = 99L,
+                name = "Candidate",
+                coverUrl = null,
+                rating = 80.0,
+                ratingCount = 10L,
+                releaseDateEpochSeconds = null,
+                summary = null,
+                genres = listOf("RPG"),
+                themes = emptyList(),
+                platforms = listOf("PC"),
+                similarToGameIds = emptyList(),
+            )
+        )
+
+        val result = repository.getRecommendationCandidates(genres = listOf("RPG"))
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(99L, (result as AppResult.Success).data.single().gameId)
+        coVerify(exactly = 0) { gameDao.upsertGames(any()) }
+    }
+
+
+    @Test
     fun `refreshTopRatedGames saves results with discover top-rated key and positions and updates remoteKey`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher, nowEpochSeconds = { 1600000000L })
@@ -491,13 +570,13 @@ class GameRepositoryTest {
         coVerify(exactly = 1) {
             searchDao.deleteStaleSearchQueries(
                 expectedQueryCutoff,
-                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED)
+                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED, GameQueryKey.KEY_DISCOVER_TRENDING)
             )
         }
         coVerify(exactly = 1) {
             remoteKeyDao.deleteStaleRemoteKeys(
                 expectedQueryCutoff,
-                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED)
+                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED, GameQueryKey.KEY_DISCOVER_TRENDING)
             )
         }
         coVerify(exactly = 1) { gameDao.deleteStaleUnsavedGames(500_000L) }
