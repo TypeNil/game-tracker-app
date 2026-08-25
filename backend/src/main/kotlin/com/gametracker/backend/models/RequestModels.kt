@@ -164,7 +164,7 @@ class PopularityRailRequest(
         const val PLAYING_TYPE = 3
         const val STEAM_PEAK_TYPE = 5
         const val UPCOMING_TYPE = 10
-        const val TWITCH_TYPE = 11
+        const val TWITCH_TYPE = 34
         const val DEFAULT_LIMIT = 20
         const val MAX_LIMIT = 50
         const val MAX_PRIMITIVE_FETCH = 500
