@@ -123,22 +123,35 @@ class TopRatedRequest(
         return builder.toString()
     }
 }
+/**
+ * Backward-compatible request for the existing visits rail.
+ */
+typealias TrendingRequest = PopularityRailRequest
 
 /**
- * Trending games from IGDB PopScore visits (popularity_type = 1).
+ * Canonical request for a PopScore popularity rail.
  */
-class TrendingRequest(
+class PopularityRailRequest(
+    typeParam: String? = "visits",
     limitParam: Int? = null,
     offsetParam: Int? = null,
 ) {
-    val limit: Int = (limitParam ?: 20).coerceIn(1, 30)
-    val offset: Int = (offsetParam ?: 0).coerceIn(0, 1000)
-    val cacheKey: String = "trending_${limit}_${offset}"
-
-    fun toPrimitivesApicalypseQuery(): String {
-        val fetch = (limit + offset).coerceAtMost(MAX_PRIMITIVE_FETCH)
-        return "fields game_id,value;\nsort value desc;\nlimit $fetch;\nwhere popularity_type = $VISITS_TYPE;"
+    private val type = typeParam?.trim()?.lowercase()
+        ?: throw IllegalArgumentException("Query parameter 'type' is required")
+    val popularityType: Int = TYPE_BY_NAME[type]
+        ?: throw IllegalArgumentException("Query parameter 'type' has an unsupported value")
+    val limit: Int = (limitParam ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
+    val offset: Int = (offsetParam ?: 0).also {
+        require(it in 0..(MAX_PRIMITIVE_FETCH - limit)) {
+            "Query parameter 'offset' exceeds the popularity rail limit"
+        }
     }
+    val primitiveFetchLimit: Int = offset + limit
+    val cacheKey: String = if (type == "visits") "trending_${limit}_${offset}" else "popular_${type}_${limit}_${offset}"
+
+    fun toPrimitivesApicalypseQuery(): String =
+        "fields game_id,value,popularity_type;\nsort value desc;\n" +
+            "limit $primitiveFetchLimit;\nwhere popularity_type = $popularityType;"
 
     fun toHydrateApicalypseQuery(ids: List<Long>): String {
         require(ids.isNotEmpty())
@@ -147,7 +160,155 @@ class TrendingRequest(
 
     companion object {
         const val VISITS_TYPE = 1
-        const val MAX_PRIMITIVE_FETCH = 50
+        const val WANTED_TYPE = 2
+        const val PLAYING_TYPE = 3
+        const val STEAM_PEAK_TYPE = 5
+        const val UPCOMING_TYPE = 10
+        const val TWITCH_TYPE = 34
+        const val DEFAULT_LIMIT = 20
+        const val MAX_LIMIT = 50
+        const val MAX_PRIMITIVE_FETCH = 500
+        private val TYPE_BY_NAME = mapOf(
+            "visits" to VISITS_TYPE,
+            "wanted" to WANTED_TYPE,
+            "playing" to PLAYING_TYPE,
+            "steam-peak" to STEAM_PEAK_TYPE,
+            "upcoming" to UPCOMING_TYPE,
+            "twitch" to TWITCH_TYPE,
+        )
+    }
+}
+
+/**
+ * Canonical model for a paged recommendation candidate request.
+ */
+class RecommendationCandidatesRequest(
+    genresParam: String? = null,
+    themesParam: String? = null,
+    platformsParam: String? = null,
+    excludeParam: String? = null,
+    similarToParam: String? = null,
+    limitParam: Int? = null,
+    offsetParam: Int? = null,
+    sortParam: String? = null,
+) {
+    val genres: List<String> = parseTags(genresParam, "genres")
+    val themes: List<String> = parseTags(themesParam, "themes")
+    val platforms: List<String> = parseTags(platformsParam, "platforms")
+    val exclude: List<Long> = parseIds(excludeParam, "exclude", max = MAX_EXCLUDE)
+    val similarTo: List<Long> = parseIds(similarToParam, "similarTo", max = MAX_SIMILAR_TO)
+    val limit: Int = (limitParam ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
+    val offset: Int = (offsetParam ?: 0).coerceIn(0, MAX_OFFSET)
+    val sort: String = (sortParam ?: DEFAULT_SORT).lowercase()
+        .also { require(it in SORTS) { "Query parameter 'sort' has an unsupported value" } }
+    val blockedIds: List<Long> = (exclude + similarTo).distinct()
+
+    val cacheKey: String = buildString {
+        append("rec_")
+        append(genres.sorted().joinToString(","))
+        append('|')
+        append(themes.sorted().joinToString(","))
+        append('|')
+        append(platforms.sorted().joinToString(","))
+        append('|')
+        append(exclude.sorted().joinToString(","))
+        append('|')
+        append(similarTo.sorted().joinToString(","))
+        append('|')
+        append(limit)
+        append('|')
+        append(offset)
+        append('|')
+        append(sort)
+    }
+
+    val hasTags: Boolean = genres.isNotEmpty() || themes.isNotEmpty() || platforms.isNotEmpty()
+
+    fun toTagApicalypseQuery(): String {
+        val where = buildList {
+            add("cover != null")
+            add("rating >= 70")
+            tagOrGroup()?.let { add(it) }
+            idExclusion()?.let { add(it) }
+        }.joinToString(" & ")
+        val upstreamLimit = (limit + offset).coerceAtMost(MAX_LIMIT)
+        return "${CANDIDATE_FIELDS}where $where;\nsort $sort desc;\nlimit $upstreamLimit;\noffset 0;"
+    }
+
+    fun toSimilarSeedsApicalypseQuery(): String {
+        require(similarTo.isNotEmpty()) { "similarTo must not be empty" }
+        return "fields id, name, similar_games.id;\nwhere id = (${similarTo.joinToString(",")});\nlimit ${similarTo.size};"
+    }
+
+    fun toHydrateApicalypseQuery(ids: List<Long>): String {
+        require(ids.isNotEmpty()) { "hydrate ids must not be empty" }
+        val where = buildList {
+            add("id = (${ids.joinToString(",")})")
+            add("cover != null")
+            idExclusion()?.let { add(it) }
+        }.joinToString(" & ")
+        return "${CANDIDATE_FIELDS}where $where;\nlimit ${ids.size.coerceAtMost(MAX_LIMIT)};"
+    }
+
+    private fun tagOrGroup(): String? {
+        val clauses = buildList {
+            if (genres.isNotEmpty()) add("genres.name = ${quotedList(genres)}")
+            if (themes.isNotEmpty()) add("themes.name = ${quotedList(themes)}")
+            if (platforms.isNotEmpty()) add("platforms.name = ${quotedList(platforms)}")
+        }
+        if (clauses.isEmpty()) return null
+        if (clauses.size == 1) return clauses[0]
+        return clauses.joinToString(" | ", prefix = "(", postfix = ")")
+    }
+
+    private fun idExclusion(): String? =
+        blockedIds.takeIf { it.isNotEmpty() }?.let { "id != (${it.joinToString(",")})" }
+
+    companion object {
+        const val DEFAULT_LIMIT = 30
+        const val MAX_LIMIT = 100
+        const val MAX_OFFSET = 1000
+        const val DEFAULT_SORT = "follows"
+        val SORTS = setOf("follows", "hypes", "first_release_date")
+        const val MAX_TAGS = 5
+        const val MAX_EXCLUDE = 50
+        const val MAX_SIMILAR_TO = 10
+
+        private fun parseTags(raw: String?, label: String): List<String> {
+            if (raw.isNullOrBlank()) return emptyList()
+            val tags = raw.split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map(TagNameValidator::validate)
+                .distinct()
+            if (tags.size > MAX_TAGS) {
+                throw IllegalArgumentException("Query parameter '$label' accepts at most $MAX_TAGS values")
+            }
+            return tags
+        }
+
+        private fun parseIds(raw: String?, label: String, max: Int): List<Long> {
+            if (raw.isNullOrBlank()) return emptyList()
+            val ids = raw.split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map { token ->
+                    val id = token.toLongOrNull()
+                        ?: throw IllegalArgumentException("Query parameter '$label' must be a comma-separated list of integers")
+                    if (id <= 0L) {
+                        throw IllegalArgumentException("Query parameter '$label' must contain positive integers")
+                    }
+                    id
+                }
+                .distinct()
+            if (ids.size > max) {
+                throw IllegalArgumentException("Query parameter '$label' accepts at most $max values")
+            }
+            return ids
+        }
+
+        private fun quotedList(values: List<String>): String =
+            values.joinToString(prefix = "(", postfix = ")") { "\"$it\"" }
     }
 }
 
@@ -210,125 +371,5 @@ object TagNameValidator {
             i += Character.charCount(cp)
         }
         return normalized
-    }
-}
-
-/**
- * Canonical request for GET /v1/recommendations/candidates.
- */
-class RecommendationCandidatesRequest(
-    genresParam: String? = null,
-    themesParam: String? = null,
-    platformsParam: String? = null,
-    excludeParam: String? = null,
-    similarToParam: String? = null,
-    limitParam: Int? = null,
-) {
-    val genres: List<String> = parseTags(genresParam, "genres")
-    val themes: List<String> = parseTags(themesParam, "themes")
-    val platforms: List<String> = parseTags(platformsParam, "platforms")
-    val exclude: List<Long> = parseIds(excludeParam, "exclude", max = MAX_EXCLUDE)
-    val similarTo: List<Long> = parseIds(similarToParam, "similarTo", max = MAX_SIMILAR_TO)
-    val limit: Int = (limitParam ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
-    val blockedIds: List<Long> = (exclude + similarTo).distinct()
-
-    val cacheKey: String = buildString {
-        append("rec_")
-        append(genres.sorted().joinToString(","))
-        append('|')
-        append(themes.sorted().joinToString(","))
-        append('|')
-        append(platforms.sorted().joinToString(","))
-        append('|')
-        append(exclude.sorted().joinToString(","))
-        append('|')
-        append(similarTo.sorted().joinToString(","))
-        append('|')
-        append(limit)
-    }
-
-    val hasTags: Boolean = genres.isNotEmpty() || themes.isNotEmpty() || platforms.isNotEmpty()
-
-    fun toTagApicalypseQuery(): String {
-        val where = buildList {
-            add("cover != null")
-            add("rating >= 70")
-            tagOrGroup()?.let { add(it) }
-            idExclusion()?.let { add(it) }
-        }.joinToString(" & ")
-        return "${CANDIDATE_FIELDS}where $where;\nsort rating desc;\nlimit $limit;"
-    }
-
-    fun toSimilarSeedsApicalypseQuery(): String {
-        require(similarTo.isNotEmpty()) { "similarTo must not be empty" }
-        return "fields id, name, similar_games.id;\nwhere id = (${similarTo.joinToString(",")});\nlimit ${similarTo.size};"
-    }
-
-    fun toHydrateApicalypseQuery(ids: List<Long>): String {
-        require(ids.isNotEmpty()) { "hydrate ids must not be empty" }
-        val where = buildList {
-            add("id = (${ids.joinToString(",")})")
-            add("cover != null")
-            idExclusion()?.let { add(it) }
-        }.joinToString(" & ")
-        return "${CANDIDATE_FIELDS}where $where;\nlimit ${ids.size.coerceAtMost(MAX_LIMIT)};"
-    }
-
-    private fun tagOrGroup(): String? {
-        val clauses = buildList {
-            if (genres.isNotEmpty()) add("genres.name = ${quotedList(genres)}")
-            if (themes.isNotEmpty()) add("themes.name = ${quotedList(themes)}")
-            if (platforms.isNotEmpty()) add("platforms.name = ${quotedList(platforms)}")
-        }
-        if (clauses.isEmpty()) return null
-        if (clauses.size == 1) return clauses[0]
-        return clauses.joinToString(" | ", prefix = "(", postfix = ")")
-    }
-
-    private fun idExclusion(): String? =
-        blockedIds.takeIf { it.isNotEmpty() }?.let { "id != (${it.joinToString(",")})" }
-
-    companion object {
-        const val DEFAULT_LIMIT = 30
-        const val MAX_LIMIT = 30
-        const val MAX_TAGS = 5
-        const val MAX_EXCLUDE = 50
-        const val MAX_SIMILAR_TO = 10
-
-        private fun parseTags(raw: String?, label: String): List<String> {
-            if (raw.isNullOrBlank()) return emptyList()
-            val tags = raw.split(',')
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .map(TagNameValidator::validate)
-                .distinct()
-            if (tags.size > MAX_TAGS) {
-                throw IllegalArgumentException("Query parameter '$label' accepts at most $MAX_TAGS values")
-            }
-            return tags
-        }
-
-        private fun parseIds(raw: String?, label: String, max: Int): List<Long> {
-            if (raw.isNullOrBlank()) return emptyList()
-            val ids = raw.split(',')
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .map { token ->
-                    val id = token.toLongOrNull()
-                        ?: throw IllegalArgumentException("Query parameter '$label' must be a comma-separated list of integers")
-                    if (id <= 0L) {
-                        throw IllegalArgumentException("Query parameter '$label' must contain positive integers")
-                    }
-                    id
-                }
-                .distinct()
-            if (ids.size > max) {
-                throw IllegalArgumentException("Query parameter '$label' accepts at most $max values")
-            }
-            return ids
-        }
-
-        private fun quotedList(values: List<String>): String =
-            values.joinToString(prefix = "(", postfix = ")") { "\"$it\"" }
     }
 }

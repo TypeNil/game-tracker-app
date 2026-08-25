@@ -7,6 +7,7 @@ import androidx.paging.PagingData
 import androidx.paging.map
 import io.github.typenil.gametracker.core.common.IoDispatcher
 import io.github.typenil.gametracker.core.common.runSuspendCatching
+import io.github.typenil.gametracker.core.data.paging.DiscoverRailKeys
 import io.github.typenil.gametracker.core.data.paging.GameQueryKey
 import io.github.typenil.gametracker.core.data.paging.GamesRemoteMediator
 import io.github.typenil.gametracker.core.database.dao.GameDao
@@ -219,6 +220,74 @@ class DefaultGameRepository internal constructor(
             )
         }
     }
+    override fun getPopularGamesFlow(type: String): Flow<List<Game>> {
+        return searchDao.getSearchResultsFlow(GameQueryKey.popular(type))
+            .map { it.toDomain() }
+            .flowOn(ioDispatcher)
+    }
+
+    override suspend fun refreshPopular(type: String, limit: Int, offset: Int, append: Boolean): AppResult<Unit> {
+        return withContext(ioDispatcher) {
+            runSuspendCatching {
+                val page = remoteDataSource.getPopularPage(type, limit, offset)
+                val now = nowEpochSeconds()
+                val queryKey = GameQueryKey.popular(type)
+                val games = page.items.toDomain().distinctBy { it.id }
+                transactionRunner {
+                    gameDao.upsertGames(games.map { it.toEntity(now) })
+                    val existing = searchDao.getSearchQuery(queryKey)
+                    searchDao.upsertSearchQuery(
+                        SearchQueryEntity(
+                            query = queryKey,
+                            createdAtEpochSeconds = existing?.createdAtEpochSeconds ?: now,
+                            lastQueriedAtEpochSeconds = now,
+                            resultCount = if (append) (existing?.resultCount ?: 0) + games.size else games.size,
+                        )
+                    )
+                    if (!append) searchDao.deleteSearchResultsForQuery(queryKey)
+                    else searchDao.deleteSearchResultsFromPosition(queryKey, offset)
+                    searchDao.insertSearchResults(games.mapIndexed { index, game ->
+                        SearchResultCrossRef(queryKey, game.id, offset + index)
+                    })
+                    remoteKeyDao.upsert(
+                        RemoteKeyEntity(queryKey, null, page.nextOffset, now)
+                    )
+                }
+            }.fold(
+                onSuccess = { AppResult.Success(Unit) },
+                onFailure = { AppResult.Error(it.toAppError()) },
+            )
+        }
+    }
+
+    override suspend fun getRecommendationCandidatesPage(
+        genres: List<String>,
+        themes: List<String>,
+        platforms: List<String>,
+        exclude: Set<Long>,
+        similarTo: List<Long>,
+        limit: Int,
+        offset: Int,
+        sort: String,
+    ): AppResult<io.github.typenil.gametracker.core.model.RecommendationCandidatePage> {
+        return withContext(ioDispatcher) {
+            runSuspendCatching {
+                remoteDataSource.getRecommendationCandidatesPage(
+                    genres, themes, platforms, exclude, similarTo, limit, offset, sort,
+                ).let { page ->
+                    io.github.typenil.gametracker.core.model.RecommendationCandidatePage(
+                        items = page.items.map { it.toDomain() },
+                        nextOffset = page.nextOffset,
+                        endReached = page.endReached,
+                    )
+                }
+            }.fold(
+                onSuccess = { AppResult.Success(it) },
+                onFailure = { AppResult.Error(it.toAppError()) },
+            )
+        }
+    }
+
 
     override suspend fun getRecommendationCandidates(
         genres: List<String>,
@@ -401,7 +470,6 @@ class DefaultGameRepository internal constructor(
             )
         }
     }
-
     override suspend fun clearStaleCache(staleThresholdSeconds: Long): Int {
         return withContext(ioDispatcher) {
             val now = nowEpochSeconds()
@@ -409,7 +477,7 @@ class DefaultGameRepository internal constructor(
             val excludeKeys = listOf(
                 GameQueryKey.KEY_DISCOVER_TOP_RATED,
                 GameQueryKey.KEY_DISCOVER_TRENDING,
-            )
+            ) + DiscoverRailKeys.all()
             searchDao.deleteStaleSearchQueries(queryCutoffEpoch, excludeKeys)
             remoteKeyDao.deleteStaleRemoteKeys(queryCutoffEpoch, excludeKeys)
             gameDetailsDao.deleteStaleDetails(staleThresholdSeconds)

@@ -1,39 +1,51 @@
 package io.github.typenil.gametracker.feature.discover
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -45,9 +57,8 @@ import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommend
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
-import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.RecommendationReason
-
+import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen(
@@ -59,77 +70,54 @@ fun DiscoverScreen(
     onRetry: () -> Unit,
     onUserMessageShown: () -> Unit,
     onLoadMoreTrending: () -> Unit,
-    modifier: Modifier = Modifier
+    onLoadMoreRail: (DiscoverRail) -> Unit = {},
+    onSelectTab: (DiscoverTab) -> Unit = {},
+    onSelectRail: (DiscoverRail) -> Unit = {},
+    onLoadMoreForYou: () -> Unit = {},
+    scrollToTopTrigger: Long = 0L,
+    modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage = uiState.userMessageRes?.let { stringResource(it) }
-
     LaunchedEffect(userMessage) {
-        userMessage?.let { message ->
-            snackbarHostState.showSnackbar(
-                message = message
-            )
+        userMessage?.let {
+            snackbarHostState.showSnackbar(it)
             onUserMessageShown()
         }
     }
-
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.discover_title),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                },
+                title = { Text(stringResource(R.string.discover_title), fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(onClick = onSearchClick) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = stringResource(R.string.search_action_desc)
-                        )
+                        Icon(Icons.Default.Search, stringResource(R.string.search_action_desc))
                     }
                     IconButton(onClick = onAboutClick) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = stringResource(R.string.settings_action_desc)
-                        )
+                        Icon(Icons.Default.Info, stringResource(R.string.settings_action_desc))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
             )
-        }
+        },
     ) { innerPadding ->
         when {
-            uiState.isInitialLoading -> {
-                DiscoverLoadingState(modifier = Modifier.padding(innerPadding))
-            }
-            uiState.error != null && !uiState.hasContent -> {
-                DiscoverErrorState(
-                    error = uiState.error,
-                    onRetry = onRetry,
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            else -> {
-                DiscoverContent(
-                    recommendations = uiState.recommendations,
-                    trending = uiState.trending,
-                    showForYou = uiState.showForYou,
-                    isRefreshing = uiState.isRefreshing,
-                    onGameClick = onGameClick,
-                    onRefresh = onRefresh,
-                    onLoadMoreTrending = onLoadMoreTrending,
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
+            uiState.isInitialLoading -> DiscoverLoadingState(Modifier.padding(innerPadding))
+            uiState.error != null && !uiState.hasContent -> DiscoverErrorState(uiState.error, onRetry, Modifier.padding(innerPadding))
+            else -> DiscoverContent(
+                uiState = uiState,
+                onGameClick = onGameClick,
+                onRefresh = onRefresh,
+                onLoadMoreTrending = onLoadMoreTrending,
+                onLoadMoreRail = onLoadMoreRail,
+                onSelectTab = onSelectTab,
+                onSelectRail = onSelectRail,
+                onLoadMoreForYou = onLoadMoreForYou,
+                scrollToTopTrigger = scrollToTopTrigger,
+                modifier = Modifier.padding(innerPadding),
+            )
         }
     }
 }
@@ -137,72 +125,270 @@ fun DiscoverScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DiscoverContent(
-    recommendations: List<DiscoverRecommendation>,
-    trending: List<Game>,
-    showForYou: Boolean,
-    isRefreshing: Boolean,
+    uiState: DiscoverUiState,
     onGameClick: (Long) -> Unit,
     onRefresh: () -> Unit,
     onLoadMoreTrending: () -> Unit,
-    modifier: Modifier = Modifier
+    onLoadMoreRail: (DiscoverRail) -> Unit,
+    onSelectTab: (DiscoverTab) -> Unit,
+    onSelectRail: (DiscoverRail) -> Unit,
+    onLoadMoreForYou: () -> Unit,
+    scrollToTopTrigger: Long,
+    modifier: Modifier,
 ) {
-    val pullToRefreshState = rememberPullToRefreshState()
+    val forYouListState = rememberSaveable(saver = LazyListState.Saver) {
+        LazyListState()
+    }
+    val chartsListState = rememberSaveable(uiState.selectedRail, saver = LazyListState.Saver) {
+        LazyListState()
+    }
+    val activeListState = if (uiState.selectedTab == DiscoverTab.FOR_YOU) forYouListState else chartsListState
+    val pullState = rememberPullToRefreshState()
+    val coroutineScope = rememberCoroutineScope()
+    var lastHandledScrollToTopTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
-        state = pullToRefreshState,
-        modifier = modifier.fillMaxSize()
-    ) {
-        if (recommendations.isEmpty() && trending.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.discover_trending_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0L && scrollToTopTrigger != lastHandledScrollToTopTrigger) {
+            lastHandledScrollToTopTrigger = scrollToTopTrigger
+            activeListState.scrollToItem(0)
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        DiscoverTabHeader(
+            selectedTab = uiState.selectedTab,
+            onSelectTab = onSelectTab,
+            onTabReselected = {
+                coroutineScope.launch {
+                    activeListState.scrollToItem(0)
+                }
+            },
+        )
+
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = onRefresh,
+            state = pullState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when (uiState.selectedTab) {
+                DiscoverTab.FOR_YOU -> ForYouFeed(
+                    uiState = uiState,
+                    listState = forYouListState,
+                    onGameClick = onGameClick,
+                    onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
+                    onLoadMoreForYou = onLoadMoreForYou,
+                )
+                DiscoverTab.CHARTS -> ChartsFeed(
+                    uiState = uiState,
+                    onGameClick = onGameClick,
+                    onLoadMoreRail = onLoadMoreRail,
+                    onSelectRail = onSelectRail,
                 )
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (showForYou) {
+        }
+    }
+}
+@Composable
+private fun DiscoverTabHeader(
+    selectedTab: DiscoverTab,
+    onSelectTab: (DiscoverTab) -> Unit,
+    onTabReselected: (DiscoverTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PrimaryTabRow(
+        selectedTabIndex = selectedTab.ordinal,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        DiscoverTab.entries.forEach { tab ->
+            Tab(
+                selected = selectedTab == tab,
+                onClick = {
+                    if (selectedTab == tab) {
+                        onTabReselected(tab)
+                    } else {
+                        onSelectTab(tab)
+                    }
+                },
+                text = {
                     Text(
-                        text = stringResource(R.string.discover_for_you),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp),
+                        text = stringResource(tab.titleRes),
+                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
                     )
-                    recommendations.forEach { rec ->
-                        GameCard(
-                            game = rec.game,
-                            onClick = { onGameClick(rec.game.id) },
-                            supportingLines = rec.reasons.map { reasonLabel(it) },
-                        )
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ForYouFeed(
+    uiState: DiscoverUiState,
+    listState: LazyListState,
+    onGameClick: (Long) -> Unit,
+    onBrowseChartsClick: () -> Unit,
+    onLoadMoreForYou: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val totalItems = listState.layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, uiState.forYouLoading, uiState.forYouEndReached) {
+        if (shouldLoadMore && !uiState.forYouLoading && !uiState.forYouEndReached) {
+            onLoadMoreForYou()
+        }
+    }
+
+    if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
+        ColdStartCard(
+            onBrowseChartsClick = onBrowseChartsClick,
+            modifier = modifier.padding(16.dp),
+        )
+    } else {
+        LazyColumn(
+            state = listState,
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
+                RecommendationCard(recommendation, onGameClick)
+            }
+            if (uiState.forYouLoading) {
+                item(key = "loading-append:for-you") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
                     }
                 }
-                if (trending.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.discover_trending),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    trending.forEachIndexed { index, game ->
-                        GameCard(
-                            game = game,
-                            onClick = { onGameClick(game.id) },
-                        )
-                        if (index == trending.lastIndex) {
-                            LaunchedEffect(trending.size) {
-                                onLoadMoreTrending()
-                            }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColdStartCard(
+    onBrowseChartsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.discover_cold_start_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.discover_cold_start_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onBrowseChartsClick) {
+                Text(stringResource(R.string.discover_cold_start_action))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartsFeed(
+    uiState: DiscoverUiState,
+    onGameClick: (Long) -> Unit,
+    onLoadMoreRail: (DiscoverRail) -> Unit,
+    onSelectRail: (DiscoverRail) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberSaveable(uiState.selectedRail, saver = LazyListState.Saver) {
+        LazyListState()
+    }
+    val currentRailState = uiState.rails.firstOrNull { it.rail == uiState.selectedRail }
+        ?: DiscoverRailState(uiState.selectedRail)
+    val shouldLoadMore by remember(currentRailState.games.size) {
+        derivedStateOf {
+            val totalItems = listState.layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4
+        }
+    }
+
+    LaunchedEffect(uiState.selectedRail) {
+        if (currentRailState.games.isEmpty() && !currentRailState.isLoading && !currentRailState.endReached) {
+            onLoadMoreRail(uiState.selectedRail)
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, currentRailState.isLoading, currentRailState.endReached) {
+        if (shouldLoadMore && !currentRailState.isLoading && !currentRailState.endReached) {
+            onLoadMoreRail(uiState.selectedRail)
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DiscoverRail.entries.forEach { rail ->
+                FilterChip(
+                    selected = uiState.selectedRail == rail,
+                    onClick = { onSelectRail(rail) },
+                    label = { Text(stringResource(rail.titleRes)) },
+                )
+            }
+        }
+
+        if (currentRailState.games.isEmpty() && currentRailState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(currentRailState.games, key = { "${currentRailState.rail.type}:${it.id}" }) { game ->
+                    GameCard(game = game, onClick = { onGameClick(game.id) })
+                }
+                if (currentRailState.isLoading) {
+                    item(key = "loading-append:${currentRailState.rail.type}") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
                         }
                     }
                 }
@@ -211,85 +397,46 @@ private fun DiscoverContent(
     }
 }
 
+
 @Composable
-private fun reasonLabel(reason: RecommendationReason): String {
-    return when (reason) {
-        is RecommendationReason.GenreOverlap ->
-            stringResource(R.string.reason_genre, reason.tags.first())
-        is RecommendationReason.ThemeOverlap ->
-            stringResource(R.string.reason_theme, reason.tags.first())
-        is RecommendationReason.PlatformOverlap ->
-            stringResource(R.string.reason_platform, reason.tags.first())
-        RecommendationReason.SimilarGame -> stringResource(R.string.reason_similar)
-        RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
-        RecommendationReason.RecentRelease -> stringResource(R.string.reason_recency)
-    }
+private fun RecommendationCard(recommendation: DiscoverRecommendation, onGameClick: (Long) -> Unit) {
+    GameCard(
+        game = recommendation.game,
+        onClick = { onGameClick(recommendation.game.id) },
+        supportingLines = recommendation.reasons.map { reasonLabel(it) },
+    )
 }
 
-
+@Composable
+private fun reasonLabel(reason: RecommendationReason): String = when (reason) {
+    is RecommendationReason.GenreOverlap -> stringResource(R.string.reason_genre, reason.tags.joinToString())
+    is RecommendationReason.ThemeOverlap -> stringResource(R.string.reason_theme, reason.tags.joinToString())
+    is RecommendationReason.PlatformOverlap -> stringResource(R.string.reason_platform, reason.tags.joinToString())
+    RecommendationReason.SimilarGame -> stringResource(R.string.reason_similar)
+    RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
+    RecommendationReason.RecentRelease -> stringResource(R.string.reason_recency)
+}
 @Composable
 private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.discover_loading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
 }
 
 @Composable
-private fun DiscoverErrorState(
-    error: AppError,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
+private fun DiscoverErrorState(error: AppError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier.padding(24.dp),
         ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(56.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = error.errorMessage(),
-                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onRetry) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(text = stringResource(R.string.retry_button))
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onRetry) {
+                Text(stringResource(R.string.retry_button))
             }
         }
     }

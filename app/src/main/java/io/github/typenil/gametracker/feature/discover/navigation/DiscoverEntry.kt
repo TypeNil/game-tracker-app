@@ -23,12 +23,12 @@ fun NavController.navigateToDiscover(navOptions: NavOptions? = null) {
 fun NavGraphBuilder.discoverEntry(
     onGameClick: (Long) -> Unit,
     onSearchClick: () -> Unit,
-    onAboutClick: () -> Unit
+    onAboutClick: () -> Unit,
+    scrollToTopTrigger: () -> Long = { 0L },
 ) {
     composable<DiscoverKey> {
         val viewModel: DiscoverViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
         DiscoverScreen(
             uiState = uiState,
             onGameClick = onGameClick,
@@ -38,6 +38,11 @@ fun NavGraphBuilder.discoverEntry(
             onRetry = viewModel::retry,
             onUserMessageShown = viewModel::onUserMessageShown,
             onLoadMoreTrending = viewModel::loadMoreTrending,
+            onLoadMoreRail = viewModel::loadMoreRail,
+            onSelectTab = viewModel::selectTab,
+            onSelectRail = viewModel::selectRail,
+            onLoadMoreForYou = viewModel::loadMoreForYou,
+            scrollToTopTrigger = scrollToTopTrigger(),
         )
     }
 }

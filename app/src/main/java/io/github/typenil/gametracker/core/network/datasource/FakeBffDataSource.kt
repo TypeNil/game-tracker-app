@@ -51,19 +51,22 @@ class FakeBffDataSource @Inject constructor(
             throw IllegalStateException("Failed to parse fixtures/v1/game-details.json fixture: ${e.message}", e)
         }
     }
-
     private val trendingIds: List<Long> by lazy {
-        try {
-            context.assets.open("fixtures/v1/trending.json")
-                .bufferedReader(Charsets.UTF_8)
-                .use { reader ->
-                    json.decodeFromString<List<Long>>(reader.readText())
-                }
-        } catch (e: java.io.IOException) {
-            throw IllegalStateException("Failed to read fixtures/v1/trending.json fixture: ${e.message}", e)
-        } catch (e: kotlinx.serialization.SerializationException) {
-            throw IllegalStateException("Failed to parse fixtures/v1/trending.json fixture: ${e.message}", e)
-        }
+        readIds("fixtures/v1/trending.json")
+    }
+
+
+    private val popularIds: Map<String, List<Long>> by lazy {
+        mapOf(
+            "playing" to readIds("fixtures/v1/popular-playing.json"),
+            "wanted" to readIds("fixtures/v1/popular-wanted.json"),
+            "upcoming" to readIds("fixtures/v1/popular-upcoming.json"),
+            "twitch" to readIds("fixtures/v1/popular-twitch.json"),
+        )
+    }
+
+    private fun readIds(path: String): List<Long> = context.assets.open(path).bufferedReader().use { reader ->
+        json.decodeFromString(reader.readText())
     }
 
     override suspend fun getTopRatedGames(limit: Int, offset: Int): List<GameDto> {
@@ -79,6 +82,25 @@ class FakeBffDataSource @Inject constructor(
         if (offset >= ordered.size) return emptyList()
         return ordered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
     }
+    override suspend fun getPopularPage(
+        type: String,
+        limit: Int,
+        offset: Int
+    ): io.github.typenil.gametracker.core.network.model.GamePageDto {
+        validatePagination(limit, offset)
+        val ids = if (type == "visits") trendingIds else popularIds[type].orEmpty()
+        val byId = mockGames.associateBy { it.id }
+        val ordered = ids.mapNotNull { byId[it] }
+        val items = ordered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
+        val nextOffset = offset + items.size
+        val end = nextOffset >= ordered.size || items.size < limit
+        return io.github.typenil.gametracker.core.network.model.GamePageDto(
+            items = items,
+            nextOffset = if (end) null else nextOffset,
+            endReached = end,
+        )
+    }
+
 
     override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
         if (query.isBlank()) {
@@ -154,6 +176,26 @@ class FakeBffDataSource @Inject constructor(
             }
         }
         return merged.values.take(limit.coerceIn(1, MAX_LIMIT))
+    }
+    override suspend fun getRecommendationCandidatesPage(
+        genres: List<String>,
+        themes: List<String>,
+        platforms: List<String>,
+        exclude: Set<Long>,
+        similarTo: List<Long>,
+        limit: Int,
+        offset: Int,
+        sort: String,
+    ): io.github.typenil.gametracker.core.network.model.RecommendationCandidatePageDto {
+        val items = getRecommendationCandidates(genres, themes, platforms, exclude, similarTo, MAX_LIMIT)
+        val page = items.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
+        val next = offset + page.size
+        val end = next >= items.size || page.size < limit
+        return io.github.typenil.gametracker.core.network.model.RecommendationCandidatePageDto(
+            items = page,
+            nextOffset = if (end) null else next,
+            endReached = end,
+        )
     }
 
     private fun toCandidate(id: Long, similarToGameIds: List<Long>): RecommendationCandidateDto? {

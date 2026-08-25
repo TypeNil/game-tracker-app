@@ -5,6 +5,7 @@ import com.gametracker.backend.auth.IgdbTokenManager
 import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.error.ErrorResponse
 import com.gametracker.backend.models.RecommendationCandidateDto
+import com.gametracker.backend.models.RecommendationCandidatesRequest
 import com.gametracker.backend.error.configureErrorHandling
 import com.gametracker.backend.igdb.IgdbService
 import com.gametracker.backend.models.GameDetailsDto
@@ -618,5 +619,19 @@ class GamesRoutesTest {
         assertTrue(seenPaths[0].contains("popularity_primitives"))
         assertTrue(seenPaths[1].contains("/v4/games") || seenPaths[1].endsWith("/games"))
         cache.close()
+    }
+    @Test
+    fun `recommendation candidates request accepts page parameters`() {
+        val request = RecommendationCandidatesRequest(
+            genresParam = "RPG",
+            limitParam = 10,
+            offsetParam = 20,
+            sortParam = "follows",
+        )
+
+        assertEquals(10, request.limit)
+        assertEquals(20, request.offset)
+        assertTrue(request.toTagApicalypseQuery().contains("limit 30;"))
+        assertTrue(request.toTagApicalypseQuery().contains("offset 0;"))
     }
 }

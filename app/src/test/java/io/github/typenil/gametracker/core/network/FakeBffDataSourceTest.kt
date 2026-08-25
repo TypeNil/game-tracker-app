@@ -50,6 +50,10 @@ class FakeBffDataSourceTest {
         if (!trendingFixture.exists()) {
             throw java.lang.IllegalStateException("Fixture file not found at ${trendingFixture.absolutePath}")
         }
+        listOf("playing", "wanted", "upcoming", "twitch").forEach { type ->
+            val fixture = File(assetsDir, "fixtures/v1/popular-$type.json")
+            every { assetManager.open("fixtures/v1/popular-$type.json") } answers { fixture.inputStream() }
+        }
         every { assetManager.open("fixtures/v1/trending.json") } answers { trendingFixture.inputStream() }
 
         fakeDataSource = FakeBffDataSource(context, json)
@@ -257,5 +261,13 @@ class FakeBffDataSourceTest {
         val topRated = fakeDataSource.getTopRatedGames(limit = 10, offset = 0)
         assertEquals(listOf(72L, 14593L, 1877L, 119388L, 204350L, 25076L), trending.map { it.id })
         assertTrue(trending.map { it.id } != topRated.take(trending.size).map { it.id })
+    }
+    @Test
+    fun getPopularPage_usesRailFixtureAndReportsEnd() = runTest {
+        val page = fakeDataSource.getPopularPage("playing", limit = 2, offset = 0)
+
+        assertEquals(listOf(119133L, 1942L), page.items.map { it.id })
+        assertEquals(2, page.nextOffset)
+        assertTrue(!page.endReached)
     }
 }

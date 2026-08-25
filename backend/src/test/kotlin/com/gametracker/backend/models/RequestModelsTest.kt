@@ -223,4 +223,36 @@ class RequestModelsTest {
         assertTrue(q.contains("similar_games.id"))
         assertTrue(q.contains("where id = (10,20)") || q.contains("where id = (20,10)"))
     }
-}
+    @Test
+    fun `PopularityRailRequest maps names and limits primitive window`() {
+        val request = PopularityRailRequest("playing", 20, 40)
+
+        assertEquals(PopularityRailRequest.PLAYING_TYPE, request.popularityType)
+        assertEquals(20, request.limit)
+        assertEquals(40, request.offset)
+        assertEquals(60, request.primitiveFetchLimit)
+    }
+
+    @Test
+    fun `PopularityRailRequest rejects unknown rail and offset beyond primitive cap`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            PopularityRailRequest("unknown", 20, 0)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            PopularityRailRequest("visits", 20, 500)
+        }
+    }
+
+    @Test
+    fun `RecommendationCandidatesRequest paginates tag query from page zero`() {
+        val request = RecommendationCandidatesRequest(
+            genresParam = "RPG",
+            offsetParam = 40,
+            limitParam = 20,
+        )
+
+        val query = request.toTagApicalypseQuery()
+        assertTrue(query.contains("limit 60;"))
+        assertTrue(query.contains("offset 0;"))
+    }
+ }
