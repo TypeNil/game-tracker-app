@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -217,17 +218,18 @@ fun LibraryScreen(
                 .padding(innerPadding)
         ) {
             PrimaryScrollableTabRow(
-                selectedTabIndex = uiState.selectedTab.ordinal,
+                selectedTabIndex = pagerState.currentPage,
                 edgePadding = 16.dp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("library_tab_row")
             ) {
                 LibraryTab.entries.forEach { tab ->
-                    val isSelected = uiState.selectedTab == tab
+                    val isSelected = pagerState.currentPage == tab.ordinal
                     val count = uiState.tabCounts[tab] ?: 0
                     Tab(
                         selected = isSelected,
                         onClick = {
-                            onTabSelected(tab)
                             pagerScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
                         },
                         text = {
@@ -304,7 +306,9 @@ fun LibraryScreen(
                 else -> {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("library_pager"),
                     ) { page ->
                         val tab = LibraryTab.entries[page]
                         val pageGames = uiState.gamesFor(tab)
