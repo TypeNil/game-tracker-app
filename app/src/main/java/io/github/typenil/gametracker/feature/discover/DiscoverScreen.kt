@@ -411,15 +411,6 @@ private fun ChartsFeed(
                 }
             }
         }
-        if (uiState.trending.isNotEmpty()) {
-            item(key = "header:trending") { SectionHeader(R.string.discover_trending) }
-            items(uiState.trending, key = { "trending:${it.id}" }) { game ->
-                GameCard(game = game, onClick = { onGameClick(game.id) })
-            }
-            item(key = "load-more:trending") {
-                LaunchedEffect(uiState.trending.size) { onLoadMoreTrending() }
-            }
-        }
     }
 }
 
@@ -443,14 +434,13 @@ private fun RecommendationCard(recommendation: DiscoverRecommendation, onGameCli
 
 @Composable
 private fun reasonLabel(reason: RecommendationReason): String = when (reason) {
-    is RecommendationReason.GenreOverlap -> reason.tags.joinToString()
-    is RecommendationReason.ThemeOverlap -> reason.tags.joinToString()
-    is RecommendationReason.PlatformOverlap -> reason.tags.joinToString()
-    RecommendationReason.SimilarGame -> "Similar game"
-    RecommendationReason.HighRating -> "High rating"
-    RecommendationReason.RecentRelease -> "Recent release"
+    is RecommendationReason.GenreOverlap -> stringResource(R.string.reason_genre, reason.tags.joinToString())
+    is RecommendationReason.ThemeOverlap -> stringResource(R.string.reason_theme, reason.tags.joinToString())
+    is RecommendationReason.PlatformOverlap -> stringResource(R.string.reason_platform, reason.tags.joinToString())
+    RecommendationReason.SimilarGame -> stringResource(R.string.reason_similar)
+    RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
+    RecommendationReason.RecentRelease -> stringResource(R.string.reason_recency)
 }
-
 @Composable
 private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -459,6 +449,20 @@ private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
 @Composable
 private fun DiscoverErrorState(error: AppError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(error.errorMessage(), color = MaterialTheme.colorScheme.error)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(24.dp),
+        ) {
+            Text(
+                text = error.errorMessage(),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(onClick = onRetry) {
+                Text(stringResource(R.string.retry_button))
+            }
+        }
     }
 }

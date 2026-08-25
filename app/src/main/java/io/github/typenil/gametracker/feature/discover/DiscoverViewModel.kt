@@ -15,10 +15,8 @@ import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
-import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
-import io.github.typenil.gametracker.core.model.RecommendationSignal
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -142,16 +140,18 @@ class DiscoverViewModel @Inject constructor(
         if (forYouJob?.isActive == true || forYouEndReached.value) return false
         return !refreshing.value && !isColdStart.value
     }
-
     private suspend fun executeLoadMoreForYou(initialOffset: Int) {
         forYouLoading.value = true
-        var currentOffset: Int? = initialOffset
-        while (currentOffset != null && !forYouEndReached.value) {
-            val stepResult = fetchAndProcessCandidatesPage(currentOffset) ?: break
-            currentOffset = stepResult.nextOffset
-            if (stepResult.hasNewItems) break
+        try {
+            var currentOffset: Int? = initialOffset
+            while (currentOffset != null && !forYouEndReached.value) {
+                val stepResult = fetchAndProcessCandidatesPage(currentOffset) ?: break
+                currentOffset = stepResult.nextOffset
+                if (stepResult.hasNewItems) break
+            }
+        } finally {
+            forYouLoading.value = false
         }
-        forYouLoading.value = false
     }
 
     private suspend fun fetchAndProcessCandidatesPage(offset: Int): StepResult? {
@@ -258,18 +258,18 @@ class DiscoverViewModel @Inject constructor(
         appendJob?.cancel()
         hydrateJob?.cancel()
         forYouJob?.cancel()
+        railJobs.values.forEach { it.cancel() }
+        railJobs.clear()
         hydrateJob = viewModelScope.launch { performHydrate(isUserPullToRefresh) }
     }
+
     private suspend fun performHydrate(isUserPullToRefresh: Boolean) {
         if (isUserPullToRefresh) refreshing.value = true
         else if (recommendations.value.isEmpty()) loading.value = true
         refreshTrending()
         if (isUserPullToRefresh) {
-            val loadedRails = DiscoverRail.entries.filter { rail ->
-                railStates.value.first { it.rail == rail }.games.isNotEmpty()
-            }
-            loadedRails.forEach { railOffsets[it] = 0 }
-            loadedRails.forEach { refreshRail(it, append = false) }
+            DiscoverRail.entries.forEach { railOffsets[it] = 0 }
+            refreshRail(DiscoverRail.entries.first(), append = false)
         }
         rebuildRecommendations(rotate = isUserPullToRefresh)
         loading.value = false
@@ -326,11 +326,35 @@ class DiscoverViewModel @Inject constructor(
             val signals = signalCollector.collect()
             val profile = RecommendationProfileBuilder.build(signals)
             isColdStart.value = profile.isColdStart
-            forYouSortIndex = 0
+            if (rotate) {
+                forYouSortIndex = (forYouSortIndex + 1) % FOR_YOU_SORT_MODES.size
+            } else {
+                forYouSortIndex = 0
+            }
             forYouCurrentOffset = 0
             forYouEndReached.value = false
             val inLibraryIds = signals.map { it.gameId }.toSet()
-            val candidates = if (profile.isColdStart) emptyList() else fetchCandidates(profile, signals, inLibraryIds)
+            val currentSort = FOR_YOU_SORT_MODES.getOrElse(forYouSortIndex) { FOR_YOU_SORT_MODES.first() }
+            val candidates = if (profile.isColdStart) {
+                emptyList()
+            } else {
+                when (val result = gameRepository.getRecommendationCandidatesPage(
+                    genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
+                    themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
+                    platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
+                    exclude = inLibraryIds.take(MAX_EXCLUDE_IDS).toSet(),
+                    similarTo = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10),
+                    limit = CANDIDATE_PAGE_SIZE,
+                    offset = 0,
+                    sort = currentSort,
+                )) {
+                    is AppResult.Success -> result.data.items
+                    is AppResult.Error -> {
+                        userMessageRes.value = R.string.error_refresh_failed
+                        emptyList()
+                    }
+                }
+            }
             val shownIds = if (rotate) lastShownRecIds.value else emptySet()
             val feed = DiscoverFeedAssembler.assemble(
                 profile = profile,
@@ -365,25 +389,6 @@ class DiscoverViewModel @Inject constructor(
     }
 
 
-    private suspend fun fetchCandidates(
-        profile: RecommendationProfile,
-        signals: List<RecommendationSignal>,
-        inLibraryIds: Set<Long>,
-    ): List<RecommendationCandidate> {
-        return when (val result = gameRepository.getRecommendationCandidates(
-            genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
-            themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
-            platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
-            exclude = inLibraryIds,
-            similarTo = DiscoverFeedAssembler.similarSeedIds(signals),
-        )) {
-            is AppResult.Success -> result.data
-            is AppResult.Error -> {
-                userMessageRes.value = R.string.error_refresh_failed
-                emptyList()
-            }
-        }
-    }
 
     private data class StepResult(val nextOffset: Int?, val hasNewItems: Boolean)
     private data class ForYouStateData(
