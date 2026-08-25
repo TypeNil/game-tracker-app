@@ -13,6 +13,8 @@ import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
@@ -104,7 +106,11 @@ class DiscoverViewModel @Inject constructor(
                 lastLibraryEntries = entries
                 if (!isInitial && !libraryChanged) return@collect
                 if (refreshing.value && !libraryChanged) return@collect
-                rebuildRecommendations(rotate = false)
+                if (isInitial || recommendations.value.isEmpty()) {
+                    rebuildRecommendations(rotate = false)
+                } else {
+                    updateLibraryRecommendations(games)
+                }
                 loading.value = false
             }
         }
@@ -341,6 +347,23 @@ class DiscoverViewModel @Inject constructor(
             forYouCurrentOffset = candidates.size.takeIf { it > 0 } ?: 0
         }
     }
+    private suspend fun updateLibraryRecommendations(games: List<LibraryGame>) {
+        rebuildMutex.withLock {
+            val signals = signalCollector.collect()
+            val profile = RecommendationProfileBuilder.build(signals)
+            isColdStart.value = profile.isColdStart
+            val inLibraryIds = signals.map { it.gameId }.toSet()
+            val excludedFromLibrary = games
+                .filter { it.entry.status == LibraryStatus.DROPPED || it.entry.status == LibraryStatus.NOT_INTERESTED }
+                .map { it.game.id }
+                .toSet()
+            val removedIds = inLibraryIds + excludedFromLibrary + profile.excludedGameIds
+            recommendations.value = recommendations.value.filter { it.game.id !in removedIds }
+            lastShownRecIds.value = recommendations.value.map { it.game.id }.toSet()
+            hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
+        }
+    }
+
 
     private suspend fun fetchCandidates(
         profile: RecommendationProfile,

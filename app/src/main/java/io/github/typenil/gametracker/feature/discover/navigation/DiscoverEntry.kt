@@ -23,7 +23,8 @@ fun NavController.navigateToDiscover(navOptions: NavOptions? = null) {
 fun NavGraphBuilder.discoverEntry(
     onGameClick: (Long) -> Unit,
     onSearchClick: () -> Unit,
-    onAboutClick: () -> Unit
+    onAboutClick: () -> Unit,
+    scrollToTopTrigger: Long = 0L,
 ) {
     composable<DiscoverKey> {
         val viewModel: DiscoverViewModel = hiltViewModel()
@@ -40,6 +41,7 @@ fun NavGraphBuilder.discoverEntry(
             onLoadMoreRail = viewModel::loadMoreRail,
             onSelectTab = viewModel::selectTab,
             onLoadMoreForYou = viewModel::loadMoreForYou,
+            scrollToTopTrigger = scrollToTopTrigger,
         )
     }
 }

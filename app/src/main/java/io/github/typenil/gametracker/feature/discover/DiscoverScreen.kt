@@ -8,6 +8,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,6 +74,7 @@ fun DiscoverScreen(
     onLoadMoreRail: (DiscoverRail) -> Unit = {},
     onSelectTab: (DiscoverTab) -> Unit = {},
     onLoadMoreForYou: () -> Unit = {},
+    scrollToTopTrigger: Long = 0L,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -112,6 +114,7 @@ fun DiscoverScreen(
                 onLoadMoreRail = onLoadMoreRail,
                 onSelectTab = onSelectTab,
                 onLoadMoreForYou = onLoadMoreForYou,
+                scrollToTopTrigger = scrollToTopTrigger,
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -128,6 +131,7 @@ private fun DiscoverContent(
     onLoadMoreRail: (DiscoverRail) -> Unit,
     onSelectTab: (DiscoverTab) -> Unit,
     onLoadMoreForYou: () -> Unit,
+    scrollToTopTrigger: Long,
     modifier: Modifier,
 ) {
     val forYouListState = rememberLazyListState()
@@ -138,25 +142,19 @@ private fun DiscoverContent(
     val showScrollToTop by remember {
         derivedStateOf { activeListState.firstVisibleItemIndex > 2 }
     }
+
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0L) {
+            activeListState.scrollToItem(0)
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            PrimaryTabRow(
-                selectedTabIndex = uiState.selectedTab.ordinal,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                DiscoverTab.entries.forEach { tab ->
-                    Tab(
-                        selected = uiState.selectedTab == tab,
-                        onClick = { onSelectTab(tab) },
-                        text = {
-                            Text(
-                                text = stringResource(tab.titleRes),
-                                fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        },
-                    )
-                }
-            }
+            DiscoverTabHeader(
+                selectedTab = uiState.selectedTab,
+                onSelectTab = onSelectTab,
+            )
 
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
@@ -182,28 +180,67 @@ private fun DiscoverContent(
                 }
             }
         }
-        AnimatedVisibility(
+
+        ScrollToTopFab(
             visible = showScrollToTop,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
+            onClick = {
+                coroutineScope.launch {
+                    activeListState.scrollToItem(0)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
-        ) {
-            FloatingActionButton(
-                onClick = {
-                    coroutineScope.launch {
-                        activeListState.scrollToItem(0)
-                    }
+        )
+    }
+}
+
+@Composable
+private fun DiscoverTabHeader(
+    selectedTab: DiscoverTab,
+    onSelectTab: (DiscoverTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PrimaryTabRow(
+        selectedTabIndex = selectedTab.ordinal,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        DiscoverTab.entries.forEach { tab ->
+            Tab(
+                selected = selectedTab == tab,
+                onClick = { onSelectTab(tab) },
+                text = {
+                    Text(
+                        text = stringResource(tab.titleRes),
+                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                    )
                 },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowUp,
-                    contentDescription = stringResource(R.string.scroll_to_top_desc),
-                )
-            }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScrollToTopFab(
+    visible: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut(),
+        modifier = modifier,
+    ) {
+        FloatingActionButton(
+            onClick = onClick,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = stringResource(R.string.scroll_to_top_desc),
+            )
         }
     }
 }
@@ -240,6 +277,7 @@ private fun ForYouFeed(
         LazyColumn(
             state = listState,
             modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
@@ -309,6 +347,7 @@ private fun ChartsFeed(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         uiState.rails.forEachIndexed { index, railState ->

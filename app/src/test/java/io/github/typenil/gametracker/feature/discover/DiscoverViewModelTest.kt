@@ -218,17 +218,15 @@ class DiscoverViewModelTest {
             updatedAtEpochSeconds = 1000L,
         )
         val game = Game(id = 1942L, name = "Game 1942")
-        coEvery { signalCollector.collect() } answers {
-            if (libraryFlow.value.isEmpty()) emptyList()
-            else listOf(
-                RecommendationSignal(
-                    gameId = 1942L,
-                    status = LibraryStatus.COMPLETED,
-                    isFavorite = true,
-                    genres = listOf("RPG"),
-                )
+        libraryFlow.value = listOf(LibraryGame(game = game, entry = entry))
+        coEvery { signalCollector.collect() } returns listOf(
+            RecommendationSignal(
+                gameId = 1942L,
+                status = LibraryStatus.COMPLETED,
+                isFavorite = true,
+                genres = listOf("RPG"),
             )
-        }
+        )
         coEvery {
             gameRepository.getRecommendationCandidates(any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(
@@ -245,10 +243,7 @@ class DiscoverViewModelTest {
 
         val viewModel = createViewModel()
         viewModel.uiState.test {
-            awaitItemUntil { !it.isLoading }
-            // Populate library
-            libraryFlow.value = listOf(LibraryGame(game = game, entry = entry))
-            awaitItemUntil { it.recommendations.isNotEmpty() }
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
 
             // Simulate Room re-emitting after games table upsert (same entry, game name updated)
             libraryFlow.value = listOf(LibraryGame(game = game.copy(name = "Updated Game 1942"), entry = entry))
@@ -256,7 +251,7 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        // getRecommendationCandidates should only have been called ONCE (when library was populated), not on redundant emission
+        // getRecommendationCandidates should only have been called ONCE (on init), not on duplicate library emissions
         coVerify(exactly = 1) {
             gameRepository.getRecommendationCandidates(any(), any(), any(), any(), any(), any())
         }

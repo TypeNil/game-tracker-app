@@ -18,6 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -55,15 +58,23 @@ fun AppNavHost(
 
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
+    var scrollToTopDiscoverTrigger by remember { mutableStateOf(0L) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (isTopLevelDestination) {
                 NavigationBar {
+                    val isDiscoverSelected = currentDestination?.hasRoute<DiscoverKey>() == true
                     NavigationBarItem(
-                        selected = currentDestination?.hasRoute<DiscoverKey>() == true,
-                        onClick = appState::navigateToDiscover,
+                        selected = isDiscoverSelected,
+                        onClick = {
+                            if (isDiscoverSelected) {
+                                scrollToTopDiscoverTrigger = System.currentTimeMillis()
+                            } else {
+                                appState.navigateToDiscover()
+                            }
+                        },
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.Explore,
@@ -73,9 +84,14 @@ fun AppNavHost(
                         label = { Text(stringResource(R.string.nav_discover)) }
                     )
 
+                    val isLibrarySelected = currentDestination?.hasRoute<LibraryKey>() == true
                     NavigationBarItem(
-                        selected = currentDestination?.hasRoute<LibraryKey>() == true,
-                        onClick = appState::navigateToLibrary,
+                        selected = isLibrarySelected,
+                        onClick = {
+                            if (!isLibrarySelected) {
+                                appState.navigateToLibrary()
+                            }
+                        },
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.CollectionsBookmark,
@@ -97,9 +113,9 @@ fun AppNavHost(
             discoverEntry(
                 onGameClick = appState::navigateToGameDetails,
                 onSearchClick = appState::navigateToSearch,
-                onAboutClick = appState::navigateToSettings
+                onAboutClick = appState::navigateToSettings,
+                scrollToTopTrigger = scrollToTopDiscoverTrigger,
             )
-
             libraryEntry(
                 onGameClick = appState::navigateToGameDetails,
                 onNavigateToDiscover = appState::navigateToDiscover
