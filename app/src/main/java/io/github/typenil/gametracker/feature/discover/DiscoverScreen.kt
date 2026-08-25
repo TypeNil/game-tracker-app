@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -45,8 +44,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -134,17 +136,23 @@ private fun DiscoverContent(
     scrollToTopTrigger: Long,
     modifier: Modifier,
 ) {
-    val forYouListState = rememberLazyListState()
-    val chartsListState = rememberLazyListState()
+    val forYouListState = rememberSaveable(saver = LazyListState.Saver) {
+        LazyListState()
+    }
+    val chartsListState = rememberSaveable(saver = LazyListState.Saver) {
+        LazyListState()
+    }
     val activeListState = if (uiState.selectedTab == DiscoverTab.FOR_YOU) forYouListState else chartsListState
     val pullState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
     val showScrollToTop by remember {
         derivedStateOf { activeListState.firstVisibleItemIndex > 2 }
     }
+    var lastHandledScrollToTopTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
 
     LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger > 0L) {
+        if (scrollToTopTrigger > 0L && scrollToTopTrigger != lastHandledScrollToTopTrigger) {
+            lastHandledScrollToTopTrigger = scrollToTopTrigger
             activeListState.scrollToItem(0)
         }
     }
