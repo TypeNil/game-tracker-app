@@ -98,6 +98,7 @@ class DiscoverViewModel @Inject constructor(
             librarySeeder.seedIfEmpty()
             loading.value = true
             refreshTrending()
+            refreshRail(DiscoverRail.entries.first(), append = false)
             libraryRepository.getLibraryGamesFlow().collect { games ->
                 val entries = games.map { it.entry }.toSet()
                 val isInitial = lastLibraryEntries == null
