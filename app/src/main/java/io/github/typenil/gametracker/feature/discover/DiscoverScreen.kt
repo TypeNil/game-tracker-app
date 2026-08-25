@@ -154,8 +154,12 @@ private fun DiscoverContent(
             DiscoverTabHeader(
                 selectedTab = uiState.selectedTab,
                 onSelectTab = onSelectTab,
+                onTabReselected = {
+                    coroutineScope.launch {
+                        activeListState.scrollToItem(0)
+                    }
+                },
             )
-
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onRefresh,
@@ -199,6 +203,7 @@ private fun DiscoverContent(
 private fun DiscoverTabHeader(
     selectedTab: DiscoverTab,
     onSelectTab: (DiscoverTab) -> Unit,
+    onTabReselected: (DiscoverTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PrimaryTabRow(
@@ -208,7 +213,13 @@ private fun DiscoverTabHeader(
         DiscoverTab.entries.forEach { tab ->
             Tab(
                 selected = selectedTab == tab,
-                onClick = { onSelectTab(tab) },
+                onClick = {
+                    if (selectedTab == tab) {
+                        onTabReselected(tab)
+                    } else {
+                        onSelectTab(tab)
+                    }
+                },
                 text = {
                     Text(
                         text = stringResource(tab.titleRes),

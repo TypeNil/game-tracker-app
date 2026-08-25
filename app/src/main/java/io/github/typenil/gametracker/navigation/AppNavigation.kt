@@ -114,7 +114,7 @@ fun AppNavHost(
                 onGameClick = appState::navigateToGameDetails,
                 onSearchClick = appState::navigateToSearch,
                 onAboutClick = appState::navigateToSettings,
-                scrollToTopTrigger = scrollToTopDiscoverTrigger,
+                scrollToTopTrigger = { scrollToTopDiscoverTrigger },
             )
             libraryEntry(
                 onGameClick = appState::navigateToGameDetails,
