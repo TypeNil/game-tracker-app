@@ -17,6 +17,7 @@ import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -268,6 +269,7 @@ class DiscoverViewModel @Inject constructor(
         else if (recommendations.value.isEmpty()) loading.value = true
         refreshTrending()
         if (isUserPullToRefresh) {
+            railStates.value = DiscoverRail.entries.map { DiscoverRailState(it) }
             DiscoverRail.entries.forEach { railOffsets[it] = 0 }
             refreshRail(DiscoverRail.entries.first(), append = false)
         }
@@ -278,22 +280,27 @@ class DiscoverViewModel @Inject constructor(
     private suspend fun refreshRail(rail: DiscoverRail, append: Boolean) {
         val offset = if (append) railOffsets.getValue(rail) else 0
         updateRail(rail) { it.copy(isLoading = true) }
-        when (gameRepository.refreshPopular(rail.type, RAIL_PAGE_SIZE, offset, append)) {
-            is AppResult.Success -> {
-                val games = gameRepository.getPopularGamesFlow(rail.type).first()
-                railOffsets[rail] = games.size
-                updateRail(rail) {
-                    it.copy(
-                        games = games,
-                        isLoading = false,
-                        endReached = games.size < offset + RAIL_PAGE_SIZE,
-                    )
+        try {
+            when (gameRepository.refreshPopular(rail.type, RAIL_PAGE_SIZE, offset, append)) {
+                is AppResult.Success -> {
+                    val games = gameRepository.getPopularGamesFlow(rail.type).first()
+                    railOffsets[rail] = games.size
+                    updateRail(rail) {
+                        it.copy(
+                            games = games,
+                            isLoading = false,
+                            endReached = games.size < offset + RAIL_PAGE_SIZE,
+                        )
+                    }
+                }
+                is AppResult.Error -> {
+                    updateRail(rail) { it.copy(isLoading = false) }
+                    userMessageRes.value = R.string.error_refresh_failed
                 }
             }
-            is AppResult.Error -> {
-                updateRail(rail) { it.copy(isLoading = false) }
-                userMessageRes.value = R.string.error_refresh_failed
-            }
+        } catch (e: Exception) {
+            updateRail(rail) { it.copy(isLoading = false) }
+            if (e is CancellationException) throw e
         }
     }
 
