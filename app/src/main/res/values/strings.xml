@@ -134,4 +134,9 @@
     <string name="discover_upcoming">Upcoming</string>
     <string name="discover_watched_now">Watched now</string>
     <string name="scroll_to_top_desc">Scroll to top</string>
+    <string name="discover_tab_for_you">For you</string>
+    <string name="discover_tab_charts">Popular &amp; Charts</string>
+    <string name="discover_cold_start_title">No Recommendations Yet</string>
+    <string name="discover_cold_start_subtitle">Add games to your Library or rate games to get personalized recommendations tailored to your taste.</string>
+    <string name="discover_cold_start_action">Browse Popular Games</string>
 </resources>
