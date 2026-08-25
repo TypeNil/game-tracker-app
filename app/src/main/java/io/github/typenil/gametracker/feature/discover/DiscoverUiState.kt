@@ -39,11 +39,11 @@ data class DiscoverUiState(
     val userMessageRes: Int? = null,
 ) {
     val isInitialLoading: Boolean
-        get() = isLoading && recommendations.isEmpty() && trending.isEmpty() && rails.all { it.games.isEmpty() } && !isColdStart
+        get() = isLoading && recommendations.isEmpty() && trending.isEmpty() && rails.all { it.games.isEmpty() }
 
     val showForYou: Boolean
         get() = recommendations.isNotEmpty()
 
     val hasContent: Boolean
-        get() = recommendations.isNotEmpty() || trending.isNotEmpty() || rails.any { it.games.isNotEmpty() } || isColdStart
+        get() = recommendations.isNotEmpty() || trending.isNotEmpty() || rails.any { it.games.isNotEmpty() }
 }
