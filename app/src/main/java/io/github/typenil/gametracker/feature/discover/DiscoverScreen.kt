@@ -1,5 +1,10 @@
 package io.github.typenil.gametracker.feature.discover
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -11,9 +16,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,12 +33,16 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
@@ -99,73 +110,102 @@ private fun DiscoverContent(
 ) {
     val listState = rememberLazyListState()
     val pullState = rememberPullToRefreshState()
-    PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
-        onRefresh = onRefresh,
-        state = pullState,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        LazyColumn(
-            state = listState,
+    val coroutineScope = rememberCoroutineScope()
+    val showScrollToTop by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 2 }
+    }
+    Box(modifier = modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = onRefresh,
+            state = pullState,
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (uiState.recommendations.isNotEmpty()) {
-                item(key = "header:for-you") { SectionHeader(R.string.discover_for_you) }
-                items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
-                    RecommendationCard(recommendation, onGameClick)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (uiState.recommendations.isNotEmpty()) {
+                    item(key = "header:for-you") { SectionHeader(R.string.discover_for_you) }
+                    items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
+                        RecommendationCard(recommendation, onGameClick)
+                    }
                 }
-            }
-            uiState.rails.forEachIndexed { index, railState ->
-                val canShowRail = index == 0 ||
-                    uiState.rails[index - 1].games.isNotEmpty() ||
-                    uiState.rails[index - 1].endReached
-                if (canShowRail) {
-                    item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
-                    if (railState.games.isEmpty() && railState.isLoading) {
-                        item(key = "loading-initial:${railState.rail.type}") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                    } else {
-                        items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
-                            GameCard(game = game, onClick = { onGameClick(game.id) })
-                        }
-                        if (railState.isLoading) {
-                            item(key = "loading-append:${railState.rail.type}") {
+                uiState.rails.forEachIndexed { index, railState ->
+                    val canShowRail = index == 0 ||
+                        uiState.rails[index - 1].games.isNotEmpty() ||
+                        uiState.rails[index - 1].endReached
+                    if (canShowRail) {
+                        item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
+                        if (railState.games.isEmpty() && railState.isLoading) {
+                            item(key = "loading-initial:${railState.rail.type}") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
+                                        .padding(vertical = 24.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     CircularProgressIndicator()
                                 }
                             }
-                        } else if (!railState.endReached) {
-                            item(key = "load-more:${railState.rail.type}") {
-                                LaunchedEffect(railState.rail, railState.games.size) {
-                                    onLoadMoreRail(railState.rail)
+                        } else {
+                            items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
+                                GameCard(game = game, onClick = { onGameClick(game.id) })
+                            }
+                            if (railState.isLoading) {
+                                item(key = "loading-append:${railState.rail.type}") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            } else if (!railState.endReached) {
+                                item(key = "load-more:${railState.rail.type}") {
+                                    LaunchedEffect(railState.rail, railState.games.size) {
+                                        onLoadMoreRail(railState.rail)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                if (uiState.trending.isNotEmpty()) {
+                    item(key = "header:trending") { SectionHeader(R.string.discover_trending) }
+                    items(uiState.trending, key = { "trending:${it.id}" }) { game ->
+                        GameCard(game = game, onClick = { onGameClick(game.id) })
+                    }
+                    item(key = "load-more:trending") {
+                        LaunchedEffect(uiState.trending.size) { onLoadMoreTrending() }
+                    }
+                }
             }
-            if (uiState.trending.isNotEmpty()) {
-                item(key = "header:trending") { SectionHeader(R.string.discover_trending) }
-                items(uiState.trending, key = { "trending:${it.id}" }) { game ->
-                    GameCard(game = game, onClick = { onGameClick(game.id) })
-                }
-                item(key = "load-more:trending") {
-                    LaunchedEffect(uiState.trending.size) { onLoadMoreTrending() }
-                }
+        }
+        AnimatedVisibility(
+            visible = showScrollToTop,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        listState.scrollToItem(0)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowUp,
+                    contentDescription = stringResource(R.string.scroll_to_top_desc),
+                )
             }
         }
     }
