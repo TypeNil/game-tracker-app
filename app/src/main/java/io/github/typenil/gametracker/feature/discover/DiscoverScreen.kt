@@ -217,6 +217,20 @@ private fun ForYouFeed(
     onLoadMoreForYou: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val totalItems = listState.layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, uiState.forYouLoading, uiState.forYouEndReached) {
+        if (shouldLoadMore && !uiState.forYouLoading && !uiState.forYouEndReached) {
+            onLoadMoreForYou()
+        }
+    }
+
     if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
         ColdStartCard(
             onBrowseChartsClick = onBrowseChartsClick,
@@ -240,12 +254,6 @@ private fun ForYouFeed(
                         contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
-                    }
-                }
-            } else if (!uiState.forYouEndReached) {
-                item(key = "load-more:for-you") {
-                    LaunchedEffect(uiState.recommendations.size, uiState.forYouLoading, uiState.forYouEndReached) {
-                        onLoadMoreForYou()
                     }
                 }
             }
