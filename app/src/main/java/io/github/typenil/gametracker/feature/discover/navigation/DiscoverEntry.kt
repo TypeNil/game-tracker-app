@@ -40,6 +40,7 @@ fun NavGraphBuilder.discoverEntry(
             onLoadMoreTrending = viewModel::loadMoreTrending,
             onLoadMoreRail = viewModel::loadMoreRail,
             onSelectTab = viewModel::selectTab,
+            onSelectRail = viewModel::selectRail,
             onLoadMoreForYou = viewModel::loadMoreForYou,
             scrollToTopTrigger = scrollToTopTrigger(),
         )

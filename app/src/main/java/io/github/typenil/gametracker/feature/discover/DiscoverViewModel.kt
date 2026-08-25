@@ -39,6 +39,7 @@ class DiscoverViewModel @Inject constructor(
     private val signalCollector: RoomRecommendationSignalCollector,
 ) : ViewModel() {
     private val selectedTab = MutableStateFlow(DiscoverTab.FOR_YOU)
+    private val selectedRail = MutableStateFlow(DiscoverRail.POPULAR_NOW)
     private val recommendations = MutableStateFlow<List<DiscoverRecommendation>>(emptyList())
     private val isColdStart = MutableStateFlow(false)
     private val forYouLoading = MutableStateFlow(false)
@@ -67,7 +68,7 @@ class DiscoverViewModel @Inject constructor(
         selectedTab,
         combine(recommendations, isColdStart, forYouLoading, forYouEndReached, ::ForYouStateData),
         gameRepository.getTrendingGamesFlow(),
-        combine(hiddenFromTrending, railStates, ::RailStateData),
+        combine(selectedRail, hiddenFromTrending, railStates, ::RailStateData),
         combine(loading, refreshing, error, userMessageRes, ::Flags),
     ) { tab, forYou, trending, railData, flags ->
         val visibleTrending = trending.filter { it.id !in railData.hidden }
@@ -76,6 +77,7 @@ class DiscoverViewModel @Inject constructor(
             railData.rails.any { it.games.isNotEmpty() }
         DiscoverUiState(
             selectedTab = tab,
+            selectedRail = railData.selectedRail,
             recommendations = forYou.recommendations,
             isColdStart = forYou.isColdStart,
             forYouLoading = forYou.forYouLoading,
@@ -117,6 +119,13 @@ class DiscoverViewModel @Inject constructor(
     }
     fun selectTab(tab: DiscoverTab) {
         selectedTab.value = tab
+    }
+
+    fun selectRail(rail: DiscoverRail) {
+        selectedRail.value = rail
+        if (railStates.value.first { it.rail == rail }.games.isEmpty()) {
+            loadMoreRail(rail)
+        }
     }
 
     fun retry() = hydrate(isUserPullToRefresh = false)
@@ -270,7 +279,7 @@ class DiscoverViewModel @Inject constructor(
         if (isUserPullToRefresh) {
             railStates.value = DiscoverRail.entries.map { DiscoverRailState(it) }
             DiscoverRail.entries.forEach { railOffsets[it] = 0 }
-            refreshRail(DiscoverRail.entries.first(), append = false)
+            refreshRail(selectedRail.value, append = false)
         }
         rebuildRecommendations(rotate = isUserPullToRefresh)
         loading.value = false
@@ -377,6 +386,7 @@ class DiscoverViewModel @Inject constructor(
             forYouCurrentOffset = candidates.size.takeIf { it > 0 } ?: 0
         }
     }
+
     private suspend fun updateLibraryRecommendations(games: List<LibraryGame>) {
         rebuildMutex.withLock {
             val signals = signalCollector.collect()
@@ -394,9 +404,8 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-
-
     private data class StepResult(val nextOffset: Int?, val hasNewItems: Boolean)
+
     private data class ForYouStateData(
         val recommendations: List<DiscoverRecommendation>,
         val isColdStart: Boolean,
@@ -405,6 +414,7 @@ class DiscoverViewModel @Inject constructor(
     )
 
     private data class RailStateData(
+        val selectedRail: DiscoverRail,
         val hidden: Set<Long>,
         val rails: List<DiscoverRailState>,
     )

@@ -1,14 +1,12 @@
 package io.github.typenil.gametracker.feature.discover
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,13 +18,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +72,7 @@ fun DiscoverScreen(
     onLoadMoreTrending: () -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit = {},
     onSelectTab: (DiscoverTab) -> Unit = {},
+    onSelectRail: (DiscoverRail) -> Unit = {},
     onLoadMoreForYou: () -> Unit = {},
     scrollToTopTrigger: Long = 0L,
     modifier: Modifier = Modifier,
@@ -115,6 +113,7 @@ fun DiscoverScreen(
                 onLoadMoreTrending = onLoadMoreTrending,
                 onLoadMoreRail = onLoadMoreRail,
                 onSelectTab = onSelectTab,
+                onSelectRail = onSelectRail,
                 onLoadMoreForYou = onLoadMoreForYou,
                 scrollToTopTrigger = scrollToTopTrigger,
                 modifier = Modifier.padding(innerPadding),
@@ -132,6 +131,7 @@ private fun DiscoverContent(
     onLoadMoreTrending: () -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit,
     onSelectTab: (DiscoverTab) -> Unit,
+    onSelectRail: (DiscoverRail) -> Unit,
     onLoadMoreForYou: () -> Unit,
     scrollToTopTrigger: Long,
     modifier: Modifier,
@@ -139,15 +139,12 @@ private fun DiscoverContent(
     val forYouListState = rememberSaveable(saver = LazyListState.Saver) {
         LazyListState()
     }
-    val chartsListState = rememberSaveable(saver = LazyListState.Saver) {
+    val chartsListState = rememberSaveable(uiState.selectedRail, saver = LazyListState.Saver) {
         LazyListState()
     }
     val activeListState = if (uiState.selectedTab == DiscoverTab.FOR_YOU) forYouListState else chartsListState
     val pullState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
-    val showScrollToTop by remember {
-        derivedStateOf { activeListState.firstVisibleItemIndex > 2 }
-    }
     var lastHandledScrollToTopTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
 
     LaunchedEffect(scrollToTopTrigger) {
@@ -157,56 +154,41 @@ private fun DiscoverContent(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            DiscoverTabHeader(
-                selectedTab = uiState.selectedTab,
-                onSelectTab = onSelectTab,
-                onTabReselected = {
-                    coroutineScope.launch {
-                        activeListState.scrollToItem(0)
-                    }
-                },
-            )
-            PullToRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = onRefresh,
-                state = pullState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when (uiState.selectedTab) {
-                    DiscoverTab.FOR_YOU -> ForYouFeed(
-                        uiState = uiState,
-                        listState = forYouListState,
-                        onGameClick = onGameClick,
-                        onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
-                        onLoadMoreForYou = onLoadMoreForYou,
-                    )
-                    DiscoverTab.CHARTS -> ChartsFeed(
-                        uiState = uiState,
-                        listState = chartsListState,
-                        onGameClick = onGameClick,
-                        onLoadMoreRail = onLoadMoreRail,
-                        onLoadMoreTrending = onLoadMoreTrending,
-                    )
-                }
-            }
-        }
-
-        ScrollToTopFab(
-            visible = showScrollToTop,
-            onClick = {
+    Column(modifier = modifier.fillMaxSize()) {
+        DiscoverTabHeader(
+            selectedTab = uiState.selectedTab,
+            onSelectTab = onSelectTab,
+            onTabReselected = {
                 coroutineScope.launch {
                     activeListState.scrollToItem(0)
                 }
             },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
         )
+
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = onRefresh,
+            state = pullState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when (uiState.selectedTab) {
+                DiscoverTab.FOR_YOU -> ForYouFeed(
+                    uiState = uiState,
+                    listState = forYouListState,
+                    onGameClick = onGameClick,
+                    onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
+                    onLoadMoreForYou = onLoadMoreForYou,
+                )
+                DiscoverTab.CHARTS -> ChartsFeed(
+                    uiState = uiState,
+                    onGameClick = onGameClick,
+                    onLoadMoreRail = onLoadMoreRail,
+                    onSelectRail = onSelectRail,
+                )
+            }
+        }
     }
 }
-
 @Composable
 private fun DiscoverTabHeader(
     selectedTab: DiscoverTab,
@@ -234,31 +216,6 @@ private fun DiscoverTabHeader(
                         fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ScrollToTopFab(
-    visible: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + scaleIn(),
-        exit = fadeOut() + scaleOut(),
-        modifier = modifier,
-    ) {
-        FloatingActionButton(
-            onClick = onClick,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowUp,
-                contentDescription = stringResource(R.string.scroll_to_top_desc),
             )
         }
     }
@@ -357,55 +314,81 @@ private fun ColdStartCard(
 @Composable
 private fun ChartsFeed(
     uiState: DiscoverUiState,
-    listState: LazyListState,
     onGameClick: (Long) -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit,
-    onLoadMoreTrending: () -> Unit,
+    onSelectRail: (DiscoverRail) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        uiState.rails.forEachIndexed { index, railState ->
-            val canShowRail = index == 0 ||
-                uiState.rails[index - 1].games.isNotEmpty() ||
-                uiState.rails[index - 1].endReached
-            if (canShowRail) {
-                item(key = "header:${railState.rail.type}") { SectionHeader(railState.rail.titleRes) }
-                if (railState.games.isEmpty() && railState.isLoading) {
-                    item(key = "loading-initial:${railState.rail.type}") {
+    val listState = rememberSaveable(uiState.selectedRail, saver = LazyListState.Saver) {
+        LazyListState()
+    }
+    val currentRailState = uiState.rails.firstOrNull { it.rail == uiState.selectedRail }
+        ?: DiscoverRailState(uiState.selectedRail)
+    val shouldLoadMore by remember(currentRailState.games.size) {
+        derivedStateOf {
+            val totalItems = listState.layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4
+        }
+    }
+
+    LaunchedEffect(uiState.selectedRail) {
+        if (currentRailState.games.isEmpty() && !currentRailState.isLoading && !currentRailState.endReached) {
+            onLoadMoreRail(uiState.selectedRail)
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore, currentRailState.isLoading, currentRailState.endReached) {
+        if (shouldLoadMore && !currentRailState.isLoading && !currentRailState.endReached) {
+            onLoadMoreRail(uiState.selectedRail)
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DiscoverRail.entries.forEach { rail ->
+                FilterChip(
+                    selected = uiState.selectedRail == rail,
+                    onClick = { onSelectRail(rail) },
+                    label = { Text(stringResource(rail.titleRes)) },
+                )
+            }
+        }
+
+        if (currentRailState.games.isEmpty() && currentRailState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(currentRailState.games, key = { "${currentRailState.rail.type}:${it.id}" }) { game ->
+                    GameCard(game = game, onClick = { onGameClick(game.id) })
+                }
+                if (currentRailState.isLoading) {
+                    item(key = "loading-append:${currentRailState.rail.type}") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 24.dp),
+                                .padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator()
-                        }
-                    }
-                } else {
-                    items(railState.games, key = { "${railState.rail.type}:${it.id}" }) { game ->
-                        GameCard(game = game, onClick = { onGameClick(game.id) })
-                    }
-                    if (railState.isLoading) {
-                        item(key = "loading-append:${railState.rail.type}") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                    } else if (!railState.endReached) {
-                        item(key = "load-more:${railState.rail.type}") {
-                            LaunchedEffect(railState.rail, railState.games.size) {
-                                onLoadMoreRail(railState.rail)
-                            }
                         }
                     }
                 }
@@ -414,14 +397,6 @@ private fun ChartsFeed(
     }
 }
 
-@Composable
-private fun SectionHeader(titleRes: Int) {
-    Text(
-        text = stringResource(titleRes),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-    )
-}
 
 @Composable
 private fun RecommendationCard(recommendation: DiscoverRecommendation, onGameClick: (Long) -> Unit) {

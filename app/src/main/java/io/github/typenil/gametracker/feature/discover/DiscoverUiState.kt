@@ -27,6 +27,7 @@ data class DiscoverRailState(
 
 data class DiscoverUiState(
     val selectedTab: DiscoverTab = DiscoverTab.FOR_YOU,
+    val selectedRail: DiscoverRail = DiscoverRail.POPULAR_NOW,
     val recommendations: List<DiscoverRecommendation> = emptyList(),
     val isColdStart: Boolean = false,
     val forYouLoading: Boolean = false,

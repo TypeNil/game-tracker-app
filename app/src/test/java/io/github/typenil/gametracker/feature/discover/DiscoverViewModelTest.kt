@@ -280,6 +280,29 @@ class DiscoverViewModelTest {
     }
 
     @Test
+    fun `selectRail updates selectedRail in uiState and triggers load if empty`() = runTest {
+        val wantedGames = listOf(Game(id = 201L, name = "Wanted Game"))
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.WANTED_NOW.type) } returns MutableStateFlow(wantedGames)
+        coEvery { gameRepository.refreshPopular(DiscoverRail.WANTED_NOW.type, any(), any(), any()) } returns AppResult.Success(Unit)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val initial = awaitItemUntil { !it.isLoading }
+            assertEquals(DiscoverRail.POPULAR_NOW, initial.selectedRail)
+            viewModel.selectRail(DiscoverRail.WANTED_NOW)
+            val updated = awaitItemUntil {
+                it.selectedRail == DiscoverRail.WANTED_NOW &&
+                    it.rails.first { r -> r.rail == DiscoverRail.WANTED_NOW }.games.isNotEmpty()
+            }
+            assertEquals(DiscoverRail.WANTED_NOW, updated.selectedRail)
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { gameRepository.refreshPopular(DiscoverRail.WANTED_NOW.type, 20, 0, false) }
+    }
+
+    @Test
     fun `loadMoreForYou appends paged candidates and filters duplicates`() = runTest {
         val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
         val c2 = RecommendationCandidate(102L, "Rec 102", genres = listOf("RPG"), rating = 88.0, ratingCount = 150L)
