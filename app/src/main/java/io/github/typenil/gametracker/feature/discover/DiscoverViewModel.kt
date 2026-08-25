@@ -165,8 +165,12 @@ class DiscoverViewModel @Inject constructor(
         val inLibraryIds = signals.map { it.gameId }.toSet()
         val alreadyShownIds = recommendations.value.map { it.game.id }.toSet()
         val librarySeeds = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10)
-        val recentSeeds = recommendations.value.takeLast(5).map { it.game.id }
-        val similarSeeds = (recentSeeds + librarySeeds).distinct().take(10)
+        val similarSeeds = if (offset == 0 && recommendations.value.isNotEmpty()) {
+            val recentSeeds = recommendations.value.takeLast(5).map { it.game.id }
+            (recentSeeds + librarySeeds).distinct().take(10)
+        } else {
+            librarySeeds
+        }
         val currentSort = FOR_YOU_SORT_MODES.getOrElse(forYouSortIndex) { FOR_YOU_SORT_MODES.first() }
 
         return when (val result = gameRepository.getRecommendationCandidatesPage(
