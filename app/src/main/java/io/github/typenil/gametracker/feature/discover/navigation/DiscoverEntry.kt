@@ -28,7 +28,6 @@ fun NavGraphBuilder.discoverEntry(
     composable<DiscoverKey> {
         val viewModel: DiscoverViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
         DiscoverScreen(
             uiState = uiState,
             onGameClick = onGameClick,
@@ -38,6 +37,7 @@ fun NavGraphBuilder.discoverEntry(
             onRetry = viewModel::retry,
             onUserMessageShown = viewModel::onUserMessageShown,
             onLoadMoreTrending = viewModel::loadMoreTrending,
+            onLoadMoreRail = viewModel::loadMoreRail,
         )
     }
 }

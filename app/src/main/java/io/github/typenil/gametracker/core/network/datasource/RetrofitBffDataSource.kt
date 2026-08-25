@@ -20,6 +20,13 @@ class RetrofitBffDataSource @Inject constructor(
     override suspend fun getTrendingGames(limit: Int, offset: Int): List<GameDto> {
         return apiService.getTrendingGames(limit = limit, offset = offset)
     }
+    override suspend fun getPopularPage(
+        type: String,
+        limit: Int,
+        offset: Int
+    ): io.github.typenil.gametracker.core.network.model.GamePageDto {
+        return apiService.getPopularPage(type = type, limit = limit, offset = offset)
+    }
 
     override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
         return apiService.searchGames(query = query, limit = limit, offset = offset)
@@ -44,6 +51,27 @@ class RetrofitBffDataSource @Inject constructor(
             exclude = exclude.csvOrNull(),
             similarTo = similarTo.csvOrNull(),
             limit = limit,
+        )
+    }
+    override suspend fun getRecommendationCandidatesPage(
+        genres: List<String>,
+        themes: List<String>,
+        platforms: List<String>,
+        exclude: Set<Long>,
+        similarTo: List<Long>,
+        limit: Int,
+        offset: Int,
+        sort: String,
+    ): io.github.typenil.gametracker.core.network.model.RecommendationCandidatePageDto {
+        return apiService.getRecommendationCandidatesPage(
+            genres = genres.csvOrNull(),
+            themes = themes.csvOrNull(),
+            platforms = platforms.csvOrNull(),
+            exclude = exclude.csvOrNull(),
+            similarTo = similarTo.csvOrNull(),
+            limit = limit,
+            offset = offset,
+            sort = sort,
         )
     }
 

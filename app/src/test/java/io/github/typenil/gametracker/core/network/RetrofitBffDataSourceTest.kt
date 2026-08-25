@@ -100,6 +100,23 @@ class RetrofitBffDataSourceTest {
         assertEquals("20", recorded.requestUrl?.queryParameter("limit"))
         assertEquals(72L, games.single().id)
     }
+    @Test
+    fun getPopularPage_sendsTypeAndOffsetAndParsesEnvelope() = runTest {
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("""{"items":[{"id":72,"name":"Portal 2"}],"nextOffset":20,"endReached":false}"""),
+        )
+
+        val page = dataSource.getPopularPage("playing", 20, 0)
+        val request = mockWebServer.takeRequest()
+        assertEquals("/v1/discover/popular/page", request.requestUrl?.encodedPath)
+        assertEquals("playing", request.requestUrl?.queryParameter("type"))
+        assertEquals(72L, page.items.single().id)
+        assertEquals(20, page.nextOffset)
+        assertTrue(!page.endReached)
+    }
 
     @Test
     fun `searchGames deserializes minimal JSON with omitted fields into defaults`() = runTest {

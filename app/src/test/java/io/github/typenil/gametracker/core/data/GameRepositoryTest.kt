@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.core.data
 
 import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.paging.GameQueryKey
+import io.github.typenil.gametracker.core.data.paging.DiscoverRailKeys
 import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
 import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
@@ -218,6 +219,26 @@ class GameRepositoryTest {
         assertEquals(20, resultsSlot.captured.single().position)
     }
 
+    @Test
+    fun `refreshPopular appends rail page without deleting prior positions`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { TEST_NOW_SECONDS })
+        val page = io.github.typenil.gametracker.core.network.model.GamePageDto(
+            items = listOf(sampleGameDto.copy(id = 2L, name = "Second")),
+            nextOffset = 40,
+            endReached = false,
+        )
+        coEvery { remoteDataSource.getPopularPage("playing", 20, 20) } returns page
+
+        val result = repository.refreshPopular("playing", 20, 20, append = true)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { searchDao.deleteSearchResultsForQuery(GameQueryKey.popular("playing")) }
+        coVerify(exactly = 1) {
+            searchDao.deleteSearchResultsFromPosition(GameQueryKey.popular("playing"), 20)
+        }
+        coVerify(exactly = 1) { remoteKeyDao.upsert(match { it.nextOffset == 40 }) }
+    }
 
     @Test
     fun `getRecommendationCandidates maps remote DTOs without Room writes`() = runTest {
@@ -567,17 +588,15 @@ class GameRepositoryTest {
 
         assertEquals(5, deletedGamesCount)
         val expectedQueryCutoff = fixedNow - GameQueryKey.SEARCH_TTL_SECONDS
+        val expectedKeys = listOf(
+            GameQueryKey.KEY_DISCOVER_TOP_RATED,
+            GameQueryKey.KEY_DISCOVER_TRENDING,
+        ) + DiscoverRailKeys.all()
         coVerify(exactly = 1) {
-            searchDao.deleteStaleSearchQueries(
-                expectedQueryCutoff,
-                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED, GameQueryKey.KEY_DISCOVER_TRENDING)
-            )
+            searchDao.deleteStaleSearchQueries(expectedQueryCutoff, expectedKeys)
         }
         coVerify(exactly = 1) {
-            remoteKeyDao.deleteStaleRemoteKeys(
-                expectedQueryCutoff,
-                listOf(GameQueryKey.KEY_DISCOVER_TOP_RATED, GameQueryKey.KEY_DISCOVER_TRENDING)
-            )
+            remoteKeyDao.deleteStaleRemoteKeys(expectedQueryCutoff, expectedKeys)
         }
         coVerify(exactly = 1) { gameDao.deleteStaleUnsavedGames(500_000L) }
         coVerify(exactly = 1) { gameDetailsDao.deleteStaleDetails(500_000L) }

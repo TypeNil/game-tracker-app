@@ -23,6 +23,12 @@ interface BffApiService {
         @Query("limit") limit: Int? = null,
         @Query("offset") offset: Int? = null,
     ): List<GameDto>
+    @GET("v1/discover/popular/page")
+    suspend fun getPopularPage(
+        @Query("type") type: String,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+    ): io.github.typenil.gametracker.core.network.model.GamePageDto
 
     @GET("v1/games/search")
     suspend fun searchGames(
@@ -45,4 +51,15 @@ interface BffApiService {
         @Query("similarTo") similarTo: String? = null,
         @Query("limit") limit: Int? = null,
     ): List<RecommendationCandidateDto>
+    @GET("v1/recommendations/candidates/page")
+    suspend fun getRecommendationCandidatesPage(
+        @Query("genres") genres: String? = null,
+        @Query("themes") themes: String? = null,
+        @Query("platforms") platforms: String? = null,
+        @Query("exclude") exclude: String? = null,
+        @Query("similarTo") similarTo: String? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+        @Query("sort") sort: String? = null,
+    ): io.github.typenil.gametracker.core.network.model.RecommendationCandidatePageDto
 }

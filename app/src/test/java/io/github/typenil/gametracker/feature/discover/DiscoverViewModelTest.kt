@@ -195,6 +195,18 @@ class DiscoverViewModelTest {
         coVerify { gameRepository.refreshTrendingGames(20, 20, true) }
 
     }
+    @Test
+    fun `ui state exposes rail sections without changing pull refresh flag`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.rails.size == DiscoverRail.entries.size }
+            assertFalse(state.isRefreshing)
+            assertEquals(DiscoverRail.entries.toList(), state.rails.map { it.rail })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
 
     private fun createViewModel(): DiscoverViewModel {

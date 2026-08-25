@@ -1,12 +1,29 @@
 package io.github.typenil.gametracker.feature.discover
 
+import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
 
+enum class DiscoverRail(val type: String, val titleRes: Int) {
+    POPULAR_NOW("visits", R.string.discover_popular_now),
+    PLAYING_NOW("playing", R.string.discover_playing_now),
+    WANTED_NOW("wanted", R.string.discover_wanted_now),
+    UPCOMING("upcoming", R.string.discover_upcoming),
+    WATCHED_NOW("twitch", R.string.discover_watched_now),
+}
+
+data class DiscoverRailState(
+    val rail: DiscoverRail,
+    val games: List<Game> = emptyList(),
+    val isLoading: Boolean = false,
+    val endReached: Boolean = false,
+)
+
 data class DiscoverUiState(
     val recommendations: List<DiscoverRecommendation> = emptyList(),
     val trending: List<Game> = emptyList(),
+    val rails: List<DiscoverRailState> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: AppError? = null,
@@ -19,5 +36,5 @@ data class DiscoverUiState(
         get() = recommendations.isNotEmpty()
 
     val hasContent: Boolean
-        get() = recommendations.isNotEmpty() || trending.isNotEmpty()
+        get() = recommendations.isNotEmpty() || trending.isNotEmpty() || rails.any { it.games.isNotEmpty() }
 }

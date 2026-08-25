@@ -40,6 +40,7 @@ sealed interface GameQueryKey {
     companion object {
         const val KEY_DISCOVER_TOP_RATED = "discover:top-rated"
         const val KEY_DISCOVER_TRENDING = "discover:trending"
+        fun popular(type: String): String = "discover:popular:${normalize(type)}"
 
         const val KEY_PREFIX_SEARCH = "q:"
 

@@ -128,4 +128,9 @@
     <string name="settings_notifications_enabled">Notifications Enabled</string>
     <string name="settings_notifications_disabled">Notifications Disabled</string>
     <string name="settings_notifications_permission_rationale">Enable notifications to track release dates for your wishlist and library games.</string>
+    <string name="discover_popular_now">Popular now</string>
+    <string name="discover_playing_now">Playing now</string>
+    <string name="discover_wanted_now">Wanted now</string>
+    <string name="discover_upcoming">Upcoming</string>
+    <string name="discover_watched_now">Watched now</string>
 </resources>
