@@ -262,6 +262,81 @@ class DiscoverViewModelTest {
         }
     }
 
+    @Test
+    fun `selectTab updates selectedTab in uiState`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val initial = awaitItemUntil { !it.isLoading }
+            assertEquals(DiscoverTab.FOR_YOU, initial.selectedTab)
+            viewModel.selectTab(DiscoverTab.CHARTS)
+            val updated = awaitItemUntil { it.selectedTab == DiscoverTab.CHARTS }
+            assertEquals(DiscoverTab.CHARTS, updated.selectedTab)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `loadMoreForYou appends paged candidates and filters duplicates`() = runTest {
+        val initialCandidate = RecommendationCandidate(
+            gameId = 101L,
+            name = "Rec 101",
+            genres = listOf("RPG"),
+            rating = 90.0,
+            ratingCount = 200L,
+        )
+        val pageCandidate = RecommendationCandidate(
+            gameId = 102L,
+            name = "Rec 102",
+            genres = listOf("RPG"),
+            rating = 88.0,
+            ratingCount = 150L,
+        )
+        coEvery { signalCollector.collect() } returns listOf(
+            RecommendationSignal(
+                gameId = 1942L,
+                status = LibraryStatus.COMPLETED,
+                isFavorite = true,
+                genres = listOf("RPG"),
+            )
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidates(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(listOf(initialCandidate))
+
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(
+                genres = any(),
+                themes = any(),
+                platforms = any(),
+                exclude = any(),
+                similarTo = any(),
+                limit = any(),
+                offset = any(),
+                sort = any(),
+            )
+        } returns AppResult.Success(
+            io.github.typenil.gametracker.core.model.RecommendationCandidatePage(
+                items = listOf(initialCandidate, pageCandidate), // duplicate 101 + new 102
+                nextOffset = 20,
+                endReached = false,
+            )
+        )
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val initial = awaitItemUntil { it.recommendations.size == 1 && !it.isLoading }
+            assertEquals(listOf(101L), initial.recommendations.map { it.game.id })
+
+            viewModel.loadMoreForYou()
+            val appended = awaitItemUntil { it.recommendations.size == 2 }
+            assertEquals(listOf(101L, 102L), appended.recommendations.map { it.game.id })
+            assertFalse(appended.forYouEndReached)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     private fun createViewModel(): DiscoverViewModel {
         return DiscoverViewModel(

@@ -37,7 +37,15 @@ class DiscoverViewModel @Inject constructor(
     private val librarySeeder: LibrarySeeder,
     private val signalCollector: RoomRecommendationSignalCollector,
 ) : ViewModel() {
+    private val selectedTab = MutableStateFlow(DiscoverTab.FOR_YOU)
     private val recommendations = MutableStateFlow<List<DiscoverRecommendation>>(emptyList())
+    private val isColdStart = MutableStateFlow(false)
+    private val forYouLoading = MutableStateFlow(false)
+    private val forYouEndReached = MutableStateFlow(false)
+    private var forYouSortIndex = 0
+    private var forYouCurrentOffset: Int? = 0
+    private val forYouJobMutex = Mutex()
+    private var forYouJob: Job? = null
     private val hiddenFromTrending = MutableStateFlow<Set<Long>>(emptySet())
     private val railStates = MutableStateFlow(DiscoverRail.entries.map { DiscoverRailState(it) })
     private val railOffsets = DiscoverRail.entries.associateWith { 0 }.toMutableMap()
@@ -55,24 +63,27 @@ class DiscoverViewModel @Inject constructor(
     private var trendingEndReached = false
 
     val uiState: StateFlow<DiscoverUiState> = combine(
-        recommendations,
+        selectedTab,
+        combine(recommendations, isColdStart, forYouLoading, forYouEndReached, ::ForYouStateData),
         gameRepository.getTrendingGamesFlow(),
-        hiddenFromTrending,
-        railStates,
+        combine(hiddenFromTrending, railStates, ::RailStateData),
         combine(loading, refreshing, error, userMessageRes, ::Flags),
-    ) { recs, trending, hidden, rails, flags ->
-        val visibleTrending = trending.filter { it.id !in hidden }
+    ) { tab, forYou, trending, railData, flags ->
+        val visibleTrending = trending.filter { it.id !in railData.hidden }
+        val hasAnyContent = forYou.recommendations.isNotEmpty() ||
+            visibleTrending.isNotEmpty() ||
+            railData.rails.any { it.games.isNotEmpty() }
         DiscoverUiState(
-            recommendations = recs,
+            selectedTab = tab,
+            recommendations = forYou.recommendations,
+            isColdStart = forYou.isColdStart,
+            forYouLoading = forYou.forYouLoading,
+            forYouEndReached = forYou.forYouEndReached,
             trending = visibleTrending,
-            rails = rails,
+            rails = railData.rails,
             isLoading = flags.loading,
             isRefreshing = flags.refreshing,
-            error = if (recs.isNotEmpty() || visibleTrending.isNotEmpty() || rails.any { it.games.isNotEmpty() }) {
-                null
-            } else {
-                flags.error
-            },
+            error = if (hasAnyContent) null else flags.error,
             userMessageRes = flags.userMessageRes,
         )
     }.stateIn(
@@ -98,6 +109,10 @@ class DiscoverViewModel @Inject constructor(
             }
         }
     }
+    fun selectTab(tab: DiscoverTab) {
+        selectedTab.value = tab
+    }
+
     fun retry() = hydrate(isUserPullToRefresh = false)
 
     fun refresh() = hydrate(isUserPullToRefresh = true)
@@ -106,6 +121,83 @@ class DiscoverViewModel @Inject constructor(
         userMessageRes.value = null
     }
 
+    fun loadMoreForYou() {
+        if (!canLoadMoreForYou()) return
+        val offset = forYouCurrentOffset ?: return
+        forYouJob = viewModelScope.launch {
+            forYouJobMutex.withLock {
+                if (!canLoadMoreForYou()) return@withLock
+                executeLoadMoreForYou(offset)
+            }
+        }
+    }
+
+    private fun canLoadMoreForYou(): Boolean {
+        if (forYouJob?.isActive == true || forYouEndReached.value) return false
+        return !refreshing.value && !isColdStart.value
+    }
+
+    private suspend fun executeLoadMoreForYou(offset: Int) {
+        forYouLoading.value = true
+        val signals = signalCollector.collect()
+        val profile = RecommendationProfileBuilder.build(signals)
+        if (profile.isColdStart) {
+            isColdStart.value = true
+            forYouLoading.value = false
+            return
+        }
+        val inLibraryIds = signals.map { it.gameId }.toSet()
+        val alreadyShownIds = recommendations.value.map { it.game.id }.toSet()
+        val librarySeeds = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10)
+        val recentSeeds = recommendations.value.takeLast(5).map { it.game.id }
+        val similarSeeds = (recentSeeds + librarySeeds).distinct().take(10)
+        val currentSort = FOR_YOU_SORT_MODES.getOrElse(forYouSortIndex) { FOR_YOU_SORT_MODES.first() }
+
+        when (val result = gameRepository.getRecommendationCandidatesPage(
+            genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
+            themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
+            platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
+            exclude = inLibraryIds.take(MAX_EXCLUDE_IDS).toSet(),
+            similarTo = similarSeeds,
+            limit = CANDIDATE_PAGE_SIZE,
+            offset = offset,
+            sort = currentSort,
+        )) {
+            is AppResult.Success -> processCandidatesPage(result.data, profile, inLibraryIds, alreadyShownIds)
+            is AppResult.Error -> userMessageRes.value = R.string.error_refresh_failed
+        }
+        forYouLoading.value = false
+    }
+
+    private fun processCandidatesPage(
+        page: io.github.typenil.gametracker.core.model.RecommendationCandidatePage,
+        profile: RecommendationProfile,
+        inLibraryIds: Set<Long>,
+        alreadyShownIds: Set<Long>,
+    ) {
+        val newFeed = DiscoverFeedAssembler.assemble(
+            profile = profile,
+            candidates = page.items,
+            trending = emptyList(),
+            nowEpochSeconds = System.currentTimeMillis() / 1000,
+            inLibraryIds = inLibraryIds,
+            shownIds = alreadyShownIds,
+        )
+        val distinctNewRecs = newFeed.recommendations.filter { it.game.id !in alreadyShownIds }
+        recommendations.value = recommendations.value + distinctNewRecs
+
+        if (page.endReached || (page.nextOffset == null && page.items.isEmpty())) {
+            forYouSortIndex++
+            if (forYouSortIndex >= FOR_YOU_SORT_MODES.size) {
+                forYouEndReached.value = true
+                forYouCurrentOffset = null
+            } else {
+                forYouCurrentOffset = 0
+            }
+        } else {
+            forYouCurrentOffset = page.nextOffset
+        }
+    }
     fun loadMoreTrending() {
         if (appendJob?.isActive == true || trendingEndReached || refreshing.value) return
         appendJob = viewModelScope.launch {
@@ -140,9 +232,9 @@ class DiscoverViewModel @Inject constructor(
     private fun hydrate(isUserPullToRefresh: Boolean) {
         appendJob?.cancel()
         hydrateJob?.cancel()
+        forYouJob?.cancel()
         hydrateJob = viewModelScope.launch { performHydrate(isUserPullToRefresh) }
     }
-
     private suspend fun performHydrate(isUserPullToRefresh: Boolean) {
         if (isUserPullToRefresh) refreshing.value = true
         else if (recommendations.value.isEmpty()) loading.value = true
@@ -205,8 +297,13 @@ class DiscoverViewModel @Inject constructor(
 
     private suspend fun rebuildRecommendations(rotate: Boolean) {
         rebuildMutex.withLock {
+            forYouJob?.cancel()
             val signals = signalCollector.collect()
             val profile = RecommendationProfileBuilder.build(signals)
+            isColdStart.value = profile.isColdStart
+            forYouSortIndex = 0
+            forYouCurrentOffset = 0
+            forYouEndReached.value = false
             val inLibraryIds = signals.map { it.gameId }.toSet()
             val candidates = if (profile.isColdStart) emptyList() else fetchCandidates(profile, signals, inLibraryIds)
             val shownIds = if (rotate) lastShownRecIds.value else emptySet()
@@ -221,6 +318,7 @@ class DiscoverViewModel @Inject constructor(
             recommendations.value = feed.recommendations
             lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
             hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
+            forYouCurrentOffset = candidates.size.takeIf { it > 0 } ?: 0
         }
     }
 
@@ -244,6 +342,18 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
+    private data class ForYouStateData(
+        val recommendations: List<DiscoverRecommendation>,
+        val isColdStart: Boolean,
+        val forYouLoading: Boolean,
+        val forYouEndReached: Boolean,
+    )
+
+    private data class RailStateData(
+        val hidden: Set<Long>,
+        val rails: List<DiscoverRailState>,
+    )
+
     private data class Flags(
         val loading: Boolean,
         val refreshing: Boolean,
@@ -252,6 +362,9 @@ class DiscoverViewModel @Inject constructor(
     )
 }
 
+private val FOR_YOU_SORT_MODES = listOf("follows", "hypes", "first_release_date")
+private const val CANDIDATE_PAGE_SIZE = 30
+private const val MAX_EXCLUDE_IDS = 50
 private const val TRENDING_PAGE = 20
 private const val TRENDING_CAP = 50
 private const val RAIL_PAGE_SIZE = 20
