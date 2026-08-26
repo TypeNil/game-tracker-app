@@ -126,6 +126,7 @@
     <string name="settings_notifications_desc">Get notified when tracked games release or change dates</string>
     <string name="settings_notifications_enable">Enable Notifications</string>
     <string name="settings_notifications_manage">Manage</string>
+    <string name="settings_notifications_open_error">Couldn\'t open system notification settings.</string>
     <string name="settings_notifications_enabled">Notifications Enabled</string>
     <string name="settings_notifications_disabled">Notifications Disabled</string>
     <string name="settings_notifications_permission_rationale">Enable notifications to track release dates for your wishlist and library games.</string>

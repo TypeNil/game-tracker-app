@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 
 const val FEED_SKELETON_TEST_TAG = "feed_skeleton"
+const val FEED_SKELETON_ROW_TEST_TAG = "feed_skeleton_row"
 
 private const val SKELETON_ROWS = 3
 private const val TITLE_BAR_FRACTION = 0.7f
@@ -62,7 +63,9 @@ fun FeedSkeleton(
             )
             repeat(rows) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(FEED_SKELETON_ROW_TEST_TAG),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(

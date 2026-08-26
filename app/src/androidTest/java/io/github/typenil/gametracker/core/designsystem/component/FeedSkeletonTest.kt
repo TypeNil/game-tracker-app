@@ -2,11 +2,13 @@ package io.github.typenil.gametracker.core.designsystem.component
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,15 +24,27 @@ class FeedSkeletonTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun compactHeight_labelStillDisplayed() {
-        val label = "Searching games…"
+    fun compactHeight_collapsesToSingleRow() {
         composeTestRule.setContent {
             GameTrackerTheme {
                 Box(Modifier.height(300.dp)) {
-                    FeedSkeleton(label = label, modifier = Modifier.fillMaxSize())
+                    FeedSkeleton(label = "Searching games…", modifier = Modifier.fillMaxSize())
                 }
             }
         }
-        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Searching games…").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag(FEED_SKELETON_ROW_TEST_TAG).assertCountEquals(1)
+    }
+
+    @Test
+    fun tallContainer_showsAllRows() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Box(Modifier.height(900.dp)) {
+                    FeedSkeleton(label = "Searching games…", modifier = Modifier.fillMaxSize())
+                }
+            }
+        }
+        composeTestRule.onAllNodesWithTag(FEED_SKELETON_ROW_TEST_TAG).assertCountEquals(3)
     }
 }
