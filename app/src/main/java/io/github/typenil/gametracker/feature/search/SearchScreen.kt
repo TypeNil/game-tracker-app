@@ -27,6 +27,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -34,6 +37,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,6 +63,10 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+
 
 @Composable
 fun SearchRoute(
@@ -70,7 +84,11 @@ fun SearchRoute(
         onRetry = viewModel::retry,
         onGameClick = onGameClick,
         onBackClick = onBackClick,
-        modifier = modifier
+        onLibraryAction = viewModel::addToWishlist,
+        onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
+        onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
+        onUserMessageShown = viewModel::onUserMessageShown,
+        modifier = modifier,
     )
 }
 
@@ -83,12 +101,36 @@ fun SearchScreen(
     onRetry: () -> Unit,
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onLibraryAction: (Game) -> Unit = {},
+    onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
+    onRemoveFromLibrary: (Long) -> Unit = {},
+    onUserMessageShown: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val userMessage = uiState.userMessageRes?.let { stringResource(it) }
+    LaunchedEffect(userMessage) {
+        userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            onUserMessageShown()
+        }
+    }
+    var editingGameId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val libraryEntries by rememberUpdatedState(uiState.libraryEntries)
+    val onLibraryActionState = rememberUpdatedState(onLibraryAction)
+    val handleLibraryAction: (Game) -> Unit = { game ->
+        if (libraryEntries[game.id] != null) {
+            editingGameId = game.id
+        } else {
+            onLibraryActionState.value(game)
+        }
+    }
+    val editingEntry = editingGameId?.let { libraryEntries[it] }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -99,7 +141,7 @@ fun SearchScreen(
                             Text(
                                 text = stringResource(R.string.search_hint),
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         },
                         singleLine = true,
@@ -109,50 +151,50 @@ fun SearchScreen(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent
+                            disabledIndicatorColor = Color.Transparent,
                         ),
                         trailingIcon = {
                             if (uiState.query.isNotEmpty()) {
                                 IconButton(onClick = onClearQuery) {
                                     Icon(
                                         imageVector = Icons.Default.Clear,
-                                        contentDescription = stringResource(R.string.search_clear_desc)
+                                        contentDescription = stringResource(R.string.search_clear_desc),
                                     )
                                 }
                             }
                         },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Search
+                            imeAction = ImeAction.Search,
                         ),
                         keyboardActions = KeyboardActions(
                             onSearch = {
                                 focusManager.clearFocus()
-                            }
+                            },
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(end = 8.dp)
+                            .padding(end = 8.dp),
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back_action_desc)
+                            contentDescription = stringResource(R.string.back_action_desc),
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
             )
-        }
+        },
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
         ) {
             when (val result = uiState.result) {
                 is SearchResultUiState.Idle -> {
@@ -164,7 +206,9 @@ fun SearchScreen(
                 is SearchResultUiState.Content -> {
                     SearchContentState(
                         games = result.games,
-                        onGameClick = onGameClick
+                        libraryEntries = libraryEntries,
+                        onGameClick = onGameClick,
+                        onLibraryAction = handleLibraryAction,
                     )
                 }
                 is SearchResultUiState.Empty -> {
@@ -173,11 +217,25 @@ fun SearchScreen(
                 is SearchResultUiState.Error -> {
                     SearchErrorState(
                         error = result.error,
-                        onRetry = onRetry
+                        onRetry = onRetry,
                     )
                 }
             }
         }
+    }
+    if (editingEntry != null) {
+        EditLibrarySheet(
+            initialEntry = editingEntry,
+            onDismiss = { editingGameId = null },
+            onSave = { status, rating, hours, notes, favorite ->
+                onSaveLibraryEntry(editingEntry.gameId, status, rating, hours, notes, favorite)
+                editingGameId = null
+            },
+            onRemove = {
+                onRemoveFromLibrary(editingEntry.gameId)
+                editingGameId = null
+            },
+        )
     }
 }
 
@@ -187,33 +245,33 @@ private fun SearchIdleState(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
             .padding(GtDimens.Empty),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(64.dp),
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.search_idle_title),
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.search_idle_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -230,21 +288,25 @@ private fun SearchLoadingState(modifier: Modifier = Modifier) {
 @Composable
 private fun SearchContentState(
     games: List<Game>,
+    libraryEntries: Map<Long, LibraryEntry>,
     onGameClick: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    onLibraryAction: (Game) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(GtDimens.Gutter),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(
             items = games,
-            key = { it.id }
+            key = { it.id },
         ) { game ->
             GameCard(
                 game = game,
-                onClick = { onGameClick(game.id) }
+                onClick = { onGameClick(game.id) },
+                libraryStatus = libraryEntries[game.id]?.status,
+                onLibraryAction = onLibraryAction,
             )
         }
     }

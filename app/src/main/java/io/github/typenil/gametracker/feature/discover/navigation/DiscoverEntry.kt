@@ -42,6 +42,9 @@ fun NavGraphBuilder.discoverEntry(
             onSelectTab = viewModel::selectTab,
             onSelectRail = viewModel::selectRail,
             onLoadMoreForYou = viewModel::loadMoreForYou,
+            onLibraryAction = viewModel::addToWishlist,
+            onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
+            onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
             scrollToTopTrigger = scrollToTopTrigger(),
         )
     }

@@ -5,10 +5,16 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
-import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.typenil.gametracker.core.designsystem.component.GAME_CARD_LIBRARY_ACTION_TEST_TAG
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
+import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,5 +66,112 @@ class DiscoverScreenTest {
         composeTestRule.onNodeWithText(
             composeTestRule.activity.getString(R.string.discover_charts_loading),
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun chartsCard_libraryAction_doesNotCallOnGameClick() {
+        var gameClicks = 0
+        var libraryActions = 0
+        val game = Game(id = 42L, name = "Elden Ring")
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                DiscoverScreen(
+                    uiState = DiscoverUiState(
+                        selectedTab = DiscoverTab.CHARTS,
+                        rails = listOf(
+                            DiscoverRailState(
+                                rail = DiscoverRail.POPULAR_NOW,
+                                games = listOf(game),
+                            ),
+                        ),
+                    ),
+                    onGameClick = { gameClicks++ },
+                    onSearchClick = {},
+                    onAboutClick = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onUserMessageShown = {},
+                    onLoadMoreTrending = {},
+                    onLibraryAction = { libraryActions++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).performClick()
+        assertEquals(1, libraryActions)
+        assertEquals(0, gameClicks)
+    }
+
+    @Test
+    fun chartsCard_existingEntry_opensEditSheet_notWishlist() {
+        var libraryActions = 0
+        val game = Game(id = 42L, name = "Elden Ring")
+        val entry = LibraryEntry(
+            gameId = 42L,
+            status = LibraryStatus.PLAYING,
+            addedAtEpochSeconds = 1L,
+            updatedAtEpochSeconds = 1L,
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                DiscoverScreen(
+                    uiState = DiscoverUiState(
+                        selectedTab = DiscoverTab.CHARTS,
+                        rails = listOf(
+                            DiscoverRailState(
+                                rail = DiscoverRail.POPULAR_NOW,
+                                games = listOf(game),
+                            ),
+                        ),
+                        libraryEntries = mapOf(42L to entry),
+                        isLibraryLoaded = true,
+                    ),
+                    onGameClick = {},
+                    onSearchClick = {},
+                    onAboutClick = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onUserMessageShown = {},
+                    onLoadMoreTrending = {},
+                    onLibraryAction = { libraryActions++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).performClick()
+        assertEquals(0, libraryActions)
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_edit_entry_title),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun chartsCard_unloadedLibrary_iconStillWishlistCallback() {
+        var libraryActions = 0
+        val game = Game(id = 42L, name = "Elden Ring")
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                DiscoverScreen(
+                    uiState = DiscoverUiState(
+                        selectedTab = DiscoverTab.CHARTS,
+                        rails = listOf(
+                            DiscoverRailState(
+                                rail = DiscoverRail.POPULAR_NOW,
+                                games = listOf(game),
+                            ),
+                        ),
+                        isLibraryLoaded = false,
+                    ),
+                    onGameClick = {},
+                    onSearchClick = {},
+                    onAboutClick = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onUserMessageShown = {},
+                    onLoadMoreTrending = {},
+                    onLibraryAction = { libraryActions++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).performClick()
+        assertEquals(1, libraryActions)
     }
 }

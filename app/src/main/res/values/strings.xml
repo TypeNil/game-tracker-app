@@ -103,6 +103,9 @@
     <string name="library_has_notes">Has notes</string>
     <string name="library_rating_format">%1$d/10</string>
     <string name="library_edit_action_desc">Edit library entry</string>
+    <string name="game_card_add_to_wishlist">Add to wishlist</string>
+    <string name="game_card_edit_library">In library: %1$s. Edit entry</string>
+
     <string name="error_library_update_failed">Failed to update library entry</string>
     <string name="error_library_remove_failed">Failed to remove game from library</string>
 

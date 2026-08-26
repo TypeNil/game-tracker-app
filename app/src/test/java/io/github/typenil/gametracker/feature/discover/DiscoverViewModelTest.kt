@@ -1,6 +1,8 @@
 package io.github.typenil.gametracker.feature.discover
 
 import app.cash.turbine.test
+import io.github.typenil.gametracker.R
+
 import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
 import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
 import io.github.typenil.gametracker.core.data.repository.GameRepository
@@ -9,6 +11,8 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryEntry
+
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
@@ -61,6 +65,12 @@ class DiscoverViewModelTest {
         coEvery {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(RecommendationCandidatePage(items = emptyList(), nextOffset = null, endReached = true))
+        coEvery { libraryRepository.addToWishlist(any()) } returns AppResult.Success(Unit)
+        coEvery {
+            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(Unit)
+        coEvery { libraryRepository.removeGameFromLibrary(any()) } returns AppResult.Success(Unit)
+
     }
 
     @Test
@@ -330,6 +340,69 @@ class DiscoverViewModelTest {
         }
     }
 
+
+    @Test
+    fun addToWishlist_whenEntryExistsButUiMapEmpty_doesNotOverwriteStatus() = runTest {
+        val game = Game(id = 11L, name = "Trending Game")
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.libraryEntries.isEmpty())
+        viewModel.addToWishlist(game)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { libraryRepository.addToWishlist(game) }
+        coVerify(exactly = 0) { libraryRepository.setGameStatus(any(), any()) }
+    }
+
+    @Test
+    fun addToWishlist_onError_setsUserMessage() = runTest {
+        coEvery { libraryRepository.addToWishlist(any()) } returns
+            AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.addToWishlist(Game(id = 11L, name = "Trending Game"))
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.userMessageRes != null }
+            assertEquals(R.string.error_library_update_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onSaveLibraryEntry_delegatesToUpsertUserEdits() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        advanceUntilIdle()
+        coVerify {
+            libraryRepository.upsertUserEdits(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        }
+        coVerify(exactly = 0) { libraryRepository.saveLibraryEntry(any()) }
+    }
+
+    @Test
+    fun libraryFlow_setsLoadedAndMap() = runTest {
+        libraryFlow.value = listOf(libraryGame(11L, LibraryStatus.PLAYING, "Trending Game"))
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.isLibraryLoaded && it.libraryEntries.containsKey(11L) }
+            assertEquals(LibraryStatus.PLAYING, state.libraryEntries[11L]?.status)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private fun libraryGame(
+        id: Long,
+        status: LibraryStatus,
+        name: String = "Game $id",
+    ) = LibraryGame(
+        game = Game(id = id, name = name),
+        entry = LibraryEntry(
+            gameId = id,
+            status = status,
+            addedAtEpochSeconds = 1L,
+            updatedAtEpochSeconds = 1L,
+        ),
+    )
 
     private fun createViewModel(): DiscoverViewModel {
         return DiscoverViewModel(

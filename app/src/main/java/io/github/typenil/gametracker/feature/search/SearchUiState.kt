@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.feature.search
 
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntry
 
 /**
  * UI State for the Search screen.
@@ -11,7 +12,9 @@ import io.github.typenil.gametracker.core.model.Game
  */
 data class SearchUiState(
     val query: String = "",
-    val result: SearchResultUiState = SearchResultUiState.Idle
+    val result: SearchResultUiState = SearchResultUiState.Idle,
+    val libraryEntries: Map<Long, LibraryEntry> = emptyMap(),
+    val userMessageRes: Int? = null,
 )
 
 /**

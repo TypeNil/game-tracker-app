@@ -7,17 +7,26 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
+
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagingData
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.designsystem.component.GAME_CARD_LIBRARY_ACTION_TEST_TAG
+
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameDetails
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryStatus
+
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,6 +122,30 @@ class SearchScreenTest {
         composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").performClick()
         assertEquals(101L, clickedGameId)
     }
+
+    @Test
+    fun contentState_libraryAction_doesNotForwardGameClick() {
+        var gameClicks = 0
+        var libraryActions = 0
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(
+                    query = "witcher",
+                    result = SearchResultUiState.Content(sampleGames),
+                ),
+                onQueryChange = {},
+                onClearQuery = {},
+                onRetry = {},
+                onGameClick = { gameClicks++ },
+                onBackClick = {},
+                onLibraryAction = { libraryActions++ },
+            )
+        }
+        composeTestRule.onAllNodesWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG)[0].performClick()
+        assertEquals(1, libraryActions)
+        assertEquals(0, gameClicks)
+    }
+
 
     @Test
     fun emptyState_rendersEmptyMessageWithQuery() {
@@ -235,7 +268,8 @@ class SearchScreenTest {
         val savedStateHandle = SavedStateHandle()
         val viewModel = SearchViewModel(
             gameRepository = fakeRepository,
-            savedStateHandle = savedStateHandle
+            savedStateHandle = savedStateHandle,
+            libraryRepository = FakeLibraryRepository(),
         )
 
         composeTestRule.setContent {
@@ -335,5 +369,24 @@ class SearchScreenTest {
 
         override suspend fun clearStaleCache(staleThresholdSeconds: Long): Int = 0
     }
+
+    private class FakeLibraryRepository : LibraryRepository {
+        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = MutableStateFlow(emptyList())
+        override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = flowOf(null)
+        override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> =
+            AppResult.Success(Unit)
+        override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun upsertUserEdits(
+            gameId: Long,
+            status: LibraryStatus,
+            userRating: Int?,
+            hoursPlayed: Int,
+            userNotes: String?,
+            isFavorite: Boolean,
+        ): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
+    }
+
 }
 

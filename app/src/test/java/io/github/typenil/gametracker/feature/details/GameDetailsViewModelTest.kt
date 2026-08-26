@@ -425,6 +425,18 @@ class GameDetailsViewModelTest {
             return saveResult
         }
 
+        override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
+
+        override suspend fun upsertUserEdits(
+            gameId: Long,
+            status: LibraryStatus,
+            userRating: Int?,
+            hoursPlayed: Int,
+            userNotes: String?,
+            isFavorite: Boolean,
+        ): AppResult<Unit> = AppResult.Success(Unit)
+
+
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> {
             deletedGameIds += gameId
             if (removeResult is AppResult.Success) {

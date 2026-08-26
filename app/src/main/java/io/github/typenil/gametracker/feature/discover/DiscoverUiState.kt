@@ -4,6 +4,8 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntry
+
 
 enum class DiscoverTab(val titleRes: Int) {
     FOR_YOU(R.string.discover_tab_for_you),
@@ -38,6 +40,8 @@ data class DiscoverUiState(
     val isRefreshing: Boolean = false,
     val error: AppError? = null,
     val userMessageRes: Int? = null,
+    val libraryEntries: Map<Long, LibraryEntry> = emptyMap(),
+    val isLibraryLoaded: Boolean = false,
 ) {
     val isInitialLoading: Boolean
         get() = isLoading && recommendations.isEmpty() && trending.isEmpty() && rails.all { it.games.isEmpty() }

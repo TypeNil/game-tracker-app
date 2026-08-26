@@ -4,16 +4,22 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -23,18 +29,22 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val gameRepository: GameRepository,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val libraryRepository: LibraryRepository,
 ) : ViewModel() {
 
     val rawQuery: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
 
     private val retryEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val libraryEntries = MutableStateFlow<Map<Long, LibraryEntry>>(emptyMap())
+    private val userMessageRes = MutableStateFlow<Int?>(null)
 
     private val queryRequests: Flow<SearchRequest> = rawQuery
         .map(String::trim)
@@ -42,14 +52,14 @@ class SearchViewModel @Inject constructor(
         .map { query ->
             SearchRequest(
                 query = query,
-                shouldDebounce = true
+                shouldDebounce = true,
             )
         }
 
     private val retryRequests: Flow<SearchRequest> = retryEvents.map {
         SearchRequest(
             query = rawQuery.value.trim(),
-            shouldDebounce = false
+            shouldDebounce = false,
         )
     }
 
@@ -77,67 +87,54 @@ class SearchViewModel @Inject constructor(
                                     SearchResult.Error(query = request.query, error = status.result.error)
                                 else -> SearchResult.Empty(query = request.query)
                             }
-                        }
+                        },
                     )
                 }
             }
         }
 
-    val uiState: StateFlow<SearchUiState> = combine(rawQuery, searchResults) { currentRawQuery, result ->
+    val uiState: StateFlow<SearchUiState> = combine(
+        rawQuery,
+        searchResults,
+        libraryEntries,
+        userMessageRes,
+    ) { currentRawQuery, result, entries, message ->
         val trimmedCurrent = currentRawQuery.trim()
-        if (trimmedCurrent.isBlank()) {
-            SearchUiState(query = currentRawQuery, result = SearchResultUiState.Idle)
+        val resultState = if (trimmedCurrent.isBlank()) {
+            SearchResultUiState.Idle
         } else {
             when (result) {
-                is SearchResult.Idle -> SearchUiState(
-                    query = currentRawQuery,
-                    result = SearchResultUiState.Loading
-                )
-                is SearchResult.Loading -> SearchUiState(
-                    query = currentRawQuery,
-                    result = SearchResultUiState.Loading
-                )
+                is SearchResult.Idle -> SearchResultUiState.Loading
+                is SearchResult.Loading -> SearchResultUiState.Loading
                 is SearchResult.Success -> {
                     if (result.query == trimmedCurrent) {
-                        SearchUiState(
-                            query = currentRawQuery,
-                            result = SearchResultUiState.Content(result.games)
-                        )
+                        SearchResultUiState.Content(result.games)
                     } else {
-                        SearchUiState(
-                            query = currentRawQuery,
-                            result = SearchResultUiState.Loading
-                        )
+                        SearchResultUiState.Loading
                     }
                 }
                 is SearchResult.Empty -> {
                     if (result.query == trimmedCurrent) {
-                        SearchUiState(
-                            query = currentRawQuery,
-                            result = SearchResultUiState.Empty(result.query)
-                        )
+                        SearchResultUiState.Empty(result.query)
                     } else {
-                        SearchUiState(
-                            query = currentRawQuery,
-                            result = SearchResultUiState.Loading
-                        )
+                        SearchResultUiState.Loading
                     }
                 }
                 is SearchResult.Error -> {
                     if (result.query == trimmedCurrent) {
-                        SearchUiState(
-                            query = currentRawQuery,
-                            result = SearchResultUiState.Error(result.error)
-                        )
+                        SearchResultUiState.Error(result.error)
                     } else {
-                        SearchUiState(
-                            query = currentRawQuery,
-                            result = SearchResultUiState.Loading
-                        )
+                        SearchResultUiState.Loading
                     }
                 }
             }
         }
+        SearchUiState(
+            query = currentRawQuery,
+            result = resultState,
+            libraryEntries = entries,
+            userMessageRes = message,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Lazily,
@@ -147,9 +144,19 @@ class SearchViewModel @Inject constructor(
                 SearchResultUiState.Loading
             } else {
                 SearchResultUiState.Idle
-            }
-        )
+            },
+        ),
     )
+
+    init {
+        viewModelScope.launch {
+            libraryRepository.getLibraryGamesFlow()
+                .catch { emit(emptyList()) }
+                .collect { games ->
+                    libraryEntries.value = games.associate { it.entry.gameId to it.entry }
+                }
+        }
+    }
 
     fun onQueryChanged(newQuery: String) {
         savedStateHandle[KEY_QUERY] = newQuery.takeCodePoints(MAX_QUERY_LENGTH)
@@ -165,9 +172,51 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    fun onUserMessageShown() {
+        userMessageRes.value = null
+    }
+
+    fun addToWishlist(game: Game) {
+        viewModelScope.launch {
+            when (libraryRepository.addToWishlist(game)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
+            }
+        }
+    }
+
+    fun onSaveLibraryEntry(
+        gameId: Long,
+        status: LibraryStatus,
+        userRating: Int?,
+        hoursPlayed: Int,
+        userNotes: String?,
+        isFavorite: Boolean,
+    ) {
+        viewModelScope.launch {
+            when (
+                libraryRepository.upsertUserEdits(
+                    gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
+                )
+            ) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
+            }
+        }
+    }
+
+    fun onRemoveFromLibrary(gameId: Long) {
+        viewModelScope.launch {
+            when (libraryRepository.removeGameFromLibrary(gameId)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_library_remove_failed
+            }
+        }
+    }
+
     private data class SearchRequest(
         val query: String,
-        val shouldDebounce: Boolean
+        val shouldDebounce: Boolean,
     )
 
     private sealed interface RefreshStatus {
@@ -196,4 +245,3 @@ class SearchViewModel @Inject constructor(
         }
     }
 }
-
