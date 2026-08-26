@@ -1,19 +1,20 @@
 # ProGuard / R8 Rules for GameTracker
 
-# Kotlinx Serialization — app package only
+# Kotlinx Serialization (official snippet: <1> is the full class name only when the
+# class pattern is **, not package.**)
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.SerializationKt
--if @kotlinx.serialization.Serializable class io.github.typenil.gametracker.**
+-if @kotlinx.serialization.Serializable class **
 -keepclassmembers class <1> {
     static <1>$Companion Companion;
 }
--if @kotlinx.serialization.Serializable class io.github.typenil.gametracker.** {
+-if @kotlinx.serialization.Serializable class ** {
     static **$* *;
 }
 -keepclassmembers class <2>$<3> {
     kotlinx.serialization.KSerializer serializer(...);
 }
--if @kotlinx.serialization.Serializable class io.github.typenil.gametracker.** {
+-if @kotlinx.serialization.Serializable class ** {
     public static ** INSTANCE;
 }
 -keepclassmembers class <1> {

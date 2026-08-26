@@ -132,14 +132,14 @@ class SearchDaoTest {
     @Test
     fun searchResultsJoin_usesQueryPositionIndex() = runTest {
         seedSearch()
-        val plan = explain(SearchDao.SEARCH_RESULTS_BY_POSITION, "q")
+        val plan = database.explainQueryPlan(SearchDao.SEARCH_RESULTS_BY_POSITION, "q")
         assertTrue(plan, plan.contains("index_search_results_query_position"))
     }
 
     @Test
     fun deleteFromPosition_usesQueryPositionIndex() = runTest {
         seedSearch()
-        val plan = explain(SearchDao.DELETE_SEARCH_RESULTS_FROM_POSITION, "q", 1)
+        val plan = database.explainQueryPlan(SearchDao.DELETE_SEARCH_RESULTS_FROM_POSITION, "q", 1)
         assertTrue(plan, plan.contains("index_search_results_query_position"))
     }
 
@@ -160,19 +160,5 @@ class SearchDaoTest {
         )
     }
 
-    private fun explain(queryConst: String, vararg bindArgs: Any): String {
-        var sql = queryConst
-        for (name in listOf(":query", ":fromPosition", ":status", ":id")) {
-            sql = sql.replace(name, "?")
-        }
-        val cursor = database.query("EXPLAIN QUERY PLAN $sql", arrayOf(*bindArgs))
-        val details = buildString {
-            while (cursor.moveToNext()) {
-                appendLine(cursor.getString(cursor.columnCount - 1))
-            }
-        }
-        cursor.close()
-        return details
-    }
 }
 

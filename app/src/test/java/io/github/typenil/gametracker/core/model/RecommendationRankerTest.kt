@@ -118,10 +118,11 @@ class RecommendationRankerTest {
     @Test
     fun rank_fiveHundredCandidates_completesUnderTwoSeconds() {
         val candidates = (1L..500L).map { cand(it, genres = listOf("RPG"), rating = 50.0, ratingCount = 10) }
+        var ranked: List<RankedRecommendation> = emptyList()
         val elapsedMs = measureTimeMillis {
-            val ranked = RecommendationRanker.rank(profile(genres = mapOf("RPG" to 1f)), candidates, now)
-            assertEquals(500, ranked.size)
+            ranked = RecommendationRanker.rank(profile(genres = mapOf("RPG" to 1f)), candidates, now)
         }
+        assertEquals(500, ranked.size)
         assertTrue("rank(500) took ${elapsedMs}ms", elapsedMs < 2_000)
     }
 

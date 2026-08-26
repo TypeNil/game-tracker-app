@@ -111,16 +111,16 @@ class BffCache(
     }
 
     fun snapshot(): List<CacheRegionStats> = listOf(
-        statsOf("POPULAR", popularCache),
-        statsOf("SEARCH", searchCache),
-        statsOf("GAME_DETAILS", gameDetailsCache),
-        statsOf("RECOMMEND", recommendCache),
+        statsOf(CachePolicy.POPULAR, popularCache),
+        statsOf(CachePolicy.SEARCH, searchCache),
+        statsOf(CachePolicy.GAME_DETAILS, gameDetailsCache),
+        statsOf(CachePolicy.RECOMMEND, recommendCache),
     )
 
-    private fun statsOf(policy: String, cache: Cache<String, Any>): CacheRegionStats {
+    private fun statsOf(policy: CachePolicy, cache: Cache<String, Any>): CacheRegionStats {
         val stats = cache.stats()
         return CacheRegionStats(
-            policy = policy,
+            policy = policy.name,
             estimatedSize = cache.estimatedSize(),
             hitCount = stats.hitCount(),
             missCount = stats.missCount(),

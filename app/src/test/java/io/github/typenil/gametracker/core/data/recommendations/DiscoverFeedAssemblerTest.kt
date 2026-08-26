@@ -147,7 +147,11 @@ class DiscoverFeedAssemblerTest {
             trending = emptyList(),
             nowEpochSeconds = now,
         )
-        assertTrue(feed.recommendations.size <= DiscoverFeedAssembler.FOR_YOU_PAGE_SIZE)
+        assertEquals(DiscoverFeedAssembler.FOR_YOU_PAGE_SIZE, feed.recommendations.size)
+        assertEquals(
+            DiscoverFeedAssembler.FOR_YOU_PAGE_SIZE,
+            feed.recommendations.map { it.game.id }.distinct().size,
+        )
     }
 
 

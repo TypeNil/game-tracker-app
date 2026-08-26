@@ -122,22 +122,8 @@ class GameDaoTest {
 
     @Test
     fun getGameById_usesPrimaryKey() = runTest {
-        val plan = explain(GameDao.GAME_BY_ID, 1L)
+        val plan = database.explainQueryPlan(GameDao.GAME_BY_ID, 1L)
         assertTrue(plan, plan.contains("PRIMARY KEY") || plan.contains("INTEGER PRIMARY KEY"))
     }
 
-    private fun explain(queryConst: String, vararg bindArgs: Any): String {
-        var sql = queryConst
-        for (name in listOf(":query", ":fromPosition", ":status", ":id")) {
-            sql = sql.replace(name, "?")
-        }
-        val cursor = database.query("EXPLAIN QUERY PLAN $sql", arrayOf(*bindArgs))
-        val details = buildString {
-            while (cursor.moveToNext()) {
-                appendLine(cursor.getString(cursor.columnCount - 1))
-            }
-        }
-        cursor.close()
-        return details
-    }
 }
