@@ -10,18 +10,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.typenil.gametracker.core.designsystem.theme.HighRatingBg
+import io.github.typenil.gametracker.core.designsystem.theme.HighRatingFg
+import io.github.typenil.gametracker.core.designsystem.theme.MediumRatingBg
+import io.github.typenil.gametracker.core.designsystem.theme.MediumRatingFg
 import java.util.Locale
 
 private const val HIGH_RATING_THRESHOLD = 80.0
 private const val MEDIUM_RATING_THRESHOLD = 60.0
-
-private const val HIGH_RATING_BG = 0xFF1B5E20
-private const val HIGH_RATING_FG = 0xFFE8F5E9
-private const val MEDIUM_RATING_BG = 0xFFF57F17
-private const val MEDIUM_RATING_FG = 0xFFFFFDE7
 
 /**
  * Modern pill badge indicating game rating with dynamic semantic colors.
@@ -34,8 +32,8 @@ fun RatingBadge(
     if (rating == null || rating <= 0.0) return
 
     val (backgroundColor, contentColor) = when {
-        rating >= HIGH_RATING_THRESHOLD -> Color(HIGH_RATING_BG) to Color(HIGH_RATING_FG)
-        rating >= MEDIUM_RATING_THRESHOLD -> Color(MEDIUM_RATING_BG) to Color(MEDIUM_RATING_FG)
+        rating >= HIGH_RATING_THRESHOLD -> HighRatingBg to HighRatingFg
+        rating >= MEDIUM_RATING_THRESHOLD -> MediumRatingBg to MediumRatingFg
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
 

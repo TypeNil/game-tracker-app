@@ -30,15 +30,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.Game
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 private const val COVER_WIDTH_DP = 96
 
 internal fun formatReleaseYear(
     epochSeconds: Long,
-    zoneId: ZoneId = ZoneId.systemDefault(),
+    zoneId: ZoneId = ZoneOffset.UTC,
 ): String = Instant.ofEpochSecond(epochSeconds).atZone(zoneId).year.toString()
 
 /**
@@ -65,7 +67,7 @@ fun GameCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(GtDimens.Card),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -105,6 +107,7 @@ fun GameCard(
                         fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 2,
+                    minLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )

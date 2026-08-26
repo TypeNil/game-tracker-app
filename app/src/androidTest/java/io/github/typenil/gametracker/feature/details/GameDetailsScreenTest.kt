@@ -152,4 +152,19 @@ class GameDetailsScreenTest {
         val retryLabel = composeTestRule.activity.getString(R.string.retry_button)
         composeTestRule.onNodeWithText(retryLabel).assertIsDisplayed()
     }
+
+    @Test
+    fun releaseDateWithoutInstant_showsTba() {
+        val tba = compactDetails.copy(
+            releaseDates = listOf(
+                GameReleaseDate(platform = "PC", dateEpochSeconds = null, year = null),
+            ),
+        )
+        setContent(GameDetailsUiState(game = tba, isHydrated = true))
+        composeTestRule.onNodeWithText("PC").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.details_date_unknown)
+        ).assertIsDisplayed()
+    }
+
 }

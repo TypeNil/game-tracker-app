@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +48,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
+import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
@@ -167,7 +168,7 @@ fun SearchScreen(
                     )
                 }
                 is SearchResultUiState.Empty -> {
-                    SearchEmptyState(query = result.query)
+                    SearchEmptyState(query = result.query, onClearQuery = onClearQuery)
                 }
                 is SearchResultUiState.Error -> {
                     SearchErrorState(
@@ -185,7 +186,7 @@ private fun SearchIdleState(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(GtDimens.Empty),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -220,26 +221,10 @@ private fun SearchIdleState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SearchLoadingState(modifier: Modifier = Modifier) {
-    Box(
+    FeedSkeleton(
+        label = stringResource(R.string.search_loading_games),
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.search_loading_games),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    )
 }
 
 @Composable
@@ -250,7 +235,7 @@ private fun SearchContentState(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(GtDimens.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(
@@ -268,12 +253,13 @@ private fun SearchContentState(
 @Composable
 private fun SearchEmptyState(
     query: String,
+    onClearQuery: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(GtDimens.Empty),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -293,6 +279,10 @@ private fun SearchEmptyState(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onClearQuery) {
+                Text(stringResource(R.string.search_empty_action))
+            }
         }
     }
 }
@@ -306,7 +296,7 @@ private fun SearchErrorState(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(GtDimens.Empty),
         contentAlignment = Alignment.Center
     ) {
         Column(

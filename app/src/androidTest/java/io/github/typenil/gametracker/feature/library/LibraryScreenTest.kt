@@ -21,6 +21,7 @@ import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import org.junit.Assert.assertEquals
+import io.github.typenil.gametracker.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -141,4 +142,45 @@ class LibraryScreenTest {
         assertEquals(LibraryTab.PLAYING, currentTab)
         composeTestRule.onNodeWithText("Hades").assertIsDisplayed()
     }
+
+    @Test
+    fun libraryScreen_emptyTab_showsDiscoverCta() {
+        var navigated = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = LibraryUiState(
+                        allGames = listOf(hades),
+                        filteredGames = emptyList(),
+                        selectedTab = LibraryTab.WISHLIST,
+                        tabCounts = mapOf(
+                            LibraryTab.ALL to 1,
+                            LibraryTab.PLAYING to 1,
+                            LibraryTab.WISHLIST to 0,
+                            LibraryTab.COMPLETED to 0,
+                            LibraryTab.DROPPED to 0,
+                            LibraryTab.NOT_INTERESTED to 0,
+                        ),
+                        isLoading = false,
+                    ),
+                    onGameClick = {},
+                    onNavigateToDiscover = { navigated = true },
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_tab_empty_title)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_empty_cta)
+        ).performClick()
+        assertEquals(true, navigated)
+    }
+
 }
