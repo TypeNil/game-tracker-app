@@ -154,7 +154,6 @@ class DiscoverFeedAssemblerTest {
         )
     }
 
-
     private fun game(id: Long, name: String) = Game(id = id, name = name)
 
     private fun candidate(id: Long, name: String, genres: List<String>) = RecommendationCandidate(

@@ -116,7 +116,7 @@ class RecommendationRankerTest {
     }
 
     @Test
-    fun rank_fiveHundredCandidates_completesUnderTwoSeconds() {
+    fun rank_fiveHundredCandidates_doesNotHang() {
         val candidates = (1L..500L).map { cand(it, genres = listOf("RPG"), rating = 50.0, ratingCount = 10) }
         var ranked: List<RankedRecommendation> = emptyList()
         val elapsedMs = measureTimeMillis {
