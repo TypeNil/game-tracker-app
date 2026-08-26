@@ -54,7 +54,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
+import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.RecommendationReason
@@ -247,13 +249,13 @@ private fun ForYouFeed(
     if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
         ColdStartCard(
             onBrowseChartsClick = onBrowseChartsClick,
-            modifier = modifier.padding(16.dp),
+            modifier = modifier.padding(GtDimens.Gutter),
         )
     } else {
         LazyColumn(
             state = listState,
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            contentPadding = PaddingValues(horizontal = GtDimens.Gutter, vertical = GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
@@ -287,7 +289,7 @@ private fun ColdStartCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(GtDimens.Empty),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -349,7 +351,7 @@ private fun ChartsFeed(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = GtDimens.Gutter, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             DiscoverRail.entries.forEach { rail ->
@@ -362,19 +364,15 @@ private fun ChartsFeed(
         }
 
         if (currentRailState.games.isEmpty() && currentRailState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+            FeedSkeleton(
+                label = stringResource(R.string.discover_loading),
+                modifier = Modifier.fillMaxSize(),
+            )
         } else {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                contentPadding = PaddingValues(horizontal = GtDimens.Gutter, vertical = GtDimens.Gutter),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(currentRailState.games, key = { "${currentRailState.rail.type}:${it.id}" }) { game ->
@@ -418,7 +416,10 @@ private fun reasonLabel(reason: RecommendationReason): String = when (reason) {
 }
 @Composable
 private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    FeedSkeleton(
+        label = stringResource(R.string.discover_loading),
+        modifier = modifier.fillMaxSize(),
+    )
 }
 
 @Composable
@@ -426,7 +427,7 @@ private fun DiscoverErrorState(error: AppError, onRetry: () -> Unit, modifier: M
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(GtDimens.Empty),
         ) {
             Text(
                 text = error.errorMessage(),

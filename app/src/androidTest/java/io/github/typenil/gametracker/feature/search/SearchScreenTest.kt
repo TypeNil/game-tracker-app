@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
@@ -69,7 +70,7 @@ class SearchScreenTest {
     }
 
     @Test
-    fun loadingState_rendersProgressIndicator() {
+    fun loadingState_rendersSkeletonAndCopy() {
         val context = composeTestRule.activity
 
         composeTestRule.setContent {
@@ -84,6 +85,7 @@ class SearchScreenTest {
         }
 
         composeTestRule.onNodeWithText(context.getString(R.string.search_loading_games)).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("feed_skeleton").assertIsDisplayed()
     }
 
     @Test
@@ -114,6 +116,7 @@ class SearchScreenTest {
     @Test
     fun emptyState_rendersEmptyMessageWithQuery() {
         val context = composeTestRule.activity
+        var cleared = false
 
         composeTestRule.setContent {
             SearchScreen(
@@ -122,7 +125,7 @@ class SearchScreenTest {
                     result = SearchResultUiState.Empty("nonexistent")
                 ),
                 onQueryChange = {},
-                onClearQuery = {},
+                onClearQuery = { cleared = true },
                 onRetry = {},
                 onGameClick = {},
                 onBackClick = {}
@@ -131,6 +134,8 @@ class SearchScreenTest {
 
         val expectedEmptyMessage = context.getString(R.string.search_empty_results_format, "nonexistent")
         composeTestRule.onNodeWithText(expectedEmptyMessage).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_empty_action)).performClick()
+        assertTrue(cleared)
     }
 
     @Test

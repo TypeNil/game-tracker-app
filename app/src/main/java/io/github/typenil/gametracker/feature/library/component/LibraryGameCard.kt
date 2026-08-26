@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
@@ -93,7 +94,7 @@ fun LibraryGameCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(GtDimens.Card),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(

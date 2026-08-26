@@ -62,6 +62,7 @@ import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 
 @Composable
@@ -316,12 +317,15 @@ fun LibraryScreen(
                             if (uiState.isSearchOrFilterActive) {
                                 LibrarySearchEmptyState(modifier = Modifier.fillMaxSize())
                             } else {
-                                LibraryTabEmptyState(modifier = Modifier.fillMaxSize())
+                                LibraryTabEmptyState(
+                                    onNavigateToDiscover = onNavigateToDiscover,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         } else {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(GtDimens.Gutter),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxSize()
@@ -348,7 +352,7 @@ private fun LibraryEmptyState(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.padding(24.dp),
+        modifier = modifier.padding(GtDimens.Empty),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -386,7 +390,7 @@ private fun LibrarySearchEmptyState(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.padding(24.dp),
+        modifier = modifier.padding(GtDimens.Empty),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -417,10 +421,11 @@ private fun LibrarySearchEmptyState(
 
 @Composable
 private fun LibraryTabEmptyState(
+    onNavigateToDiscover: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.padding(24.dp),
+        modifier = modifier.padding(GtDimens.Empty),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -445,6 +450,10 @@ private fun LibraryTabEmptyState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onNavigateToDiscover) {
+                Text(stringResource(R.string.library_empty_cta))
+            }
         }
     }
 }

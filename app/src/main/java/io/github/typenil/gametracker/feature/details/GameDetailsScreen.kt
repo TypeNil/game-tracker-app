@@ -81,6 +81,7 @@ import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPE
 import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.model.GameDetails
@@ -89,13 +90,14 @@ import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
 
 /** Standard horizontal gutter for details sections. */
-private val DETAILS_GUTTER = 16.dp
+private val DETAILS_GUTTER = GtDimens.Gutter
 
 /** Fixed portrait cover width in the details header. */
 private val HEADER_COVER_WIDTH = 120.dp
@@ -355,22 +357,28 @@ private fun GameDetailsContent(
                         title = stringResource(R.string.details_section_release_dates),
                         modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                     ) {
+                        val unknownDate = stringResource(R.string.details_date_unknown)
                         game.releaseDates.forEach { releaseDate ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 2.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
                                     text = releaseDate.platform,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
                                 )
                                 Text(
-                                    text = releaseDate.displayDate(),
+                                    text = releaseDate.displayDate(unknownDate),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
                                 )
                             }
                         }
@@ -505,7 +513,9 @@ private fun GameDetailsHeader(
             Text(
                 text = game.name,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
 
             // Aggregate rating with vote count; falls back to the critic rating the
@@ -526,7 +536,9 @@ private fun GameDetailsHeader(
                 Text(
                     text = line,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -650,14 +662,16 @@ private fun GameDetails.companiesLine(): String? {
     return parts.joinToString(" · ").takeIf { it.isNotBlank() }
 }
 
-private fun GameReleaseDate.displayDate(): String {
-    return when {
-        dateEpochSeconds != null -> SimpleDateFormat("d MMM yyyy", Locale.getDefault())
-            .format(Date(dateEpochSeconds * 1000L))
-
-        year != null -> year.toString()
-        else -> ""
-    }
+internal fun GameReleaseDate.displayDate(
+    unknown: String,
+    locale: Locale = Locale.getDefault(),
+): String = when {
+    dateEpochSeconds != null ->
+        Instant.ofEpochSecond(dateEpochSeconds)
+            .atZone(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ofPattern("d MMM yyyy", locale))
+    year != null -> year.toString()
+    else -> unknown
 }
 
 @Composable

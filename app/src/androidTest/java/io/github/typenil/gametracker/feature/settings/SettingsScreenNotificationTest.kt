@@ -21,6 +21,9 @@ class SettingsScreenNotificationTest {
         composeTestRule.setContent {
             GameTrackerTheme {
                 SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
                     onBackClick = {},
                     onOpenIgdb = {}
                 )

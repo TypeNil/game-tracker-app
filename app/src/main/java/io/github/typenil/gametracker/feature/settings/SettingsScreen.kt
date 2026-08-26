@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 
@@ -42,7 +43,19 @@ fun SettingsRoute(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val notificationPermissionState = rememberNotificationPermissionState()
     SettingsScreen(
+        hasNotificationPermission = notificationPermissionState.hasPermission,
+        onRequestPermission = { notificationPermissionState.requestPermission() },
+        onManageNotifications = {
+            try {
+                context.startActivity(
+                    NotificationIntents.appNotificationSettingsIntent(context.packageName)
+                )
+            } catch (_: ActivityNotFoundException) {
+                // Ignore
+            }
+        },
         onBackClick = onBackClick,
         onOpenIgdb = {
             try {
@@ -53,18 +66,19 @@ fun SettingsRoute(
         },
         modifier = modifier
     )
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    hasNotificationPermission: Boolean,
+    onRequestPermission: () -> Unit,
+    onManageNotifications: () -> Unit,
     onBackClick: () -> Unit,
     onOpenIgdb: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val notificationPermissionState = rememberNotificationPermissionState()
-
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
@@ -85,11 +99,10 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(GtDimens.Gutter)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(GtDimens.Gutter)
         ) {
-            // Notification Settings
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -97,7 +110,7 @@ fun SettingsScreen(
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(GtDimens.Gutter),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
@@ -116,39 +129,25 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (notificationPermissionState.hasPermission) {
+                            text = if (hasNotificationPermission) {
                                 stringResource(R.string.settings_notifications_enabled)
                             } else {
                                 stringResource(R.string.settings_notifications_disabled)
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (notificationPermissionState.hasPermission) {
+                            color = if (hasNotificationPermission) {
                                 MaterialTheme.colorScheme.primary
                             } else {
                                 MaterialTheme.colorScheme.error
                             }
                         )
-                        if (!notificationPermissionState.hasPermission) {
-                            Button(
-                                onClick = {
-                                    notificationPermissionState.requestPermission()
-                                }
-                            ) {
+                        if (!hasNotificationPermission) {
+                            Button(onClick = onRequestPermission) {
                                 Text(text = stringResource(R.string.settings_notifications_enable))
                             }
                         } else {
-                            OutlinedButton(
-                                onClick = {
-                                    try {
-                                        context.startActivity(
-                                            NotificationIntents.appNotificationSettingsIntent(context.packageName)
-                                        )
-                                    } catch (_: ActivityNotFoundException) {
-                                        // Ignore
-                                    }
-                                }
-                            ) {
-                                Text(text = stringResource(R.string.settings_title))
+                            OutlinedButton(onClick = onManageNotifications) {
+                                Text(text = stringResource(R.string.settings_notifications_manage))
                             }
                         }
                     }
@@ -157,7 +156,6 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            // Attribution Section
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = stringResource(R.string.settings_igdb_attribution),
