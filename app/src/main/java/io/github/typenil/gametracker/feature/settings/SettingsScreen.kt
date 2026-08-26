@@ -53,7 +53,7 @@ fun SettingsRoute(
                     NotificationIntents.appNotificationSettingsIntent(context.packageName)
                 )
             } catch (_: ActivityNotFoundException) {
-                // Ignore
+                Toast.makeText(context, R.string.settings_igdb_open_error, Toast.LENGTH_SHORT).show()
             }
         },
         onBackClick = onBackClick,

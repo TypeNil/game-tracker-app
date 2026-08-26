@@ -5,6 +5,7 @@
     <string name="discover_trending">Trending</string>
     <string name="discover_trending_empty">No trending games right now</string>
     <string name="discover_loading">Loading recommendations…</string>
+    <string name="discover_charts_loading">Loading charts…</string>
     <string name="reason_genre">Because you like %1$s</string>
     <string name="reason_theme">Matches your %1$s games</string>
     <string name="reason_platform">For %1$s</string>

@@ -34,12 +34,13 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.Game
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 private const val COVER_WIDTH_DP = 96
 
 internal fun formatReleaseYear(
     epochSeconds: Long,
-    zoneId: ZoneId = ZoneId.systemDefault(),
+    zoneId: ZoneId = ZoneOffset.UTC,
 ): String = Instant.ofEpochSecond(epochSeconds).atZone(zoneId).year.toString()
 
 /**

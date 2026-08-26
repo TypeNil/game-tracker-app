@@ -61,6 +61,8 @@ class SettingsScreenTest {
 
         val manage = composeTestRule.activity.getString(R.string.settings_notifications_manage)
         composeTestRule.onNodeWithText(manage).assertIsDisplayed()
-        composeTestRule.onAllNodesWithText("About").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText(
+            composeTestRule.activity.getString(R.string.settings_title),
+        ).assertCountEquals(1)
     }
 }

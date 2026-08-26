@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagingData
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
@@ -85,7 +86,7 @@ class SearchScreenTest {
         }
 
         composeTestRule.onNodeWithText(context.getString(R.string.search_loading_games)).assertIsDisplayed()
-        composeTestRule.onNodeWithTag("feed_skeleton").assertIsDisplayed()
+        composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertIsDisplayed()
     }
 
     @Test

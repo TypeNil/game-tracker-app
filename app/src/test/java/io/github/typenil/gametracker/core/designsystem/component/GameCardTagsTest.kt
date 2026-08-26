@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.TimeZone
 
 class GameCardTagsTest {
 
@@ -44,4 +45,16 @@ class GameCardTagsTest {
         assertEquals("2019", formatReleaseYear(1_577_833_200L, ZoneOffset.UTC))
         assertEquals("2015", formatReleaseYear(1_431_993_600L, ZoneOffset.UTC))
     }
+
+    @Test
+    fun formatReleaseYear_defaultIsUtcWhenDeviceIsLosAngeles() {
+        val previous = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
+            assertEquals("2021", formatReleaseYear(1_609_459_200L))
+        } finally {
+            TimeZone.setDefault(previous)
+        }
+    }
+
 }

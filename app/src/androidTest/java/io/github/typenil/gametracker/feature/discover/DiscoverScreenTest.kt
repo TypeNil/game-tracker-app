@@ -4,6 +4,9 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import org.junit.Rule
@@ -36,7 +39,7 @@ class DiscoverScreenTest {
     @Test
     fun initialLoading_showsFeedSkeleton() {
         setContent(DiscoverUiState(isLoading = true))
-        composeTestRule.onNodeWithTag("feed_skeleton").assertIsDisplayed()
+        composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertIsDisplayed()
     }
 
     @Test
@@ -53,6 +56,9 @@ class DiscoverScreenTest {
                 ),
             ),
         )
-        composeTestRule.onNodeWithTag("feed_skeleton").assertIsDisplayed()
+        composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.discover_charts_loading),
+        ).assertIsDisplayed()
     }
 }

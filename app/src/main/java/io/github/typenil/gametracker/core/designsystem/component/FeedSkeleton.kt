@@ -3,6 +3,7 @@ package io.github.typenil.gametracker.core.designsystem.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,9 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+
+const val FEED_SKELETON_TEST_TAG = "feed_skeleton"
 
 private const val SKELETON_ROWS = 3
 private const val TITLE_BAR_FRACTION = 0.7f
@@ -32,6 +34,7 @@ private val SubtitleBarHeight = 12.dp
 private val TextGap = 8.dp
 private val BarCorner = 4.dp
 private val CoverTextGap = 14.dp
+private val LabelReserve = 24.dp
 
 @Composable
 fun FeedSkeleton(
@@ -39,55 +42,59 @@ fun FeedSkeleton(
     modifier: Modifier = Modifier,
 ) {
     val barColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    Column(
+    val rowHeight = CoverWidth / GAME_COVER_ASPECT_RATIO + GtDimens.Card
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .testTag("feed_skeleton")
-            .padding(GtDimens.Gutter),
-        verticalArrangement = Arrangement.spacedBy(GtDimens.Card),
+            .testTag(FEED_SKELETON_TEST_TAG),
     ) {
-        repeat(SKELETON_ROWS) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(CoverWidth)
-                        .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                        .clip(RoundedCornerShape(GtDimens.Card))
-                        .background(barColor)
-                        .clearAndSetSemantics {},
-                )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = CoverTextGap),
+        val rows = ((maxHeight - GtDimens.Gutter * 2 - LabelReserve) / rowHeight)
+            .toInt()
+            .coerceIn(1, SKELETON_ROWS)
+        Column(
+            modifier = Modifier.padding(GtDimens.Gutter),
+            verticalArrangement = Arrangement.spacedBy(GtDimens.Card),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            repeat(rows) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(TITLE_BAR_FRACTION)
-                            .height(TitleBarHeight)
-                            .clip(RoundedCornerShape(BarCorner))
-                            .background(barColor)
-                            .clearAndSetSemantics {},
+                            .width(CoverWidth)
+                            .aspectRatio(GAME_COVER_ASPECT_RATIO)
+                            .clip(RoundedCornerShape(GtDimens.Card))
+                            .background(barColor),
                     )
-                    Spacer(Modifier.height(TextGap))
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth(SUBTITLE_BAR_FRACTION)
-                            .height(SubtitleBarHeight)
-                            .clip(RoundedCornerShape(BarCorner))
-                            .background(barColor)
-                            .clearAndSetSemantics {},
-                    )
+                            .weight(1f)
+                            .padding(start = CoverTextGap),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(TITLE_BAR_FRACTION)
+                                .height(TitleBarHeight)
+                                .clip(RoundedCornerShape(BarCorner))
+                                .background(barColor),
+                        )
+                        Spacer(Modifier.height(TextGap))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(SUBTITLE_BAR_FRACTION)
+                                .height(SubtitleBarHeight)
+                                .clip(RoundedCornerShape(BarCorner))
+                                .background(barColor),
+                        )
+                    }
                 }
             }
         }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
