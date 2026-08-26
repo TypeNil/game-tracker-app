@@ -35,7 +35,6 @@ import java.util.Date
 import java.util.Locale
 
 private const val COVER_WIDTH_DP = 96
-private const val MAX_GENRES_DISPLAYED = 2
 
 /**
  * Premium Material 3 card presenting video game information in feeds and catalogs.
@@ -119,22 +118,25 @@ fun GameCard(
                     )
                 }
 
-                if (game.genres.isNotEmpty()) {
+                val tags = selectCardTags(game.genres, game.platforms)
+                if (tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        maxItemsInEachRow = MAX_GENRES_DISPLAYED
+                        maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW
                     ) {
-                        game.genres.take(MAX_GENRES_DISPLAYED).forEach { genre ->
+                        tags.forEach { tag ->
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh
                             ) {
                                 Text(
-                                    text = genre,
+                                    text = tag,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
