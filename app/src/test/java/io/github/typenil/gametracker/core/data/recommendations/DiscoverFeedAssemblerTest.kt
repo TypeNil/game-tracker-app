@@ -131,6 +131,25 @@ class DiscoverFeedAssemblerTest {
         assertEquals(2, wrapped.recommendations.size)
     }
 
+    @Test
+    fun assemble_capsOutputToForYouPageSize() {
+        val profile = RecommendationProfile(
+            genreWeights = mapOf("RPG" to 1f),
+            themeWeights = emptyMap(),
+            platformWeights = emptyMap(),
+            excludedGameIds = emptySet(),
+            isColdStart = false,
+        )
+        val candidates = (1L..30L).map { candidate(it, "G$it", listOf("RPG")) }
+        val feed = DiscoverFeedAssembler.assemble(
+            profile = profile,
+            candidates = candidates,
+            trending = emptyList(),
+            nowEpochSeconds = now,
+        )
+        assertTrue(feed.recommendations.size <= DiscoverFeedAssembler.FOR_YOU_PAGE_SIZE)
+    }
+
 
     private fun game(id: Long, name: String) = Game(id = id, name = name)
 

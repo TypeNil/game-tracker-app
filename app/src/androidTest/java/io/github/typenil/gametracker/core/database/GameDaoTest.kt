@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -117,5 +118,26 @@ class GameDaoTest {
         assertNotNull(gameDao.getGameById(2L))
         assertNotNull(gameDao.getGameById(3L))
         assertNotNull(gameDao.getGameById(4L))
+    }
+
+    @Test
+    fun getGameById_usesPrimaryKey() = runTest {
+        val plan = explain(GameDao.GAME_BY_ID, 1L)
+        assertTrue(plan, plan.contains("PRIMARY KEY") || plan.contains("INTEGER PRIMARY KEY"))
+    }
+
+    private fun explain(queryConst: String, vararg bindArgs: Any): String {
+        var sql = queryConst
+        for (name in listOf(":query", ":fromPosition", ":status", ":id")) {
+            sql = sql.replace(name, "?")
+        }
+        val cursor = database.query("EXPLAIN QUERY PLAN $sql", arrayOf(*bindArgs))
+        val details = buildString {
+            while (cursor.moveToNext()) {
+                appendLine(cursor.getString(cursor.columnCount - 1))
+            }
+        }
+        cursor.close()
+        return details
     }
 }

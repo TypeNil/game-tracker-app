@@ -12,16 +12,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface GameDao {
 
+    companion object {
+        const val GAME_BY_ID = "SELECT * FROM games WHERE id = :id"
+    }
+
     @Upsert
     suspend fun upsertGames(games: List<GameEntity>): List<Long>
 
     @Upsert
     suspend fun upsertGame(game: GameEntity): Long
 
-    @Query("SELECT * FROM games WHERE id = :id")
+    @Query(GAME_BY_ID)
     fun getGameByIdFlow(id: Long): Flow<GameEntity?>
 
-    @Query("SELECT * FROM games WHERE id = :id")
+    @Query(GAME_BY_ID)
     suspend fun getGameById(id: Long): GameEntity?
 
     @Query("SELECT * FROM games WHERE id IN (:ids)")

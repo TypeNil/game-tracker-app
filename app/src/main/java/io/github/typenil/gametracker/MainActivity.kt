@@ -2,6 +2,7 @@ package io.github.typenil.gametracker
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Trace
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,19 +19,24 @@ import io.github.typenil.gametracker.navigation.AppNavHost
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        Trace.beginSection(TRACE_MAIN_ACTIVITY_ON_CREATE)
+        try {
+            installSplashScreen()
+            super.onCreate(savedInstanceState)
+            enableEdgeToEdge()
 
-        setContent {
-            GameTrackerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    AppNavHost()
+            setContent {
+                GameTrackerTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        AppNavHost()
+                    }
                 }
             }
+        } finally {
+            Trace.endSection()
         }
     }
 
@@ -39,3 +45,5 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
     }
 }
+
+private const val TRACE_MAIN_ACTIVITY_ON_CREATE = "GameTracker.MainActivity.onCreate"

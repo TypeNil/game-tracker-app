@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,11 +31,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.core.model.Game
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
 
 private const val COVER_WIDTH_DP = 96
+
+internal fun formatReleaseYear(
+    epochSeconds: Long,
+    zoneId: ZoneId = ZoneId.systemDefault(),
+): String = Instant.ofEpochSecond(epochSeconds).atZone(zoneId).year.toString()
 
 /**
  * Premium Material 3 card presenting video game information in feeds and catalogs.
@@ -104,9 +109,9 @@ fun GameCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                val releaseYear = game.releaseDateEpochSeconds?.let { epoch ->
-                    val date = Date(epoch * 1000L)
-                    SimpleDateFormat("yyyy", Locale.US).format(date)
+                val epochSeconds = game.releaseDateEpochSeconds
+                val releaseYear = remember(epochSeconds) {
+                    epochSeconds?.let(::formatReleaseYear)
                 }
 
                 if (releaseYear != null) {

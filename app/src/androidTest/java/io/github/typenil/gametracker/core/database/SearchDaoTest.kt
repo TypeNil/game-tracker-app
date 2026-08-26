@@ -128,5 +128,51 @@ class SearchDaoTest {
         assertEquals(2L, searchResults[0].id)
         assertEquals("Searched Game", searchResults[0].name)
     }
+
+    @Test
+    fun searchResultsJoin_usesQueryPositionIndex() = runTest {
+        seedSearch()
+        val plan = explain(SearchDao.SEARCH_RESULTS_BY_POSITION, "q")
+        assertTrue(plan, plan.contains("index_search_results_query_position"))
+    }
+
+    @Test
+    fun deleteFromPosition_usesQueryPositionIndex() = runTest {
+        seedSearch()
+        val plan = explain(SearchDao.DELETE_SEARCH_RESULTS_FROM_POSITION, "q", 1)
+        assertTrue(plan, plan.contains("index_search_results_query_position"))
+    }
+
+    private suspend fun seedSearch() {
+        gameDao.upsertGames(
+            listOf(GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L)),
+        )
+        searchDao.upsertSearchQuery(
+            SearchQueryEntity(
+                query = "q",
+                createdAtEpochSeconds = 100L,
+                lastQueriedAtEpochSeconds = 100L,
+                resultCount = 1,
+            ),
+        )
+        searchDao.insertSearchResults(
+            listOf(SearchResultCrossRef(query = "q", gameId = 1L, position = 0)),
+        )
+    }
+
+    private fun explain(queryConst: String, vararg bindArgs: Any): String {
+        var sql = queryConst
+        for (name in listOf(":query", ":fromPosition", ":status", ":id")) {
+            sql = sql.replace(name, "?")
+        }
+        val cursor = database.query("EXPLAIN QUERY PLAN $sql", arrayOf(*bindArgs))
+        val details = buildString {
+            while (cursor.moveToNext()) {
+                appendLine(cursor.getString(cursor.columnCount - 1))
+            }
+        }
+        cursor.close()
+        return details
+    }
 }
 

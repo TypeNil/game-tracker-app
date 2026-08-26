@@ -162,4 +162,25 @@ class LibraryDaoTest {
         assertNotNull(entry)
         assertEquals(LibraryStatus.WISHLIST, entry?.status)
     }
+
+    @Test
+    fun libraryByStatus_usesStatusIndex() = runTest {
+        val plan = explain(LibraryDao.LIBRARY_ENTRIES_BY_STATUS, "PLAYING")
+        assertTrue(plan, plan.contains("index_library_entries_status"))
+    }
+
+    private fun explain(queryConst: String, vararg bindArgs: Any): String {
+        var sql = queryConst
+        for (name in listOf(":query", ":fromPosition", ":status", ":id")) {
+            sql = sql.replace(name, "?")
+        }
+        val cursor = database.query("EXPLAIN QUERY PLAN $sql", arrayOf(*bindArgs))
+        val details = buildString {
+            while (cursor.moveToNext()) {
+                appendLine(cursor.getString(cursor.columnCount - 1))
+            }
+        }
+        cursor.close()
+        return details
+    }
 }
