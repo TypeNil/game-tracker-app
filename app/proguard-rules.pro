@@ -1,16 +1,25 @@
 # ProGuard / R8 Rules for GameTracker
 
-# Kotlinx Serialization
+# Kotlinx Serialization (official snippet: <1> is the full class name only when the
+# class pattern is **, not package.**)
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.SerializationKt
--keepclassmembers class * {
-    *** Companion;
+-if @kotlinx.serialization.Serializable class **
+-keepclassmembers class <1> {
+    static <1>$Companion Companion;
 }
--keepclasseswithmembers class * {
+-if @kotlinx.serialization.Serializable class ** {
+    static **$* *;
+}
+-keepclassmembers class <2>$<3> {
     kotlinx.serialization.KSerializer serializer(...);
 }
--keep,allowobfuscation,allowshrinking class * {
-    <fields>;
+-if @kotlinx.serialization.Serializable class ** {
+    public static ** INSTANCE;
+}
+-keepclassmembers class <1> {
+    public static <1> INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
 }
 
 # Retrofit 2
@@ -44,8 +53,7 @@
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
 
-# Coil 3
--keep class coil3.** { *; }
+# Coil 3: consumer rules from the AAR
 -dontwarn coil3.**
 
 # Coroutines

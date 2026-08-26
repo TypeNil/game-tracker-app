@@ -128,5 +128,37 @@ class SearchDaoTest {
         assertEquals(2L, searchResults[0].id)
         assertEquals("Searched Game", searchResults[0].name)
     }
+
+    @Test
+    fun searchResultsJoin_usesQueryPositionIndex() = runTest {
+        seedSearch()
+        val plan = database.explainQueryPlan(SearchDao.SEARCH_RESULTS_BY_POSITION, "q")
+        assertTrue(plan, plan.contains("index_search_results_query_position"))
+    }
+
+    @Test
+    fun deleteFromPosition_usesQueryPositionIndex() = runTest {
+        seedSearch()
+        val plan = database.explainQueryPlan(SearchDao.DELETE_SEARCH_RESULTS_FROM_POSITION, "q", 1)
+        assertTrue(plan, plan.contains("index_search_results_query_position"))
+    }
+
+    private suspend fun seedSearch() {
+        gameDao.upsertGames(
+            listOf(GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L)),
+        )
+        searchDao.upsertSearchQuery(
+            SearchQueryEntity(
+                query = "q",
+                createdAtEpochSeconds = 100L,
+                lastQueriedAtEpochSeconds = 100L,
+                resultCount = 1,
+            ),
+        )
+        searchDao.insertSearchResults(
+            listOf(SearchResultCrossRef(query = "q", gameId = 1L, position = 0)),
+        )
+    }
+
 }
 

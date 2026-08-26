@@ -3,6 +3,7 @@ package io.github.typenil.gametracker.core.model
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.system.measureTimeMillis
 
 class RecommendationRankerTest {
 
@@ -89,6 +90,40 @@ class RecommendationRankerTest {
                 RecommendationRanker.recency(now - 10 * year, now),
         )
         assertEquals(0f, RecommendationRanker.recency(null, now))
+    }
+
+    @Test
+    fun rank_thirtyCandidates_keepsAllAndOrdersByScoreThenId() {
+        val high = cand(2, genres = listOf("RPG"), rating = 90.0, ratingCount = 200)
+        val low = cand(1, genres = listOf("RPG"), rating = 50.0, ratingCount = 10)
+        val rest = (3L..30L).map { cand(it, genres = listOf("Sports"), rating = 10.0, ratingCount = 1) }
+        val ranked = RecommendationRanker.rank(
+            profile(genres = mapOf("RPG" to 1f)),
+            listOf(low, high) + rest,
+            now,
+            weights = RankerWeights(
+                genreOverlap = 1f,
+                themeOverlap = 0f,
+                platformOverlap = 0f,
+                similarBoost = 0f,
+                rating = 0.4f,
+                negativePenalty = 0f,
+                recency = 0f,
+            ),
+        )
+        assertEquals(30, ranked.size)
+        assertEquals(listOf(2L, 1L), ranked.take(2).map { it.candidate.gameId })
+    }
+
+    @Test
+    fun rank_fiveHundredCandidates_doesNotHang() {
+        val candidates = (1L..500L).map { cand(it, genres = listOf("RPG"), rating = 50.0, ratingCount = 10) }
+        var ranked: List<RankedRecommendation> = emptyList()
+        val elapsedMs = measureTimeMillis {
+            ranked = RecommendationRanker.rank(profile(genres = mapOf("RPG" to 1f)), candidates, now)
+        }
+        assertEquals(500, ranked.size)
+        assertTrue("rank(500) took ${elapsedMs}ms", elapsedMs < 2_000)
     }
 
     private fun profile(

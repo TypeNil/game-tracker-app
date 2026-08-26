@@ -1,6 +1,7 @@
 package com.gametracker.backend.routes
 
 import com.gametracker.backend.application.IgdbConfig
+import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.error.ErrorResponse
 import com.gametracker.backend.error.configureErrorHandling
 import com.gametracker.backend.resolveClientIp
@@ -48,7 +49,7 @@ class HealthAndRateLimitTest {
         }
         configureErrorHandling()
         routing {
-            healthRoutes(config)
+            healthRoutes(config, BffCache())
             rateLimit(RateLimitName("api_v1")) {
                 get("/limited-endpoint") {
                     call.respondText("OK")
@@ -171,5 +172,20 @@ class HealthAndRateLimitTest {
             header(HttpHeaders.XForwardedFor, "203.0.113.195")
         }
         assertEquals("localhost", untrustedResponse.body<String>())
+    }
+
+    @Test
+    fun healthCache_returnsFourRegions() = testApplication {
+        application { healthTestModule(configured = true) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        val response = client.get("/health/cache")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.body<CacheHealthDto>()
+        assertEquals(
+            setOf("POPULAR", "SEARCH", "GAME_DETAILS", "RECOMMEND"),
+            body.regions.map { it.policy }.toSet(),
+        )
     }
 }

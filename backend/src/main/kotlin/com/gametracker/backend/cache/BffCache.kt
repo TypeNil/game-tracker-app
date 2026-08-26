@@ -1,5 +1,6 @@
 package com.gametracker.backend.cache
 
+import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Ticker
 import kotlinx.coroutines.CompletableDeferred
@@ -36,24 +37,28 @@ class BffCache(
         .maximumSize(MAX_CACHE_SIZE)
         .expireAfterWrite(CachePolicy.POPULAR.ttlMinutes, TimeUnit.MINUTES)
         .ticker(ticker)
+        .recordStats()
         .build<String, Any>()
 
     private val searchCache = Caffeine.newBuilder()
         .maximumSize(MAX_CACHE_SIZE)
         .expireAfterWrite(CachePolicy.SEARCH.ttlMinutes, TimeUnit.MINUTES)
         .ticker(ticker)
+        .recordStats()
         .build<String, Any>()
 
     private val gameDetailsCache = Caffeine.newBuilder()
         .maximumSize(MAX_CACHE_SIZE)
         .expireAfterWrite(CachePolicy.GAME_DETAILS.ttlMinutes, TimeUnit.MINUTES)
         .ticker(ticker)
+        .recordStats()
         .build<String, Any>()
 
     private val recommendCache = Caffeine.newBuilder()
         .maximumSize(MAX_CACHE_SIZE)
         .expireAfterWrite(CachePolicy.RECOMMEND.ttlMinutes, TimeUnit.MINUTES)
         .ticker(ticker)
+        .recordStats()
         .build<String, Any>()
 
     private val pendingComputations = ConcurrentHashMap<CacheKey, CompletableDeferred<Any>>()
@@ -105,6 +110,24 @@ class BffCache(
         CachePolicy.RECOMMEND -> recommendCache
     }
 
+    fun snapshot(): List<CacheRegionStats> = listOf(
+        statsOf(CachePolicy.POPULAR, popularCache),
+        statsOf(CachePolicy.SEARCH, searchCache),
+        statsOf(CachePolicy.GAME_DETAILS, gameDetailsCache),
+        statsOf(CachePolicy.RECOMMEND, recommendCache),
+    )
+
+    private fun statsOf(policy: CachePolicy, cache: Cache<String, Any>): CacheRegionStats {
+        val stats = cache.stats()
+        return CacheRegionStats(
+            policy = policy.name,
+            estimatedSize = cache.estimatedSize(),
+            hitCount = stats.hitCount(),
+            missCount = stats.missCount(),
+            evictionCount = stats.evictionCount(),
+        )
+    }
+
     override fun close() {
         if (isClosed.compareAndSet(false, true)) {
             logger.info("Closing BffCache and cancelling background compute scope...")
@@ -119,3 +142,11 @@ class BffCache(
 
     data class CacheKey(val policy: CachePolicy, val key: String)
 }
+
+data class CacheRegionStats(
+    val policy: String,
+    val estimatedSize: Long,
+    val hitCount: Long,
+    val missCount: Long,
+    val evictionCount: Long,
+)

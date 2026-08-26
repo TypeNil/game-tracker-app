@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -118,4 +119,11 @@ class GameDaoTest {
         assertNotNull(gameDao.getGameById(3L))
         assertNotNull(gameDao.getGameById(4L))
     }
+
+    @Test
+    fun getGameById_usesPrimaryKey() = runTest {
+        val plan = database.explainQueryPlan(GameDao.GAME_BY_ID, 1L)
+        assertTrue(plan, plan.contains("PRIMARY KEY") || plan.contains("INTEGER PRIMARY KEY"))
+    }
+
 }

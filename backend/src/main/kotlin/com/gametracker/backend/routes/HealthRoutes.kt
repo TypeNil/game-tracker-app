@@ -1,6 +1,7 @@
 package com.gametracker.backend.routes
 
 import com.gametracker.backend.application.IgdbConfig
+import com.gametracker.backend.cache.BffCache
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -29,10 +30,22 @@ data class PingResponseDto(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Serializable
+data class CacheHealthDto(val regions: List<CacheRegionStatsDto>)
+
+@Serializable
+data class CacheRegionStatsDto(
+    val policy: String,
+    val estimatedSize: Long,
+    val hitCount: Long,
+    val missCount: Long,
+    val evictionCount: Long,
+)
+
 /**
  * Эндпоинты проверки жизнеспособности (Liveness) и готовности (Readiness).
  */
-fun Route.healthRoutes(config: IgdbConfig) {
+fun Route.healthRoutes(config: IgdbConfig, cache: BffCache) {
     // Liveness probe: сервис запущен и отвечает
     get("/health") {
         call.respond(
@@ -67,6 +80,22 @@ fun Route.healthRoutes(config: IgdbConfig) {
                 ReadyStatusDto(status = "NOT_READY", configured = false)
             )
         }
+    }
+
+    get("/health/cache") {
+        call.respond(
+            CacheHealthDto(
+                regions = cache.snapshot().map { stats ->
+                    CacheRegionStatsDto(
+                        policy = stats.policy,
+                        estimatedSize = stats.estimatedSize,
+                        hitCount = stats.hitCount,
+                        missCount = stats.missCount,
+                        evictionCount = stats.evictionCount,
+                    )
+                },
+            ),
+        )
     }
 
     route("/api/v1") {

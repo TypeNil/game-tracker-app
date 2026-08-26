@@ -162,4 +162,11 @@ class LibraryDaoTest {
         assertNotNull(entry)
         assertEquals(LibraryStatus.WISHLIST, entry?.status)
     }
+
+    @Test
+    fun libraryByStatus_usesStatusIndex() = runTest {
+        val plan = database.explainQueryPlan(LibraryDao.LIBRARY_ENTRIES_BY_STATUS, "PLAYING")
+        assertTrue(plan, plan.contains("index_library_entries_status"))
+    }
+
 }

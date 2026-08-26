@@ -173,4 +173,31 @@ class BffCacheTest {
         assertEquals("game_data", gameResult)
         cache.close()
     }
+
+    @Test
+    fun snapshot_countsHitAndMissPerRegion() = runTest {
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
+        var computeCount = 0
+
+        val first = cache.getOrPut("k", CachePolicy.SEARCH) {
+            computeCount++
+            "v"
+        }
+        val second = cache.getOrPut("k", CachePolicy.SEARCH) {
+            computeCount++
+            "v2"
+        }
+
+        assertEquals("v", first)
+        assertEquals("v", second)
+        assertEquals(1, computeCount)
+
+        val search = cache.snapshot().single { it.policy == "SEARCH" }
+        assertEquals(1L, search.estimatedSize)
+        assertEquals(1L, search.hitCount)
+        assertEquals(1L, search.missCount)
+        assertEquals(0L, search.evictionCount)
+        cache.close()
+    }
 }

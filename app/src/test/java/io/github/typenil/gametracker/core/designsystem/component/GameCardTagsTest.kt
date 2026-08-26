@@ -2,6 +2,8 @@ package io.github.typenil.gametracker.core.designsystem.component
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 class GameCardTagsTest {
 
@@ -33,5 +35,13 @@ class GameCardTagsTest {
         )
 
         assertEquals(listOf("RPG", "Adventure", "PC"), tags)
+    }
+
+    @Test
+    fun formatReleaseYear_usesProvidedZone() {
+        val moscow = ZoneId.of("Europe/Moscow")
+        assertEquals("2020", formatReleaseYear(1_577_833_200L, moscow))
+        assertEquals("2019", formatReleaseYear(1_577_833_200L, ZoneOffset.UTC))
+        assertEquals("2015", formatReleaseYear(1_431_993_600L, ZoneOffset.UTC))
     }
 }

@@ -9,7 +9,7 @@ import io.ktor.server.routing.routing
  */
 fun Application.configureRouting(deps: BffDependencies) {
     routing {
-        healthRoutes(deps.igdbConfig)
+        healthRoutes(deps.igdbConfig, deps.cache)
         gamesRoutes(deps.igdbService, deps.cache)
     }
 }

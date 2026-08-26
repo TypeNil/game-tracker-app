@@ -15,6 +15,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LibraryDao {
 
+    companion object {
+        const val LIBRARY_ENTRIES_BY_STATUS =
+            "SELECT * FROM library_entries WHERE status = :status ORDER BY updatedAtEpochSeconds DESC"
+    }
+
     @Upsert
     suspend fun upsertLibraryEntry(entry: LibraryEntryEntity): Long
 
@@ -24,7 +29,7 @@ interface LibraryDao {
     @Query("SELECT * FROM library_entries WHERE gameId = :gameId")
     suspend fun getLibraryEntry(gameId: Long): LibraryEntryEntity?
 
-    @Query("SELECT * FROM library_entries WHERE status = :status ORDER BY updatedAtEpochSeconds DESC")
+    @Query(LIBRARY_ENTRIES_BY_STATUS)
     fun getLibraryEntriesByStatusFlow(status: LibraryStatus): Flow<List<LibraryEntryEntity>>
 
     @Query("SELECT * FROM library_entries ORDER BY updatedAtEpochSeconds DESC")

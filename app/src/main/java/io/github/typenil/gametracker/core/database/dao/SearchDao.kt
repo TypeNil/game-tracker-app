@@ -18,6 +18,13 @@ import kotlinx.coroutines.flow.Flow
 @Suppress("TooManyFunctions")
 interface SearchDao {
 
+    companion object {
+        const val SEARCH_RESULTS_BY_POSITION =
+            "SELECT g.* FROM games g INNER JOIN search_results sr ON g.id = sr.gameId WHERE sr.query = :query ORDER BY sr.position ASC"
+        const val DELETE_SEARCH_RESULTS_FROM_POSITION =
+            "DELETE FROM search_results WHERE query = :query AND position >= :fromPosition"
+    }
+
     @Upsert
     suspend fun upsertSearchQuery(query: SearchQueryEntity): Long
 
@@ -27,34 +34,13 @@ interface SearchDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSearchResults(results: List<SearchResultCrossRef>): List<Long>
 
-    @Query(
-        """
-        SELECT g.* FROM games g
-        INNER JOIN search_results sr ON g.id = sr.gameId
-        WHERE sr.query = :query
-        ORDER BY sr.position ASC
-        """
-    )
+    @Query(SEARCH_RESULTS_BY_POSITION)
     fun getSearchResultsFlow(query: String): Flow<List<GameEntity>>
 
-    @Query(
-        """
-        SELECT g.* FROM games g
-        INNER JOIN search_results sr ON g.id = sr.gameId
-        WHERE sr.query = :query
-        ORDER BY sr.position ASC
-        """
-    )
+    @Query(SEARCH_RESULTS_BY_POSITION)
     suspend fun getSearchResults(query: String): List<GameEntity>
 
-    @Query(
-        """
-        SELECT g.* FROM games g
-        INNER JOIN search_results sr ON g.id = sr.gameId
-        WHERE sr.query = :query
-        ORDER BY sr.position ASC
-        """
-    )
+    @Query(SEARCH_RESULTS_BY_POSITION)
     fun getSearchResultsPagingSource(query: String): PagingSource<Int, GameEntity>
 
     @Query("SELECT * FROM search_queries ORDER BY lastQueriedAtEpochSeconds DESC LIMIT :limit")
@@ -63,7 +49,7 @@ interface SearchDao {
     @Query("DELETE FROM search_results WHERE query = :query")
     suspend fun deleteSearchResultsForQuery(query: String): Int
 
-    @Query("DELETE FROM search_results WHERE query = :query AND position >= :fromPosition")
+    @Query(DELETE_SEARCH_RESULTS_FROM_POSITION)
     suspend fun deleteSearchResultsFromPosition(query: String, fromPosition: Int): Int
 
     @Query("SELECT COUNT(*) FROM search_results WHERE query = :query")
