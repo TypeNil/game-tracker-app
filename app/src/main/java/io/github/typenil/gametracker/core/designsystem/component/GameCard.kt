@@ -30,13 +30,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.core.model.Game
-import io.github.typenil.gametracker.core.model.cardTags
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 private const val COVER_WIDTH_DP = 96
-private const val MAX_TAGS_DISPLAYED = 4
 
 /**
  * Premium Material 3 card presenting video game information in feeds and catalogs.
@@ -120,13 +118,13 @@ fun GameCard(
                     )
                 }
 
-                val tags = game.cardTags(MAX_TAGS_DISPLAYED)
+                val tags = selectCardTags(game.genres, game.platforms)
                 if (tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        maxItemsInEachRow = 2
+                        maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW
                     ) {
                         tags.forEach { tag ->
                             Surface(
@@ -137,6 +135,8 @@ fun GameCard(
                                     text = tag,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }

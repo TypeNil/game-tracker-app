@@ -81,7 +81,6 @@ object DiscoverFeedAssembler {
             releaseDateEpochSeconds = releaseDateEpochSeconds,
             summary = summary,
             genres = genres,
-            themes = themes,
             platforms = platforms,
         )
     }

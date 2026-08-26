@@ -509,7 +509,6 @@ private fun Game.toDetailsSkeleton(): GameDetails {
         releaseDateEpochSeconds = releaseDateEpochSeconds,
         summary = summary,
         genres = genres,
-        themes = themes,
         platforms = platforms
     )
 }
@@ -528,7 +527,6 @@ private fun GameDetails.toCatalogGame(): Game {
         releaseDateEpochSeconds = releaseDateEpochSeconds,
         summary = summary,
         genres = genres,
-        themes = themes,
         platforms = platforms
     )
 }
