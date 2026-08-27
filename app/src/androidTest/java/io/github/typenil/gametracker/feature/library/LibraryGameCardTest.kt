@@ -8,6 +8,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
@@ -16,12 +19,15 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_FAVORITE_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_STATUS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -233,6 +239,50 @@ class LibraryGameCardTest {
         composeTestRule.onNodeWithContentDescription(
             composeTestRule.activity.getString(R.string.library_added),
         ).assertIsDisplayed()
+
+        val hoursResults = mutableListOf<TextLayoutResult>()
+        composeTestRule
+            .onNodeWithTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
+                action(hoursResults)
+            }
+        val res = hoursResults.single()
+        val hoursText = composeTestRule.activity.getString(R.string.library_hours_short, 999_999)
+        assertFalse(res.isLineEllipsized(0))
+        assertEquals(hoursText.length, res.getLineEnd(0, visibleEnd = true))
+
+        val dateResults = mutableListOf<TextLayoutResult>()
+        composeTestRule
+            .onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
+                action(dateResults)
+            }
+        val dateRes = dateResults.single()
+        assertFalse(dateRes.isLineEllipsized(0))
+        assertEquals(expectedDate.length, dateRes.getLineEnd(0, visibleEnd = true))
+    }
+
+    @Test
+    fun card_withZeroHours_exposesHoursEditor() {
+        var hoursClicks = 0
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 0,
+                    ),
+                    onClick = {},
+                    onHoursClick = { hoursClicks++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 0),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
+        assertEquals(1, hoursClicks)
     }
 
     @Test
@@ -276,7 +326,9 @@ class LibraryGameCardTest {
         }
         val bounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true)
             .getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
         val height = bounds.bottom - bounds.top
+        assertTrue("Width $width should be >= 48.dp", width >= 48.dp)
         assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
     }
 

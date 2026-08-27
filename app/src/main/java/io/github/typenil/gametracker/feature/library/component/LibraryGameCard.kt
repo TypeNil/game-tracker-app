@@ -80,6 +80,8 @@ const val LIBRARY_CARD_ADDED_TEST_TAG = "library_card_added"
 const val LIBRARY_CARD_FAVORITE_TEST_TAG = "library_card_favorite"
 const val LIBRARY_CARD_STATUS_TEST_TAG = "library_card_status"
 const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
+const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
+const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
 
 /**
  * Full-width library row: cover, title, developer, tags, then a status control,
@@ -213,7 +215,7 @@ fun LibraryGameCard(
                             status = entry.status,
                             onStatusSelected = onStatusSelected,
                         )
-                        if (entry.showsHours()) {
+                        if (entry.canEditHours()) {
                             VerticalDivider(
                                 modifier = Modifier.height(16.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -223,7 +225,7 @@ fun LibraryGameCard(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier
                                     .weight(1f, fill = false)
-                                    .sizeIn(minHeight = 48.dp)
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable(onClick = onHoursClick)
                                     .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
@@ -245,11 +247,12 @@ fun LibraryGameCard(
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
                                 )
                             }
                         }
                     }
-                    if (entry.showsHours()) {
+                    if (entry.canEditHours()) {
                         Spacer(modifier = Modifier.width(8.dp))
                         VerticalDivider(
                             modifier = Modifier.height(16.dp),
@@ -274,6 +277,7 @@ fun LibraryGameCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             softWrap = false,
+                            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
                         )
                     }
                 }
@@ -395,9 +399,8 @@ private fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
     LibraryStatus.NOT_INTERESTED -> Icons.Filled.RemoveCircleOutline
 }
 
-private fun LibraryEntry.showsHours(): Boolean =
-    hoursPlayed > 0 &&
-        status != LibraryStatus.WISHLIST &&
+private fun LibraryEntry.canEditHours(): Boolean =
+    status != LibraryStatus.WISHLIST &&
         status != LibraryStatus.NOT_INTERESTED
 
 internal fun formatLibraryAddedDate(

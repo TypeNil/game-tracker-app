@@ -14,6 +14,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.QUICK_HOURS_DIALOG_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.QUICK_HOURS_INPUT_TEST_TAG
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.Game
@@ -181,6 +187,42 @@ class LibraryScreenTest {
             composeTestRule.activity.getString(R.string.library_empty_cta)
         ).performClick()
         assertEquals(true, navigated)
+    }
+
+    @Test
+    fun libraryScreen_hoursDialogState_restoresAcrossRecreation() {
+        val restorationTester = StateRestorationTester(composeTestRule)
+        restorationTester.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = LibraryUiState(
+                        allGames = listOf(hades),
+                        filteredGames = listOf(hades),
+                        selectedTab = LibraryTab.ALL,
+                        tabCounts = mapOf(LibraryTab.ALL to 1),
+                        isLoading = false,
+                    ),
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_INPUT_TEST_TAG).performTextClearance()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_INPUT_TEST_TAG).performTextInput("77")
+
+        restorationTester.emulateSavedInstanceStateRestore()
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText("77").assertIsDisplayed()
     }
 
 }

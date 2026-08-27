@@ -50,6 +50,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +65,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
-import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 import io.github.typenil.gametracker.feature.library.component.QuickHoursDialog
@@ -114,7 +114,7 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    var editingHoursGame by remember { mutableStateOf<LibraryGame?>(null) }
+    var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
     val pagerState = rememberPagerState(
         initialPage = uiState.selectedTab.ordinal,
         pageCount = { LibraryTab.entries.size },
@@ -359,7 +359,7 @@ fun LibraryScreen(
                                             onStatusSelected(item.game.id, status)
                                         },
                                         onHoursClick = {
-                                            editingHoursGame = item
+                                            editingHoursGameId = item.game.id
                                         },
                                     )
                                 }
@@ -372,11 +372,12 @@ fun LibraryScreen(
         }
     }
 
-    editingHoursGame?.let { targetGame ->
+    val targetGame = uiState.allGames.firstOrNull { it.game.id == editingHoursGameId }
+    if (targetGame != null) {
         QuickHoursDialog(
             gameName = targetGame.game.name,
             initialHours = targetGame.entry.hoursPlayed,
-            onDismissRequest = { editingHoursGame = null },
+            onDismissRequest = { editingHoursGameId = null },
             onConfirm = { hours ->
                 onHoursUpdated(targetGame.game.id, hours)
             },

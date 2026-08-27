@@ -121,4 +121,23 @@ class QuickHoursDialogTest {
         ).performClick()
         assertTrue(dismissed)
     }
+
+    @Test
+    fun dialog_emptyInput_disablesSaveAndDoesNotConfirm() {
+        var confirmedHours: Int? = null
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                QuickHoursDialog(
+                    gameName = "Hades",
+                    initialHours = 120,
+                    onDismissRequest = {},
+                    onConfirm = { confirmedHours = it },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_INPUT_TEST_TAG).performTextClearance()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_SAVE_TEST_TAG).assertIsNotEnabled()
+        assertEquals(null, confirmedHours)
+    }
 }

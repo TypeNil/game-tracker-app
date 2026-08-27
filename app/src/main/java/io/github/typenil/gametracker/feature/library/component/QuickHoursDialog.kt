@@ -54,8 +54,9 @@ fun QuickHoursDialog(
     modifier: Modifier = Modifier,
 ) {
     var hoursText by rememberSaveable { mutableStateOf(initialHours.toString()) }
-    val currentHours = hoursText.toIntOrNull() ?: 0
-    val isHoursValid = currentHours in 0..MAX_HOURS_VALUE
+    val parsedHours = hoursText.toIntOrNull()
+    val currentHours = parsedHours ?: 0
+    val isHoursValid = parsedHours != null && parsedHours in 0..MAX_HOURS_VALUE
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -149,8 +150,10 @@ fun QuickHoursDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirm(currentHours)
-                    onDismissRequest()
+                    parsedHours?.let { hours ->
+                        onConfirm(hours)
+                        onDismissRequest()
+                    }
                 },
                 enabled = isHoursValid,
                 modifier = Modifier.testTag(QUICK_HOURS_SAVE_TEST_TAG),
