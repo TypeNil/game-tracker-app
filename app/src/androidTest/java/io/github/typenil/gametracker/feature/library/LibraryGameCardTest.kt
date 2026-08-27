@@ -263,8 +263,7 @@ class LibraryGameCardTest {
     }
 
     @Test
-    fun card_withZeroHours_exposesHoursEditor() {
-        var hoursClicks = 0
+    fun card_withZeroHours_hidesHoursEditor() {
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
@@ -274,15 +273,13 @@ class LibraryGameCardTest {
                         hoursPlayed = 0,
                     ),
                     onClick = {},
-                    onHoursClick = { hoursClicks++ },
                 )
             }
         }
         composeTestRule.onNodeWithText(
             composeTestRule.activity.getString(R.string.library_hours_short, 0),
-        ).assertIsDisplayed()
-        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
-        assertEquals(1, hoursClicks)
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertDoesNotExist()
     }
 
     @Test

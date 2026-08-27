@@ -215,7 +215,7 @@ fun LibraryGameCard(
                             status = entry.status,
                             onStatusSelected = onStatusSelected,
                         )
-                        if (entry.canEditHours()) {
+                        if (entry.showsHours()) {
                             VerticalDivider(
                                 modifier = Modifier.height(16.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -252,7 +252,7 @@ fun LibraryGameCard(
                             }
                         }
                     }
-                    if (entry.canEditHours()) {
+                    if (entry.showsHours()) {
                         Spacer(modifier = Modifier.width(8.dp))
                         VerticalDivider(
                             modifier = Modifier.height(16.dp),
@@ -399,8 +399,9 @@ private fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
     LibraryStatus.NOT_INTERESTED -> Icons.Filled.RemoveCircleOutline
 }
 
-private fun LibraryEntry.canEditHours(): Boolean =
-    status != LibraryStatus.WISHLIST &&
+private fun LibraryEntry.showsHours(): Boolean =
+    hoursPlayed > 0 &&
+        status != LibraryStatus.WISHLIST &&
         status != LibraryStatus.NOT_INTERESTED
 
 internal fun formatLibraryAddedDate(

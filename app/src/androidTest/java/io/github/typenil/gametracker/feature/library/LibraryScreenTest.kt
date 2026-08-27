@@ -45,7 +45,8 @@ class LibraryScreenTest {
             status = LibraryStatus.PLAYING,
             isFavorite = true,
             addedAtEpochSeconds = 1700000000L,
-            updatedAtEpochSeconds = 1700000000L
+            updatedAtEpochSeconds = 1700000000L,
+            hoursPlayed = 20,
         )
     )
 
