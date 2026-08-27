@@ -12,6 +12,8 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -600,7 +602,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun libraryFlowFailure_keepsSearchContentAndDoesNotCrash() = runTest(testDispatcher) {
+    fun libraryFlowFailure_exposesFailureAndKeepsSearchContent() = runTest(testDispatcher) {
         every { libraryRepository.getLibraryGamesFlow() } returns flow {
             throw IllegalStateException("room down")
         }
@@ -611,8 +613,39 @@ class SearchViewModelTest {
         viewModel.uiState.test {
             advanceTimeBy(350L)
             advanceUntilIdle()
-            val state = awaitItemUntil { it.result is SearchResultUiState.Content }
+            val state = awaitItemUntil {
+                it.result is SearchResultUiState.Content && it.librarySnapshot is LibrarySnapshot.Failed
+            }
             assertTrue(state.result is SearchResultUiState.Content)
+            assertEquals(R.string.error_library_load_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun saveFailure_keepsEditingGameId() = runTest(testDispatcher) {
+        libraryFlow.value = listOf(
+            LibraryGame(
+                game = Game(id = 11L, name = "Trending Game"),
+                entry = LibraryEntry(
+                    gameId = 11L,
+                    status = LibraryStatus.WISHLIST,
+                    addedAtEpochSeconds = 1L,
+                    updatedAtEpochSeconds = 1L,
+                ),
+            ),
+        )
+        coEvery {
+            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onLibraryCardAction(Game(id = 11L, name = "Trending Game"))
+        advanceUntilIdle()
+        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.userMessageRes != null }
+            assertEquals(11L, state.editingGameId)
             cancelAndIgnoreRemainingEvents()
         }
     }

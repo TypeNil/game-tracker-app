@@ -121,33 +121,40 @@ class DefaultLibraryRepository @Inject constructor(
     ): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {
-                gameDao.getGameById(gameId) ?: return@runSuspendCatching AppResult.Error(
-                    AppError.UnknownError(IllegalStateException("Parent game $gameId must exist")),
-                )
-                val existing = libraryDao.getLibraryEntry(gameId)
-                    ?: return@runSuspendCatching AppResult.Error(
-                        AppError.UnknownError(IllegalStateException("No library entry for $gameId")),
-                    )
-                val now = System.currentTimeMillis() / 1000
-                val notes = userNotes?.trim()?.takeIf { it.isNotEmpty() }
-                val sanitizedNotes = notes?.let { raw ->
-                    if (raw.codePointCount(0, raw.length) > MAX_NOTES_CODE_POINTS) {
-                        raw.substring(0, raw.offsetByCodePoints(0, MAX_NOTES_CODE_POINTS))
-                    } else {
-                        raw
+                transactionRunner {
+                    gameDao.getGameById(gameId)
+                        ?: return@transactionRunner AppResult.Error(
+                            AppError.UnknownError(
+                                IllegalStateException("Parent game $gameId must exist"),
+                            ),
+                        )
+                    val existing = libraryDao.getLibraryEntry(gameId)
+                        ?: return@transactionRunner AppResult.Error(
+                            AppError.UnknownError(
+                                IllegalStateException("No library entry for $gameId"),
+                            ),
+                        )
+                    val now = System.currentTimeMillis() / 1000
+                    val notes = userNotes?.trim()?.takeIf { it.isNotEmpty() }
+                    val sanitizedNotes = notes?.let { raw ->
+                        if (raw.codePointCount(0, raw.length) > MAX_NOTES_CODE_POINTS) {
+                            raw.substring(0, raw.offsetByCodePoints(0, MAX_NOTES_CODE_POINTS))
+                        } else {
+                            raw
+                        }
                     }
+                    libraryDao.upsertLibraryEntry(
+                        existing.copy(
+                            status = status,
+                            userRating = userRating?.coerceIn(1, 10),
+                            hoursPlayed = hoursPlayed.coerceAtLeast(0),
+                            userNotes = sanitizedNotes,
+                            isFavorite = isFavorite,
+                            updatedAtEpochSeconds = now,
+                        ),
+                    )
+                    AppResult.Success(Unit)
                 }
-                libraryDao.upsertLibraryEntry(
-                    existing.copy(
-                        status = status,
-                        userRating = userRating?.coerceIn(1, 10),
-                        hoursPlayed = hoursPlayed.coerceAtLeast(0),
-                        userNotes = sanitizedNotes,
-                        isFavorite = isFavorite,
-                        updatedAtEpochSeconds = now,
-                    ),
-                )
-                AppResult.Success(Unit)
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 

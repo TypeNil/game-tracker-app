@@ -224,4 +224,57 @@ class DefaultLibraryRepositoryTest {
         coVerify(exactly = 0) { libraryDao.upsertLibraryEntry(any()) }
     }
 
+    @Test
+    fun upsertUserEdits_executesExistenceCheckAndWriteInTransaction() = runTest(testDispatcher) {
+        var inTransaction = false
+        var getInsideTransaction = false
+        var upsertInsideTransaction = false
+        val trackingRunner = object : TransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                inTransaction = true
+                try {
+                    return block()
+                } finally {
+                    inTransaction = false
+                }
+            }
+        }
+        val trackingRepository = DefaultLibraryRepository(
+            libraryDao,
+            gameDao,
+            trackingRunner,
+            testDispatcher,
+        )
+        coEvery { gameDao.getGameById(7L) } returns GameEntity(
+            7L, "Hades II", null, null, null, null, emptyList(), emptyList(), 1L,
+        )
+        coEvery { libraryDao.getLibraryEntry(7L) } answers {
+            getInsideTransaction = inTransaction
+            LibraryEntryEntity(
+                gameId = 7L,
+                status = LibraryStatus.WISHLIST,
+                addedAtEpochSeconds = 1L,
+                updatedAtEpochSeconds = 1L,
+            )
+        }
+        coEvery { libraryDao.upsertLibraryEntry(any()) } answers {
+            upsertInsideTransaction = inTransaction
+            1L
+        }
+
+        val result = trackingRepository.upsertUserEdits(
+            gameId = 7L,
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 1,
+            userNotes = null,
+            isFavorite = false,
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertTrue(getInsideTransaction)
+        assertTrue(upsertInsideTransaction)
+    }
+
+
 }

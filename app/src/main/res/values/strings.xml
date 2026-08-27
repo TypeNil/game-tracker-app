@@ -107,6 +107,8 @@
     <string name="game_card_edit_library">In library: %1$s. Edit entry</string>
 
     <string name="error_library_update_failed">Failed to update library entry</string>
+    <string name="error_library_load_failed">Library actions are temporarily unavailable</string>
+
     <string name="error_library_remove_failed">Failed to remove game from library</string>
 
     <!-- About / Attribution -->

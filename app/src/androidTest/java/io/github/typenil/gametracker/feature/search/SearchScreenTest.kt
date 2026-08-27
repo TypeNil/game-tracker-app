@@ -24,6 +24,8 @@ import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 
@@ -132,6 +134,7 @@ class SearchScreenTest {
                 uiState = SearchUiState(
                     query = "witcher",
                     result = SearchResultUiState.Content(sampleGames),
+                    librarySnapshot = LibrarySnapshot.Ready(emptyMap()),
                 ),
                 onQueryChange = {},
                 onClearQuery = {},

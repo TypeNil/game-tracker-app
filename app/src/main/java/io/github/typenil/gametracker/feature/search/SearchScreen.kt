@@ -64,6 +64,8 @@ import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 
@@ -84,9 +86,10 @@ fun SearchRoute(
         onRetry = viewModel::retry,
         onGameClick = onGameClick,
         onBackClick = onBackClick,
-        onLibraryAction = viewModel::addToWishlist,
+        onLibraryAction = viewModel::onLibraryCardAction,
         onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
         onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
+        onDismissEditLibrary = viewModel::onDismissEditLibrary,
         onUserMessageShown = viewModel::onUserMessageShown,
         modifier = modifier,
     )
@@ -104,6 +107,7 @@ fun SearchScreen(
     onLibraryAction: (Game) -> Unit = {},
     onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
+    onDismissEditLibrary: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -116,17 +120,8 @@ fun SearchScreen(
             onUserMessageShown()
         }
     }
-    var editingGameId by rememberSaveable { mutableStateOf<Long?>(null) }
-    val libraryEntries by rememberUpdatedState(uiState.libraryEntries)
-    val onLibraryActionState = rememberUpdatedState(onLibraryAction)
-    val handleLibraryAction: (Game) -> Unit = { game ->
-        if (libraryEntries[game.id] != null) {
-            editingGameId = game.id
-        } else {
-            onLibraryActionState.value(game)
-        }
-    }
-    val editingEntry = editingGameId?.let { libraryEntries[it] }
+    val readyLibrary = uiState.librarySnapshot as? LibrarySnapshot.Ready
+    val editingEntry = uiState.editingGameId?.let { readyLibrary?.entries?.get(it) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -206,9 +201,9 @@ fun SearchScreen(
                 is SearchResultUiState.Content -> {
                     SearchContentState(
                         games = result.games,
-                        libraryEntries = libraryEntries,
+                        librarySnapshot = uiState.librarySnapshot,
                         onGameClick = onGameClick,
-                        onLibraryAction = handleLibraryAction,
+                        onLibraryAction = onLibraryAction,
                     )
                 }
                 is SearchResultUiState.Empty -> {
@@ -226,15 +221,12 @@ fun SearchScreen(
     if (editingEntry != null) {
         EditLibrarySheet(
             initialEntry = editingEntry,
-            onDismiss = { editingGameId = null },
+            onDismiss = onDismissEditLibrary,
             onSave = { status, rating, hours, notes, favorite ->
                 onSaveLibraryEntry(editingEntry.gameId, status, rating, hours, notes, favorite)
-                editingGameId = null
             },
-            onRemove = {
-                onRemoveFromLibrary(editingEntry.gameId)
-                editingGameId = null
-            },
+            onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
+            actionsEnabled = !uiState.isLibrarySubmitting,
         )
     }
 }
@@ -288,11 +280,12 @@ private fun SearchLoadingState(modifier: Modifier = Modifier) {
 @Composable
 private fun SearchContentState(
     games: List<Game>,
-    libraryEntries: Map<Long, LibraryEntry>,
+    librarySnapshot: LibrarySnapshot,
     onGameClick: (Long) -> Unit,
     onLibraryAction: (Game) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val ready = librarySnapshot as? LibrarySnapshot.Ready
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(GtDimens.Gutter),
@@ -305,8 +298,8 @@ private fun SearchContentState(
             GameCard(
                 game = game,
                 onClick = { onGameClick(game.id) },
-                libraryStatus = libraryEntries[game.id]?.status,
-                onLibraryAction = onLibraryAction,
+                libraryStatus = ready?.entries?.get(game.id)?.status,
+                onLibraryAction = if (ready != null) onLibraryAction else null,
             )
         }
     }

@@ -9,8 +9,13 @@ import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -19,7 +24,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -43,7 +47,10 @@ class SearchViewModel @Inject constructor(
     val rawQuery: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
 
     private val retryEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    private val libraryEntries = MutableStateFlow<Map<Long, LibraryEntry>>(emptyMap())
+    private val librarySnapshot = MutableStateFlow<LibrarySnapshot>(LibrarySnapshot.Ready(emptyMap()))
+    private val editingGameId = MutableStateFlow<Long?>(null)
+    private val isLibrarySubmitting = MutableStateFlow(false)
+    private var libraryMutationJob: Job? = null
     private val userMessageRes = MutableStateFlow<Int?>(null)
 
     private val queryRequests: Flow<SearchRequest> = rawQuery
@@ -96,9 +103,9 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = combine(
         rawQuery,
         searchResults,
-        libraryEntries,
+        combine(librarySnapshot, editingGameId, isLibrarySubmitting, ::LibraryUi),
         userMessageRes,
-    ) { currentRawQuery, result, entries, message ->
+    ) { currentRawQuery, result, library, message ->
         val trimmedCurrent = currentRawQuery.trim()
         val resultState = if (trimmedCurrent.isBlank()) {
             SearchResultUiState.Idle
@@ -132,7 +139,9 @@ class SearchViewModel @Inject constructor(
         SearchUiState(
             query = currentRawQuery,
             result = resultState,
-            libraryEntries = entries,
+            librarySnapshot = library.snapshot,
+            editingGameId = library.editingGameId,
+            isLibrarySubmitting = library.isSubmitting,
             userMessageRes = message,
         )
     }.stateIn(
@@ -150,11 +159,18 @@ class SearchViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            libraryRepository.getLibraryGamesFlow()
-                .catch { emit(emptyList()) }
-                .collect { games ->
-                    libraryEntries.value = games.associate { it.entry.gameId to it.entry }
+            try {
+                libraryRepository.getLibraryGamesFlow().collect { games ->
+                    librarySnapshot.value = LibrarySnapshot.Ready(
+                        games.associate { it.entry.gameId to it.entry },
+                    )
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                librarySnapshot.value = LibrarySnapshot.Failed(AppError.UnknownError(error))
+                userMessageRes.value = R.string.error_library_load_failed
+            }
         }
     }
 
@@ -176,6 +192,23 @@ class SearchViewModel @Inject constructor(
         userMessageRes.value = null
     }
 
+    fun onLibraryCardAction(game: Game) {
+        when (val snapshot = librarySnapshot.value) {
+            LibrarySnapshot.Loading, is LibrarySnapshot.Failed -> return
+            is LibrarySnapshot.Ready -> {
+                if (snapshot.entries.containsKey(game.id)) {
+                    editingGameId.value = game.id
+                } else {
+                    addToWishlist(game)
+                }
+            }
+        }
+    }
+
+    fun onDismissEditLibrary() {
+        editingGameId.value = null
+    }
+
     fun addToWishlist(game: Game) {
         viewModelScope.launch {
             when (libraryRepository.addToWishlist(game)) {
@@ -193,31 +226,50 @@ class SearchViewModel @Inject constructor(
         userNotes: String?,
         isFavorite: Boolean,
     ) {
-        viewModelScope.launch {
-            when (
-                libraryRepository.upsertUserEdits(
-                    gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
-                )
-            ) {
-                is AppResult.Success -> Unit
-                is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
+        if (libraryMutationJob?.isActive == true) return
+        libraryMutationJob = viewModelScope.launch {
+            isLibrarySubmitting.value = true
+            try {
+                when (
+                    libraryRepository.upsertUserEdits(
+                        gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
+                    )
+                ) {
+                    is AppResult.Success -> editingGameId.value = null
+                    is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
+                }
+            } finally {
+                isLibrarySubmitting.value = false
             }
         }
     }
 
     fun onRemoveFromLibrary(gameId: Long) {
-        viewModelScope.launch {
-            when (libraryRepository.removeGameFromLibrary(gameId)) {
-                is AppResult.Success -> Unit
-                is AppResult.Error -> userMessageRes.value = R.string.error_library_remove_failed
+        if (libraryMutationJob?.isActive == true) return
+        libraryMutationJob = viewModelScope.launch {
+            isLibrarySubmitting.value = true
+            try {
+                when (libraryRepository.removeGameFromLibrary(gameId)) {
+                    is AppResult.Success -> editingGameId.value = null
+                    is AppResult.Error -> userMessageRes.value = R.string.error_library_remove_failed
+                }
+            } finally {
+                isLibrarySubmitting.value = false
             }
         }
     }
+
+    private data class LibraryUi(
+        val snapshot: LibrarySnapshot,
+        val editingGameId: Long?,
+        val isSubmitting: Boolean,
+    )
 
     private data class SearchRequest(
         val query: String,
         val shouldDebounce: Boolean,
     )
+
 
     private sealed interface RefreshStatus {
         data object Loading : RefreshStatus

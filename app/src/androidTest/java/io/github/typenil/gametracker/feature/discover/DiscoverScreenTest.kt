@@ -10,6 +10,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
 import io.github.typenil.gametracker.core.designsystem.component.GAME_CARD_LIBRARY_ACTION_TEST_TAG
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -84,6 +86,7 @@ class DiscoverScreenTest {
                                 games = listOf(game),
                             ),
                         ),
+                        librarySnapshot = LibrarySnapshot.Ready(emptyMap()),
                     ),
                     onGameClick = { gameClicks++ },
                     onSearchClick = {},
@@ -122,8 +125,8 @@ class DiscoverScreenTest {
                                 games = listOf(game),
                             ),
                         ),
-                        libraryEntries = mapOf(42L to entry),
-                        isLibraryLoaded = true,
+                        librarySnapshot = LibrarySnapshot.Ready(mapOf(42L to entry)),
+                        editingGameId = 42L,
                     ),
                     onGameClick = {},
                     onSearchClick = {},
@@ -136,7 +139,6 @@ class DiscoverScreenTest {
                 )
             }
         }
-        composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).performClick()
         assertEquals(0, libraryActions)
         composeTestRule.onNodeWithText(
             composeTestRule.activity.getString(R.string.library_edit_entry_title),
@@ -144,8 +146,7 @@ class DiscoverScreenTest {
     }
 
     @Test
-    fun chartsCard_unloadedLibrary_iconStillWishlistCallback() {
-        var libraryActions = 0
+    fun chartsCard_loadingLibrary_hidesAction() {
         val game = Game(id = 42L, name = "Elden Ring")
         composeTestRule.setContent {
             GameTrackerTheme {
@@ -158,7 +159,7 @@ class DiscoverScreenTest {
                                 games = listOf(game),
                             ),
                         ),
-                        isLibraryLoaded = false,
+                        librarySnapshot = LibrarySnapshot.Loading,
                     ),
                     onGameClick = {},
                     onSearchClick = {},
@@ -167,11 +168,10 @@ class DiscoverScreenTest {
                     onRetry = {},
                     onUserMessageShown = {},
                     onLoadMoreTrending = {},
-                    onLibraryAction = { libraryActions++ },
+                    onLibraryAction = {},
                 )
             }
         }
-        composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).performClick()
-        assertEquals(1, libraryActions)
+        composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).assertDoesNotExist()
     }
 }

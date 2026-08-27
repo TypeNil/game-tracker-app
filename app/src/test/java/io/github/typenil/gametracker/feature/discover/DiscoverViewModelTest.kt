@@ -13,6 +13,8 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryEntry
 
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
@@ -25,6 +27,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
+
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -346,7 +350,6 @@ class DiscoverViewModelTest {
         val game = Game(id = 11L, name = "Trending Game")
         val viewModel = createViewModel()
         advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.libraryEntries.isEmpty())
         viewModel.addToWishlist(game)
         advanceUntilIdle()
         coVerify(exactly = 1) { libraryRepository.addToWishlist(game) }
@@ -380,12 +383,66 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun libraryFlow_setsLoadedAndMap() = runTest {
+    fun libraryFlow_setsReadySnapshot() = runTest {
         libraryFlow.value = listOf(libraryGame(11L, LibraryStatus.PLAYING, "Trending Game"))
         val viewModel = createViewModel()
         viewModel.uiState.test {
-            val state = awaitItemUntil { it.isLibraryLoaded && it.libraryEntries.containsKey(11L) }
-            assertEquals(LibraryStatus.PLAYING, state.libraryEntries[11L]?.status)
+            val state = awaitItemUntil {
+                val snapshot = it.librarySnapshot
+                snapshot is LibrarySnapshot.Ready && snapshot.entries.containsKey(11L)
+            }
+            val ready = state.librarySnapshot as LibrarySnapshot.Ready
+            assertEquals(LibraryStatus.PLAYING, ready.entries[11L]?.status)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun saveFailure_keepsEditingGameId() = runTest {
+        libraryFlow.value = listOf(libraryGame(11L, LibraryStatus.WISHLIST))
+        coEvery {
+            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onLibraryCardAction(Game(id = 11L, name = "Trending Game"))
+        advanceUntilIdle()
+        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.userMessageRes != null }
+            assertEquals(11L, state.editingGameId)
+            assertEquals(R.string.error_library_update_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun removeFailure_keepsEditingGameId() = runTest {
+        libraryFlow.value = listOf(libraryGame(11L, LibraryStatus.WISHLIST))
+        coEvery { libraryRepository.removeGameFromLibrary(any()) } returns
+            AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onLibraryCardAction(Game(id = 11L, name = "Trending Game"))
+        advanceUntilIdle()
+        viewModel.onRemoveFromLibrary(11L)
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.userMessageRes != null }
+            assertEquals(11L, state.editingGameId)
+            assertEquals(R.string.error_library_remove_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun libraryFlowFailure_exposesFailedSnapshot() = runTest {
+        every { libraryRepository.getLibraryGamesFlow() } returns flow {
+            throw IllegalStateException("room down")
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.librarySnapshot is LibrarySnapshot.Failed }
+            assertEquals(R.string.error_library_load_failed, state.userMessageRes)
             cancelAndIgnoreRemainingEvents()
         }
     }

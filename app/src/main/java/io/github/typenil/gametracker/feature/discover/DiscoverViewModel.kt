@@ -14,6 +14,8 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
 
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -25,7 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.catch
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -60,8 +61,10 @@ class DiscoverViewModel @Inject constructor(
     private val refreshing = MutableStateFlow(false)
     private val error = MutableStateFlow<AppError?>(null)
     private val userMessageRes = MutableStateFlow<Int?>(null)
-    private val libraryEntries = MutableStateFlow<Map<Long, LibraryEntry>>(emptyMap())
-    private val isLibraryLoaded = MutableStateFlow(false)
+    private val librarySnapshot = MutableStateFlow<LibrarySnapshot>(LibrarySnapshot.Loading)
+    private val editingGameId = MutableStateFlow<Long?>(null)
+    private val isLibrarySubmitting = MutableStateFlow(false)
+    private var libraryMutationJob: Job? = null
 
     private val lastShownRecIds = MutableStateFlow<Set<Long>>(emptySet())
     private var lastLibraryEntries: Set<LibraryEntry>? = null
@@ -76,7 +79,14 @@ class DiscoverViewModel @Inject constructor(
         combine(recommendations, isColdStart, forYouLoading, forYouEndReached, ::ForYouStateData),
         gameRepository.getTrendingGamesFlow(),
         combine(selectedRail, hiddenFromTrending, railStates, ::RailStateData),
-        combine(loading, refreshing, error, userMessageRes, combine(libraryEntries, isLibraryLoaded, ::LibraryUi), ::Flags),
+        combine(
+            loading,
+            refreshing,
+            error,
+            userMessageRes,
+            combine(librarySnapshot, editingGameId, isLibrarySubmitting, ::LibraryUi),
+            ::Flags,
+        ),
     ) { tab, forYou, trending, railData, flags ->
         val visibleTrending = trending.filter { it.id !in railData.hidden }
         val hasAnyContent = forYou.recommendations.isNotEmpty() ||
@@ -95,8 +105,9 @@ class DiscoverViewModel @Inject constructor(
             isRefreshing = flags.refreshing,
             error = if (hasAnyContent) null else flags.error,
             userMessageRes = flags.userMessageRes,
-            libraryEntries = flags.library.entries,
-            isLibraryLoaded = flags.library.loaded,
+            librarySnapshot = flags.library.snapshot,
+            editingGameId = flags.library.editingGameId,
+            isLibrarySubmitting = flags.library.isSubmitting,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -105,12 +116,13 @@ class DiscoverViewModel @Inject constructor(
     )
 
     init {
+
         viewModelScope.launch {
-            libraryRepository.getLibraryGamesFlow()
-                .catch { emit(emptyList()) }
-                .collect { games ->
-                    libraryEntries.value = games.associate { it.entry.gameId to it.entry }
-                    isLibraryLoaded.value = true
+            try {
+                libraryRepository.getLibraryGamesFlow().collect { games ->
+                    librarySnapshot.value = LibrarySnapshot.Ready(
+                        games.associate { it.entry.gameId to it.entry },
+                    )
                     val entries = games.map { it.entry }.toSet()
                     val isInitial = lastLibraryEntries == null
                     val libraryChanged = lastLibraryEntries != entries
@@ -124,6 +136,13 @@ class DiscoverViewModel @Inject constructor(
                     }
                     loading.value = false
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                librarySnapshot.value = LibrarySnapshot.Failed(AppError.UnknownError(error))
+                userMessageRes.value = R.string.error_library_load_failed
+                loading.value = false
+            }
         }
         viewModelScope.launch {
             librarySeeder.seedIfEmpty()
@@ -150,6 +169,23 @@ class DiscoverViewModel @Inject constructor(
         userMessageRes.value = null
     }
 
+    fun onLibraryCardAction(game: Game) {
+        when (val snapshot = librarySnapshot.value) {
+            LibrarySnapshot.Loading, is LibrarySnapshot.Failed -> return
+            is LibrarySnapshot.Ready -> {
+                if (snapshot.entries.containsKey(game.id)) {
+                    editingGameId.value = game.id
+                } else {
+                    addToWishlist(game)
+                }
+            }
+        }
+    }
+
+    fun onDismissEditLibrary() {
+        editingGameId.value = null
+    }
+
     fun addToWishlist(game: Game) {
         viewModelScope.launch {
             when (libraryRepository.addToWishlist(game)) {
@@ -167,23 +203,35 @@ class DiscoverViewModel @Inject constructor(
         userNotes: String?,
         isFavorite: Boolean,
     ) {
-        viewModelScope.launch {
-            when (
-                libraryRepository.upsertUserEdits(
-                    gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
-                )
-            ) {
-                is AppResult.Success -> Unit
-                is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
+        if (libraryMutationJob?.isActive == true) return
+        libraryMutationJob = viewModelScope.launch {
+            isLibrarySubmitting.value = true
+            try {
+                when (
+                    libraryRepository.upsertUserEdits(
+                        gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
+                    )
+                ) {
+                    is AppResult.Success -> editingGameId.value = null
+                    is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
+                }
+            } finally {
+                isLibrarySubmitting.value = false
             }
         }
     }
 
     fun onRemoveFromLibrary(gameId: Long) {
-        viewModelScope.launch {
-            when (libraryRepository.removeGameFromLibrary(gameId)) {
-                is AppResult.Success -> Unit
-                is AppResult.Error -> userMessageRes.value = R.string.error_library_remove_failed
+        if (libraryMutationJob?.isActive == true) return
+        libraryMutationJob = viewModelScope.launch {
+            isLibrarySubmitting.value = true
+            try {
+                when (libraryRepository.removeGameFromLibrary(gameId)) {
+                    is AppResult.Success -> editingGameId.value = null
+                    is AppResult.Error -> userMessageRes.value = R.string.error_library_remove_failed
+                }
+            } finally {
+                isLibrarySubmitting.value = false
             }
         }
     }
@@ -473,8 +521,9 @@ class DiscoverViewModel @Inject constructor(
     )
 
     private data class LibraryUi(
-        val entries: Map<Long, LibraryEntry>,
-        val loaded: Boolean,
+        val snapshot: LibrarySnapshot,
+        val editingGameId: Long?,
+        val isSubmitting: Boolean,
     )
 
     private data class Flags(
