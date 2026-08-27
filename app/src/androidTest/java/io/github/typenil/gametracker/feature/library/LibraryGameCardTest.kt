@@ -1,6 +1,9 @@
 package io.github.typenil.gametracker.feature.library
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -327,6 +330,78 @@ class LibraryGameCardTest {
         val height = bounds.bottom - bounds.top
         assertTrue("Width $width should be >= 48.dp", width >= 48.dp)
         assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
+    }
+
+    @Test
+    fun card_changingStatusToWishlist_hidesHoursAndDividers() {
+        var currentStatus by mutableStateOf(LibraryStatus.PLAYING)
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = currentStatus,
+                        hoursPlayed = 20,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertIsDisplayed()
+
+        currentStatus = LibraryStatus.WISHLIST
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun card_updatingHoursToZero_animatesOutHoursAndDividers() {
+        var currentHours by mutableStateOf(20)
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = currentHours,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertIsDisplayed()
+
+        currentHours = 0
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun card_updatingHoursFromZero_animatesInHoursAndDividers() {
+        var currentHours by mutableStateOf(0)
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = currentHours,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertDoesNotExist()
+
+        currentHours = 15
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 15),
+        ).assertIsDisplayed()
     }
 
     private fun libraryGame(

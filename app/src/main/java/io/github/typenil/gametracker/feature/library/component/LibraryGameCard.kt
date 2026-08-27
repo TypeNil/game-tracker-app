@@ -1,5 +1,14 @@
 package io.github.typenil.gametracker.feature.library.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,6 +84,11 @@ private val MetaIconSize = 18.dp
 private val MetaChevronSize = 16.dp
 private val LibraryAddedDateFormatter =
     DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+private const val ANIM_EXPAND_ENTER_MS = 250
+private const val ANIM_SHRINK_EXIT_MS = 200
+private const val ANIM_TEXT_FADE_IN_MS = 200
+private const val ANIM_TEXT_FADE_OUT_MS = 150
+private const val ANIM_ACCENT_COLOR_MS = 250
 
 const val LIBRARY_CARD_ADDED_TEST_TAG = "library_card_added"
 const val LIBRARY_CARD_FAVORITE_TEST_TAG = "library_card_favorite"
@@ -206,16 +220,22 @@ fun LibraryGameCard(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    LibraryStatusControl(
+                        status = entry.status,
+                        onStatusSelected = onStatusSelected,
+                    )
+                    AnimatedVisibility(
+                        visible = entry.showsHours(),
+                        enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                            expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                        exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                            shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
                     ) {
-                        LibraryStatusControl(
-                            status = entry.status,
-                            onStatusSelected = onStatusSelected,
-                        )
-                        if (entry.showsHours()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(start = 8.dp),
+                        ) {
                             VerticalDivider(
                                 modifier = Modifier.height(16.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -224,7 +244,6 @@ fun LibraryGameCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier
-                                    .weight(1f, fill = false)
                                     .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable(onClick = onHoursClick)
@@ -237,29 +256,35 @@ fun LibraryGameCard(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(MetaIconSize),
                                 )
-                                Text(
-                                    text = stringResource(
-                                        R.string.library_hours_short,
-                                        entry.hoursPlayed,
-                                    ),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
-                                )
+                                AnimatedContent(
+                                    targetState = entry.hoursPlayed,
+                                    transitionSpec = {
+                                        fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
+                                            fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                                    },
+                                    label = "hoursTextTransition",
+                                ) { hours ->
+                                    Text(
+                                        text = stringResource(
+                                            R.string.library_hours_short,
+                                            hours,
+                                        ),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
+                                    )
+                                }
                             }
+                            VerticalDivider(
+                                modifier = Modifier.height(16.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
                         }
                     }
-                    if (entry.showsHours()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        VerticalDivider(
-                            modifier = Modifier.height(16.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.weight(1f))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -321,7 +346,12 @@ private fun LibraryStatusControl(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val accent = status.contentColor()
+    val targetAccent = status.contentColor()
+    val accent by animateColorAsState(
+        targetValue = targetAccent,
+        animationSpec = tween(ANIM_ACCENT_COLOR_MS),
+        label = "statusAccentColor",
+    )
     val statusLabel = stringResource(status.displayNameRes())
     val changeStatus = stringResource(R.string.library_change_status, statusLabel)
 
@@ -336,20 +366,34 @@ private fun LibraryStatusControl(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Icon(
-                imageVector = status.leadingIcon(),
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(MetaIconSize),
-            )
-            Text(
-                text = statusLabel,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            AnimatedContent(
+                targetState = status,
+                transitionSpec = {
+                    fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
+                        fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                },
+                label = "statusContentTransition",
+            ) { currentStatus ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = currentStatus.leadingIcon(),
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(MetaIconSize),
+                    )
+                    Text(
+                        text = stringResource(currentStatus.displayNameRes()),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Icon(
                 imageVector = Icons.Filled.KeyboardArrowDown,
                 contentDescription = changeStatus,
