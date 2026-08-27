@@ -38,11 +38,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +60,6 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
-import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
 import io.github.typenil.gametracker.core.model.LibraryStatus

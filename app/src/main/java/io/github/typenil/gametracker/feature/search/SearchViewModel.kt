@@ -13,7 +13,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 
 import io.github.typenil.gametracker.core.model.Game
-import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
 import io.github.typenil.gametracker.core.model.LibraryStatus
