@@ -64,6 +64,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 
 @Composable
@@ -86,6 +87,7 @@ fun LibraryRoute(
         onClearSearch = viewModel::onClearSearch,
         onUserMessageShown = viewModel::onUserMessageShown,
         onToggleFavorite = viewModel::onToggleFavorite,
+        onStatusSelected = viewModel::onStatusSelected,
         modifier = modifier
     )
 }
@@ -103,6 +105,7 @@ fun LibraryScreen(
     onSortOptionSelected: (LibrarySortOption) -> Unit,
     onClearSearch: () -> Unit,
     onToggleFavorite: (Long) -> Unit = {},
+    onStatusSelected: (Long, LibraryStatus) -> Unit = { _, _ -> },
     onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -347,6 +350,9 @@ fun LibraryScreen(
                                         libraryGame = item,
                                         onClick = { onGameClick(item.game.id) },
                                         onFavoriteClick = { onToggleFavorite(item.game.id) },
+                                        onStatusSelected = { status ->
+                                            onStatusSelected(item.game.id, status)
+                                        },
                                     )
                                 }
                             }

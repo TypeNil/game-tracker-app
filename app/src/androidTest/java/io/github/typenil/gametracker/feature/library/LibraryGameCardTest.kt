@@ -18,6 +18,7 @@ import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_FAVORITE_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_STATUS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -51,34 +52,47 @@ class LibraryGameCardTest {
         composeTestRule.onNodeWithText("Hades").assertIsDisplayed()
         composeTestRule.onNodeWithText("Supergiant Games").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            composeTestRule.activity.getString(R.string.library_hours_format, 12),
+            composeTestRule.activity.getString(R.string.library_status_playing),
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 12),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_played),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
             composeTestRule.activity.getString(R.string.library_hours_played),
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("93.0").assertIsDisplayed()
         composeTestRule.onNodeWithText("Action").assertIsDisplayed()
         composeTestRule.onNodeWithText(
             composeTestRule.activity.getString(R.string.library_added),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.library_added),
         ).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription(
             composeTestRule.activity.getString(R.string.library_favorite_remove),
         ).assertIsDisplayed()
-        composeTestRule.onNodeWithText(
-            composeTestRule.activity.getString(R.string.library_status_playing),
-        ).assertDoesNotExist()
 
-        val hoursLeft = composeTestRule.onNodeWithText(
-            composeTestRule.activity.getString(R.string.library_hours_played),
+        val statusBounds = composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_status_playing),
             useUnmergedTree = true,
-        ).getUnclippedBoundsInRoot().left
+        ).getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 12),
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
         val addedBounds = composeTestRule.onNodeWithTag(
             LIBRARY_CARD_ADDED_TEST_TAG,
             useUnmergedTree = true,
         ).getUnclippedBoundsInRoot()
         val favoriteBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_FAVORITE_TEST_TAG)
             .getUnclippedBoundsInRoot()
-        assertTrue(addedBounds.left > hoursLeft)
+        assertTrue(hoursBounds.left > statusBounds.left)
+        assertTrue(addedBounds.left > hoursBounds.left)
+        assertTrue(addedBounds.top >= statusBounds.top - 8.dp)
+        assertTrue(addedBounds.bottom <= statusBounds.bottom + 8.dp)
         assertTrue(favoriteBounds.right - addedBounds.right < 24.dp)
     }
 
@@ -100,6 +114,15 @@ class LibraryGameCardTest {
 
         composeTestRule.onNodeWithText("Celeste").assertIsDisplayed()
         composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_status_wishlist),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 0),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_played),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
             composeTestRule.activity.getString(R.string.library_hours_played),
         ).assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription(
@@ -115,21 +138,55 @@ class LibraryGameCardTest {
     }
 
     @Test
-    fun card_click_andFavorite_areIndependent() {
+    fun card_hidesHours_forWishlistEvenWhenPlayed() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Celeste",
+                        status = LibraryStatus.WISHLIST,
+                        hoursPlayed = 12,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 12),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.library_hours_played),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.library_added),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun card_click_favorite_andStatus_areIndependent() {
         var clickCount = 0
         var favoriteCount = 0
+        var selectedStatus: LibraryStatus? = null
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
                     libraryGame = libraryGame(name = "Hades"),
                     onClick = { clickCount++ },
                     onFavoriteClick = { favoriteCount++ },
+                    onStatusSelected = { selectedStatus = it },
                 )
             }
         }
         composeTestRule.onNodeWithTag(LIBRARY_CARD_FAVORITE_TEST_TAG).performClick()
         assertEquals(0, clickCount)
         assertEquals(1, favoriteCount)
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG).performClick()
+        assertEquals(0, clickCount)
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_status_completed),
+        ).performClick()
+        assertEquals(LibraryStatus.COMPLETED, selectedStatus)
+        assertEquals(0, clickCount)
         composeTestRule.onNodeWithText("Hades").performClick()
         assertEquals(1, clickCount)
         assertEquals(1, favoriteCount)

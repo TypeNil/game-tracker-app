@@ -114,6 +114,17 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    fun onStatusSelected(gameId: Long, status: LibraryStatus) {
+        viewModelScope.launch {
+            when (libraryRepository.setGameStatus(gameId, status)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> {
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
     fun onUserMessageShown() {
         _userMessageRes.value = null
     }

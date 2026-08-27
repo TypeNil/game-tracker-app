@@ -220,6 +220,33 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `onStatusSelected calls setGameStatus with game id`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.onStatusSelected(hades.game.id, LibraryStatus.COMPLETED)
+        assertEquals(1L, fakeLibraryRepository.lastStatusGameId)
+        assertEquals(LibraryStatus.COMPLETED, fakeLibraryRepository.lastStatus)
+    }
+
+    @Test
+    fun `onStatusSelected error exposes update failure message`() = runTest {
+        fakeLibraryRepository.setStatusResult = AppResult.Error(
+            AppError.UnknownError(IllegalStateException("missing")),
+        )
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertNull(awaitItem().userMessageRes)
+            viewModel.onStatusSelected(hades.game.id, LibraryStatus.DROPPED)
+            assertEquals(
+                R.string.error_library_update_failed,
+                awaitItem().userMessageRes,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 
@@ -228,11 +255,18 @@ class LibraryViewModelTest {
         override suspend fun setGameStatus(
             gameId: Long,
             status: LibraryStatus
-        ): AppResult<Unit> = AppResult.Success(Unit)
+        ): AppResult<Unit> {
+            lastStatusGameId = gameId
+            lastStatus = status
+            return setStatusResult
+        }
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
         var lastToggleGameId: Long? = null
         var toggleResult: AppResult<Unit> = AppResult.Success(Unit)
+        var lastStatusGameId: Long? = null
+        var lastStatus: LibraryStatus? = null
+        var setStatusResult: AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun upsertUserEdits(
             gameId: Long,
