@@ -3,9 +3,18 @@ package io.github.typenil.gametracker.feature.search
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.repository.GameRepository
+import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
+
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -14,6 +23,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.flow
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -36,6 +47,9 @@ class SearchViewModelTest {
     val mainDispatcherRule = MainDispatcherRule(testDispatcher)
 
     private val repository: GameRepository = mockk()
+    private val libraryRepository: LibraryRepository = mockk()
+    private val libraryFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
+
 
     private val sampleGames = listOf(
         Game(
@@ -55,14 +69,21 @@ class SearchViewModelTest {
     @Before
     fun setUp() {
         every { repository.getSearchResultsFlow(any()) } returns defaultSearchFlow
+        every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow
+        coEvery { libraryRepository.addToWishlist(any()) } returns AppResult.Success(Unit)
+        coEvery {
+            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(Unit)
+        coEvery { libraryRepository.removeGameFromLibrary(any()) } returns AppResult.Success(Unit)
     }
 
     private fun createViewModel(
-        savedStateHandle: SavedStateHandle = SavedStateHandle()
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
     ): SearchViewModel {
         return SearchViewModel(
             gameRepository = repository,
-            savedStateHandle = savedStateHandle
+            savedStateHandle = savedStateHandle,
+            libraryRepository = libraryRepository,
         )
     }
 
@@ -542,6 +563,100 @@ class SearchViewModelTest {
         val result = viewModel.rawQuery.value
         assertEquals(100, result.codePointCount(0, result.length))
         assertEquals("😀".repeat(100), result)
+    }
+
+    @Test
+    fun addToWishlist_whenAbsent_callsRepository() = runTest(testDispatcher) {
+        val game = Game(id = 11L, name = "Trending Game")
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.addToWishlist(game)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { libraryRepository.addToWishlist(game) }
+        coVerify(exactly = 0) { libraryRepository.setGameStatus(any(), any()) }
+    }
+
+    @Test
+    fun addToWishlist_onError_setsUserMessage() = runTest(testDispatcher) {
+        coEvery { libraryRepository.addToWishlist(any()) } returns
+            AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.addToWishlist(Game(id = 11L, name = "Trending Game"))
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.userMessageRes != null }
+            assertEquals(R.string.error_library_update_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onSaveLibraryEntry_delegatesToUpsertUserEdits() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        advanceUntilIdle()
+        coVerify {
+            libraryRepository.upsertUserEdits(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        }
+    }
+
+    @Test
+    fun libraryFlowFailure_exposesFailureAndKeepsSearchContent() = runTest(testDispatcher) {
+        every { libraryRepository.getLibraryGamesFlow() } returns flow {
+            throw IllegalStateException("room down")
+        }
+        val searchFlow = MutableStateFlow(sampleGames)
+        every { repository.getSearchResultsFlow("witcher") } returns searchFlow
+        coEvery { repository.searchGames("witcher", any(), any()) } returns AppResult.Success(Unit)
+        val viewModel = createViewModel(SavedStateHandle(mapOf(SearchViewModel.KEY_QUERY to "witcher")))
+        viewModel.uiState.test {
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            val state = awaitItemUntil {
+                it.result is SearchResultUiState.Content && it.librarySnapshot is LibrarySnapshot.Failed
+            }
+            assertTrue(state.result is SearchResultUiState.Content)
+            assertEquals(R.string.error_library_load_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun saveFailure_keepsEditingGameId() = runTest(testDispatcher) {
+        libraryFlow.value = listOf(
+            LibraryGame(
+                game = Game(id = 11L, name = "Trending Game"),
+                entry = LibraryEntry(
+                    gameId = 11L,
+                    status = LibraryStatus.WISHLIST,
+                    addedAtEpochSeconds = 1L,
+                    updatedAtEpochSeconds = 1L,
+                ),
+            ),
+        )
+        coEvery {
+            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+        } returns AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        viewModel.onLibraryCardAction(Game(id = 11L, name = "Trending Game"))
+        advanceUntilIdle()
+        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.userMessageRes != null }
+            assertEquals(11L, state.editingGameId)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private suspend fun app.cash.turbine.ReceiveTurbine<SearchUiState>.awaitItemUntil(
+        predicate: (SearchUiState) -> Boolean,
+    ): SearchUiState {
+        while (true) {
+            val item = awaitItem()
+            if (predicate(item)) return item
+        }
     }
 }
 

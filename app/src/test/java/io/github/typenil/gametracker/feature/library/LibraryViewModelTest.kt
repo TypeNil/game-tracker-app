@@ -201,6 +201,16 @@ class LibraryViewModelTest {
             status: LibraryStatus
         ): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun upsertUserEdits(
+            gameId: Long,
+            status: LibraryStatus,
+            userRating: Int?,
+            hoursPlayed: Int,
+            userNotes: String?,
+            isFavorite: Boolean,
+        ): AppResult<Unit> = AppResult.Success(Unit)
+
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 }

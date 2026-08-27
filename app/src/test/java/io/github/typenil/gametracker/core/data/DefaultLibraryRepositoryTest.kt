@@ -10,6 +10,9 @@ import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEn
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
+import io.github.typenil.gametracker.core.model.Game
+
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -26,7 +29,15 @@ class DefaultLibraryRepositoryTest {
     private val libraryDao: LibraryDao = mockk(relaxed = true)
     private val gameDao: GameDao = mockk(relaxed = true)
     private val testDispatcher = StandardTestDispatcher()
-    private val repository = DefaultLibraryRepository(libraryDao, gameDao, testDispatcher)
+    private val passThroughTransactionRunner = object : TransactionRunner {
+        override suspend fun <T> invoke(block: suspend () -> T): T = block()
+    }
+    private val repository = DefaultLibraryRepository(
+        libraryDao,
+        gameDao,
+        passThroughTransactionRunner,
+        testDispatcher,
+    )
 
     @Test
     fun getLibraryGamesFlow_mapsEntitiesToDomain() = runTest(testDispatcher) {
@@ -131,4 +142,139 @@ class DefaultLibraryRepositoryTest {
         assertTrue(result is AppResult.Success)
         coVerify { libraryDao.deleteLibraryEntry(10L) }
     }
+
+    @Test
+    fun addToWishlist_whenNoCatalogRow_upsertsGameThenEntry() = runTest(testDispatcher) {
+        coEvery { libraryDao.getLibraryEntry(7L) } returns null
+        coEvery { gameDao.upsertGame(any()) } returns 7L
+        coEvery { libraryDao.upsertLibraryEntry(any()) } returns 1L
+        val game = Game(id = 7L, name = "Hades II")
+
+        val result = repository.addToWishlist(game)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { gameDao.upsertGame(match { it.id == 7L && it.name == "Hades II" }) }
+        coVerify(exactly = 1) {
+            libraryDao.upsertLibraryEntry(match { it.gameId == 7L && it.status == LibraryStatus.WISHLIST })
+        }
+    }
+
+    @Test
+    fun addToWishlist_whenEntryExists_doesNotWrite() = runTest(testDispatcher) {
+        coEvery { libraryDao.getLibraryEntry(7L) } returns LibraryEntryEntity(
+            gameId = 7L,
+            status = LibraryStatus.COMPLETED,
+            addedAtEpochSeconds = 1L,
+            updatedAtEpochSeconds = 1L,
+        )
+        val result = repository.addToWishlist(Game(id = 7L, name = "Hades II"))
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { gameDao.upsertGame(any()) }
+        coVerify(exactly = 0) { libraryDao.upsertLibraryEntry(any()) }
+    }
+
+    @Test
+    fun upsertUserEdits_preservesAddedAt_andClampsRating() = runTest(testDispatcher) {
+        coEvery { gameDao.getGameById(7L) } returns GameEntity(
+            7L, "Hades II", null, null, null, null, emptyList(), emptyList(), 1L,
+        )
+        coEvery { libraryDao.getLibraryEntry(7L) } returns LibraryEntryEntity(
+            gameId = 7L,
+            status = LibraryStatus.WISHLIST,
+            userRating = 9,
+            userNotes = "keep",
+            isFavorite = true,
+            addedAtEpochSeconds = 111L,
+            updatedAtEpochSeconds = 111L,
+            hoursPlayed = 3,
+        )
+        coEvery { libraryDao.upsertLibraryEntry(any()) } returns 1L
+
+        val result = repository.upsertUserEdits(
+            gameId = 7L,
+            status = LibraryStatus.PLAYING,
+            userRating = 99,
+            hoursPlayed = 12,
+            userNotes = "  fun  ",
+            isFavorite = false,
+        )
+        assertTrue(result is AppResult.Success)
+        coVerify {
+            libraryDao.upsertLibraryEntry(
+                match {
+                    it.status == LibraryStatus.PLAYING &&
+                        it.userRating == 10 &&
+                        it.hoursPlayed == 12 &&
+                        it.userNotes == "fun" &&
+                        !it.isFavorite &&
+                        it.addedAtEpochSeconds == 111L
+                },
+            )
+        }
+    }
+
+    @Test
+    fun upsertUserEdits_whenNoEntry_returnsError() = runTest(testDispatcher) {
+        coEvery { gameDao.getGameById(7L) } returns GameEntity(
+            7L, "Hades II", null, null, null, null, emptyList(), emptyList(), 1L,
+        )
+        coEvery { libraryDao.getLibraryEntry(7L) } returns null
+        val result = repository.upsertUserEdits(7L, LibraryStatus.WISHLIST, null, 0, null, false)
+        assertTrue(result is AppResult.Error)
+        coVerify(exactly = 0) { libraryDao.upsertLibraryEntry(any()) }
+    }
+
+    @Test
+    fun upsertUserEdits_executesExistenceCheckAndWriteInTransaction() = runTest(testDispatcher) {
+        var inTransaction = false
+        var getInsideTransaction = false
+        var upsertInsideTransaction = false
+        val trackingRunner = object : TransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                inTransaction = true
+                try {
+                    return block()
+                } finally {
+                    inTransaction = false
+                }
+            }
+        }
+        val trackingRepository = DefaultLibraryRepository(
+            libraryDao,
+            gameDao,
+            trackingRunner,
+            testDispatcher,
+        )
+        coEvery { gameDao.getGameById(7L) } returns GameEntity(
+            7L, "Hades II", null, null, null, null, emptyList(), emptyList(), 1L,
+        )
+        coEvery { libraryDao.getLibraryEntry(7L) } answers {
+            getInsideTransaction = inTransaction
+            LibraryEntryEntity(
+                gameId = 7L,
+                status = LibraryStatus.WISHLIST,
+                addedAtEpochSeconds = 1L,
+                updatedAtEpochSeconds = 1L,
+            )
+        }
+        coEvery { libraryDao.upsertLibraryEntry(any()) } answers {
+            upsertInsideTransaction = inTransaction
+            1L
+        }
+
+        val result = trackingRepository.upsertUserEdits(
+            gameId = 7L,
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 1,
+            userNotes = null,
+            isFavorite = false,
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertTrue(getInsideTransaction)
+        assertTrue(upsertInsideTransaction)
+    }
+
+
 }

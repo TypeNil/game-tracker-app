@@ -73,7 +73,8 @@ fun EditLibrarySheet(
     onDismiss: () -> Unit,
     onSave: (status: LibraryStatus, rating: Int?, hours: Int, notes: String?, isFavorite: Boolean) -> Unit,
     onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionsEnabled: Boolean = true,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
@@ -365,7 +366,8 @@ fun EditLibrarySheet(
                 onClick = {
                     onSave(selectedStatus, selectedRating, currentHours, notes, isFavorite)
                 },
-                modifier = Modifier.fillMaxWidth()
+                enabled = actionsEnabled,
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.library_save))
             }
@@ -374,10 +376,11 @@ fun EditLibrarySheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
                     onClick = onRemove,
+                    enabled = actionsEnabled,
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
+                        contentColor = MaterialTheme.colorScheme.error,
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))

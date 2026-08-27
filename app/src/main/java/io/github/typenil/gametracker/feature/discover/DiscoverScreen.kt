@@ -59,6 +59,12 @@ import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
+
+
 import io.github.typenil.gametracker.core.model.RecommendationReason
 import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,6 +82,11 @@ fun DiscoverScreen(
     onSelectTab: (DiscoverTab) -> Unit = {},
     onSelectRail: (DiscoverRail) -> Unit = {},
     onLoadMoreForYou: () -> Unit = {},
+    onLibraryAction: (Game) -> Unit = {},
+    onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
+    onRemoveFromLibrary: (Long) -> Unit = {},
+    onDismissEditLibrary: () -> Unit = {},
+
     scrollToTopTrigger: Long = 0L,
     modifier: Modifier = Modifier,
 ) {
@@ -87,6 +98,8 @@ fun DiscoverScreen(
             onUserMessageShown()
         }
     }
+    val readyLibrary = uiState.librarySnapshot as? LibrarySnapshot.Ready
+    val editingEntry = uiState.editingGameId?.let { readyLibrary?.entries?.get(it) }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
@@ -117,10 +130,22 @@ fun DiscoverScreen(
                 onSelectTab = onSelectTab,
                 onSelectRail = onSelectRail,
                 onLoadMoreForYou = onLoadMoreForYou,
+                onLibraryAction = onLibraryAction,
                 scrollToTopTrigger = scrollToTopTrigger,
                 modifier = Modifier.padding(innerPadding),
             )
         }
+    }
+    if (editingEntry != null) {
+        EditLibrarySheet(
+            initialEntry = editingEntry,
+            onDismiss = onDismissEditLibrary,
+            onSave = { status, rating, hours, notes, favorite ->
+                onSaveLibraryEntry(editingEntry.gameId, status, rating, hours, notes, favorite)
+            },
+            onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
+            actionsEnabled = !uiState.isLibrarySubmitting,
+        )
     }
 }
 
@@ -135,6 +160,7 @@ private fun DiscoverContent(
     onSelectTab: (DiscoverTab) -> Unit,
     onSelectRail: (DiscoverRail) -> Unit,
     onLoadMoreForYou: () -> Unit,
+    onLibraryAction: (Game) -> Unit,
     scrollToTopTrigger: Long,
     modifier: Modifier,
 ) {
@@ -186,6 +212,7 @@ private fun DiscoverContent(
                     onGameClick = onGameClick,
                     onLoadMoreRail = onLoadMoreRail,
                     onSelectRail = onSelectRail,
+                    onLibraryAction = onLibraryAction,
                 )
             }
         }
@@ -319,6 +346,7 @@ private fun ChartsFeed(
     onGameClick: (Long) -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit,
     onSelectRail: (DiscoverRail) -> Unit,
+    onLibraryAction: (Game) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberSaveable(uiState.selectedRail, saver = LazyListState.Saver) {
@@ -376,7 +404,17 @@ private fun ChartsFeed(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(currentRailState.games, key = { "${currentRailState.rail.type}:${it.id}" }) { game ->
-                    GameCard(game = game, onClick = { onGameClick(game.id) })
+                    GameCard(
+                        game = game,
+                        onClick = { onGameClick(game.id) },
+                        libraryStatus = (uiState.librarySnapshot as? LibrarySnapshot.Ready)
+                            ?.entries?.get(game.id)?.status,
+                        onLibraryAction = if (uiState.librarySnapshot is LibrarySnapshot.Ready) {
+                            onLibraryAction
+                        } else {
+                            null
+                        },
+                    )
                 }
                 if (currentRailState.isLoading) {
                     item(key = "loading-append:${currentRailState.rail.type}") {

@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.core.data.repository
 
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -30,6 +31,23 @@ interface LibraryRepository {
      * Saves or updates a full [LibraryEntry] record (ratings, notes, hours, favorites).
      */
     suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit>
+
+    /**
+     * Parent-first Wishlist insert. No-op Success if an entry already exists.
+     */
+    suspend fun addToWishlist(game: Game): AppResult<Unit>
+
+    /**
+     * Updates an existing library entry. Preserves [LibraryEntry.addedAtEpochSeconds].
+     */
+    suspend fun upsertUserEdits(
+        gameId: Long,
+        status: LibraryStatus,
+        userRating: Int?,
+        hoursPlayed: Int,
+        userNotes: String?,
+        isFavorite: Boolean,
+    ): AppResult<Unit>
 
     /**
      * Removes game [gameId] from user's library.
