@@ -135,6 +135,17 @@ class DefaultLibraryRepositoryTest {
     }
 
     @Test
+    fun setGameStatus_whenEntryExists_updatesStatusDirectlyWithoutUpsert() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateStatus(10L, LibraryStatus.PLAYING, any()) } returns 1
+
+        val result = repository.setGameStatus(10L, LibraryStatus.PLAYING)
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateStatus(10L, LibraryStatus.PLAYING, any()) }
+        coVerify(exactly = 0) { gameDao.getGameById(any()) }
+        coVerify(exactly = 0) { libraryDao.upsertLibraryEntry(any()) }
+    }
+
+    @Test
     fun removeGameFromLibrary_deletesEntry() = runTest(testDispatcher) {
         coEvery { libraryDao.deleteLibraryEntry(10L) } returns 1
 

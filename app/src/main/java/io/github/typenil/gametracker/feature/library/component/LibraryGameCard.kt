@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -57,14 +57,10 @@ import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
+import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.selectCardTags
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
-import io.github.typenil.gametracker.core.designsystem.theme.LibraryCompleted
-import io.github.typenil.gametracker.core.designsystem.theme.LibraryDropped
-import io.github.typenil.gametracker.core.designsystem.theme.LibraryNotInterested
-import io.github.typenil.gametracker.core.designsystem.theme.LibraryPlaying
-import io.github.typenil.gametracker.core.designsystem.theme.LibraryWishlist
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -295,17 +291,18 @@ private fun LibraryStatusControl(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val accent = status.accentColor()
+    val accent = status.contentColor()
     val statusLabel = stringResource(status.displayNameRes())
     val changeStatus = stringResource(R.string.library_change_status, statusLabel)
 
     Box(modifier = modifier) {
         Row(
             modifier = Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .testTag(LIBRARY_CARD_STATUS_TEST_TAG)
-                .padding(vertical = 2.dp, horizontal = 2.dp),
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -335,7 +332,7 @@ private fun LibraryStatusControl(
             onDismissRequest = { expanded = false },
         ) {
             LibraryStatus.entries.forEach { option ->
-                val optionAccent = option.accentColor()
+                val optionAccent = option.contentColor()
                 DropdownMenuItem(
                     text = {
                         Text(
@@ -363,13 +360,6 @@ private fun LibraryStatusControl(
     }
 }
 
-private fun LibraryStatus.accentColor(): Color = when (this) {
-    LibraryStatus.PLAYING -> LibraryPlaying
-    LibraryStatus.WISHLIST -> LibraryWishlist
-    LibraryStatus.COMPLETED -> LibraryCompleted
-    LibraryStatus.DROPPED -> LibraryDropped
-    LibraryStatus.NOT_INTERESTED -> LibraryNotInterested
-}
 
 private fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
     LibraryStatus.PLAYING -> Icons.Filled.Bookmark

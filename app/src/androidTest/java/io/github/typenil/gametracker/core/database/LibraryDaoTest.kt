@@ -223,6 +223,38 @@ class LibraryDaoTest {
     }
 
     @Test
+    fun updateStatus_preservesFavoriteRatingHoursAndNotes() = runTest {
+        gameDao.upsertGame(
+            GameEntity(101L, "Elden Ring", null, null, null, null, emptyList(), emptyList(), 100L),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 101L,
+                status = LibraryStatus.PLAYING,
+                userRating = 10,
+                userNotes = "Got the Great Rune",
+                isFavorite = true,
+                addedAtEpochSeconds = 1000L,
+                updatedAtEpochSeconds = 1000L,
+                hoursPlayed = 75,
+            ),
+        )
+
+        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L, updatedAtEpochSeconds = 2000L))
+        assertEquals(1, libraryDao.updateStatus(gameId = 101L, status = LibraryStatus.COMPLETED, updatedAtEpochSeconds = 3000L))
+
+        val updated = libraryDao.getLibraryEntry(101L)
+        assertEquals(LibraryStatus.COMPLETED, updated?.status)
+        assertEquals(false, updated?.isFavorite)
+        assertEquals(10, updated?.userRating)
+        assertEquals("Got the Great Rune", updated?.userNotes)
+        assertEquals(75, updated?.hoursPlayed)
+        assertEquals(1000L, updated?.addedAtEpochSeconds)
+        assertEquals(3000L, updated?.updatedAtEpochSeconds)
+        assertEquals(0, libraryDao.updateStatus(gameId = 999L, status = LibraryStatus.COMPLETED, updatedAtEpochSeconds = 4000L))
+    }
+
+    @Test
     fun rawSqlPlanToPlay_deserializesAsWishlist() = runTest {
         val game = GameEntity(102L, "Bloodborne", null, null, null, null, emptyList(), emptyList(), 100L)
         gameDao.upsertGame(game)

@@ -40,24 +40,29 @@ class DefaultLibraryRepository @Inject constructor(
     override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {
-                val game = gameDao.getGameById(gameId)
-                    ?: return@runSuspendCatching AppResult.Error(
-                        AppError.UnknownError(IllegalStateException("Parent game $gameId must exist before updating library")),
+                transactionRunner {
+                    val now = System.currentTimeMillis() / 1000
+                    if (libraryDao.updateStatus(gameId, status, now) == 1) {
+                        return@transactionRunner AppResult.Success(Unit)
+                    }
+                    gameDao.getGameById(gameId)
+                        ?: return@transactionRunner AppResult.Error(
+                            AppError.UnknownError(
+                                IllegalStateException(
+                                    "Parent game $gameId must exist before updating library",
+                                ),
+                            ),
+                        )
+                    libraryDao.upsertLibraryEntry(
+                        LibraryEntry(
+                            gameId = gameId,
+                            status = status,
+                            addedAtEpochSeconds = now,
+                            updatedAtEpochSeconds = now,
+                        ).toEntity(),
                     )
-                val now = System.currentTimeMillis() / 1000
-                val existing = libraryDao.getLibraryEntry(gameId)
-                val updated = if (existing != null) {
-                    existing.copy(status = status, updatedAtEpochSeconds = now)
-                } else {
-                    LibraryEntry(
-                        gameId = gameId,
-                        status = status,
-                        addedAtEpochSeconds = now,
-                        updatedAtEpochSeconds = now,
-                    ).toEntity()
+                    AppResult.Success(Unit)
                 }
-                libraryDao.upsertLibraryEntry(updated)
-                AppResult.Success(Unit)
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 

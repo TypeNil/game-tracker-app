@@ -192,6 +192,24 @@ class LibraryGameCardTest {
         assertEquals(1, favoriteCount)
     }
 
+    @Test
+    fun statusControl_hasMinimumTouchTarget() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(name = "Hades"),
+                    onClick = {},
+                )
+            }
+        }
+        val bounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
+        val height = bounds.bottom - bounds.top
+        assertTrue("Width $width should be >= 48.dp", width >= 48.dp)
+        assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
+    }
+
     private fun libraryGame(
         name: String,
         status: LibraryStatus = LibraryStatus.PLAYING,
