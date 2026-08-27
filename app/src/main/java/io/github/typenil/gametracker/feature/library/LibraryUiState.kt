@@ -12,7 +12,8 @@ data class LibraryUiState(
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
     val sortOption: LibrarySortOption = LibrarySortOption.UPDATED_DESC,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val userMessageRes: Int? = null,
 ) {
     val isCatalogEmpty: Boolean
         get() = !isLoading && allGames.isEmpty()

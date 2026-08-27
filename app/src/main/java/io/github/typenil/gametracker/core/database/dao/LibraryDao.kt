@@ -45,6 +45,17 @@ interface LibraryDao {
     @Query("SELECT * FROM library_entries ORDER BY updatedAtEpochSeconds DESC")
     fun getPopulatedLibraryEntriesFlow(): Flow<List<PopulatedLibraryGameEntity>>
 
+
+    @Query(
+        """
+        UPDATE library_entries
+        SET isFavorite = CASE isFavorite WHEN 1 THEN 0 ELSE 1 END,
+            updatedAtEpochSeconds = :updatedAtEpochSeconds
+        WHERE gameId = :gameId
+        """,
+    )
+    suspend fun toggleFavorite(gameId: Long, updatedAtEpochSeconds: Long): Int
+
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int
 }

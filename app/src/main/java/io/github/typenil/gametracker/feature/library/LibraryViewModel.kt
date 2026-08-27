@@ -3,6 +3,8 @@ package io.github.typenil.gametracker.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -25,6 +27,7 @@ class LibraryViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     private val _isSearchActive = MutableStateFlow(false)
     private val _sortOption = MutableStateFlow(LibrarySortOption.UPDATED_DESC)
+    private val _userMessageRes = MutableStateFlow<Int?>(null)
 
     private val _filterState = combine(
         _selectedTab,
@@ -44,8 +47,9 @@ class LibraryViewModel @Inject constructor(
 
     val uiState: StateFlow<LibraryUiState> = combine(
         libraryRepository.getLibraryGamesFlow(),
-        _filterState
-    ) { allGames, filterState ->
+        _filterState,
+        _userMessageRes,
+    ) { allGames, filterState, userMessageRes ->
         val counts = computeTabCounts(allGames)
         val filtered = filterLibraryGames(
             allGames = allGames,
@@ -54,8 +58,6 @@ class LibraryViewModel @Inject constructor(
             query = filterState.query,
             sortOption = filterState.sortOption,
         )
-
-
         LibraryUiState(
             allGames = allGames,
             filteredGames = filtered,
@@ -65,7 +67,8 @@ class LibraryViewModel @Inject constructor(
             searchQuery = filterState.query,
             isSearchActive = filterState.isSearchActive,
             sortOption = filterState.sortOption,
-            isLoading = false
+            isLoading = false,
+            userMessageRes = userMessageRes,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -100,17 +103,19 @@ class LibraryViewModel @Inject constructor(
         _searchQuery.value = ""
     }
 
-    fun onToggleFavorite(item: LibraryGame) {
+    fun onToggleFavorite(gameId: Long) {
         viewModelScope.launch {
-            libraryRepository.upsertUserEdits(
-                gameId = item.game.id,
-                status = item.entry.status,
-                userRating = item.entry.userRating,
-                hoursPlayed = item.entry.hoursPlayed,
-                userNotes = item.entry.userNotes,
-                isFavorite = !item.entry.isFavorite,
-            )
+            when (libraryRepository.toggleFavorite(gameId)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> {
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
         }
+    }
+
+    fun onUserMessageShown() {
+        _userMessageRes.value = null
     }
 
     private fun computeTabCounts(allGames: List<LibraryGame>): Map<LibraryTab, Int> {

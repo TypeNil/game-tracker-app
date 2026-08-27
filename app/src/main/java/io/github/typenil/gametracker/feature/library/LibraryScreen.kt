@@ -41,6 +41,8 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,7 +64,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
-import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 
 @Composable
@@ -83,6 +84,7 @@ fun LibraryRoute(
         onToggleSearchActive = viewModel::onToggleSearchActive,
         onSortOptionSelected = viewModel::onSortOptionSelected,
         onClearSearch = viewModel::onClearSearch,
+        onUserMessageShown = viewModel::onUserMessageShown,
         onToggleFavorite = viewModel::onToggleFavorite,
         modifier = modifier
     )
@@ -100,7 +102,8 @@ fun LibraryScreen(
     onToggleSearchActive: (Boolean) -> Unit,
     onSortOptionSelected: (LibrarySortOption) -> Unit,
     onClearSearch: () -> Unit,
-    onToggleFavorite: (LibraryGame) -> Unit = {},
+    onToggleFavorite: (Long) -> Unit = {},
+    onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -109,6 +112,14 @@ fun LibraryScreen(
         pageCount = { LibraryTab.entries.size },
     )
     val pagerScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val userMessage = uiState.userMessageRes?.let { stringResource(it) }
+    LaunchedEffect(userMessage) {
+        userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            onUserMessageShown()
+        }
+    }
 
     LaunchedEffect(uiState.selectedTab) {
         val index = uiState.selectedTab.ordinal
@@ -126,6 +137,7 @@ fun LibraryScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (uiState.isSearchActive) {
                 TopAppBar(
@@ -334,7 +346,7 @@ fun LibraryScreen(
                                     LibraryGameCard(
                                         libraryGame = item,
                                         onClick = { onGameClick(item.game.id) },
-                                        onFavoriteClick = { onToggleFavorite(item) },
+                                        onFavoriteClick = { onToggleFavorite(item.game.id) },
                                     )
                                 }
                             }

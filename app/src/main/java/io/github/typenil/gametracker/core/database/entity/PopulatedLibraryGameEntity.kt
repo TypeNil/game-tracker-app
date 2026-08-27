@@ -1,11 +1,21 @@
 package io.github.typenil.gametracker.core.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Relation
 
 /**
+ * Companies column from [GameDetailsEntity] without the rest of the details row.
+ */
+data class GameDetailsCompanies(
+    @ColumnInfo(name = "gameId")
+    val gameId: Long,
+    val companies: List<CompanyColumn>,
+)
+
+/**
  * Relational model uniting a user's library entry with its parent game entity
- * and optional cached details (companies).
+ * and optional cached details companies.
  */
 data class PopulatedLibraryGameEntity(
     @Embedded
@@ -22,5 +32,5 @@ data class PopulatedLibraryGameEntity(
         parentColumn = "gameId",
         entityColumn = "gameId",
     )
-    val details: List<GameDetailsEntity> = emptyList(),
+    val details: List<GameDetailsCompanies> = emptyList(),
 )

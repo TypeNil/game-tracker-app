@@ -158,6 +158,25 @@ class DefaultLibraryRepository @Inject constructor(
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 
+    override suspend fun toggleFavorite(gameId: Long): AppResult<Unit> =
+        withContext(ioDispatcher) {
+            runSuspendCatching {
+                val updatedRows = libraryDao.toggleFavorite(
+                    gameId = gameId,
+                    updatedAtEpochSeconds = System.currentTimeMillis() / 1000,
+                )
+                if (updatedRows == 1) {
+                    AppResult.Success(Unit)
+                } else {
+                    AppResult.Error(
+                        AppError.UnknownError(
+                            IllegalStateException("No library entry for $gameId"),
+                        ),
+                    )
+                }
+            }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
+        }
+
     override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {
