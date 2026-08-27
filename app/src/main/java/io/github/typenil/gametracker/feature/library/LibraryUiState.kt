@@ -14,6 +14,7 @@ data class LibraryUiState(
     val sortOption: LibrarySortOption = LibrarySortOption.UPDATED_DESC,
     val isLoading: Boolean = false,
     val userMessageRes: Int? = null,
+    val hoursSaveState: HoursSaveState = HoursSaveState.Idle,
 ) {
     val isCatalogEmpty: Boolean
         get() = !isLoading && allGames.isEmpty()
@@ -27,6 +28,13 @@ data class LibraryUiState(
     fun gamesFor(tab: LibraryTab): List<LibraryGame> {
         return filterLibraryGames(allGames, tab, filterFavoritesOnly, searchQuery, sortOption)
     }
+}
+
+sealed interface HoursSaveState {
+    data object Idle : HoursSaveState
+    data class Saving(val gameId: Long) : HoursSaveState
+    data class Saved(val gameId: Long) : HoursSaveState
+    data class Failed(val gameId: Long) : HoursSaveState
 }
 
 internal fun filterLibraryGames(

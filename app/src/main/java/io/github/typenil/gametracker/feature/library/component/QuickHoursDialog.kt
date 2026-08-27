@@ -52,6 +52,7 @@ fun QuickHoursDialog(
     onDismissRequest: () -> Unit,
     onConfirm: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    isSaving: Boolean = false,
 ) {
     var hoursText by rememberSaveable { mutableStateOf(initialHours.toString()) }
     val parsedHours = hoursText.toIntOrNull()
@@ -59,7 +60,7 @@ fun QuickHoursDialog(
     val isHoursValid = parsedHours != null && parsedHours in 0..MAX_HOURS_VALUE
 
     AlertDialog(
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = { if (!isSaving) onDismissRequest() },
         modifier = modifier.testTag(QUICK_HOURS_DIALOG_TEST_TAG),
         title = {
             Text(
@@ -90,7 +91,7 @@ fun QuickHoursDialog(
                             val decremented = (currentHours - 1).coerceAtLeast(0)
                             hoursText = decremented.toString()
                         },
-                        enabled = currentHours > 0,
+                        enabled = currentHours > 0 && !isSaving,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Remove,
@@ -104,6 +105,7 @@ fun QuickHoursDialog(
                                 hoursText = input.take(MAX_HOURS_DIGITS)
                             }
                         },
+                        enabled = !isSaving,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
@@ -116,7 +118,7 @@ fun QuickHoursDialog(
                             val incremented = (currentHours + 1).coerceAtMost(MAX_HOURS_VALUE)
                             hoursText = incremented.toString()
                         },
-                        enabled = currentHours < MAX_HOURS_VALUE,
+                        enabled = currentHours < MAX_HOURS_VALUE && !isSaving,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
@@ -134,6 +136,7 @@ fun QuickHoursDialog(
                             hoursText = next.toString()
                         },
                         label = { Text(stringResource(R.string.library_quick_add_1h)) },
+                        enabled = !isSaving,
                         modifier = Modifier.weight(1f),
                     )
                     SuggestionChip(
@@ -142,6 +145,7 @@ fun QuickHoursDialog(
                             hoursText = next.toString()
                         },
                         label = { Text(stringResource(R.string.library_quick_add_5h)) },
+                        enabled = !isSaving,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -150,19 +154,19 @@ fun QuickHoursDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    parsedHours?.let { hours ->
-                        onConfirm(hours)
-                        onDismissRequest()
-                    }
+                    parsedHours?.let(onConfirm)
                 },
-                enabled = isHoursValid,
+                enabled = isHoursValid && !isSaving,
                 modifier = Modifier.testTag(QUICK_HOURS_SAVE_TEST_TAG),
             ) {
                 Text(stringResource(R.string.library_save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            TextButton(
+                onClick = onDismissRequest,
+                enabled = !isSaving,
+            ) {
                 Text(stringResource(R.string.library_cancel))
             }
         },

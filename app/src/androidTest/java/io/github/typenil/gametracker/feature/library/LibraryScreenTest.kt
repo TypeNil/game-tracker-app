@@ -225,4 +225,84 @@ class LibraryScreenTest {
         composeTestRule.onNodeWithText("77").assertIsDisplayed()
     }
 
+    @Test
+    fun libraryScreen_failedHoursUpdate_keepsDialogAndDraft() {
+        var currentUiState by mutableStateOf(
+            LibraryUiState(
+                allGames = listOf(hades),
+                filteredGames = listOf(hades),
+                selectedTab = LibraryTab.ALL,
+                tabCounts = mapOf(LibraryTab.ALL to 1),
+                isLoading = false,
+            ),
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = currentUiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_INPUT_TEST_TAG).performTextClearance()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_INPUT_TEST_TAG).performTextInput("99")
+
+        currentUiState = currentUiState.copy(
+            hoursSaveState = HoursSaveState.Failed(hades.game.id),
+            userMessageRes = R.string.error_library_update_failed,
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText("99").assertIsDisplayed()
+    }
+
+    @Test
+    fun libraryScreen_successfulHoursUpdate_closesDialog() {
+        var currentUiState by mutableStateOf(
+            LibraryUiState(
+                allGames = listOf(hades),
+                filteredGames = listOf(hades),
+                selectedTab = LibraryTab.ALL,
+                tabCounts = mapOf(LibraryTab.ALL to 1),
+                isLoading = false,
+            ),
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = currentUiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertIsDisplayed()
+
+        currentUiState = currentUiState.copy(
+            hoursSaveState = HoursSaveState.Saved(hades.game.id),
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertDoesNotExist()
+    }
+
 }

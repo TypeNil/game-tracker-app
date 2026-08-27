@@ -91,6 +91,7 @@ fun LibraryRoute(
         onToggleFavorite = viewModel::onToggleFavorite,
         onStatusSelected = viewModel::onStatusSelected,
         onHoursUpdated = viewModel::onHoursUpdated,
+        onHoursSaveHandled = viewModel::onHoursSaveHandled,
         modifier = modifier
     )
 }
@@ -110,6 +111,7 @@ fun LibraryScreen(
     onToggleFavorite: (Long) -> Unit = {},
     onStatusSelected: (Long, LibraryStatus) -> Unit = { _, _ -> },
     onHoursUpdated: (Long, Int) -> Unit = { _, _ -> },
+    onHoursSaveHandled: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -126,6 +128,20 @@ fun LibraryScreen(
         userMessage?.let {
             snackbarHostState.showSnackbar(it)
             onUserMessageShown()
+        }
+    }
+    LaunchedEffect(uiState.hoursSaveState) {
+        when (val state = uiState.hoursSaveState) {
+            is HoursSaveState.Saved -> {
+                if (editingHoursGameId == state.gameId) {
+                    editingHoursGameId = null
+                }
+                onHoursSaveHandled()
+            }
+            is HoursSaveState.Failed -> {
+                onHoursSaveHandled()
+            }
+            else -> Unit
         }
     }
 
@@ -374,13 +390,20 @@ fun LibraryScreen(
 
     val targetGame = uiState.allGames.firstOrNull { it.game.id == editingHoursGameId }
     if (targetGame != null) {
+        val isSaving = uiState.hoursSaveState is HoursSaveState.Saving &&
+            uiState.hoursSaveState.gameId == targetGame.game.id
         QuickHoursDialog(
             gameName = targetGame.game.name,
             initialHours = targetGame.entry.hoursPlayed,
-            onDismissRequest = { editingHoursGameId = null },
+            onDismissRequest = {
+                if (!isSaving) {
+                    editingHoursGameId = null
+                }
+            },
             onConfirm = { hours ->
                 onHoursUpdated(targetGame.game.id, hours)
             },
+            isSaving = isSaving,
         )
     }
 }

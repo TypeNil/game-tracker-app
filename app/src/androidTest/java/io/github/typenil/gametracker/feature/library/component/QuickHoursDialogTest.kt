@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -139,5 +140,45 @@ class QuickHoursDialogTest {
         composeTestRule.onNodeWithTag(QUICK_HOURS_INPUT_TEST_TAG).performTextClearance()
         composeTestRule.onNodeWithTag(QUICK_HOURS_SAVE_TEST_TAG).assertIsNotEnabled()
         assertEquals(null, confirmedHours)
+    }
+
+    @Test
+    fun dialog_saveDoesNotSelfDismiss_invokesConfirmOnly() {
+        var confirmedHours: Int? = null
+        var dismissed = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                QuickHoursDialog(
+                    gameName = "Hades",
+                    initialHours = 10,
+                    onDismissRequest = { dismissed = true },
+                    onConfirm = { confirmedHours = it },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_SAVE_TEST_TAG).performClick()
+        assertEquals(10, confirmedHours)
+        assertFalse(dismissed)
+    }
+
+    @Test
+    fun dialog_isSaving_disablesSaveAndCancelButtons() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                QuickHoursDialog(
+                    gameName = "Hades",
+                    initialHours = 10,
+                    onDismissRequest = {},
+                    onConfirm = {},
+                    isSaving = true,
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_SAVE_TEST_TAG).assertIsNotEnabled()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_cancel),
+        ).assertIsNotEnabled()
     }
 }
