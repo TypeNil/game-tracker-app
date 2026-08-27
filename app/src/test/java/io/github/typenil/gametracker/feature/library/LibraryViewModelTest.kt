@@ -294,6 +294,29 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `onHoursUpdated ignores a second request while saving`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        fakeLibraryRepository.delayUpdateHours = gate
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertEquals(HoursSaveState.Idle, awaitItem().hoursSaveState)
+            viewModel.onHoursUpdated(hades.game.id, 120)
+            assertEquals(HoursSaveState.Saving(hades.game.id), awaitItem().hoursSaveState)
+
+            viewModel.onHoursUpdated(hades.game.id, 999)
+            assertEquals(1, fakeLibraryRepository.updateHoursCallCount)
+            assertEquals(120, fakeLibraryRepository.lastUpdateHours)
+
+            gate.complete(Unit)
+            assertEquals(HoursSaveState.Saved(hades.game.id), awaitItem().hoursSaveState)
+            assertEquals(1, fakeLibraryRepository.updateHoursCallCount)
+            assertEquals(120, fakeLibraryRepository.lastUpdateHours)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 
@@ -330,12 +353,14 @@ class LibraryViewModelTest {
         }
 
 
+        var updateHoursCallCount: Int = 0
         var lastUpdateHoursGameId: Long? = null
         var lastUpdateHours: Int? = null
         var updateHoursResult: AppResult<Unit> = AppResult.Success(Unit)
         var delayUpdateHours: CompletableDeferred<Unit>? = null
 
         override suspend fun updateHoursPlayed(gameId: Long, hoursPlayed: Int): AppResult<Unit> {
+            updateHoursCallCount++
             lastUpdateHoursGameId = gameId
             lastUpdateHours = hoursPlayed
             delayUpdateHours?.await()

@@ -130,8 +130,10 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onHoursUpdated(gameId: Long, hours: Int) {
+        if (_hoursSaveState.value is HoursSaveState.Saving) return
+
+        _hoursSaveState.value = HoursSaveState.Saving(gameId)
         viewModelScope.launch {
-            _hoursSaveState.value = HoursSaveState.Saving(gameId)
             when (libraryRepository.updateHoursPlayed(gameId, hours)) {
                 is AppResult.Success -> {
                     _hoursSaveState.value = HoursSaveState.Saved(gameId)
