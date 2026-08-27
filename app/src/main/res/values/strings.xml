@@ -93,9 +93,12 @@
     <string name="library_clear_rating">Clear</string>
     <string name="library_hours_played">Hours Played</string>
     <string name="library_hours_format">%1$d hrs</string>
+    <string name="library_added">Added</string>
     <string name="library_hours_decrement_desc">Decrease hours played</string>
     <string name="library_hours_increment_desc">Increase hours played</string>
     <string name="library_favorite">Favorite</string>
+    <string name="library_favorite_add">Add to favorites</string>
+    <string name="library_favorite_remove">Remove from favorites</string>
     <string name="library_favorite_subtitle">Highlight in your personal collection</string>
     <string name="library_personal_notes">Personal Notes</string>
     <string name="library_save">Save</string>

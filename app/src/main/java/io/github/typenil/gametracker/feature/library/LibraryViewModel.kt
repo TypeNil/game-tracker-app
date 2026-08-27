@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
@@ -97,6 +98,19 @@ class LibraryViewModel @Inject constructor(
 
     fun onClearSearch() {
         _searchQuery.value = ""
+    }
+
+    fun onToggleFavorite(item: LibraryGame) {
+        viewModelScope.launch {
+            libraryRepository.upsertUserEdits(
+                gameId = item.game.id,
+                status = item.entry.status,
+                userRating = item.entry.userRating,
+                hoursPlayed = item.entry.hoursPlayed,
+                userNotes = item.entry.userNotes,
+                isFavorite = !item.entry.isFavorite,
+            )
+        }
     }
 
     private fun computeTabCounts(allGames: List<LibraryGame>): Map<LibraryTab, Int> {

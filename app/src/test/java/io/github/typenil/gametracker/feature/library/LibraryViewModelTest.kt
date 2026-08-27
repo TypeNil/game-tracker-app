@@ -191,6 +191,18 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `onToggleFavorite upserts flipped isFavorite preserving other fields`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.onToggleFavorite(hades)
+        assertEquals(1L, fakeLibraryRepository.lastUpsertGameId)
+        assertEquals(false, fakeLibraryRepository.lastUpsertFavorite)
+        assertEquals(LibraryStatus.PLAYING, fakeLibraryRepository.lastUpsertStatus)
+        assertEquals(10, fakeLibraryRepository.lastUpsertRating)
+        assertEquals(60, fakeLibraryRepository.lastUpsertHours)
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 
@@ -202,6 +214,12 @@ class LibraryViewModelTest {
         ): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
+        var lastUpsertGameId: Long? = null
+        var lastUpsertFavorite: Boolean? = null
+        var lastUpsertStatus: LibraryStatus? = null
+        var lastUpsertRating: Int? = null
+        var lastUpsertHours: Int? = null
+
         override suspend fun upsertUserEdits(
             gameId: Long,
             status: LibraryStatus,
@@ -209,7 +227,14 @@ class LibraryViewModelTest {
             hoursPlayed: Int,
             userNotes: String?,
             isFavorite: Boolean,
-        ): AppResult<Unit> = AppResult.Success(Unit)
+        ): AppResult<Unit> {
+            lastUpsertGameId = gameId
+            lastUpsertFavorite = isFavorite
+            lastUpsertStatus = status
+            lastUpsertRating = userRating
+            lastUpsertHours = hoursPlayed
+            return AppResult.Success(Unit)
+        }
 
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }

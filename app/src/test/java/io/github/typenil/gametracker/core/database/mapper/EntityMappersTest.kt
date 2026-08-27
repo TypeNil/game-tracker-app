@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.core.database.mapper
 
 import io.github.typenil.gametracker.core.database.entity.GameEntity
+import io.github.typenil.gametracker.core.database.entity.CompanyColumn
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameCompany
 import io.github.typenil.gametracker.core.model.GameDetails
@@ -150,5 +151,22 @@ class EntityMappersTest {
 
         val mappedBack = entity.toDomain()
         assertEquals(details, mappedBack)
+    }
+
+    @Test
+    fun `developerName prefers isDeveloper then first named company`() {
+        assertEquals(
+            "CD Projekt RED",
+            listOf(
+                CompanyColumn(name = "Warner", isPublisher = true),
+                CompanyColumn(name = "CD Projekt RED", isDeveloper = true),
+            ).developerName(),
+        )
+        assertEquals(
+            "Solo Studio",
+            listOf(CompanyColumn(name = "Solo Studio")).developerName(),
+        )
+        assertEquals(null, emptyList<CompanyColumn>().developerName())
+        assertEquals(null, (null as List<CompanyColumn>?).developerName())
     }
 }
