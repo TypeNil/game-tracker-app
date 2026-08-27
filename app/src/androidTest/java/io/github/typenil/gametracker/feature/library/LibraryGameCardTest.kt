@@ -210,6 +210,30 @@ class LibraryGameCardTest {
         assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
     }
 
+    @Test
+    fun card_withMaxHours_dateAndHoursAreFullyDisplayedWithoutTruncation() {
+        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(1_700_000_000L)
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "The Witcher 3: Wild Hunt",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 999_999,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 999_999),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(expectedDate).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.library_added),
+        ).assertIsDisplayed()
+    }
+
     private fun libraryGame(
         name: String,
         status: LibraryStatus = LibraryStatus.PLAYING,

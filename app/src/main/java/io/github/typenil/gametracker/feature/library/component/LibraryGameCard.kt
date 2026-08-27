@@ -201,39 +201,50 @@ fun LibraryGameCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    LibraryStatusControl(
-                        status = entry.status,
-                        onStatusSelected = onStatusSelected,
-                    )
-                    if (entry.showsHours()) {
-                        VerticalDivider(
-                            modifier = Modifier.height(16.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        LibraryStatusControl(
+                            status = entry.status,
+                            onStatusSelected = onStatusSelected,
                         )
-                        Icon(
-                            imageVector = Icons.Outlined.Schedule,
-                            contentDescription = stringResource(R.string.library_hours_played),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(MetaIconSize),
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.library_hours_short,
-                                entry.hoursPlayed,
-                            ),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (entry.showsHours()) {
+                            VerticalDivider(
+                                modifier = Modifier.height(16.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.weight(1f, fill = false),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Schedule,
+                                    contentDescription = stringResource(R.string.library_hours_played),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(MetaIconSize),
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.library_hours_short,
+                                        entry.hoursPlayed,
+                                    ),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
                     ) {
                         Icon(
@@ -247,7 +258,7 @@ fun LibraryGameCard(
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            softWrap = false,
                         )
                     }
                 }
