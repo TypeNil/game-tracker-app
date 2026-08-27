@@ -266,13 +266,36 @@ class LibraryGameCardTest {
     }
 
     @Test
-    fun card_withZeroHours_hidesHoursEditor() {
+    fun card_withZeroHours_playingStatus_showsZeroHoursAndAllowsEditing() {
+        var hoursClicks = 0
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
                     libraryGame = libraryGame(
                         name = "Hades",
                         status = LibraryStatus.PLAYING,
+                        hoursPlayed = 0,
+                    ),
+                    onClick = {},
+                    onHoursClick = { hoursClicks++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_hours_short, 0),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
+        assertEquals(1, hoursClicks)
+    }
+
+    @Test
+    fun card_withZeroHours_completedStatus_hidesHours() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.COMPLETED,
                         hoursPlayed = 0,
                     ),
                     onClick = {},
@@ -356,14 +379,14 @@ class LibraryGameCardTest {
     }
 
     @Test
-    fun card_updatingHoursToZero_animatesOutHoursAndDividers() {
+    fun card_updatingHoursToZero_completedStatus_animatesOutHoursAndDividers() {
         var currentHours by mutableStateOf(20)
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
                     libraryGame = libraryGame(
                         name = "Hades",
-                        status = LibraryStatus.PLAYING,
+                        status = LibraryStatus.COMPLETED,
                         hoursPlayed = currentHours,
                     ),
                     onClick = {},
@@ -379,14 +402,14 @@ class LibraryGameCardTest {
     }
 
     @Test
-    fun card_updatingHoursFromZero_animatesInHoursAndDividers() {
+    fun card_updatingHoursFromZero_completedStatus_animatesInHoursAndDividers() {
         var currentHours by mutableStateOf(0)
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
                     libraryGame = libraryGame(
                         name = "Hades",
-                        status = LibraryStatus.PLAYING,
+                        status = LibraryStatus.COMPLETED,
                         hoursPlayed = currentHours,
                     ),
                     onClick = {},

@@ -443,10 +443,11 @@ private fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
     LibraryStatus.NOT_INTERESTED -> Icons.Filled.RemoveCircleOutline
 }
 
-private fun LibraryEntry.showsHours(): Boolean =
-    hoursPlayed > 0 &&
-        status != LibraryStatus.WISHLIST &&
-        status != LibraryStatus.NOT_INTERESTED
+private fun LibraryEntry.showsHours(): Boolean = when (status) {
+    LibraryStatus.PLAYING -> true
+    LibraryStatus.COMPLETED, LibraryStatus.DROPPED -> hoursPlayed > 0
+    LibraryStatus.WISHLIST, LibraryStatus.NOT_INTERESTED -> false
+}
 
 internal fun formatLibraryAddedDate(
     epochSeconds: Long,
