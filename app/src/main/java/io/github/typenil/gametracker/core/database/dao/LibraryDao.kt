@@ -71,6 +71,20 @@ interface LibraryDao {
         updatedAtEpochSeconds: Long,
     ): Int
 
+    @Query(
+        """
+        UPDATE library_entries
+        SET hoursPlayed = :hoursPlayed,
+            updatedAtEpochSeconds = :updatedAtEpochSeconds
+        WHERE gameId = :gameId
+        """,
+    )
+    suspend fun updateHoursPlayed(
+        gameId: Long,
+        hoursPlayed: Int,
+        updatedAtEpochSeconds: Long,
+    ): Int
+
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int
 }

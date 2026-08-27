@@ -79,6 +79,7 @@ private val LibraryAddedDateFormatter =
 const val LIBRARY_CARD_ADDED_TEST_TAG = "library_card_added"
 const val LIBRARY_CARD_FAVORITE_TEST_TAG = "library_card_favorite"
 const val LIBRARY_CARD_STATUS_TEST_TAG = "library_card_status"
+const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
 
 /**
  * Full-width library row: cover, title, developer, tags, then a status control,
@@ -93,6 +94,7 @@ fun LibraryGameCard(
     modifier: Modifier = Modifier,
     onFavoriteClick: () -> Unit = {},
     onStatusSelected: (LibraryStatus) -> Unit = {},
+    onHoursClick: () -> Unit = {},
 ) {
     val game = libraryGame.game
     val entry = libraryGame.entry
@@ -219,7 +221,13 @@ fun LibraryGameCard(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier.weight(1f, fill = false),
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .sizeIn(minHeight = 48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(onClick = onHoursClick)
+                                    .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
+                                    .padding(horizontal = 4.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Schedule,
@@ -240,6 +248,13 @@ fun LibraryGameCard(
                                 )
                             }
                         }
+                    }
+                    if (entry.showsHours()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        VerticalDivider(
+                            modifier = Modifier.height(16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Row(

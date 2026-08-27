@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository
@@ -117,6 +118,17 @@ class LibraryViewModel @Inject constructor(
     fun onStatusSelected(gameId: Long, status: LibraryStatus) {
         viewModelScope.launch {
             when (libraryRepository.setGameStatus(gameId, status)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> {
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
+    fun onHoursUpdated(gameId: Long, hours: Int) {
+        viewModelScope.launch {
+            when (libraryRepository.updateHoursPlayed(gameId, hours)) {
                 is AppResult.Success -> Unit
                 is AppResult.Error -> {
                     _userMessageRes.value = R.string.error_library_update_failed

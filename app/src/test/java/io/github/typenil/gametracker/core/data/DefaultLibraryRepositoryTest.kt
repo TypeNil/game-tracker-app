@@ -155,6 +155,37 @@ class DefaultLibraryRepositoryTest {
     }
 
     @Test
+    fun updateHoursPlayed_whenEntryExists_updatesSuccessfully() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateHoursPlayed(10L, 75, any()) } returns 1
+
+        val result = repository.updateHoursPlayed(10L, 75)
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateHoursPlayed(10L, 75, any()) }
+    }
+
+    @Test
+    fun updateHoursPlayed_withoutExistingEntry_returnsError() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateHoursPlayed(999L, 75, any()) } returns 0
+
+        val result = repository.updateHoursPlayed(999L, 75)
+        assertTrue(result is AppResult.Error)
+    }
+
+    @Test
+    fun updateHoursPlayed_clampsHoursToRange() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateHoursPlayed(10L, 999_999, any()) } returns 1
+        coEvery { libraryDao.updateHoursPlayed(10L, 0, any()) } returns 1
+
+        val overResult = repository.updateHoursPlayed(10L, 1_500_000)
+        assertTrue(overResult is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateHoursPlayed(10L, 999_999, any()) }
+
+        val underResult = repository.updateHoursPlayed(10L, -10)
+        assertTrue(underResult is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateHoursPlayed(10L, 0, any()) }
+    }
+
+    @Test
     fun addToWishlist_whenNoCatalogRow_upsertsGameThenEntry() = runTest(testDispatcher) {
         coEvery { libraryDao.getLibraryEntry(7L) } returns null
         coEvery { gameDao.upsertGame(any()) } returns 7L

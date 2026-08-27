@@ -18,6 +18,7 @@ import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_FAVORITE_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_STATUS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 import org.junit.Assert.assertEquals
@@ -232,6 +233,51 @@ class LibraryGameCardTest {
         composeTestRule.onNodeWithContentDescription(
             composeTestRule.activity.getString(R.string.library_added),
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun card_clickHours_triggersOnHoursClick_andDoesNotTriggerCardClick() {
+        var cardClicks = 0
+        var hoursClicks = 0
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 60,
+                    ),
+                    onClick = { cardClicks++ },
+                    onHoursClick = { hoursClicks++ },
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG).performClick()
+        assertEquals(0, cardClicks)
+        assertEquals(1, hoursClicks)
+        composeTestRule.onNodeWithText("Hades").performClick()
+        assertEquals(1, cardClicks)
+        assertEquals(1, hoursClicks)
+    }
+
+    @Test
+    fun hoursControl_hasMinimumTouchTarget() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 60,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        val bounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val height = bounds.bottom - bounds.top
+        assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
     }
 
     private fun libraryGame(

@@ -247,6 +247,33 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `onHoursUpdated calls updateHoursPlayed with game id and hours`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.onHoursUpdated(hades.game.id, 120)
+        assertEquals(1L, fakeLibraryRepository.lastUpdateHoursGameId)
+        assertEquals(120, fakeLibraryRepository.lastUpdateHours)
+    }
+
+    @Test
+    fun `onHoursUpdated error exposes update failure message`() = runTest {
+        fakeLibraryRepository.updateHoursResult = AppResult.Error(
+            AppError.UnknownError(IllegalStateException("missing")),
+        )
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertNull(awaitItem().userMessageRes)
+            viewModel.onHoursUpdated(hades.game.id, 120)
+            assertEquals(
+                R.string.error_library_update_failed,
+                awaitItem().userMessageRes,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 
@@ -282,6 +309,16 @@ class LibraryViewModelTest {
             return toggleResult
         }
 
+
+        var lastUpdateHoursGameId: Long? = null
+        var lastUpdateHours: Int? = null
+        var updateHoursResult: AppResult<Unit> = AppResult.Success(Unit)
+
+        override suspend fun updateHoursPlayed(gameId: Long, hoursPlayed: Int): AppResult<Unit> {
+            lastUpdateHoursGameId = gameId
+            lastUpdateHours = hoursPlayed
+            return updateHoursResult
+        }
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 }

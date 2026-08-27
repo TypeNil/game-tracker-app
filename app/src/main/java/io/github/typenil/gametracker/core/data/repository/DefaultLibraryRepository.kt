@@ -182,6 +182,28 @@ class DefaultLibraryRepository @Inject constructor(
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 
+    override suspend fun updateHoursPlayed(gameId: Long, hoursPlayed: Int): AppResult<Unit> =
+        withContext(ioDispatcher) {
+            runSuspendCatching {
+                val clampedHours = hoursPlayed.coerceIn(0, 999_999)
+                val now = System.currentTimeMillis() / 1000
+                val updatedRows = libraryDao.updateHoursPlayed(
+                    gameId = gameId,
+                    hoursPlayed = clampedHours,
+                    updatedAtEpochSeconds = now,
+                )
+                if (updatedRows == 1) {
+                    AppResult.Success(Unit)
+                } else {
+                    AppResult.Error(
+                        AppError.UnknownError(
+                            IllegalStateException("No library entry for $gameId"),
+                        ),
+                    )
+                }
+            }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
+        }
+
     override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {

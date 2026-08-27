@@ -106,6 +106,10 @@
     <string name="library_favorite_subtitle">Highlight in your personal collection</string>
     <string name="library_personal_notes">Personal Notes</string>
     <string name="library_save">Save</string>
+    <string name="library_cancel">Cancel</string>
+    <string name="library_log_hours">Log Hours Played</string>
+    <string name="library_quick_add_1h">+1h</string>
+    <string name="library_quick_add_5h">+5h</string>
     <string name="library_remove">Remove from Library</string>
     <string name="library_has_notes">Has notes</string>
     <string name="library_rating_format">%1$d/10</string>
