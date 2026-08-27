@@ -164,6 +164,12 @@ fun LibraryEntryEntity.toDomain(): LibraryEntry {
 fun PopulatedLibraryGameEntity.toDomain(): LibraryGame {
     return LibraryGame(
         game = this.game.toDomain(),
-        entry = this.entry.toDomain()
+        entry = this.entry.toDomain(),
+        developerName = details.firstOrNull()?.companies.developerName(),
     )
+}
+
+internal fun List<CompanyColumn>?.developerName(): String? {
+    val named = this.orEmpty().filter { it.name.isNotBlank() }
+    return named.firstOrNull { it.isDeveloper }?.name ?: named.firstOrNull()?.name
 }

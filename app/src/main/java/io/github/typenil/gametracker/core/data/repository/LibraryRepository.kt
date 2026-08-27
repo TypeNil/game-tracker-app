@@ -50,6 +50,11 @@ interface LibraryRepository {
     ): AppResult<Unit>
 
     /**
+     * Atomically flips [LibraryEntry.isFavorite] for [gameId]. Other fields are unchanged.
+     */
+    suspend fun toggleFavorite(gameId: Long): AppResult<Unit>
+
+    /**
      * Removes game [gameId] from user's library.
      */
     suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit>

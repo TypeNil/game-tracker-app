@@ -2,6 +2,8 @@ package io.github.typenil.gametracker.feature.library
 
 import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -16,6 +18,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -191,6 +194,32 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `onToggleFavorite calls toggleFavorite with game id`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.onToggleFavorite(hades.game.id)
+        assertEquals(1L, fakeLibraryRepository.lastToggleGameId)
+    }
+
+    @Test
+    fun `onToggleFavorite error exposes update failure message`() = runTest {
+        fakeLibraryRepository.toggleResult = AppResult.Error(
+            AppError.UnknownError(IllegalStateException("missing")),
+        )
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertNull(awaitItem().userMessageRes)
+            viewModel.onToggleFavorite(hades.game.id)
+            assertEquals(
+                R.string.error_library_update_failed,
+                awaitItem().userMessageRes,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 
@@ -202,6 +231,9 @@ class LibraryViewModelTest {
         ): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
+        var lastToggleGameId: Long? = null
+        var toggleResult: AppResult<Unit> = AppResult.Success(Unit)
+
         override suspend fun upsertUserEdits(
             gameId: Long,
             status: LibraryStatus,
@@ -210,6 +242,11 @@ class LibraryViewModelTest {
             userNotes: String?,
             isFavorite: Boolean,
         ): AppResult<Unit> = AppResult.Success(Unit)
+
+        override suspend fun toggleFavorite(gameId: Long): AppResult<Unit> {
+            lastToggleGameId = gameId
+            return toggleResult
+        }
 
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }

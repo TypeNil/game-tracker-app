@@ -12,9 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -42,6 +41,8 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +84,8 @@ fun LibraryRoute(
         onToggleSearchActive = viewModel::onToggleSearchActive,
         onSortOptionSelected = viewModel::onSortOptionSelected,
         onClearSearch = viewModel::onClearSearch,
+        onUserMessageShown = viewModel::onUserMessageShown,
+        onToggleFavorite = viewModel::onToggleFavorite,
         modifier = modifier
     )
 }
@@ -99,6 +102,8 @@ fun LibraryScreen(
     onToggleSearchActive: (Boolean) -> Unit,
     onSortOptionSelected: (LibrarySortOption) -> Unit,
     onClearSearch: () -> Unit,
+    onToggleFavorite: (Long) -> Unit = {},
+    onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -107,6 +112,14 @@ fun LibraryScreen(
         pageCount = { LibraryTab.entries.size },
     )
     val pagerScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val userMessage = uiState.userMessageRes?.let { stringResource(it) }
+    LaunchedEffect(userMessage) {
+        userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            onUserMessageShown()
+        }
+    }
 
     LaunchedEffect(uiState.selectedTab) {
         val index = uiState.selectedTab.ordinal
@@ -124,6 +137,7 @@ fun LibraryScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (uiState.isSearchActive) {
                 TopAppBar(
@@ -323,17 +337,16 @@ fun LibraryScreen(
                                 )
                             }
                         } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
+                            LazyColumn(
                                 contentPadding = PaddingValues(GtDimens.Gutter),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxSize()
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxSize(),
                             ) {
                                 items(items = pageGames, key = { it.game.id }) { item ->
                                     LibraryGameCard(
                                         libraryGame = item,
-                                        onClick = { onGameClick(item.game.id) }
+                                        onClick = { onGameClick(item.game.id) },
+                                        onFavoriteClick = { onToggleFavorite(item.game.id) },
                                     )
                                 }
                             }

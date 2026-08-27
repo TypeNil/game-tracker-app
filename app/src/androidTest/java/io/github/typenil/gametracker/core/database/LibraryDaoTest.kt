@@ -7,6 +7,9 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
+import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
+import io.github.typenil.gametracker.core.database.entity.CompanyColumn
+import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -29,6 +32,7 @@ class LibraryDaoTest {
     private lateinit var gameDao: GameDao
     private lateinit var libraryDao: LibraryDao
 
+    private lateinit var gameDetailsDao: GameDetailsDao
     @Before
     fun createDb() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -36,6 +40,7 @@ class LibraryDaoTest {
             .allowMainThreadQueries()
             .build()
         gameDao = database.gameDao()
+        gameDetailsDao = database.gameDetailsDao()
         libraryDao = database.libraryDao()
     }
 
@@ -147,6 +152,74 @@ class LibraryDaoTest {
         assertEquals("Elden Ring", populated[0].game.name)
         assertEquals(LibraryStatus.WISHLIST, populated[0].entry.status)
         assertEquals(9, populated[0].entry.userRating)
+        assertEquals(true, populated[0].details.isEmpty())
+
+        gameDetailsDao.upsertDetails(
+            GameDetailsEntity(
+                gameId = 101L,
+                name = "Elden Ring",
+                coverUrl = null,
+                rating = 95.0,
+                totalRating = null,
+                totalRatingCount = null,
+                releaseDateEpochSeconds = null,
+                summary = "unused",
+                url = null,
+                genres = emptyList(),
+                themes = emptyList(),
+                gameModes = emptyList(),
+                platforms = emptyList(),
+                releaseDates = emptyList(),
+                companies = listOf(CompanyColumn(name = "FromSoftware", isDeveloper = true)),
+                screenshots = emptyList(),
+                videos = emptyList(),
+                similarGames = emptyList(),
+                cachedAtEpochSeconds = 100L,
+            ),
+        )
+        val withDetails = libraryDao.getPopulatedLibraryEntriesFlow().first()
+        assertEquals(1, withDetails[0].details.size)
+        assertEquals("FromSoftware", withDetails[0].details.single().companies.single().name)
+        assertEquals(true, withDetails[0].details.single().companies.single().isDeveloper)
+    }
+
+    @Test
+    fun toggleFavorite_twice_restoresOriginalValue_andPreservesOtherFields() = runTest {
+        gameDao.upsertGame(
+            GameEntity(101L, "Elden Ring", null, null, null, null, emptyList(), emptyList(), 100L),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 101L,
+                status = LibraryStatus.PLAYING,
+                userRating = 10,
+                userNotes = "Got the Great Rune",
+                isFavorite = true,
+                addedAtEpochSeconds = 1000L,
+                updatedAtEpochSeconds = 1000L,
+                hoursPlayed = 75,
+            ),
+        )
+
+        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L, updatedAtEpochSeconds = 2000L))
+        val afterFirst = libraryDao.getLibraryEntry(101L)
+        assertEquals(false, afterFirst?.isFavorite)
+        assertEquals(LibraryStatus.PLAYING, afterFirst?.status)
+        assertEquals(10, afterFirst?.userRating)
+        assertEquals("Got the Great Rune", afterFirst?.userNotes)
+        assertEquals(75, afterFirst?.hoursPlayed)
+        assertEquals(1000L, afterFirst?.addedAtEpochSeconds)
+        assertEquals(2000L, afterFirst?.updatedAtEpochSeconds)
+
+        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L, updatedAtEpochSeconds = 3000L))
+        val afterSecond = libraryDao.getLibraryEntry(101L)
+        assertEquals(true, afterSecond?.isFavorite)
+        assertEquals(LibraryStatus.PLAYING, afterSecond?.status)
+        assertEquals(10, afterSecond?.userRating)
+        assertEquals("Got the Great Rune", afterSecond?.userNotes)
+        assertEquals(75, afterSecond?.hoursPlayed)
+        assertEquals(1000L, afterSecond?.addedAtEpochSeconds)
+        assertEquals(3000L, afterSecond?.updatedAtEpochSeconds)
     }
 
     @Test
