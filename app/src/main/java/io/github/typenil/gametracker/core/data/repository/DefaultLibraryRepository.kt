@@ -168,7 +168,6 @@ class DefaultLibraryRepository @Inject constructor(
             runSuspendCatching {
                 val updatedRows = libraryDao.toggleFavorite(
                     gameId = gameId,
-                    updatedAtEpochSeconds = System.currentTimeMillis() / 1000,
                 )
                 if (updatedRows == 1) {
                     AppResult.Success(Unit)

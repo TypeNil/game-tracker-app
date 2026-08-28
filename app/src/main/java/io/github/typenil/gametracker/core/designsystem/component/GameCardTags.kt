@@ -1,8 +1,7 @@
 package io.github.typenil.gametracker.core.designsystem.component
 
-internal const val MAX_CARD_TAGS_PER_ROW = 3
+internal const val MAX_CARD_TAGS_PER_ROW = 2
 private const val MAX_CARD_GENRES = 2
-
 /** Up to two genres, then one platform that is not already a genre. */
 fun selectCardTags(genres: List<String>, platforms: List<String>): List<String> {
     val selectedGenres = cleanTags(genres).take(MAX_CARD_GENRES)

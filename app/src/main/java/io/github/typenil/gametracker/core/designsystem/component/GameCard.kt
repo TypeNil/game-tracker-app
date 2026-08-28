@@ -1,15 +1,18 @@
 package io.github.typenil.gametracker.core.designsystem.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,14 +41,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-private const val COVER_WIDTH_DP = 96
+private const val COVER_WIDTH_DP = 100
+private val CardShape = RoundedCornerShape(16.dp)
+private val CoverShape = RoundedCornerShape(
+    topStart = 16.dp,
+    bottomStart = 16.dp,
+    topEnd = 0.dp,
+    bottomEnd = 0.dp,
+)
 
 const val GAME_CARD_LIBRARY_ACTION_TEST_TAG = "game_card_library_action"
 
@@ -70,32 +79,36 @@ fun GameCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 2.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.Top,
         ) {
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable(onClick = onClick)
-                    .padding(GtDimens.Card),
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxHeight()
+                    .clickable(onClick = onClick),
+                verticalAlignment = Alignment.Top,
             ) {
                 Box(
                     modifier = Modifier
                         .width(COVER_WIDTH_DP.dp)
-                        .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                        .clip(RoundedCornerShape(12.dp))
+                        .fillMaxHeight()
+                        .defaultMinSize(minHeight = (COVER_WIDTH_DP / GAME_COVER_ASPECT_RATIO).dp)
+                        .clip(CoverShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 ) {
                     if (!game.coverUrl.isNullOrBlank()) {
                         AsyncImage(
                             model = game.coverUrl,
-                            contentDescription = game.name,
+                            contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -114,70 +127,60 @@ fun GameCard(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 14.dp),
+                        .fillMaxHeight()
+                        .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
                         text = game.name,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 2,
-                        minLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-
-                    val epochSeconds = game.releaseDateEpochSeconds
-                    val releaseYear = remember(epochSeconds) {
-                        epochSeconds?.let(::formatReleaseYear)
+                    val tags = remember(game.genres, game.platforms) {
+                        selectCardTags(game.genres, game.platforms)
                     }
-
-                    if (releaseYear != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = releaseYear,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    val tags = selectCardTags(game.genres, game.platforms)
                     if (tags.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
                         FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
                             maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
                         ) {
                             tags.forEach { tag ->
                                 Surface(
-                                    shape = RoundedCornerShape(6.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant,
+                                    ),
                                 ) {
                                     Text(
                                         text = tag,
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        modifier = Modifier.padding(
+                                            horizontal = 10.dp,
+                                            vertical = 4.dp,
+                                        ),
                                     )
                                 }
                             }
                         }
                     }
-
                     if (supportingLines.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(6.dp))
-                        supportingLines.forEach { line ->
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        Text(
+                            text = supportingLines.first(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }

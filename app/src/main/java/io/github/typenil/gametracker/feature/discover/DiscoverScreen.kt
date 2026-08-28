@@ -435,19 +435,31 @@ private fun ChartsFeed(
 
 
 @Composable
-private fun RecommendationCard(recommendation: DiscoverRecommendation, onGameClick: (Long) -> Unit) {
+private fun RecommendationCard(
+    recommendation: DiscoverRecommendation,
+    onGameClick: (Long) -> Unit,
+) {
+    val topReason = recommendation.reasons.firstOrNull()
     GameCard(
         game = recommendation.game,
         onClick = { onGameClick(recommendation.game.id) },
-        supportingLines = recommendation.reasons.map { reasonLabel(it) },
+        supportingLines = if (topReason == null) emptyList() else listOf(reasonLabel(topReason)),
     )
 }
 
+private const val MAX_OVERLAP_TAGS_IN_REASON = 2
+
+private fun overlapLabel(tags: List<String>): String =
+    tags.take(MAX_OVERLAP_TAGS_IN_REASON).joinToString()
+
 @Composable
 private fun reasonLabel(reason: RecommendationReason): String = when (reason) {
-    is RecommendationReason.GenreOverlap -> stringResource(R.string.reason_genre, reason.tags.joinToString())
-    is RecommendationReason.ThemeOverlap -> stringResource(R.string.reason_theme, reason.tags.joinToString())
-    is RecommendationReason.PlatformOverlap -> stringResource(R.string.reason_platform, reason.tags.joinToString())
+    is RecommendationReason.GenreOverlap ->
+        stringResource(R.string.reason_genre, overlapLabel(reason.tags))
+    is RecommendationReason.ThemeOverlap ->
+        stringResource(R.string.reason_theme, overlapLabel(reason.tags))
+    is RecommendationReason.PlatformOverlap ->
+        stringResource(R.string.reason_platform, overlapLabel(reason.tags))
     RecommendationReason.SimilarGame -> stringResource(R.string.reason_similar)
     RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
     RecommendationReason.RecentRelease -> stringResource(R.string.reason_recency)

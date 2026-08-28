@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +57,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -64,12 +68,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
-import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.selectCardTags
-import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -78,10 +79,18 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private const val COVER_WIDTH_DP = 96
+private const val HERO_ASPECT_RATIO = 16f / 9f
+private val CardShape = RoundedCornerShape(16.dp)
+private val HeroShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+private val HeroScrim = Brush.verticalGradient(
+    0.00f to Color.Transparent,
+    0.35f to Color.Transparent,
+    0.70f to Color.Black.copy(alpha = 0.65f),
+    1.00f to Color.Black.copy(alpha = 0.90f),
+)
 private val FavoriteHitSize = 48.dp
-private val MetaIconSize = 18.dp
-private val MetaChevronSize = 16.dp
+private val MetaIconSize = 20.dp
+private val MetaChevronSize = 18.dp
 private val LibraryAddedDateFormatter =
     DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 private const val ANIM_EXPAND_ENTER_MS = 250
@@ -123,107 +132,141 @@ fun LibraryGameCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 2.dp,
     ) {
-        Box {
-            Column(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(GtDimens.Card),
+                    .aspectRatio(HERO_ASPECT_RATIO)
+                    .clip(HeroShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .clickable(onClick = onClick),
             ) {
-                Row(
+                if (!game.coverUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = game.coverUrl,
+                        contentDescription = game.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onClick),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        .fillMaxSize()
+                        .background(HeroScrim),
+                )
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(FavoriteHitSize)
+                        .testTag(LIBRARY_CARD_FAVORITE_TEST_TAG),
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(COVER_WIDTH_DP.dp)
-                            .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        if (!game.coverUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = game.coverUrl,
-                                contentDescription = game.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                        RatingBadge(
-                            rating = game.rating,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(4.dp),
+                        Icon(
+                            imageVector = if (entry.isFavorite) {
+                                Icons.Filled.Favorite
+                            } else {
+                                Icons.Filled.FavoriteBorder
+                            },
+                            contentDescription = stringResource(
+                                if (entry.isFavorite) {
+                                R.string.library_favorite_remove
+                            } else {
+                                R.string.library_favorite_add
+                            },
+                            ),
+                            tint = if (entry.isFavorite) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                Color.White.copy(alpha = 0.95f)
+                            },
+                            modifier = Modifier.size(20.dp),
                         )
                     }
-
-                    Column(modifier = Modifier.weight(1f)) {
+                }
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        text = game.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val developerName = libraryGame.developerName
+                    if (!developerName.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = game.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
+                            text = developerName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.75f),
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        val developerName = libraryGame.developerName
-                        if (!developerName.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = developerName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        if (tags.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                tags.forEach { tag ->
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        border = BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outlineVariant,
+                    }
+                    if (tags.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            maxItemsInEachRow = 3,
+                        ) {
+                            tags.forEach { tag ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        Color.White.copy(alpha = 0.35f),
+                                    ),
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = Color.White.copy(alpha = 0.95f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp,
+                                            vertical = 5.dp,
                                         ),
-                                    ) {
-                                        Text(
-                                            text = tag,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(
-                                                horizontal = 10.dp,
-                                                vertical = 4.dp,
-                                            ),
-                                        )
-                                    }
+                                    )
                                 }
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.width(FavoriteHitSize))
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    LibraryStatusControl(
-                        status = entry.status,
-                        onStatusSelected = onStatusSelected,
-                    )
+            }
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LibraryStatusControl(
+                    status = entry.status,
+                    onStatusSelected = onStatusSelected,
+                )
                     Row(
                         modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
@@ -277,8 +320,8 @@ fun LibraryGameCard(
                                                     R.string.library_hours_short,
                                                     hours,
                                                 ),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Medium,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -308,42 +351,13 @@ fun LibraryGameCard(
                         )
                         Text(
                             text = addedDate,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             softWrap = false,
                             modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
                         )
                     }
-                }
-            }
-
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(FavoriteHitSize)
-                    .testTag(LIBRARY_CARD_FAVORITE_TEST_TAG),
-            ) {
-                Icon(
-                    imageVector = if (entry.isFavorite) {
-                        Icons.Filled.Favorite
-                    } else {
-                        Icons.Filled.FavoriteBorder
-                    },
-                    contentDescription = stringResource(
-                        if (entry.isFavorite) {
-                            R.string.library_favorite_remove
-                        } else {
-                            R.string.library_favorite_add
-                        },
-                    ),
-                    tint = if (entry.isFavorite) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
             }
         }
     }
@@ -396,7 +410,7 @@ private fun LibraryStatusControl(
                     )
                     Text(
                         text = stringResource(currentStatus.displayNameRes()),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = accent,
                         maxLines = 1,
