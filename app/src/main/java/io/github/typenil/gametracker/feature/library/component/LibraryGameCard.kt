@@ -325,7 +325,7 @@ fun LibraryGameCard(
             )
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val useStackedMetadata =
-                    LocalDensity.current.fontScale >= 1.3f || maxWidth < 340.dp
+                    LocalDensity.current.fontScale >= 1.3f || maxWidth < 280.dp
                 if (useStackedMetadata) {
                     Column(
                         modifier = Modifier
