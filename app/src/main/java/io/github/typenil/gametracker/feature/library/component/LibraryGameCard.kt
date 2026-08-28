@@ -14,7 +14,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -95,8 +94,8 @@ private const val HERO_CONTROL_INSET_DP = 8
 private const val FAVORITE_HIT_SIZE_DP = 48
 private val FavoriteHitSize = FAVORITE_HIT_SIZE_DP.dp
 private val HeroContentTopPadding = (HERO_CONTROL_INSET_DP + FAVORITE_HIT_SIZE_DP + HERO_CONTROL_INSET_DP).dp
-private val MetaIconSize = 20.dp
-private val MetaChevronSize = 18.dp
+private val MetaIconSize = 18.dp
+private val MetaChevronSize = 16.dp
 private val LibraryAddedDateFormatter =
     DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 private const val ANIM_EXPAND_ENTER_MS = 250
@@ -323,10 +322,8 @@ fun LibraryGameCard(
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val useStackedMetadata =
-                    LocalDensity.current.fontScale >= 1.3f || maxWidth < 340.dp
-                if (useStackedMetadata) {
+            val useStackedMetadata = LocalDensity.current.fontScale >= 1.3f
+            if (useStackedMetadata) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -385,7 +382,6 @@ fun LibraryGameCard(
                         LibraryAddedDate(addedDate = addedDate)
                     }
                 }
-            }
         }
     }
 }
@@ -425,7 +421,7 @@ private fun LibraryHoursControl(
                     R.string.library_hours_short,
                     hours,
                 ),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -454,7 +450,7 @@ private fun LibraryAddedDate(
         )
         Text(
             text = addedDate,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             softWrap = false,
@@ -510,7 +506,7 @@ private fun LibraryStatusControl(
                     )
                     Text(
                         text = stringResource(currentStatus.displayNameRes()),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = accent,
                         maxLines = 1,
