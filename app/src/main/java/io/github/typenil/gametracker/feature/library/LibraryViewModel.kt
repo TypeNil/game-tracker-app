@@ -35,7 +35,10 @@ class LibraryViewModel @Inject constructor(
 
         val gameId = game.game.id
         if (!requestedDetailIds.add(gameId)) return
-
+        if (pendingDetailIds.size >= MAX_PENDING_DETAIL_IDS) {
+            val evictedId = pendingDetailIds.removeFirst()
+            requestedDetailIds.remove(evictedId)
+        }
         pendingDetailIds.addLast(gameId)
         if (hydrationJob?.isActive == true) return
 
@@ -54,6 +57,10 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
+    private companion object {
+        const val MAX_PENDING_DETAIL_IDS = 16
+    }
+
 
     private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
     private val _filterFavoritesOnly = MutableStateFlow(false)

@@ -129,6 +129,30 @@ class LibraryViewModelTest {
     }
 
     @Test
+    fun `onCardVisible caps pending work to maximum queue size`() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val requestedIds = mutableListOf<Long>()
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(any(), any()) } coAnswers {
+            requestedIds.add(firstArg())
+            gate.await()
+            AppResult.Success(Unit)
+        }
+
+        val viewModel = createViewModel()
+        for (id in 1L..50L) {
+            val game = hades.copy(game = hades.game.copy(id = id), bannerUrl = null)
+            viewModel.onCardVisible(game)
+        }
+
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(17, requestedIds.size)
+        assertEquals(1L, requestedIds.first())
+        assertEquals((35L..50L).toList(), requestedIds.drop(1))
+    }
+
+    @Test
     fun `init computes tab counts excluding NOT_INTERESTED from ALL`() = runTest {
         fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing, hollowKnight, badGame)
         val viewModel = createViewModel()
