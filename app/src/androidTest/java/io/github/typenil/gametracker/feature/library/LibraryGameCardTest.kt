@@ -263,6 +263,15 @@ class LibraryGameCardTest {
         val dateRes = dateResults.single()
         assertFalse(dateRes.isLineEllipsized(0))
         assertEquals(expectedDate.length, dateRes.getLineEnd(0, visibleEnd = true))
+
+        val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val addedBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        assertTrue(
+            "Gap between hours and date should be >= 12dp, was ${addedBounds.left - hoursBounds.right}",
+            addedBounds.left - hoursBounds.right >= 12.dp,
+        )
     }
 
     @Test

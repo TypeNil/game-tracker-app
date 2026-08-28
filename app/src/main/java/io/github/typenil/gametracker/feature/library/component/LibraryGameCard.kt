@@ -233,8 +233,8 @@ fun LibraryGameCard(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(start = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(horizontal = 6.dp),
                         ) {
                             VerticalDivider(
                                 modifier = Modifier.height(16.dp),
@@ -269,7 +269,7 @@ fun LibraryGameCard(
                                             R.string.library_hours_short,
                                             hours,
                                         ),
-                                        style = MaterialTheme.typography.labelLarge,
+                                        style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
@@ -298,7 +298,7 @@ fun LibraryGameCard(
                         )
                         Text(
                             text = addedDate,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             softWrap = false,
@@ -386,7 +386,7 @@ private fun LibraryStatusControl(
                     )
                     Text(
                         text = stringResource(currentStatus.displayNameRes()),
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = accent,
                         maxLines = 1,
