@@ -65,7 +65,9 @@ class LibraryGameCardTest {
         )
         composeTestRule.setContent {
             GameTrackerTheme {
-                LibraryGameCard(libraryGame = game, onClick = {})
+                Box(modifier = Modifier.width(360.dp)) {
+                    LibraryGameCard(libraryGame = game, onClick = {})
+                }
             }
         }
 
@@ -120,15 +122,17 @@ class LibraryGameCardTest {
     fun card_keepsAddedDateOnTheRight_whenHoursMissing() {
         composeTestRule.setContent {
             GameTrackerTheme {
-                LibraryGameCard(
-                    libraryGame = libraryGame(
-                        name = "Celeste",
-                        status = LibraryStatus.WISHLIST,
-                        hoursPlayed = 0,
-                        isFavorite = false,
-                    ),
-                    onClick = {},
-                )
+                Box(modifier = Modifier.width(360.dp)) {
+                    LibraryGameCard(
+                        libraryGame = libraryGame(
+                            name = "Celeste",
+                            status = LibraryStatus.WISHLIST,
+                            hoursPlayed = 0,
+                            isFavorite = false,
+                        ),
+                        onClick = {},
+                    )
+                }
             }
         }
 
@@ -450,14 +454,16 @@ class LibraryGameCardTest {
     fun card_hours_isCenteredBetweenDividers() {
         composeTestRule.setContent {
             GameTrackerTheme {
-                LibraryGameCard(
-                    libraryGame = libraryGame(
-                        name = "Hades",
-                        status = LibraryStatus.PLAYING,
-                        hoursPlayed = 0,
-                    ),
-                    onClick = {},
-                )
+                Box(modifier = Modifier.width(360.dp)) {
+                    LibraryGameCard(
+                        libraryGame = libraryGame(
+                            name = "Hades",
+                            status = LibraryStatus.PLAYING,
+                            hoursPlayed = 0,
+                        ),
+                        onClick = {},
+                    )
+                }
             }
         }
         val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true)
