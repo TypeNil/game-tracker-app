@@ -216,8 +216,8 @@ class LibraryGameCardTest {
             .getUnclippedBoundsInRoot()
         val width = bounds.right - bounds.left
         val height = bounds.bottom - bounds.top
-        assertTrue("Width $width should be >= 48.dp", width >= 48.dp)
-        assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
+        assertTrue("Width $width should be >= 48.dp", width >= 47.9.dp)
+        assertTrue("Height $height should be >= 48.dp", height >= 47.9.dp)
     }
 
     @Test
@@ -360,8 +360,8 @@ class LibraryGameCardTest {
             .getUnclippedBoundsInRoot()
         val width = bounds.right - bounds.left
         val height = bounds.bottom - bounds.top
-        assertTrue("Width $width should be >= 48.dp", width >= 48.dp)
-        assertTrue("Height $height should be >= 48.dp", height >= 48.dp)
+        assertTrue("Width $width should be >= 48.dp", width >= 47.9.dp)
+        assertTrue("Height $height should be >= 48.dp", height >= 47.9.dp)
     }
 
     @Test

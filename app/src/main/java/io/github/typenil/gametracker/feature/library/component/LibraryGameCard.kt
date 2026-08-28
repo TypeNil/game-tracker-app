@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.selectCardTags
@@ -143,22 +144,92 @@ fun LibraryGameCard(
                     .fillMaxWidth()
                     .aspectRatio(HERO_ASPECT_RATIO)
                     .clip(HeroShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .clickable(onClick = onClick),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             ) {
-                if (!game.coverUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = game.coverUrl,
-                        contentDescription = game.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(HeroScrim),
-                )
+                        .clickable(onClick = onClick),
+                ) {
+                    if (!game.coverUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = game.coverUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(HeroScrim),
+                    )
+                    if (game.rating != null) {
+                        RatingBadge(
+                            rating = game.rating,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(10.dp),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            text = game.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        val developerName = libraryGame.developerName
+                        if (!developerName.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = developerName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.75f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (tags.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                maxItemsInEachRow = 3,
+                            ) {
+                                tags.forEach { tag ->
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color.Black.copy(alpha = 0.5f),
+                                        border = BorderStroke(
+                                            1.dp,
+                                            Color.White.copy(alpha = 0.35f),
+                                        ),
+                                    ) {
+                                        Text(
+                                            text = tag,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = Color.White.copy(alpha = 0.95f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 5.dp,
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 IconButton(
                     onClick = onFavoriteClick,
                     modifier = Modifier
@@ -194,63 +265,6 @@ fun LibraryGameCard(
                             },
                             modifier = Modifier.size(20.dp),
                         )
-                    }
-                }
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Text(
-                        text = game.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    val developerName = libraryGame.developerName
-                    if (!developerName.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = developerName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.75f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (tags.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            maxItemsInEachRow = 3,
-                        ) {
-                            tags.forEach { tag ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color.Black.copy(alpha = 0.5f),
-                                    border = BorderStroke(
-                                        1.dp,
-                                        Color.White.copy(alpha = 0.35f),
-                                    ),
-                                ) {
-                                    Text(
-                                        text = tag,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = Color.White.copy(alpha = 0.95f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(
-                                            horizontal = 12.dp,
-                                            vertical = 5.dp,
-                                        ),
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
