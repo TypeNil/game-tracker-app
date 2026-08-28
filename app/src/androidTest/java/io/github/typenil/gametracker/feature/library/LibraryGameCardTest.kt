@@ -550,7 +550,7 @@ class LibraryGameCardTest {
     fun card_compactWidthAndLargeFont_keepsInteractiveContentInBounds() {
         composeTestRule.setContent {
             CompositionLocalProvider(
-                LocalDensity provides Density(density = 2.0f, fontScale = 1.5f),
+                LocalDensity provides Density(density = LocalDensity.current.density, fontScale = 1.5f),
             ) {
                 GameTrackerTheme {
                     Box(modifier = Modifier.width(320.dp)) {
@@ -611,7 +611,7 @@ class LibraryGameCardTest {
     fun card_compactWidthAndMaxFont_keepsAllMetadataInBounds() {
         composeTestRule.setContent {
             CompositionLocalProvider(
-                LocalDensity provides Density(density = 2.0f, fontScale = 2.0f),
+                LocalDensity provides Density(density = LocalDensity.current.density, fontScale = 2.0f),
             ) {
                 GameTrackerTheme {
                     Box(modifier = Modifier.width(320.dp)) {
@@ -650,7 +650,7 @@ class LibraryGameCardTest {
     fun card_compactWidthAndDefaultFont_keepsAllMetadataUntruncated() {
         composeTestRule.setContent {
             CompositionLocalProvider(
-                LocalDensity provides Density(density = 2.0f, fontScale = 1.0f),
+                LocalDensity provides Density(density = LocalDensity.current.density, fontScale = 1.0f),
             ) {
                 GameTrackerTheme {
                     Box(modifier = Modifier.width(320.dp)) {
