@@ -234,7 +234,7 @@ fun LibraryGameCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(horizontal = 6.dp),
+                            modifier = Modifier.padding(start = 6.dp),
                         ) {
                             VerticalDivider(
                                 modifier = Modifier.height(16.dp),
@@ -278,32 +278,50 @@ fun LibraryGameCard(
                                     )
                                 }
                             }
-                            VerticalDivider(
-                                modifier = Modifier.height(16.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                            )
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CalendarToday,
-                            contentDescription = stringResource(R.string.library_added),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(MetaIconSize),
-                        )
-                        Text(
-                            text = addedDate,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
-                        )
+                        AnimatedVisibility(
+                            visible = entry.showsHours(),
+                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(end = 6.dp),
+                            ) {
+                                VerticalDivider(
+                                    modifier = Modifier.height(16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                            }
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarToday,
+                                contentDescription = stringResource(R.string.library_added),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(MetaIconSize),
+                            )
+                            Text(
+                                text = addedDate,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
+                            )
+                        }
                     }
                 }
             }
