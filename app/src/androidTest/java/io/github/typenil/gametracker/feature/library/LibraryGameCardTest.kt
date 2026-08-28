@@ -30,8 +30,10 @@ import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOUR
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_STATUS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
+import io.github.typenil.gametracker.feature.library.component.resolveLibraryBannerUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -505,6 +507,36 @@ class LibraryGameCardTest {
             }
         }
         composeTestRule.onNodeWithTag(LIBRARY_CARD_BANNER_TEST_TAG).assertIsDisplayed()
+    }
+
+    @Test
+    fun resolveLibraryBannerUrl_prefersNonBlankBannerOverCover() {
+        assertEquals(
+            "https://example.com/banner.jpg",
+            resolveLibraryBannerUrl("https://example.com/banner.jpg", "https://example.com/cover.jpg"),
+        )
+    }
+
+    @Test
+    fun resolveLibraryBannerUrl_fallsBackToCoverWhenBannerIsBlankOrNull() {
+        assertEquals(
+            "https://example.com/cover.jpg",
+            resolveLibraryBannerUrl("", "https://example.com/cover.jpg"),
+        )
+        assertEquals(
+            "https://example.com/cover.jpg",
+            resolveLibraryBannerUrl("   ", "https://example.com/cover.jpg"),
+        )
+        assertEquals(
+            "https://example.com/cover.jpg",
+            resolveLibraryBannerUrl(null, "https://example.com/cover.jpg"),
+        )
+    }
+
+    @Test
+    fun resolveLibraryBannerUrl_returnsNullWhenBothAreBlankOrNull() {
+        assertNull(resolveLibraryBannerUrl(null, null))
+        assertNull(resolveLibraryBannerUrl("", "   "))
     }
 
     private fun libraryGame(

@@ -90,12 +90,21 @@ class LibraryViewModelTest {
     private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
 
     @Test
-    fun `init triggers background details refresh for library games`() = runTest {
-        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
-        createViewModel()
-        coVerify(timeout = 1000) {
+    fun `onCardVisible refreshes missing banner once and deduplicates`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        coVerify(exactly = 1) {
             fakeGameRepository.refreshGameDetails(1L, force = false)
-            fakeGameRepository.refreshGameDetails(2L, force = false)
+        }
+    }
+
+    @Test
+    fun `onCardVisible does not refresh already hydrated banner`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onCardVisible(hades.copy(bannerUrl = "https://example.com/banner.jpg"))
+        coVerify(exactly = 0) {
+            fakeGameRepository.refreshGameDetails(any(), any())
         }
     }
 

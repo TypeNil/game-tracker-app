@@ -110,6 +110,12 @@ const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
 const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
 const val LIBRARY_CARD_BANNER_TEST_TAG = "library_card_banner"
 
+internal fun resolveLibraryBannerUrl(
+    bannerUrl: String?,
+    coverUrl: String?,
+): String? = bannerUrl?.takeIf(String::isNotBlank)
+    ?: coverUrl?.takeIf(String::isNotBlank)
+
 /**
  * Full-width library row: cover, title, developer, tags, then a status control,
  * optional hours, and added date. Favorite and status are siblings of the
@@ -158,8 +164,7 @@ fun LibraryGameCard(
                         .fillMaxSize()
                         .clickable(onClick = onClick),
                 ) {
-                    val bannerImage = libraryGame.bannerUrl?.takeIf { it.isNotBlank() }
-                        ?: game.coverUrl?.takeIf { it.isNotBlank() }
+                    val bannerImage = resolveLibraryBannerUrl(libraryGame.bannerUrl, game.coverUrl)
                     if (bannerImage != null) {
                         AsyncImage(
                             model = bannerImage,
@@ -186,7 +191,7 @@ fun LibraryGameCard(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp, top = 48.dp),
                     ) {
                         Text(
                             text = game.name,

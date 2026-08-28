@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -27,14 +25,17 @@ class LibraryViewModel @Inject constructor(
     private val gameRepository: GameRepository,
 ) : ViewModel() {
 
-    init {
+    private val requestedDetailIds = mutableSetOf<Long>()
+
+    fun onCardVisible(game: LibraryGame) {
+        if (!game.bannerUrl.isNullOrBlank()) return
+        if (!requestedDetailIds.add(game.game.id)) return
+
         viewModelScope.launch {
-            val ids = libraryRepository.getLibraryGamesFlow()
-                .map { games -> games.map { it.game.id } }
-                .first()
-            for (id in ids) {
-                gameRepository.refreshGameDetails(id, force = false)
-            }
+            gameRepository.refreshGameDetails(
+                id = game.game.id,
+                force = false,
+            )
         }
     }
 
