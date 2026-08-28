@@ -139,16 +139,19 @@ fun GameCard(
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    val tags = remember(game.genres, game.platforms) {
-                        selectCardTags(game.genres, game.platforms)
+                    val genreTags = remember(game.genres) {
+                        selectGenreTags(game.genres)
                     }
-                    if (tags.isNotEmpty()) {
+                    val platformFamilies = remember(game.platforms) {
+                        resolvePlatformFamilies(game.platforms)
+                    }
+                    if (genreTags.isNotEmpty() || platformFamilies.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
                         ) {
-                            tags.forEach { tag ->
+                            genreTags.forEach { tag ->
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -169,6 +172,12 @@ fun GameCard(
                                         ),
                                     )
                                 }
+                            }
+                            if (platformFamilies.isNotEmpty()) {
+                                PlatformIconsRow(
+                                    platforms = platformFamilies,
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                )
                             }
                         }
                     }

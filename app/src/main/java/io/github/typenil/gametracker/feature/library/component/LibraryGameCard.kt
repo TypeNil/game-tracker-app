@@ -71,7 +71,9 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
-import io.github.typenil.gametracker.core.designsystem.component.selectCardTags
+import io.github.typenil.gametracker.core.designsystem.component.PlatformIconsRow
+import io.github.typenil.gametracker.core.designsystem.component.resolvePlatformFamilies
+import io.github.typenil.gametracker.core.designsystem.component.selectGenreTags
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -125,8 +127,11 @@ fun LibraryGameCard(
 ) {
     val game = libraryGame.game
     val entry = libraryGame.entry
-    val tags = remember(game.genres, game.platforms) {
-        selectCardTags(game.genres, game.platforms)
+    val genreTags = remember(game.genres) {
+        selectGenreTags(game.genres)
+    }
+    val platformFamilies = remember(game.platforms) {
+        resolvePlatformFamilies(game.platforms)
     }
     val addedDate = remember(entry.addedAtEpochSeconds) {
         formatLibraryAddedDate(entry.addedAtEpochSeconds)
@@ -202,38 +207,58 @@ fun LibraryGameCard(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        if (tags.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                                maxItemsInEachRow = 3,
-                            ) {
-                                tags.forEach { tag ->
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = Color.Black.copy(alpha = 0.5f),
-                                        border = BorderStroke(
-                                            1.dp,
-                                            Color.White.copy(alpha = 0.35f),
+                    if (genreTags.isNotEmpty() || platformFamilies.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            maxItemsInEachRow = 3,
+                        ) {
+                            genreTags.forEach { tag ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        Color.White.copy(alpha = 0.35f),
+                                    ),
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = Color.White.copy(alpha = 0.95f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp,
+                                            vertical = 5.dp,
                                         ),
-                                    ) {
-                                        Text(
-                                            text = tag,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = Color.White.copy(alpha = 0.95f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(
-                                                horizontal = 12.dp,
-                                                vertical = 5.dp,
-                                            ),
-                                        )
-                                    }
+                                    )
+                                }
+                            }
+                            if (platformFamilies.isNotEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        Color.White.copy(alpha = 0.35f),
+                                    ),
+                                ) {
+                                    PlatformIconsRow(
+                                        platforms = platformFamilies,
+                                        tint = Color.White.copy(alpha = 0.95f),
+                                        iconSize = 18.dp,
+                                        modifier = Modifier.padding(
+                                            horizontal = 10.dp,
+                                            vertical = 5.dp,
+                                        ),
+                                    )
                                 }
                             }
                         }
                     }
+                }
                 }
                 IconButton(
                     onClick = onFavoriteClick,
