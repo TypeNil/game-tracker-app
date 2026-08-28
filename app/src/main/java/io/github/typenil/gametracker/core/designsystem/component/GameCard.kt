@@ -174,10 +174,24 @@ fun GameCard(
                                 }
                             }
                             if (platformFamilies.isNotEmpty()) {
-                                PlatformIconsRow(
-                                    platforms = platformFamilies,
-                                    modifier = Modifier.padding(vertical = 4.dp),
-                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant,
+                                    ),
+                                ) {
+                                    PlatformIconsRow(
+                                        platforms = platformFamilies,
+                                        iconSize = 16.dp,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = 8.dp,
+                                            vertical = 4.dp,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
