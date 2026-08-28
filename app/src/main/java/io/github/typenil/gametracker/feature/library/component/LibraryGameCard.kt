@@ -350,7 +350,7 @@ fun LibraryGameCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         LibraryStatusControl(
@@ -400,7 +400,7 @@ private fun LibraryHoursControl(
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 2.dp),
     ) {
         Icon(
             imageVector = Icons.Outlined.Schedule,
@@ -482,7 +482,7 @@ private fun LibraryStatusControl(
                 .clip(RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .testTag(LIBRARY_CARD_STATUS_TEST_TAG)
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
