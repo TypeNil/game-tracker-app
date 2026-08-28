@@ -239,14 +239,16 @@ class LibraryGameCardTest {
         val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(1_700_000_000L)
         composeTestRule.setContent {
             GameTrackerTheme {
-                LibraryGameCard(
-                    libraryGame = libraryGame(
-                        name = "The Witcher 3: Wild Hunt",
-                        status = LibraryStatus.PLAYING,
-                        hoursPlayed = 999_999,
-                    ),
-                    onClick = {},
-                )
+                Box(modifier = Modifier.width(360.dp)) {
+                    LibraryGameCard(
+                        libraryGame = libraryGame(
+                            name = "The Witcher 3: Wild Hunt",
+                            status = LibraryStatus.PLAYING,
+                            hoursPlayed = 999_999,
+                        ),
+                        onClick = {},
+                    )
+                }
             }
         }
         composeTestRule.onNodeWithText(
@@ -679,8 +681,8 @@ class LibraryGameCardTest {
         assertTrue("Status width should be positive", statusWidth > 0.dp)
         assertTrue("Hours width should be positive", hoursWidth > 0.dp)
         assertTrue("Added width should be positive", addedWidth > 0.dp)
-        assertTrue("Hours should be to the right of status", hoursBounds.left > statusBounds.right)
-        assertTrue("Added date should be to the right of hours", addedBounds.left > hoursBounds.right)
+        assertTrue("Hours should be below status when stacked on compact card", hoursBounds.top >= statusBounds.bottom)
+        assertTrue("Added date should be below hours when stacked on compact card", addedBounds.top >= hoursBounds.bottom)
         assertTrue("Status right ${statusBounds.right} should be <= 320dp", statusBounds.right <= 320.dp)
         assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
         assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)

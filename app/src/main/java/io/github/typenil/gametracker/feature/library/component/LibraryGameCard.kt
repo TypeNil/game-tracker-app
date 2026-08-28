@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -322,8 +323,10 @@ fun LibraryGameCard(
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
-            val useStackedMetadata = LocalDensity.current.fontScale >= 1.3f
-            if (useStackedMetadata) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val useStackedMetadata =
+                    LocalDensity.current.fontScale >= 1.3f || maxWidth < 340.dp
+                if (useStackedMetadata) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -382,6 +385,7 @@ fun LibraryGameCard(
                         LibraryAddedDate(addedDate = addedDate)
                     }
                 }
+            }
         }
     }
 }
