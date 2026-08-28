@@ -29,13 +29,20 @@ class LibraryViewModel @Inject constructor(
 
     fun onCardVisible(game: LibraryGame) {
         if (!game.bannerUrl.isNullOrBlank()) return
-        if (!requestedDetailIds.add(game.game.id)) return
+
+        val gameId = game.game.id
+        if (!requestedDetailIds.add(gameId)) return
 
         viewModelScope.launch {
-            gameRepository.refreshGameDetails(
-                id = game.game.id,
-                force = false,
-            )
+            when (
+                gameRepository.refreshGameDetails(
+                    id = gameId,
+                    force = false,
+                )
+            ) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> requestedDetailIds.remove(gameId)
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.core.designsystem.component
 
+import java.util.Locale
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
@@ -41,7 +42,7 @@ fun resolvePlatformFamilies(platforms: List<String>): List<PlatformFamily> {
 
 private fun familyOf(platform: String): PlatformFamily? {
     if (platform.isEmpty()) return null
-    val p = platform.lowercase()
+    val p = platform.lowercase(Locale.ROOT)
     return when {
         p.contains("playstation") ||
             (p.startsWith("ps") && p.any(Char::isDigit)) -> PlatformFamily.PLAYSTATION

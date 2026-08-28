@@ -90,7 +90,10 @@ private val HeroScrim = Brush.verticalGradient(
     0.70f to Color.Black.copy(alpha = 0.65f),
     1.00f to Color.Black.copy(alpha = 0.90f),
 )
-private val FavoriteHitSize = 48.dp
+private const val HERO_CONTROL_INSET_DP = 8
+private const val FAVORITE_HIT_SIZE_DP = 48
+private val FavoriteHitSize = FAVORITE_HIT_SIZE_DP.dp
+private val HeroContentTopPadding = (HERO_CONTROL_INSET_DP + FAVORITE_HIT_SIZE_DP + HERO_CONTROL_INSET_DP).dp
 private val MetaIconSize = 20.dp
 private val MetaChevronSize = 18.dp
 private val LibraryAddedDateFormatter =
@@ -109,6 +112,7 @@ const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
 const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
 const val LIBRARY_CARD_BANNER_TEST_TAG = "library_card_banner"
 
+const val LIBRARY_CARD_CLICK_TARGET_TEST_TAG = "library_card_click_target"
 internal fun resolveLibraryBannerUrl(
     bannerUrl: String?,
     coverUrl: String?,
@@ -165,7 +169,6 @@ fun LibraryGameCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatioOrContent(HERO_ASPECT_RATIO)
                     .clip(HeroShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .testTag(LIBRARY_CARD_BANNER_TEST_TAG),
@@ -173,7 +176,9 @@ fun LibraryGameCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onClick),
+                        .aspectRatioOrContent(HERO_ASPECT_RATIO)
+                        .clickable(onClick = onClick)
+                        .testTag(LIBRARY_CARD_CLICK_TARGET_TEST_TAG),
                 ) {
                     val bannerImage = resolveLibraryBannerUrl(libraryGame.bannerUrl, game.coverUrl)
                     if (bannerImage != null) {
@@ -202,7 +207,7 @@ fun LibraryGameCard(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp, top = 48.dp),
+                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp, top = HeroContentTopPadding),
                     ) {
                         Text(
                             text = game.name,

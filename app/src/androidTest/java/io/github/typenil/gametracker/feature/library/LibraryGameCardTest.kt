@@ -31,6 +31,7 @@ import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_BANNER_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_CLICK_TARGET_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_FAVORITE_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
@@ -573,12 +574,36 @@ class LibraryGameCardTest {
         val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val bannerBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_BANNER_TEST_TAG).getUnclippedBoundsInRoot()
 
+        val titleBounds = composeTestRule.onNodeWithText("The Legend of Zelda: Tears of the Kingdom", useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
         val bannerHeight = bannerBounds.bottom - bannerBounds.top
         assertTrue(bannerHeight > 0.dp)
         assertTrue(favoriteBounds.top >= bannerBounds.top)
         assertTrue(favoriteBounds.bottom <= bannerBounds.bottom)
+        assertTrue(
+            "Title overlaps favorite: title=$titleBounds favorite=$favoriteBounds",
+            titleBounds.top >= favoriteBounds.bottom,
+        )
         assertTrue(statusBounds.top >= bannerBounds.bottom)
         assertTrue(hoursBounds.top >= bannerBounds.bottom)
+    }
+
+    @Test
+    fun card_shortContent_clickTargetAndHeroMediaFillBanner() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(name = "Hades"),
+                    onClick = {},
+                )
+            }
+        }
+        val bannerBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_BANNER_TEST_TAG).getUnclippedBoundsInRoot()
+        val clickTargetBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_CLICK_TARGET_TEST_TAG).getUnclippedBoundsInRoot()
+        assertEquals(bannerBounds.left.value, clickTargetBounds.left.value, 0.1f)
+        assertEquals(bannerBounds.right.value, clickTargetBounds.right.value, 0.1f)
+        assertEquals(bannerBounds.top.value, clickTargetBounds.top.value, 0.1f)
+        assertEquals(bannerBounds.bottom.value, clickTargetBounds.bottom.value, 0.1f)
     }
 
     private fun libraryGame(

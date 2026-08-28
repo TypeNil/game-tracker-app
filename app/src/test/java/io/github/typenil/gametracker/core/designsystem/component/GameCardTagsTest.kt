@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.Locale
 import java.util.TimeZone
 
 class GameCardTagsTest {
@@ -59,6 +60,21 @@ class GameCardTagsTest {
     fun `resolvePlatformFamilies returns empty for empty or unknown platforms`() {
         assertEquals(emptyList<PlatformFamily>(), resolvePlatformFamilies(emptyList()))
         assertEquals(emptyList<PlatformFamily>(), resolvePlatformFamilies(listOf("UnknownPlatform", "BoardGame")))
+    }
+
+    @Test
+    fun `resolvePlatformFamilies is locale independent`() {
+        val previousLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            val families = resolvePlatformFamilies(listOf("NINTENDO SWITCH", "WINDOWS", "PLAYSTATION 5"))
+            assertEquals(
+                listOf(PlatformFamily.PLAYSTATION, PlatformFamily.NINTENDO, PlatformFamily.PC),
+                families,
+            )
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 
     @Test

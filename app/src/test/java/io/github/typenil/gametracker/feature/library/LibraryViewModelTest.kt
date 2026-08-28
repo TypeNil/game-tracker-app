@@ -25,6 +25,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -35,6 +36,11 @@ class LibraryViewModelTest {
 
     private val fakeLibraryRepository = FakeLibraryRepository()
     private val fakeGameRepository: GameRepository = mockk(relaxed = true)
+    @Before
+    fun setUp() {
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
+    }
+
     private val hades = LibraryGame(
         game = Game(id = 1L, name = "Hades", coverUrl = null, rating = 93.0, releaseDateEpochSeconds = 100L),
         entry = LibraryEntry(
@@ -105,6 +111,20 @@ class LibraryViewModelTest {
         viewModel.onCardVisible(hades.copy(bannerUrl = "https://example.com/banner.jpg"))
         coVerify(exactly = 0) {
             fakeGameRepository.refreshGameDetails(any(), any())
+        }
+    }
+
+    @Test
+    fun `onCardVisible retries after failed hydration`() = runTest {
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(1L, force = false) } returns
+            AppResult.Error(AppError.NetworkError) andThen AppResult.Success(Unit)
+
+        val viewModel = createViewModel()
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+
+        coVerify(exactly = 2) {
+            fakeGameRepository.refreshGameDetails(1L, force = false)
         }
     }
 
