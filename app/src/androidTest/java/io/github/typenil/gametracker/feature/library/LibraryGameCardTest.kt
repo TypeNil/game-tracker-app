@@ -436,6 +436,35 @@ class LibraryGameCardTest {
         ).assertIsDisplayed()
     }
 
+    @Test
+    fun card_hours_isCenteredBetweenDividers() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 0,
+                    ),
+                    onClick = {},
+                )
+            }
+        }
+        val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val dateBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+
+        val leftGap = hoursBounds.left - statusBounds.right
+        val rightGap = dateBounds.left - hoursBounds.right
+        assertTrue("Left gap $leftGap should be positive", leftGap > 0.dp)
+        assertTrue("Right gap $rightGap should be positive", rightGap > 0.dp)
+        val difference = if (leftGap > rightGap) leftGap - rightGap else rightGap - leftGap
+        assertTrue("Hours should be centered between status and date, diff was $difference", difference < 16.dp)
+    }
+
     private fun libraryGame(
         name: String,
         status: LibraryStatus = LibraryStatus.PLAYING,
