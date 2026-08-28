@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -61,6 +59,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -115,6 +114,18 @@ internal fun resolveLibraryBannerUrl(
     coverUrl: String?,
 ): String? = bannerUrl?.takeIf(String::isNotBlank)
     ?: coverUrl?.takeIf(String::isNotBlank)
+private fun Modifier.aspectRatioOrContent(aspectRatio: Float): Modifier = layout { measurable, constraints ->
+    val minHeight = if (constraints.hasBoundedWidth) {
+        (constraints.maxWidth / aspectRatio).toInt().coerceIn(constraints.minHeight, constraints.maxHeight)
+    } else {
+        constraints.minHeight
+    }
+    val childConstraints = constraints.copy(minHeight = minHeight)
+    val placeable = measurable.measure(childConstraints)
+    layout(placeable.width, placeable.height) {
+        placeable.placeRelative(0, 0)
+    }
+}
 
 /**
  * Full-width library row: cover, title, developer, tags, then a status control,
@@ -154,14 +165,14 @@ fun LibraryGameCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(HERO_ASPECT_RATIO)
+                    .aspectRatioOrContent(HERO_ASPECT_RATIO)
                     .clip(HeroShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .testTag(LIBRARY_CARD_BANNER_TEST_TAG),
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .clickable(onClick = onClick),
                 ) {
                     val bannerImage = resolveLibraryBannerUrl(libraryGame.bannerUrl, game.coverUrl)
@@ -171,12 +182,12 @@ fun LibraryGameCard(
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             alignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.matchParentSize(),
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .matchParentSize()
                             .background(HeroScrim),
                     )
                     if (game.rating != null) {

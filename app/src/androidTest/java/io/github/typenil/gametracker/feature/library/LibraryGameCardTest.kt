@@ -1,6 +1,12 @@
 package io.github.typenil.gametracker.feature.library
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -537,6 +543,42 @@ class LibraryGameCardTest {
     fun resolveLibraryBannerUrl_returnsNullWhenBothAreBlankOrNull() {
         assertNull(resolveLibraryBannerUrl(null, null))
         assertNull(resolveLibraryBannerUrl("", "   "))
+    }
+
+    @Test
+    fun card_compactWidthAndLargeFont_keepsInteractiveContentInBounds() {
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalDensity provides Density(density = 2.0f, fontScale = 1.5f),
+            ) {
+                GameTrackerTheme {
+                    Box(modifier = Modifier.width(320.dp)) {
+                        LibraryGameCard(
+                            libraryGame = libraryGame(
+                                name = "The Legend of Zelda: Tears of the Kingdom",
+                                status = LibraryStatus.PLAYING,
+                                hoursPlayed = 120,
+                                isFavorite = true,
+                                developerName = "Nintendo EPD",
+                                genres = listOf("Action", "Adventure"),
+                            ),
+                            onClick = {},
+                        )
+                    }
+                }
+            }
+        }
+        val favoriteBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_FAVORITE_TEST_TAG).getUnclippedBoundsInRoot()
+        val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val bannerBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_BANNER_TEST_TAG).getUnclippedBoundsInRoot()
+
+        val bannerHeight = bannerBounds.bottom - bannerBounds.top
+        assertTrue(bannerHeight > 0.dp)
+        assertTrue(favoriteBounds.top >= bannerBounds.top)
+        assertTrue(favoriteBounds.bottom <= bannerBounds.bottom)
+        assertTrue(statusBounds.top >= bannerBounds.bottom)
+        assertTrue(hoursBounds.top >= bannerBounds.bottom)
     }
 
     private fun libraryGame(
