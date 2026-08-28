@@ -65,9 +65,7 @@ class LibraryGameCardTest {
         )
         composeTestRule.setContent {
             GameTrackerTheme {
-                Box(modifier = Modifier.width(360.dp)) {
-                    LibraryGameCard(libraryGame = game, onClick = {})
-                }
+                LibraryGameCard(libraryGame = game, onClick = {})
             }
         }
 
@@ -122,17 +120,15 @@ class LibraryGameCardTest {
     fun card_keepsAddedDateOnTheRight_whenHoursMissing() {
         composeTestRule.setContent {
             GameTrackerTheme {
-                Box(modifier = Modifier.width(360.dp)) {
-                    LibraryGameCard(
-                        libraryGame = libraryGame(
-                            name = "Celeste",
-                            status = LibraryStatus.WISHLIST,
-                            hoursPlayed = 0,
-                            isFavorite = false,
-                        ),
-                        onClick = {},
-                    )
-                }
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Celeste",
+                        status = LibraryStatus.WISHLIST,
+                        hoursPlayed = 0,
+                        isFavorite = false,
+                    ),
+                    onClick = {},
+                )
             }
         }
 
@@ -239,16 +235,14 @@ class LibraryGameCardTest {
         val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(1_700_000_000L)
         composeTestRule.setContent {
             GameTrackerTheme {
-                Box(modifier = Modifier.width(360.dp)) {
-                    LibraryGameCard(
-                        libraryGame = libraryGame(
-                            name = "The Witcher 3: Wild Hunt",
-                            status = LibraryStatus.PLAYING,
-                            hoursPlayed = 999_999,
-                        ),
-                        onClick = {},
-                    )
-                }
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "The Witcher 3: Wild Hunt",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 999_999,
+                    ),
+                    onClick = {},
+                )
             }
         }
         composeTestRule.onNodeWithText(
@@ -456,16 +450,14 @@ class LibraryGameCardTest {
     fun card_hours_isCenteredBetweenDividers() {
         composeTestRule.setContent {
             GameTrackerTheme {
-                Box(modifier = Modifier.width(360.dp)) {
-                    LibraryGameCard(
-                        libraryGame = libraryGame(
-                            name = "Hades",
-                            status = LibraryStatus.PLAYING,
-                            hoursPlayed = 0,
-                        ),
-                        onClick = {},
-                    )
-                }
+                LibraryGameCard(
+                    libraryGame = libraryGame(
+                        name = "Hades",
+                        status = LibraryStatus.PLAYING,
+                        hoursPlayed = 0,
+                    ),
+                    onClick = {},
+                )
             }
         }
         val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true)
