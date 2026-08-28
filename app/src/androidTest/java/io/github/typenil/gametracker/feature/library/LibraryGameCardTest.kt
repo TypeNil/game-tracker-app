@@ -644,6 +644,42 @@ class LibraryGameCardTest {
         assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
         assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)
     }
+    @Test
+    fun card_compactWidthAndDefaultFont_keepsAllMetadataUntruncated() {
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalDensity provides Density(density = 2.0f, fontScale = 1.0f),
+            ) {
+                GameTrackerTheme {
+                    Box(modifier = Modifier.width(320.dp)) {
+                        LibraryGameCard(
+                            libraryGame = libraryGame(
+                                name = "Hades",
+                                status = LibraryStatus.PLAYING,
+                                hoursPlayed = 999_999,
+                            ),
+                            onClick = {},
+                        )
+                    }
+                }
+            }
+        }
+        val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val addedBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val statusWidth = statusBounds.right - statusBounds.left
+        val hoursWidth = hoursBounds.right - hoursBounds.left
+        val addedWidth = addedBounds.right - addedBounds.left
+        assertTrue("Status width should be positive", statusWidth > 0.dp)
+        assertTrue("Hours width should be positive", hoursWidth > 0.dp)
+        assertTrue("Added width should be positive", addedWidth > 0.dp)
+        assertTrue("Hours should be below status when stacked on compact card", hoursBounds.top >= statusBounds.bottom)
+        assertTrue("Added date should be below hours when stacked on compact card", addedBounds.top >= hoursBounds.bottom)
+        assertTrue("Status right ${statusBounds.right} should be <= 320dp", statusBounds.right <= 320.dp)
+        assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
+        assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)
+    }
+
 
     private fun libraryGame(
         name: String,

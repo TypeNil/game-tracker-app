@@ -574,7 +574,7 @@ class SearchViewModelTest {
         viewModel.addToWishlist(game)
         advanceUntilIdle()
         coVerify(exactly = 1) { libraryRepository.addToWishlist(game) }
-        coVerify(exactly = 1) { repository.refreshGameDetails(game.id, force = false) }
+        coVerify(exactly = 0) { repository.refreshGameDetails(any(), any()) }
         coVerify(exactly = 0) { libraryRepository.setGameStatus(any(), any()) }
     }
 

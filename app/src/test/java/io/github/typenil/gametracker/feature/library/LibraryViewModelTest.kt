@@ -129,13 +129,22 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun `onCardVisible caps pending work to maximum queue size`() = runTest {
+    fun `onCardVisible caps queue and serializes detail requests`() = runTest {
         val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
         val requestedIds = mutableListOf<Long>()
+        var inFlight = 0
+        var peakInFlight = 0
+
         io.mockk.coEvery { fakeGameRepository.refreshGameDetails(any(), any()) } coAnswers {
             requestedIds.add(firstArg())
-            gate.await()
-            AppResult.Success(Unit)
+            inFlight++
+            peakInFlight = maxOf(peakInFlight, inFlight)
+            try {
+                gate.await()
+                AppResult.Success(Unit)
+            } finally {
+                inFlight--
+            }
         }
 
         val viewModel = createViewModel()
@@ -147,6 +156,8 @@ class LibraryViewModelTest {
         gate.complete(Unit)
         testScheduler.advanceUntilIdle()
 
+        assertEquals(1, peakInFlight)
+        assertEquals(0, inFlight)
         assertEquals(17, requestedIds.size)
         assertEquals(1L, requestedIds.first())
         assertEquals((35L..50L).toList(), requestedIds.drop(1))

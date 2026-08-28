@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -322,64 +323,67 @@ fun LibraryGameCard(
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
-            val useStackedMetadata = LocalDensity.current.fontScale >= 1.3f
-            if (useStackedMetadata) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    LibraryStatusControl(
-                        status = entry.status,
-                        onStatusSelected = onStatusSelected,
-                    )
-                    AnimatedVisibility(
-                        visible = entry.showsHours(),
-                        enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
-                        exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val useStackedMetadata =
+                    LocalDensity.current.fontScale >= 1.3f || maxWidth < 340.dp
+                if (useStackedMetadata) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        LibraryHoursControl(
-                            hoursPlayed = entry.hoursPlayed,
-                            onClick = onHoursClick,
+                        LibraryStatusControl(
+                            status = entry.status,
+                            onStatusSelected = onStatusSelected,
                         )
-                    }
-                    LibraryAddedDate(addedDate = addedDate)
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    LibraryStatusControl(
-                        status = entry.status,
-                        onStatusSelected = onStatusSelected,
-                    )
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
                         AnimatedVisibility(
                             visible = entry.showsHours(),
-                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
-                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
-                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
-                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center,
+                            LibraryHoursControl(
+                                hoursPlayed = entry.hoursPlayed,
+                                onClick = onHoursClick,
+                            )
+                        }
+                        LibraryAddedDate(addedDate = addedDate)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        LibraryStatusControl(
+                            status = entry.status,
+                            onStatusSelected = onStatusSelected,
+                        )
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AnimatedVisibility(
+                                visible = entry.showsHours(),
+                                enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                                    expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                                exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                                    shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
                             ) {
-                                LibraryHoursControl(
-                                    hoursPlayed = entry.hoursPlayed,
-                                    onClick = onHoursClick,
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    LibraryHoursControl(
+                                        hoursPlayed = entry.hoursPlayed,
+                                        onClick = onHoursClick,
+                                    )
+                                }
                             }
                         }
+                        LibraryAddedDate(addedDate = addedDate)
                     }
-                    LibraryAddedDate(addedDate = addedDate)
                 }
             }
         }
