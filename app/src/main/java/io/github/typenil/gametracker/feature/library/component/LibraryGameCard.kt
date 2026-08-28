@@ -46,7 +46,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -332,97 +331,82 @@ fun LibraryGameCard(
                     status = entry.status,
                     onStatusSelected = onStatusSelected,
                 )
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AnimatedVisibility(
+                        visible = entry.showsHours(),
+                        enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                            expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                        exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                            shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
                     ) {
-                        AnimatedVisibility(
-                            visible = entry.showsHours(),
-                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
-                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
-                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
-                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(onClick = onHoursClick)
+                                    .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
+                                    .padding(horizontal = 4.dp),
                             ) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                VerticalDivider(
-                                    modifier = Modifier.height(16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                Icon(
+                                    imageVector = Icons.Outlined.Schedule,
+                                    contentDescription = stringResource(R.string.library_hours_played),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(MetaIconSize),
                                 )
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier
-                                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable(onClick = onHoursClick)
-                                            .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
-                                            .padding(horizontal = 4.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Schedule,
-                                            contentDescription = stringResource(R.string.library_hours_played),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(MetaIconSize),
-                                        )
-                                        AnimatedContent(
-                                            targetState = entry.hoursPlayed,
-                                            transitionSpec = {
-                                                fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
-                                                    fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
-                                            },
-                                            label = "hoursTextTransition",
-                                        ) { hours ->
-                                            Text(
-                                                text = stringResource(
-                                                    R.string.library_hours_short,
-                                                    hours,
-                                                ),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
-                                            )
-                                        }
-                                    }
+                                AnimatedContent(
+                                    targetState = entry.hoursPlayed,
+                                    transitionSpec = {
+                                        fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
+                                            fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                                    },
+                                    label = "hoursTextTransition",
+                                ) { hours ->
+                                    Text(
+                                        text = stringResource(
+                                            R.string.library_hours_short,
+                                            hours,
+                                        ),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
+                                    )
                                 }
-                                VerticalDivider(
-                                    modifier = Modifier.height(16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
                             }
                         }
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CalendarToday,
-                            contentDescription = stringResource(R.string.library_added),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(MetaIconSize),
-                        )
-                        Text(
-                            text = addedDate,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
-                        )
-                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarToday,
+                        contentDescription = stringResource(R.string.library_added),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(MetaIconSize),
+                    )
+                    Text(
+                        text = addedDate,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
+                    )
+                }
             }
         }
     }

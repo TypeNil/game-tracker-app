@@ -589,7 +589,7 @@ class LibraryGameCardTest {
     }
 
     @Test
-    fun card_shortContent_clickTargetAndHeroMediaFillBanner() {
+    fun card_shortContent_clickTargetFillsBanner() {
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
@@ -604,6 +604,38 @@ class LibraryGameCardTest {
         assertEquals(bannerBounds.right.value, clickTargetBounds.right.value, 0.1f)
         assertEquals(bannerBounds.top.value, clickTargetBounds.top.value, 0.1f)
         assertEquals(bannerBounds.bottom.value, clickTargetBounds.bottom.value, 0.1f)
+    }
+
+    @Test
+    fun card_compactWidthAndMaxFont_keepsAllMetadataInBounds() {
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalDensity provides Density(density = 2.0f, fontScale = 2.0f),
+            ) {
+                GameTrackerTheme {
+                    Box(modifier = Modifier.width(320.dp)) {
+                        LibraryGameCard(
+                            libraryGame = libraryGame(
+                                name = "Hades",
+                                status = LibraryStatus.PLAYING,
+                                hoursPlayed = 999_999,
+                            ),
+                            onClick = {},
+                        )
+                    }
+                }
+            }
+        }
+        val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val addedBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue("Status left ${statusBounds.left} should be >= 0", statusBounds.left >= 0.dp)
+        assertTrue("Hours left ${hoursBounds.left} should be >= 0", hoursBounds.left >= 0.dp)
+        assertTrue("Added left ${addedBounds.left} should be >= 0", addedBounds.left >= 0.dp)
+        assertTrue("Status right ${statusBounds.right} should be <= 320dp", statusBounds.right <= 320.dp)
+        assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
+        assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)
     }
 
     private fun libraryGame(
