@@ -569,6 +569,7 @@ class LibraryGameCardTest {
                 }
             }
         }
+        composeTestRule.waitForIdle()
         val favoriteBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_FAVORITE_TEST_TAG).getUnclippedBoundsInRoot()
         val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
@@ -626,6 +627,7 @@ class LibraryGameCardTest {
                 }
             }
         }
+        composeTestRule.waitForIdle()
         val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val addedBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
@@ -664,6 +666,7 @@ class LibraryGameCardTest {
                 }
             }
         }
+        composeTestRule.waitForIdle()
         val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val addedBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
