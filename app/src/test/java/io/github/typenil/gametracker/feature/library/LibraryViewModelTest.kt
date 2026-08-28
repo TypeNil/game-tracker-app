@@ -96,13 +96,29 @@ class LibraryViewModelTest {
     private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
 
     @Test
-    fun `onCardVisible refreshes missing banner once and deduplicates`() = runTest {
+    fun `onCardVisible deduplicates in-flight requests and permits later retry`() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val callCount = java.util.concurrent.atomic.AtomicInteger(0)
+
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(1L, force = false) } coAnswers {
+            callCount.incrementAndGet()
+            gate.await()
+            AppResult.Success(Unit)
+        }
+
         val viewModel = createViewModel()
         viewModel.onCardVisible(hades.copy(bannerUrl = null))
         viewModel.onCardVisible(hades.copy(bannerUrl = null))
-        coVerify(exactly = 1) {
-            fakeGameRepository.refreshGameDetails(1L, force = false)
-        }
+
+        assertEquals(1, callCount.get())
+
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(2, callCount.get())
     }
 
     @Test

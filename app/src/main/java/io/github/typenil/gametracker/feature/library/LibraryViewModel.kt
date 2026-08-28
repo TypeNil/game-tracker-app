@@ -45,14 +45,13 @@ class LibraryViewModel @Inject constructor(
         hydrationJob = viewModelScope.launch {
             while (pendingDetailIds.isNotEmpty()) {
                 val nextId = pendingDetailIds.removeFirst()
-                when (
+                try {
                     gameRepository.refreshGameDetails(
                         id = nextId,
                         force = false,
                     )
-                ) {
-                    is AppResult.Success -> Unit
-                    is AppResult.Error -> requestedDetailIds.remove(nextId)
+                } finally {
+                    requestedDetailIds.remove(nextId)
                 }
             }
         }

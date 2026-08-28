@@ -684,8 +684,38 @@ class LibraryGameCardTest {
         assertTrue("Status right ${statusBounds.right} should be <= 320dp", statusBounds.right <= 320.dp)
         assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
         assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)
+
+        val expectedHours = composeTestRule.activity.getString(R.string.library_hours_short, 999_999)
+        val expectedStatus = composeTestRule.activity.getString(R.string.library_status_playing)
+        assertNotEllipsized(
+            composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG, useUnmergedTree = true),
+            expectedHours,
+        )
+        assertNotEllipsized(
+            composeTestRule.onNodeWithText(expectedStatus, useUnmergedTree = true),
+            expectedStatus,
+        )
+        assertNotEllipsized(
+            composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
+            "Aug 28, 2026",
+        )
     }
 
+    private fun assertNotEllipsized(
+        node: androidx.compose.ui.test.SemanticsNodeInteraction,
+        expectedText: String,
+    ) {
+        val results = mutableListOf<TextLayoutResult>()
+        node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
+            action(results)
+        }
+        val result = results.single()
+        assertFalse(result.isLineEllipsized(0))
+        assertEquals(
+            expectedText.length,
+            result.getLineEnd(0, visibleEnd = true),
+        )
+    }
 
     private fun libraryGame(
         name: String,
