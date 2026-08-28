@@ -389,6 +389,7 @@ class SearchScreenTest {
             isFavorite: Boolean,
         ): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun toggleFavorite(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun updateHoursPlayed(gameId: Long, hoursPlayed: Int): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 

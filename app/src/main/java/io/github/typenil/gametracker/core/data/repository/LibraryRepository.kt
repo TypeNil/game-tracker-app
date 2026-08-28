@@ -55,6 +55,11 @@ interface LibraryRepository {
     suspend fun toggleFavorite(gameId: Long): AppResult<Unit>
 
     /**
+     * Updates the hours played for game [gameId].
+     */
+    suspend fun updateHoursPlayed(gameId: Long, hoursPlayed: Int): AppResult<Unit>
+
+    /**
      * Removes game [gameId] from user's library.
      */
     suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit>

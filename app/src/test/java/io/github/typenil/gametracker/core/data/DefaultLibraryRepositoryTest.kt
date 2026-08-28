@@ -135,12 +135,54 @@ class DefaultLibraryRepositoryTest {
     }
 
     @Test
+    fun setGameStatus_whenEntryExists_updatesStatusDirectlyWithoutUpsert() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateStatus(10L, LibraryStatus.PLAYING, any()) } returns 1
+
+        val result = repository.setGameStatus(10L, LibraryStatus.PLAYING)
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateStatus(10L, LibraryStatus.PLAYING, any()) }
+        coVerify(exactly = 0) { gameDao.getGameById(any()) }
+        coVerify(exactly = 0) { libraryDao.upsertLibraryEntry(any()) }
+    }
+
+    @Test
     fun removeGameFromLibrary_deletesEntry() = runTest(testDispatcher) {
         coEvery { libraryDao.deleteLibraryEntry(10L) } returns 1
 
         val result = repository.removeGameFromLibrary(10L)
         assertTrue(result is AppResult.Success)
         coVerify { libraryDao.deleteLibraryEntry(10L) }
+    }
+
+    @Test
+    fun updateHoursPlayed_whenEntryExists_updatesSuccessfully() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateHoursPlayed(10L, 75, any()) } returns 1
+
+        val result = repository.updateHoursPlayed(10L, 75)
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateHoursPlayed(10L, 75, any()) }
+    }
+
+    @Test
+    fun updateHoursPlayed_withoutExistingEntry_returnsError() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateHoursPlayed(999L, 75, any()) } returns 0
+
+        val result = repository.updateHoursPlayed(999L, 75)
+        assertTrue(result is AppResult.Error)
+    }
+
+    @Test
+    fun updateHoursPlayed_clampsHoursToRange() = runTest(testDispatcher) {
+        coEvery { libraryDao.updateHoursPlayed(10L, 999_999, any()) } returns 1
+        coEvery { libraryDao.updateHoursPlayed(10L, 0, any()) } returns 1
+
+        val overResult = repository.updateHoursPlayed(10L, 1_500_000)
+        assertTrue(overResult is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateHoursPlayed(10L, 999_999, any()) }
+
+        val underResult = repository.updateHoursPlayed(10L, -10)
+        assertTrue(underResult is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateHoursPlayed(10L, 0, any()) }
     }
 
     @Test

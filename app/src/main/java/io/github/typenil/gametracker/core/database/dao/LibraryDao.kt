@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
  * Data Access Object for user game library records.
  */
 @Dao
+@Suppress("TooManyFunctions")
 interface LibraryDao {
 
     companion object {
@@ -55,6 +56,34 @@ interface LibraryDao {
         """,
     )
     suspend fun toggleFavorite(gameId: Long, updatedAtEpochSeconds: Long): Int
+
+    @Query(
+        """
+        UPDATE library_entries
+        SET status = :status,
+            updatedAtEpochSeconds = :updatedAtEpochSeconds
+        WHERE gameId = :gameId
+        """,
+    )
+    suspend fun updateStatus(
+        gameId: Long,
+        status: LibraryStatus,
+        updatedAtEpochSeconds: Long,
+    ): Int
+
+    @Query(
+        """
+        UPDATE library_entries
+        SET hoursPlayed = :hoursPlayed,
+            updatedAtEpochSeconds = :updatedAtEpochSeconds
+        WHERE gameId = :gameId
+        """,
+    )
+    suspend fun updateHoursPlayed(
+        gameId: Long,
+        hoursPlayed: Int,
+        updatedAtEpochSeconds: Long,
+    ): Int
 
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int

@@ -10,6 +10,7 @@ import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -220,6 +221,102 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `onStatusSelected calls setGameStatus with game id`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.onStatusSelected(hades.game.id, LibraryStatus.COMPLETED)
+        assertEquals(1L, fakeLibraryRepository.lastStatusGameId)
+        assertEquals(LibraryStatus.COMPLETED, fakeLibraryRepository.lastStatus)
+    }
+
+    @Test
+    fun `onStatusSelected error exposes update failure message`() = runTest {
+        fakeLibraryRepository.setStatusResult = AppResult.Error(
+            AppError.UnknownError(IllegalStateException("missing")),
+        )
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertNull(awaitItem().userMessageRes)
+            viewModel.onStatusSelected(hades.game.id, LibraryStatus.DROPPED)
+            assertEquals(
+                R.string.error_library_update_failed,
+                awaitItem().userMessageRes,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `onHoursUpdated emits Saving then Saved on success`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        fakeLibraryRepository.delayUpdateHours = gate
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertEquals(HoursSaveState.Idle, awaitItem().hoursSaveState)
+            viewModel.onHoursUpdated(hades.game.id, 120)
+            assertEquals(HoursSaveState.Saving(hades.game.id), awaitItem().hoursSaveState)
+            gate.complete(Unit)
+            assertEquals(HoursSaveState.Saved(hades.game.id), awaitItem().hoursSaveState)
+            assertEquals(1L, fakeLibraryRepository.lastUpdateHoursGameId)
+            assertEquals(120, fakeLibraryRepository.lastUpdateHours)
+            viewModel.onHoursSaveHandled()
+            assertEquals(HoursSaveState.Idle, awaitItem().hoursSaveState)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `onHoursUpdated emits Saving then Failed on error`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        fakeLibraryRepository.delayUpdateHours = gate
+        fakeLibraryRepository.updateHoursResult = AppResult.Error(
+            AppError.UnknownError(IllegalStateException("missing")),
+        )
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertEquals(HoursSaveState.Idle, awaitItem().hoursSaveState)
+            viewModel.onHoursUpdated(hades.game.id, 120)
+            assertEquals(HoursSaveState.Saving(hades.game.id), awaitItem().hoursSaveState)
+            gate.complete(Unit)
+            val failedState = awaitItem()
+            assertEquals(HoursSaveState.Failed(hades.game.id), failedState.hoursSaveState)
+            assertEquals(
+                R.string.error_library_update_failed,
+                failedState.userMessageRes,
+            )
+            viewModel.onHoursSaveHandled()
+            assertEquals(HoursSaveState.Idle, awaitItem().hoursSaveState)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `onHoursUpdated ignores a second request while saving`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        fakeLibraryRepository.delayUpdateHours = gate
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            assertEquals(HoursSaveState.Idle, awaitItem().hoursSaveState)
+            viewModel.onHoursUpdated(hades.game.id, 120)
+            assertEquals(HoursSaveState.Saving(hades.game.id), awaitItem().hoursSaveState)
+
+            viewModel.onHoursUpdated(hades.game.id, 999)
+            assertEquals(1, fakeLibraryRepository.updateHoursCallCount)
+            assertEquals(120, fakeLibraryRepository.lastUpdateHours)
+
+            gate.complete(Unit)
+            assertEquals(HoursSaveState.Saved(hades.game.id), awaitItem().hoursSaveState)
+            assertEquals(1, fakeLibraryRepository.updateHoursCallCount)
+            assertEquals(120, fakeLibraryRepository.lastUpdateHours)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 
@@ -228,11 +325,18 @@ class LibraryViewModelTest {
         override suspend fun setGameStatus(
             gameId: Long,
             status: LibraryStatus
-        ): AppResult<Unit> = AppResult.Success(Unit)
+        ): AppResult<Unit> {
+            lastStatusGameId = gameId
+            lastStatus = status
+            return setStatusResult
+        }
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
         var lastToggleGameId: Long? = null
         var toggleResult: AppResult<Unit> = AppResult.Success(Unit)
+        var lastStatusGameId: Long? = null
+        var lastStatus: LibraryStatus? = null
+        var setStatusResult: AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun upsertUserEdits(
             gameId: Long,
@@ -248,6 +352,20 @@ class LibraryViewModelTest {
             return toggleResult
         }
 
+
+        var updateHoursCallCount: Int = 0
+        var lastUpdateHoursGameId: Long? = null
+        var lastUpdateHours: Int? = null
+        var updateHoursResult: AppResult<Unit> = AppResult.Success(Unit)
+        var delayUpdateHours: CompletableDeferred<Unit>? = null
+
+        override suspend fun updateHoursPlayed(gameId: Long, hoursPlayed: Int): AppResult<Unit> {
+            updateHoursCallCount++
+            lastUpdateHoursGameId = gameId
+            lastUpdateHours = hoursPlayed
+            delayUpdateHours?.await()
+            return updateHoursResult
+        }
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 }

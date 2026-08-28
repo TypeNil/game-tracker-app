@@ -50,6 +50,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +65,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
+import io.github.typenil.gametracker.feature.library.component.QuickHoursDialog
 
 @Composable
 fun LibraryRoute(
@@ -86,6 +89,9 @@ fun LibraryRoute(
         onClearSearch = viewModel::onClearSearch,
         onUserMessageShown = viewModel::onUserMessageShown,
         onToggleFavorite = viewModel::onToggleFavorite,
+        onStatusSelected = viewModel::onStatusSelected,
+        onHoursUpdated = viewModel::onHoursUpdated,
+        onHoursSaveHandled = viewModel::onHoursSaveHandled,
         modifier = modifier
     )
 }
@@ -103,10 +109,14 @@ fun LibraryScreen(
     onSortOptionSelected: (LibrarySortOption) -> Unit,
     onClearSearch: () -> Unit,
     onToggleFavorite: (Long) -> Unit = {},
+    onStatusSelected: (Long, LibraryStatus) -> Unit = { _, _ -> },
+    onHoursUpdated: (Long, Int) -> Unit = { _, _ -> },
+    onHoursSaveHandled: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
     val pagerState = rememberPagerState(
         initialPage = uiState.selectedTab.ordinal,
         pageCount = { LibraryTab.entries.size },
@@ -118,6 +128,20 @@ fun LibraryScreen(
         userMessage?.let {
             snackbarHostState.showSnackbar(it)
             onUserMessageShown()
+        }
+    }
+    LaunchedEffect(uiState.hoursSaveState) {
+        when (val state = uiState.hoursSaveState) {
+            is HoursSaveState.Saved -> {
+                if (editingHoursGameId == state.gameId) {
+                    editingHoursGameId = null
+                }
+                onHoursSaveHandled()
+            }
+            is HoursSaveState.Failed -> {
+                onHoursSaveHandled()
+            }
+            else -> Unit
         }
     }
 
@@ -347,6 +371,12 @@ fun LibraryScreen(
                                         libraryGame = item,
                                         onClick = { onGameClick(item.game.id) },
                                         onFavoriteClick = { onToggleFavorite(item.game.id) },
+                                        onStatusSelected = { status ->
+                                            onStatusSelected(item.game.id, status)
+                                        },
+                                        onHoursClick = {
+                                            editingHoursGameId = item.game.id
+                                        },
                                     )
                                 }
                             }
@@ -356,6 +386,25 @@ fun LibraryScreen(
             }
 
         }
+    }
+
+    val targetGame = uiState.allGames.firstOrNull { it.game.id == editingHoursGameId }
+    if (targetGame != null) {
+        val isSaving = uiState.hoursSaveState is HoursSaveState.Saving &&
+            uiState.hoursSaveState.gameId == targetGame.game.id
+        QuickHoursDialog(
+            gameName = targetGame.game.name,
+            initialHours = targetGame.entry.hoursPlayed,
+            onDismissRequest = {
+                if (!isSaving) {
+                    editingHoursGameId = null
+                }
+            },
+            onConfirm = { hours ->
+                onHoursUpdated(targetGame.game.id, hours)
+            },
+            isSaving = isSaving,
+        )
     }
 }
 

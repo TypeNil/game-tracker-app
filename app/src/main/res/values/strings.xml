@@ -86,6 +86,8 @@
 
     <!-- Details Library Action & Sheet -->
     <string name="library_add_to_library">Add to Library</string>
+    <string name="library_in_library">In Library</string>
+    <string name="library_in_library_meta">%1$s · %2$s</string>
     <string name="library_add_to_library_subtitle">Track your progress, rate, and take notes</string>
     <string name="library_edit_entry_title">Edit in Library</string>
     <string name="library_status_label">Status</string>
@@ -93,6 +95,8 @@
     <string name="library_clear_rating">Clear</string>
     <string name="library_hours_played">Hours Played</string>
     <string name="library_hours_format">%1$d hrs</string>
+    <string name="library_hours_short">%1$dh</string>
+    <string name="library_change_status">Change status: %1$s</string>
     <string name="library_added">Added</string>
     <string name="library_hours_decrement_desc">Decrease hours played</string>
     <string name="library_hours_increment_desc">Increase hours played</string>
@@ -102,6 +106,10 @@
     <string name="library_favorite_subtitle">Highlight in your personal collection</string>
     <string name="library_personal_notes">Personal Notes</string>
     <string name="library_save">Save</string>
+    <string name="library_cancel">Cancel</string>
+    <string name="library_log_hours">Log Hours Played</string>
+    <string name="library_quick_add_1h">+1h</string>
+    <string name="library_quick_add_5h">+5h</string>
     <string name="library_remove">Remove from Library</string>
     <string name="library_has_notes">Has notes</string>
     <string name="library_rating_format">%1$d/10</string>

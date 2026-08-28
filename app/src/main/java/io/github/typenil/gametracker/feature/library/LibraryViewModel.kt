@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository
@@ -28,6 +29,7 @@ class LibraryViewModel @Inject constructor(
     private val _isSearchActive = MutableStateFlow(false)
     private val _sortOption = MutableStateFlow(LibrarySortOption.UPDATED_DESC)
     private val _userMessageRes = MutableStateFlow<Int?>(null)
+    private val _hoursSaveState = MutableStateFlow<HoursSaveState>(HoursSaveState.Idle)
 
     private val _filterState = combine(
         _selectedTab,
@@ -49,7 +51,8 @@ class LibraryViewModel @Inject constructor(
         libraryRepository.getLibraryGamesFlow(),
         _filterState,
         _userMessageRes,
-    ) { allGames, filterState, userMessageRes ->
+        _hoursSaveState,
+    ) { allGames, filterState, userMessageRes, hoursSaveState ->
         val counts = computeTabCounts(allGames)
         val filtered = filterLibraryGames(
             allGames = allGames,
@@ -69,6 +72,7 @@ class LibraryViewModel @Inject constructor(
             sortOption = filterState.sortOption,
             isLoading = false,
             userMessageRes = userMessageRes,
+            hoursSaveState = hoursSaveState,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -112,6 +116,38 @@ class LibraryViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun onStatusSelected(gameId: Long, status: LibraryStatus) {
+        viewModelScope.launch {
+            when (libraryRepository.setGameStatus(gameId, status)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> {
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
+    fun onHoursUpdated(gameId: Long, hours: Int) {
+        if (_hoursSaveState.value is HoursSaveState.Saving) return
+
+        _hoursSaveState.value = HoursSaveState.Saving(gameId)
+        viewModelScope.launch {
+            when (libraryRepository.updateHoursPlayed(gameId, hours)) {
+                is AppResult.Success -> {
+                    _hoursSaveState.value = HoursSaveState.Saved(gameId)
+                }
+                is AppResult.Error -> {
+                    _hoursSaveState.value = HoursSaveState.Failed(gameId)
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
+    fun onHoursSaveHandled() {
+        _hoursSaveState.value = HoursSaveState.Idle
     }
 
     fun onUserMessageShown() {

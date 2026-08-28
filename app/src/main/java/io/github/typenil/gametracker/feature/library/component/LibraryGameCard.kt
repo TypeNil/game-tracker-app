@@ -1,5 +1,14 @@
 package io.github.typenil.gametracker.feature.library.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,20 +25,33 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,23 +66,41 @@ import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
+import io.github.typenil.gametracker.core.designsystem.component.contentColor
+import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.selectCardTags
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import java.util.Locale
 
 private const val COVER_WIDTH_DP = 96
 private val FavoriteHitSize = 48.dp
+private val MetaIconSize = 18.dp
+private val MetaChevronSize = 16.dp
+private val LibraryAddedDateFormatter =
+    DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+private const val ANIM_EXPAND_ENTER_MS = 250
+private const val ANIM_SHRINK_EXIT_MS = 200
+private const val ANIM_TEXT_FADE_IN_MS = 200
+private const val ANIM_TEXT_FADE_OUT_MS = 150
+private const val ANIM_ACCENT_COLOR_MS = 250
 
 const val LIBRARY_CARD_ADDED_TEST_TAG = "library_card_added"
 const val LIBRARY_CARD_FAVORITE_TEST_TAG = "library_card_favorite"
+const val LIBRARY_CARD_STATUS_TEST_TAG = "library_card_status"
+const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
+const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
+const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
 
 /**
- * Full-width library row: cover, title, developer, tags, hours (left) and added date (trailing).
- * Favorite is a sibling overlay of the row click target.
+ * Full-width library row: cover, title, developer, tags, then a status control,
+ * optional hours, and added date. Favorite and status are siblings of the
+ * cover/title click target.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -69,6 +109,8 @@ fun LibraryGameCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onFavoriteClick: () -> Unit = {},
+    onStatusSelected: (LibraryStatus) -> Unit = {},
+    onHoursClick: () -> Unit = {},
 ) {
     val game = libraryGame.game
     val entry = libraryGame.entry
@@ -89,11 +131,12 @@ fun LibraryGameCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onClick)
                     .padding(GtDimens.Card),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onClick),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Box(
@@ -172,30 +215,106 @@ fun LibraryGameCard(
                     Spacer(modifier = Modifier.width(FavoriteHitSize))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (entry.hoursPlayed > 0) {
-                        StatInfoBlock(
-                            icon = Icons.Outlined.Schedule,
-                            value = stringResource(
-                                R.string.library_hours_format,
-                                entry.hoursPlayed,
-                            ),
-                            label = stringResource(R.string.library_hours_played),
-                            modifier = Modifier.weight(1f),
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                    StatInfoBlock(
-                        icon = Icons.Outlined.CalendarToday,
-                        value = addedDate,
-                        label = stringResource(R.string.library_added),
-                        modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+                    LibraryStatusControl(
+                        status = entry.status,
+                        onStatusSelected = onStatusSelected,
                     )
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AnimatedVisibility(
+                            visible = entry.showsHours(),
+                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                VerticalDivider(
+                                    modifier = Modifier.height(16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier
+                                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable(onClick = onHoursClick)
+                                            .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
+                                            .padding(horizontal = 4.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Schedule,
+                                            contentDescription = stringResource(R.string.library_hours_played),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(MetaIconSize),
+                                        )
+                                        AnimatedContent(
+                                            targetState = entry.hoursPlayed,
+                                            transitionSpec = {
+                                                fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
+                                                    fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                                            },
+                                            label = "hoursTextTransition",
+                                        ) { hours ->
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.library_hours_short,
+                                                    hours,
+                                                ),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
+                                            )
+                                        }
+                                    }
+                                }
+                                VerticalDivider(
+                                    modifier = Modifier.height(16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CalendarToday,
+                            contentDescription = stringResource(R.string.library_added),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(MetaIconSize),
+                        )
+                        Text(
+                            text = addedDate,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
+                        )
+                    }
                 }
             }
 
@@ -231,40 +350,113 @@ fun LibraryGameCard(
 }
 
 @Composable
-private fun StatInfoBlock(
-    icon: ImageVector,
-    value: String,
-    label: String,
+private fun LibraryStatusControl(
+    status: LibraryStatus,
+    onStatusSelected: (LibraryStatus) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
-        )
-        Column {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    var expanded by remember { mutableStateOf(false) }
+    val targetAccent = status.contentColor()
+    val accent by animateColorAsState(
+        targetValue = targetAccent,
+        animationSpec = tween(ANIM_ACCENT_COLOR_MS),
+        label = "statusAccentColor",
+    )
+    val statusLabel = stringResource(status.displayNameRes())
+    val changeStatus = stringResource(R.string.library_change_status, statusLabel)
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .testTag(LIBRARY_CARD_STATUS_TEST_TAG)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            AnimatedContent(
+                targetState = status,
+                transitionSpec = {
+                    fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
+                        fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                },
+                label = "statusContentTransition",
+            ) { currentStatus ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = currentStatus.leadingIcon(),
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(MetaIconSize),
+                    )
+                    Text(
+                        text = stringResource(currentStatus.displayNameRes()),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowDown,
+                contentDescription = changeStatus,
+                tint = accent,
+                modifier = Modifier.size(MetaChevronSize),
             )
         }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            LibraryStatus.entries.forEach { option ->
+                val optionAccent = option.contentColor()
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(option.displayNameRes()),
+                            color = optionAccent,
+                            fontWeight = if (option == status) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = option.leadingIcon(),
+                            contentDescription = null,
+                            tint = optionAccent,
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        if (option != status) {
+                            onStatusSelected(option)
+                        }
+                    },
+                )
+            }
+        }
     }
+}
+
+
+private fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
+    LibraryStatus.PLAYING -> Icons.Filled.Bookmark
+    LibraryStatus.WISHLIST -> Icons.Filled.BookmarkBorder
+    LibraryStatus.COMPLETED -> Icons.Filled.Check
+    LibraryStatus.DROPPED -> Icons.Filled.Close
+    LibraryStatus.NOT_INTERESTED -> Icons.Filled.RemoveCircleOutline
+}
+
+private fun LibraryEntry.showsHours(): Boolean = when (status) {
+    LibraryStatus.PLAYING -> true
+    LibraryStatus.COMPLETED, LibraryStatus.DROPPED -> hoursPlayed > 0
+    LibraryStatus.WISHLIST, LibraryStatus.NOT_INTERESTED -> false
 }
 
 internal fun formatLibraryAddedDate(
@@ -273,4 +465,4 @@ internal fun formatLibraryAddedDate(
 ): String = Instant.ofEpochSecond(epochSeconds)
     .atZone(zoneId)
     .toLocalDate()
-    .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+    .format(LibraryAddedDateFormatter)
