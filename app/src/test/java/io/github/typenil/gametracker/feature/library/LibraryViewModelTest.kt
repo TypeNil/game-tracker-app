@@ -1,11 +1,14 @@
 package io.github.typenil.gametracker.feature.library
 
 import app.cash.turbine.test
-import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.repository.GameRepository
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -22,6 +25,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -31,6 +35,11 @@ class LibraryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     private val fakeLibraryRepository = FakeLibraryRepository()
+    private val fakeGameRepository: GameRepository = mockk(relaxed = true)
+    @Before
+    fun setUp() {
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
+    }
 
     private val hades = LibraryGame(
         game = Game(id = 1L, name = "Hades", coverUrl = null, rating = 93.0, releaseDateEpochSeconds = 100L),
@@ -84,7 +93,91 @@ class LibraryViewModelTest {
         )
     )
 
-    private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository)
+    private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
+
+    @Test
+    fun `onCardVisible deduplicates in-flight requests and permits later retry`() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val callCount = java.util.concurrent.atomic.AtomicInteger(0)
+
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(1L, force = false) } coAnswers {
+            callCount.incrementAndGet()
+            gate.await()
+            AppResult.Success(Unit)
+        }
+
+        val viewModel = createViewModel()
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+
+        assertEquals(1, callCount.get())
+
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(2, callCount.get())
+    }
+
+    @Test
+    fun `onCardVisible does not refresh already hydrated banner`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onCardVisible(hades.copy(bannerUrl = "https://example.com/banner.jpg"))
+        coVerify(exactly = 0) {
+            fakeGameRepository.refreshGameDetails(any(), any())
+        }
+    }
+
+    @Test
+    fun `onCardVisible retries after failed hydration`() = runTest {
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(1L, force = false) } returns
+            AppResult.Error(AppError.NetworkError) andThen AppResult.Success(Unit)
+
+        val viewModel = createViewModel()
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+        viewModel.onCardVisible(hades.copy(bannerUrl = null))
+
+        coVerify(exactly = 2) {
+            fakeGameRepository.refreshGameDetails(1L, force = false)
+        }
+    }
+
+    @Test
+    fun `onCardVisible caps queue and serializes detail requests`() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val requestedIds = mutableListOf<Long>()
+        var inFlight = 0
+        var peakInFlight = 0
+
+        io.mockk.coEvery { fakeGameRepository.refreshGameDetails(any(), any()) } coAnswers {
+            requestedIds.add(firstArg())
+            inFlight++
+            peakInFlight = maxOf(peakInFlight, inFlight)
+            try {
+                gate.await()
+                AppResult.Success(Unit)
+            } finally {
+                inFlight--
+            }
+        }
+
+        val viewModel = createViewModel()
+        for (id in 1L..50L) {
+            val game = hades.copy(game = hades.game.copy(id = id), bannerUrl = null)
+            viewModel.onCardVisible(game)
+        }
+
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, peakInFlight)
+        assertEquals(0, inFlight)
+        assertEquals(17, requestedIds.size)
+        assertEquals(1L, requestedIds.first())
+        assertEquals((35L..50L).toList(), requestedIds.drop(1))
+    }
 
     @Test
     fun `init computes tab counts excluding NOT_INTERESTED from ALL`() = runTest {

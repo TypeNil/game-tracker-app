@@ -171,7 +171,7 @@ class LibraryDaoTest {
                 platforms = emptyList(),
                 releaseDates = emptyList(),
                 companies = listOf(CompanyColumn(name = "FromSoftware", isDeveloper = true)),
-                screenshots = emptyList(),
+                screenshots = listOf("https://example.com/shot1.jpg"),
                 videos = emptyList(),
                 similarGames = emptyList(),
                 cachedAtEpochSeconds = 100L,
@@ -181,6 +181,7 @@ class LibraryDaoTest {
         assertEquals(1, withDetails[0].details.size)
         assertEquals("FromSoftware", withDetails[0].details.single().companies.single().name)
         assertEquals(true, withDetails[0].details.single().companies.single().isDeveloper)
+        assertEquals(listOf("https://example.com/shot1.jpg"), withDetails[0].details.single().screenshots)
     }
 
     @Test
@@ -201,7 +202,7 @@ class LibraryDaoTest {
             ),
         )
 
-        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L, updatedAtEpochSeconds = 2000L))
+        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L))
         val afterFirst = libraryDao.getLibraryEntry(101L)
         assertEquals(false, afterFirst?.isFavorite)
         assertEquals(LibraryStatus.PLAYING, afterFirst?.status)
@@ -209,9 +210,9 @@ class LibraryDaoTest {
         assertEquals("Got the Great Rune", afterFirst?.userNotes)
         assertEquals(75, afterFirst?.hoursPlayed)
         assertEquals(1000L, afterFirst?.addedAtEpochSeconds)
-        assertEquals(2000L, afterFirst?.updatedAtEpochSeconds)
+        assertEquals(1000L, afterFirst?.updatedAtEpochSeconds)
 
-        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L, updatedAtEpochSeconds = 3000L))
+        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L))
         val afterSecond = libraryDao.getLibraryEntry(101L)
         assertEquals(true, afterSecond?.isFavorite)
         assertEquals(LibraryStatus.PLAYING, afterSecond?.status)
@@ -219,7 +220,7 @@ class LibraryDaoTest {
         assertEquals("Got the Great Rune", afterSecond?.userNotes)
         assertEquals(75, afterSecond?.hoursPlayed)
         assertEquals(1000L, afterSecond?.addedAtEpochSeconds)
-        assertEquals(3000L, afterSecond?.updatedAtEpochSeconds)
+        assertEquals(1000L, afterSecond?.updatedAtEpochSeconds)
     }
 
     @Test
@@ -240,7 +241,7 @@ class LibraryDaoTest {
             ),
         )
 
-        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L, updatedAtEpochSeconds = 2000L))
+        assertEquals(1, libraryDao.toggleFavorite(gameId = 101L))
         assertEquals(1, libraryDao.updateStatus(gameId = 101L, status = LibraryStatus.COMPLETED, updatedAtEpochSeconds = 3000L))
 
         val updated = libraryDao.getLibraryEntry(101L)

@@ -65,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 import io.github.typenil.gametracker.feature.library.component.QuickHoursDialog
@@ -92,6 +93,7 @@ fun LibraryRoute(
         onStatusSelected = viewModel::onStatusSelected,
         onHoursUpdated = viewModel::onHoursUpdated,
         onHoursSaveHandled = viewModel::onHoursSaveHandled,
+        onCardVisible = viewModel::onCardVisible,
         modifier = modifier
     )
 }
@@ -113,6 +115,7 @@ fun LibraryScreen(
     onHoursUpdated: (Long, Int) -> Unit = { _, _ -> },
     onHoursSaveHandled: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
+    onCardVisible: (LibraryGame) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -367,6 +370,9 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize(),
                             ) {
                                 items(items = pageGames, key = { it.game.id }) { item ->
+                                    LaunchedEffect(item.game.id) {
+                                        onCardVisible(item)
+                                    }
                                     LibraryGameCard(
                                         libraryGame = item,
                                         onClick = { onGameClick(item.game.id) },

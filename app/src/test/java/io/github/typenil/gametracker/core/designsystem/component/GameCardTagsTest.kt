@@ -4,38 +4,77 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.Locale
 import java.util.TimeZone
 
 class GameCardTagsTest {
 
     @Test
-    fun `selectCardTags prefers two genres then one platform`() {
-        val tags = selectCardTags(
-            genres = listOf("RPG", "Adventure", "Strategy"),
-            platforms = listOf("PC", "PlayStation 5"),
+    fun `selectGenreTags limits to two distinct non-blank genres`() {
+        val tags = selectGenreTags(
+            genres = listOf(" RPG ", "RPG", "", "Adventure", "Strategy"),
         )
-
-        assertEquals(listOf("RPG", "Adventure", "PC"), tags)
+        assertEquals(listOf("RPG", "Adventure"), tags)
     }
 
     @Test
-    fun `selectCardTags uses platforms when genres are empty`() {
-        val tags = selectCardTags(
-            genres = emptyList(),
-            platforms = listOf("PC", "Xbox Series X"),
-        )
-
-        assertEquals(listOf("PC"), tags)
+    fun `selectGenreTags returns empty when input is empty`() {
+        assertEquals(emptyList<String>(), selectGenreTags(emptyList()))
     }
 
     @Test
-    fun `selectCardTags skips blanks and duplicates`() {
-        val tags = selectCardTags(
-            genres = listOf(" RPG ", "RPG", "", "Adventure"),
-            platforms = listOf("RPG", "PC"),
+    fun `resolvePlatformFamilies recognizes canonical wire platforms and aliases`() {
+        val families = resolvePlatformFamilies(
+            listOf("PlayStation 5", "Xbox Series X|S", "Nintendo Switch", "PC (Microsoft Windows)"),
         )
+        assertEquals(
+            listOf(PlatformFamily.PLAYSTATION, PlatformFamily.XBOX, PlatformFamily.NINTENDO, PlatformFamily.PC),
+            families,
+        )
+    }
 
-        assertEquals(listOf("RPG", "Adventure", "PC"), tags)
+    @Test
+    fun `resolvePlatformFamilies deduplicates multiple versions in same family`() {
+        val families = resolvePlatformFamilies(
+            listOf("PS4", "PS5", "PlayStation 3"),
+        )
+        assertEquals(listOf(PlatformFamily.PLAYSTATION), families)
+    }
+
+    @Test
+    fun `resolvePlatformFamilies maintains enum order regardless of input order`() {
+        val families = resolvePlatformFamilies(
+            listOf("PC", "PlayStation 5"),
+        )
+        assertEquals(listOf(PlatformFamily.PLAYSTATION, PlatformFamily.PC), families)
+    }
+
+    @Test
+    fun `resolvePlatformFamilies supports Mac Linux Steam aliases for PC`() {
+        assertEquals(listOf(PlatformFamily.PC), resolvePlatformFamilies(listOf("Mac")))
+        assertEquals(listOf(PlatformFamily.PC), resolvePlatformFamilies(listOf("Linux")))
+        assertEquals(listOf(PlatformFamily.PC), resolvePlatformFamilies(listOf("Steam")))
+    }
+
+    @Test
+    fun `resolvePlatformFamilies returns empty for empty or unknown platforms`() {
+        assertEquals(emptyList<PlatformFamily>(), resolvePlatformFamilies(emptyList()))
+        assertEquals(emptyList<PlatformFamily>(), resolvePlatformFamilies(listOf("UnknownPlatform", "BoardGame")))
+    }
+
+    @Test
+    fun `resolvePlatformFamilies is locale independent`() {
+        val previousLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            val families = resolvePlatformFamilies(listOf("NINTENDO SWITCH", "WINDOWS", "PLAYSTATION 5"))
+            assertEquals(
+                listOf(PlatformFamily.PLAYSTATION, PlatformFamily.NINTENDO, PlatformFamily.PC),
+                families,
+            )
+        } finally {
+            Locale.setDefault(previousLocale)
+        }
     }
 
     @Test

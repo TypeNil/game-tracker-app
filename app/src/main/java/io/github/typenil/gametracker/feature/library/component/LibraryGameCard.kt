@@ -19,14 +19,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -41,12 +40,12 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,8 +54,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,12 +67,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
-import io.github.typenil.gametracker.core.designsystem.component.selectCardTags
-import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.designsystem.component.PlatformIconsRow
+import io.github.typenil.gametracker.core.designsystem.component.resolvePlatformFamilies
+import io.github.typenil.gametracker.core.designsystem.component.selectGenreTags
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -78,8 +81,19 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private const val COVER_WIDTH_DP = 96
-private val FavoriteHitSize = 48.dp
+private const val HERO_ASPECT_RATIO = 16f / 9f
+private val CardShape = RoundedCornerShape(16.dp)
+private val HeroShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+private val HeroScrim = Brush.verticalGradient(
+    0.00f to Color.Transparent,
+    0.35f to Color.Transparent,
+    0.70f to Color.Black.copy(alpha = 0.65f),
+    1.00f to Color.Black.copy(alpha = 0.90f),
+)
+private const val HERO_CONTROL_INSET_DP = 8
+private const val FAVORITE_HIT_SIZE_DP = 48
+private val FavoriteHitSize = FAVORITE_HIT_SIZE_DP.dp
+private val HeroContentTopPadding = (HERO_CONTROL_INSET_DP + FAVORITE_HIT_SIZE_DP + HERO_CONTROL_INSET_DP).dp
 private val MetaIconSize = 18.dp
 private val MetaChevronSize = 16.dp
 private val LibraryAddedDateFormatter =
@@ -96,6 +110,26 @@ const val LIBRARY_CARD_STATUS_TEST_TAG = "library_card_status"
 const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
 const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
 const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
+const val LIBRARY_CARD_BANNER_TEST_TAG = "library_card_banner"
+
+const val LIBRARY_CARD_CLICK_TARGET_TEST_TAG = "library_card_click_target"
+internal fun resolveLibraryBannerUrl(
+    bannerUrl: String?,
+    coverUrl: String?,
+): String? = bannerUrl?.takeIf(String::isNotBlank)
+    ?: coverUrl?.takeIf(String::isNotBlank)
+private fun Modifier.aspectRatioOrContent(aspectRatio: Float): Modifier = layout { measurable, constraints ->
+    val minHeight = if (constraints.hasBoundedWidth) {
+        (constraints.maxWidth / aspectRatio).toInt().coerceIn(constraints.minHeight, constraints.maxHeight)
+    } else {
+        constraints.minHeight
+    }
+    val childConstraints = constraints.copy(minHeight = minHeight)
+    val placeable = measurable.measure(childConstraints)
+    layout(placeable.width, placeable.height) {
+        placeable.placeRelative(0, 0)
+    }
+}
 
 /**
  * Full-width library row: cover, title, developer, tags, then a status control,
@@ -114,8 +148,11 @@ fun LibraryGameCard(
 ) {
     val game = libraryGame.game
     val entry = libraryGame.entry
-    val tags = remember(game.genres, game.platforms) {
-        selectCardTags(game.genres, game.platforms)
+    val genreTags = remember(game.genres) {
+        selectGenreTags(game.genres)
+    }
+    val platformFamilies = remember(game.platforms) {
+        resolvePlatformFamilies(game.platforms)
     }
     val addedDate = remember(entry.addedAtEpochSeconds) {
         formatLibraryAddedDate(entry.addedAtEpochSeconds)
@@ -123,229 +160,302 @@ fun LibraryGameCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 2.dp,
     ) {
-        Box {
-            Column(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(GtDimens.Card),
+                    .clip(HeroShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .testTag(LIBRARY_CARD_BANNER_TEST_TAG),
             ) {
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onClick),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        .aspectRatioOrContent(HERO_ASPECT_RATIO)
+                        .clickable(onClick = onClick)
+                        .testTag(LIBRARY_CARD_CLICK_TARGET_TEST_TAG),
                 ) {
+                    val bannerImage = resolveLibraryBannerUrl(libraryGame.bannerUrl, game.coverUrl)
+                    if (bannerImage != null) {
+                        AsyncImage(
+                            model = bannerImage,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.Center,
+                            modifier = Modifier.matchParentSize(),
+                        )
+                    }
                     Box(
                         modifier = Modifier
-                            .width(COVER_WIDTH_DP.dp)
-                            .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                    ) {
-                        if (!game.coverUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = game.coverUrl,
-                                contentDescription = game.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                            .matchParentSize()
+                            .background(HeroScrim),
+                    )
+                    if (game.rating != null) {
                         RatingBadge(
                             rating = game.rating,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
-                                .padding(4.dp),
+                                .padding(10.dp),
                         )
                     }
-
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp, top = HeroContentTopPadding),
+                    ) {
                         Text(
                             text = game.name,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
+                            color = Color.White,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                         val developerName = libraryGame.developerName
                         if (!developerName.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = developerName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.75f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        if (tags.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                tags.forEach { tag ->
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        border = BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outlineVariant,
-                                        ),
-                                    ) {
-                                        Text(
-                                            text = tag,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(
-                                                horizontal = 10.dp,
-                                                vertical = 4.dp,
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(FavoriteHitSize))
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    LibraryStatusControl(
-                        status = entry.status,
-                        onStatusSelected = onStatusSelected,
-                    )
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AnimatedVisibility(
-                            visible = entry.showsHours(),
-                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
-                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
-                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
-                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                    if (genreTags.isNotEmpty() || platformFamilies.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            maxItemsInEachRow = 3,
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                VerticalDivider(
-                                    modifier = Modifier.height(16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center,
+                            genreTags.forEach { tag ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        Color.White.copy(alpha = 0.35f),
+                                    ),
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier
-                                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable(onClick = onHoursClick)
-                                            .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
-                                            .padding(horizontal = 4.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Schedule,
-                                            contentDescription = stringResource(R.string.library_hours_played),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(MetaIconSize),
-                                        )
-                                        AnimatedContent(
-                                            targetState = entry.hoursPlayed,
-                                            transitionSpec = {
-                                                fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
-                                                    fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
-                                            },
-                                            label = "hoursTextTransition",
-                                        ) { hours ->
-                                            Text(
-                                                text = stringResource(
-                                                    R.string.library_hours_short,
-                                                    hours,
-                                                ),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
-                                            )
-                                        }
-                                    }
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = Color.White.copy(alpha = 0.95f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp,
+                                            vertical = 5.dp,
+                                        ),
+                                    )
                                 }
-                                VerticalDivider(
-                                    modifier = Modifier.height(16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            if (platformFamilies.isNotEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        Color.White.copy(alpha = 0.35f),
+                                    ),
+                                ) {
+                                    PlatformIconsRow(
+                                        platforms = platformFamilies,
+                                        tint = Color.White.copy(alpha = 0.95f),
+                                        iconSize = 18.dp,
+                                        modifier = Modifier.padding(
+                                            horizontal = 10.dp,
+                                            vertical = 5.dp,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+                }
+                }
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(FavoriteHitSize)
+                        .testTag(LIBRARY_CARD_FAVORITE_TEST_TAG),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.CalendarToday,
-                            contentDescription = stringResource(R.string.library_added),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(MetaIconSize),
-                        )
-                        Text(
-                            text = addedDate,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
+                            imageVector = if (entry.isFavorite) {
+                                Icons.Filled.Favorite
+                            } else {
+                                Icons.Filled.FavoriteBorder
+                            },
+                            contentDescription = stringResource(
+                                if (entry.isFavorite) {
+                                R.string.library_favorite_remove
+                            } else {
+                                R.string.library_favorite_add
+                            },
+                            ),
+                            tint = if (entry.isFavorite) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                Color.White.copy(alpha = 0.95f)
+                            },
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }
             }
-
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(FavoriteHitSize)
-                    .testTag(LIBRARY_CARD_FAVORITE_TEST_TAG),
-            ) {
-                Icon(
-                    imageVector = if (entry.isFavorite) {
-                        Icons.Filled.Favorite
-                    } else {
-                        Icons.Filled.FavoriteBorder
-                    },
-                    contentDescription = stringResource(
-                        if (entry.isFavorite) {
-                            R.string.library_favorite_remove
-                        } else {
-                            R.string.library_favorite_add
-                        },
-                    ),
-                    tint = if (entry.isFavorite) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            val useStackedMetadata = LocalDensity.current.fontScale >= 1.3f
+            if (useStackedMetadata) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        LibraryStatusControl(
+                            status = entry.status,
+                            onStatusSelected = onStatusSelected,
+                        )
+                        AnimatedVisibility(
+                            visible = entry.showsHours(),
+                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                        ) {
+                            LibraryHoursControl(
+                                hoursPlayed = entry.hoursPlayed,
+                                onClick = onHoursClick,
+                            )
+                        }
+                        LibraryAddedDate(addedDate = addedDate)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        LibraryStatusControl(
+                            status = entry.status,
+                            onStatusSelected = onStatusSelected,
+                        )
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AnimatedVisibility(
+                                visible = entry.showsHours(),
+                                enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                                    expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                                exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                                    shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    LibraryHoursControl(
+                                        hoursPlayed = entry.hoursPlayed,
+                                        onClick = onHoursClick,
+                                    )
+                                }
+                            }
+                        }
+                        LibraryAddedDate(addedDate = addedDate)
+                    }
+                }
         }
+    }
+}
+
+@Composable
+private fun LibraryHoursControl(
+    hoursPlayed: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
+            .padding(horizontal = 2.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Schedule,
+            contentDescription = stringResource(R.string.library_hours_played),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(MetaIconSize),
+        )
+        AnimatedContent(
+            targetState = hoursPlayed,
+            transitionSpec = {
+                fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
+                    fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+            },
+            label = "hoursTextTransition",
+        ) { hours ->
+            Text(
+                text = stringResource(
+                    R.string.library_hours_short,
+                    hours,
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryAddedDate(
+    addedDate: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.testTag(LIBRARY_CARD_ADDED_TEST_TAG),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.CalendarToday,
+            contentDescription = stringResource(R.string.library_added),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(MetaIconSize),
+        )
+        Text(
+            text = addedDate,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.testTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG),
+        )
     }
 }
 
@@ -372,7 +482,7 @@ private fun LibraryStatusControl(
                 .clip(RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .testTag(LIBRARY_CARD_STATUS_TEST_TAG)
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {

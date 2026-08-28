@@ -162,10 +162,12 @@ fun LibraryEntryEntity.toDomain(): LibraryEntry {
  * Maps a Room [PopulatedLibraryGameEntity] to a domain [LibraryGame].
  */
 fun PopulatedLibraryGameEntity.toDomain(): LibraryGame {
+    val detailsRow = details.firstOrNull()
     return LibraryGame(
         game = this.game.toDomain(),
         entry = this.entry.toDomain(),
-        developerName = details.firstOrNull()?.companies.developerName(),
+        developerName = detailsRow?.companies.developerName(),
+        bannerUrl = detailsRow?.screenshots?.firstOrNull { it.isNotBlank() },
     )
 }
 

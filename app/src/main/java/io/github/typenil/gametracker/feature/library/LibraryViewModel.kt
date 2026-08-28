@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,13 +16,50 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Suppress("TooManyFunctions")
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
-    private val libraryRepository: LibraryRepository
+    private val libraryRepository: LibraryRepository,
+    private val gameRepository: GameRepository,
 ) : ViewModel() {
+
+    private val requestedDetailIds = mutableSetOf<Long>()
+    private val pendingDetailIds = ArrayDeque<Long>()
+    private var hydrationJob: Job? = null
+
+    fun onCardVisible(game: LibraryGame) {
+        if (!game.bannerUrl.isNullOrBlank()) return
+
+        val gameId = game.game.id
+        if (!requestedDetailIds.add(gameId)) return
+        if (pendingDetailIds.size >= MAX_PENDING_DETAIL_IDS) {
+            val evictedId = pendingDetailIds.removeFirst()
+            requestedDetailIds.remove(evictedId)
+        }
+        pendingDetailIds.addLast(gameId)
+        if (hydrationJob?.isActive == true) return
+
+        hydrationJob = viewModelScope.launch {
+            while (pendingDetailIds.isNotEmpty()) {
+                val nextId = pendingDetailIds.removeFirst()
+                try {
+                    gameRepository.refreshGameDetails(
+                        id = nextId,
+                        force = false,
+                    )
+                } finally {
+                    requestedDetailIds.remove(nextId)
+                }
+            }
+        }
+    }
+    private companion object {
+        const val MAX_PENDING_DETAIL_IDS = 16
+    }
+
 
     private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
     private val _filterFavoritesOnly = MutableStateFlow(false)
