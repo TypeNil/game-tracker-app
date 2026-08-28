@@ -1,7 +1,10 @@
 package io.github.typenil.gametracker.core.database.mapper
 
-import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.CompanyColumn
+import io.github.typenil.gametracker.core.database.entity.GameDetailsCompanies
+import io.github.typenil.gametracker.core.database.entity.GameEntity
+import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEntity
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameCompany
 import io.github.typenil.gametracker.core.model.GameDetails
@@ -168,5 +171,37 @@ class EntityMappersTest {
         )
         assertEquals(null, emptyList<CompanyColumn>().developerName())
         assertEquals(null, (null as List<CompanyColumn>?).developerName())
+    }
+    @Test
+    fun `PopulatedLibraryGameEntity toDomain maps first non-blank screenshot as bannerUrl`() {
+        val populated = PopulatedLibraryGameEntity(
+            entry = LibraryEntryEntity(
+                gameId = 1L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+            ),
+            game = GameEntity(
+                id = 1L,
+                name = "Hades",
+                coverUrl = "https://example.com/cover.jpg",
+                rating = 93.0,
+                releaseDateEpochSeconds = 100L,
+                summary = null,
+                genres = listOf("Action"),
+                platforms = listOf("PC"),
+                cachedAtEpochSeconds = 100L,
+            ),
+            details = listOf(
+                GameDetailsCompanies(
+                    gameId = 1L,
+                    companies = listOf(CompanyColumn("Supergiant", isDeveloper = true)),
+                    screenshots = listOf("", "https://example.com/shot.jpg", "https://example.com/shot2.jpg"),
+                ),
+            ),
+        )
+        val domain = populated.toDomain()
+        assertEquals("https://example.com/shot.jpg", domain.bannerUrl)
+        assertEquals("Supergiant", domain.developerName)
     }
 }

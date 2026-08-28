@@ -1,11 +1,14 @@
 package io.github.typenil.gametracker.feature.library
 
 import app.cash.turbine.test
-import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.repository.GameRepository
+import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -31,7 +34,7 @@ class LibraryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     private val fakeLibraryRepository = FakeLibraryRepository()
-
+    private val fakeGameRepository: GameRepository = mockk(relaxed = true)
     private val hades = LibraryGame(
         game = Game(id = 1L, name = "Hades", coverUrl = null, rating = 93.0, releaseDateEpochSeconds = 100L),
         entry = LibraryEntry(
@@ -84,7 +87,17 @@ class LibraryViewModelTest {
         )
     )
 
-    private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository)
+    private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
+
+    @Test
+    fun `init triggers background details refresh for library games`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
+        createViewModel()
+        coVerify(timeout = 1000) {
+            fakeGameRepository.refreshGameDetails(1L, force = false)
+            fakeGameRepository.refreshGameDetails(2L, force = false)
+        }
+    }
 
     @Test
     fun `init computes tab counts excluding NOT_INTERESTED from ALL`() = runTest {

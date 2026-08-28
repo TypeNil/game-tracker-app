@@ -4,14 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -20,8 +23,20 @@ import kotlinx.coroutines.launch
 @Suppress("TooManyFunctions")
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
-    private val libraryRepository: LibraryRepository
+    private val libraryRepository: LibraryRepository,
+    private val gameRepository: GameRepository,
 ) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            val ids = libraryRepository.getLibraryGamesFlow()
+                .map { games -> games.map { it.game.id } }
+                .first()
+            for (id in ids) {
+                gameRepository.refreshGameDetails(id, force = false)
+            }
+        }
+    }
 
     private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
     private val _filterFavoritesOnly = MutableStateFlow(false)

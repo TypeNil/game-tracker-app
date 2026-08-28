@@ -5,14 +5,14 @@ import androidx.room.Embedded
 import androidx.room.Relation
 
 /**
- * Companies column from [GameDetailsEntity] without the rest of the details row.
+ * Companies and screenshots columns from [GameDetailsEntity] without the rest of the details row.
  */
 data class GameDetailsCompanies(
     @ColumnInfo(name = "gameId")
     val gameId: Long,
-    val companies: List<CompanyColumn>,
+    val companies: List<CompanyColumn> = emptyList(),
+    val screenshots: List<String> = emptyList(),
 )
-
 /**
  * Relational model uniting a user's library entry with its parent game entity
  * and optional cached details companies.

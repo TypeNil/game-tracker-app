@@ -171,7 +171,7 @@ class LibraryDaoTest {
                 platforms = emptyList(),
                 releaseDates = emptyList(),
                 companies = listOf(CompanyColumn(name = "FromSoftware", isDeveloper = true)),
-                screenshots = emptyList(),
+                screenshots = listOf("https://example.com/shot1.jpg"),
                 videos = emptyList(),
                 similarGames = emptyList(),
                 cachedAtEpochSeconds = 100L,
@@ -181,6 +181,7 @@ class LibraryDaoTest {
         assertEquals(1, withDetails[0].details.size)
         assertEquals("FromSoftware", withDetails[0].details.single().companies.single().name)
         assertEquals(true, withDetails[0].details.single().companies.single().isDeveloper)
+        assertEquals(listOf("https://example.com/shot1.jpg"), withDetails[0].details.single().screenshots)
     }
 
     @Test

@@ -151,11 +151,13 @@ fun LibraryGameCard(
                         .fillMaxSize()
                         .clickable(onClick = onClick),
                 ) {
-                    if (!game.coverUrl.isNullOrBlank()) {
+                    val bannerImage = libraryGame.bannerUrl ?: game.coverUrl
+                    if (!bannerImage.isNullOrBlank()) {
                         AsyncImage(
-                            model = game.coverUrl,
+                            model = bannerImage,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
+                            alignment = Alignment.Center,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

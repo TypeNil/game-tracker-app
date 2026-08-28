@@ -11,4 +11,5 @@ data class LibraryGame(
     val game: Game,
     val entry: LibraryEntry,
     val developerName: String? = null,
+    val bannerUrl: String? = null,
 )
