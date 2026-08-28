@@ -189,7 +189,9 @@ class DiscoverViewModel @Inject constructor(
     fun addToWishlist(game: Game) {
         viewModelScope.launch {
             when (libraryRepository.addToWishlist(game)) {
-                is AppResult.Success -> Unit
+                is AppResult.Success -> {
+                    gameRepository.refreshGameDetails(game.id, force = false)
+                }
                 is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
             }
         }

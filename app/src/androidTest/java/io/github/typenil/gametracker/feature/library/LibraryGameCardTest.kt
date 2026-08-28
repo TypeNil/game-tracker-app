@@ -24,6 +24,7 @@ import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_ADDED_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_BANNER_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_FAVORITE_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
@@ -463,6 +464,47 @@ class LibraryGameCardTest {
         assertTrue("Right gap $rightGap should be positive", rightGap > 0.dp)
         val difference = if (leftGap > rightGap) leftGap - rightGap else rightGap - leftGap
         assertTrue("Hours should be centered between status and date, diff was $difference", difference < 16.dp)
+    }
+    @Test
+    fun card_bannerContainer_is16By9() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = libraryGame(name = "Hades"),
+                    onClick = {},
+                )
+            }
+        }
+        val bounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_BANNER_TEST_TAG)
+            .getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
+        val height = bounds.bottom - bounds.top
+        val ratio = width.value / height.value
+        val expected = 16f / 9f
+        assertEquals(expected, ratio, 0.05f)
+    }
+
+    @Test
+    fun card_usesCoverWhenBannerIsBlank() {
+        val game = LibraryGame(
+            game = Game(id = 1L, name = "Hades", coverUrl = "https://example.com/cover.jpg"),
+            entry = LibraryEntry(
+                gameId = 1L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 1_700_000_000L,
+                updatedAtEpochSeconds = 1_700_000_000L,
+            ),
+            bannerUrl = "",
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = game,
+                    onClick = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_BANNER_TEST_TAG).assertIsDisplayed()
     }
 
     private fun libraryGame(

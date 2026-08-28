@@ -106,6 +106,7 @@ const val LIBRARY_CARD_STATUS_TEST_TAG = "library_card_status"
 const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
 const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
 const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
+const val LIBRARY_CARD_BANNER_TEST_TAG = "library_card_banner"
 
 /**
  * Full-width library row: cover, title, developer, tags, then a status control,
@@ -144,15 +145,17 @@ fun LibraryGameCard(
                     .fillMaxWidth()
                     .aspectRatio(HERO_ASPECT_RATIO)
                     .clip(HeroShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .testTag(LIBRARY_CARD_BANNER_TEST_TAG),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clickable(onClick = onClick),
                 ) {
-                    val bannerImage = libraryGame.bannerUrl ?: game.coverUrl
-                    if (!bannerImage.isNullOrBlank()) {
+                    val bannerImage = libraryGame.bannerUrl?.takeIf { it.isNotBlank() }
+                        ?: game.coverUrl?.takeIf { it.isNotBlank() }
+                    if (bannerImage != null) {
                         AsyncImage(
                             model = bannerImage,
                             contentDescription = null,

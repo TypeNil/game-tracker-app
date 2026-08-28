@@ -75,6 +75,7 @@ class SearchViewModelTest {
             libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(Unit)
         coEvery { libraryRepository.removeGameFromLibrary(any()) } returns AppResult.Success(Unit)
+        coEvery { repository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
     }
 
     private fun createViewModel(
@@ -573,6 +574,7 @@ class SearchViewModelTest {
         viewModel.addToWishlist(game)
         advanceUntilIdle()
         coVerify(exactly = 1) { libraryRepository.addToWishlist(game) }
+        coVerify(exactly = 1) { repository.refreshGameDetails(game.id, force = false) }
         coVerify(exactly = 0) { libraryRepository.setGameStatus(any(), any()) }
     }
 

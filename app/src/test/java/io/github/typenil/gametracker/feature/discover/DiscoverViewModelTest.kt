@@ -74,7 +74,7 @@ class DiscoverViewModelTest {
             libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(Unit)
         coEvery { libraryRepository.removeGameFromLibrary(any()) } returns AppResult.Success(Unit)
-
+        coEvery { gameRepository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
     }
 
     @Test
@@ -353,6 +353,7 @@ class DiscoverViewModelTest {
         viewModel.addToWishlist(game)
         advanceUntilIdle()
         coVerify(exactly = 1) { libraryRepository.addToWishlist(game) }
+        coVerify(exactly = 1) { gameRepository.refreshGameDetails(game.id, force = false) }
         coVerify(exactly = 0) { libraryRepository.setGameStatus(any(), any()) }
     }
 
