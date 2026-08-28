@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Suppress("TooManyFunctions")
@@ -26,6 +27,8 @@ class LibraryViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val requestedDetailIds = mutableSetOf<Long>()
+    private val pendingDetailIds = ArrayDeque<Long>()
+    private var hydrationJob: Job? = null
 
     fun onCardVisible(game: LibraryGame) {
         if (!game.bannerUrl.isNullOrBlank()) return
@@ -33,15 +36,21 @@ class LibraryViewModel @Inject constructor(
         val gameId = game.game.id
         if (!requestedDetailIds.add(gameId)) return
 
-        viewModelScope.launch {
-            when (
-                gameRepository.refreshGameDetails(
-                    id = gameId,
-                    force = false,
-                )
-            ) {
-                is AppResult.Success -> Unit
-                is AppResult.Error -> requestedDetailIds.remove(gameId)
+        pendingDetailIds.addLast(gameId)
+        if (hydrationJob?.isActive == true) return
+
+        hydrationJob = viewModelScope.launch {
+            while (pendingDetailIds.isNotEmpty()) {
+                val nextId = pendingDetailIds.removeFirst()
+                when (
+                    gameRepository.refreshGameDetails(
+                        id = nextId,
+                        force = false,
+                    )
+                ) {
+                    is AppResult.Success -> Unit
+                    is AppResult.Error -> requestedDetailIds.remove(nextId)
+                }
             }
         }
     }

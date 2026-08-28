@@ -629,7 +629,14 @@ class LibraryGameCardTest {
         val statusBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_STATUS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val hoursBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val addedBounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEST_TAG, useUnmergedTree = true).getUnclippedBoundsInRoot()
-
+        val statusWidth = statusBounds.right - statusBounds.left
+        val hoursWidth = hoursBounds.right - hoursBounds.left
+        val addedWidth = addedBounds.right - addedBounds.left
+        assertTrue("Status width should be positive", statusWidth > 0.dp)
+        assertTrue("Hours width should be positive", hoursWidth > 0.dp)
+        assertTrue("Added width should be positive", addedWidth > 0.dp)
+        assertTrue("Hours should be below status when stacked", hoursBounds.top >= statusBounds.bottom)
+        assertTrue("Added date should be below hours when stacked", addedBounds.top >= hoursBounds.bottom)
         assertTrue("Status left ${statusBounds.left} should be >= 0", statusBounds.left >= 0.dp)
         assertTrue("Hours left ${hoursBounds.left} should be >= 0", hoursBounds.left >= 0.dp)
         assertTrue("Added left ${addedBounds.left} should be >= 0", addedBounds.left >= 0.dp)
