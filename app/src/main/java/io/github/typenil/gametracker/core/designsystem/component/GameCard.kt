@@ -129,7 +129,7 @@ fun GameCard(
                         .weight(1f)
                         .fillMaxHeight()
                         .padding(start = 14.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
-                    verticalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
                         text = game.name,
@@ -145,58 +145,60 @@ fun GameCard(
                     val platformFamilies = remember(game.platforms) {
                         resolvePlatformFamilies(game.platforms)
                     }
-                    if (genreTags.isNotEmpty() || platformFamilies.isNotEmpty()) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
-                        ) {
-                            genreTags.forEach { tag ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant,
-                                    ),
-                                ) {
-                                    Text(
-                                        text = tag,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(
-                                            horizontal = 10.dp,
-                                            vertical = 4.dp,
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (genreTags.isNotEmpty()) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
+                            ) {
+                                genreTags.forEach { tag ->
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outlineVariant,
                                         ),
-                                    )
-                                }
-                            }
-                            if (platformFamilies.isNotEmpty()) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant,
-                                    ),
-                                ) {
-                                    PlatformIconsRow(
-                                        platforms = platformFamilies,
-                                        iconSize = 16.dp,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(
-                                            horizontal = 8.dp,
-                                            vertical = 4.dp,
-                                        ),
-                                    )
+                                    ) {
+                                        Text(
+                                            text = tag,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(
+                                                horizontal = 10.dp,
+                                                vertical = 4.dp,
+                                            ),
+                                        )
+                                    }
                                 }
                             }
                         }
+                        if (platformFamilies.isNotEmpty()) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant,
+                                ),
+                            ) {
+                                PlatformIconsRow(
+                                    platforms = platformFamilies,
+                                    iconSize = 16.dp,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(
+                                        horizontal = 8.dp,
+                                        vertical = 4.dp,
+                                    ),
+                                )
+                            }
+                        }
                     }
+                    Spacer(Modifier.weight(1f))
                     if (supportingLines.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = supportingLines.first(),
                             style = MaterialTheme.typography.bodySmall,
