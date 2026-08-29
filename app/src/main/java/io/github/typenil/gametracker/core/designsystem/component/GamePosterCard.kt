@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,7 +33,9 @@ import io.github.typenil.gametracker.core.model.GameSummary
 const val GAME_COVER_ASPECT_RATIO = 3f / 4f
 
 private val ChipShape = RoundedCornerShape(8.dp)
-private val TagsBlockHeight = 44.dp
+private val ChipVerticalPadding = 2.dp
+private val TagsRowGap = 4.dp
+private val TagsBlockMinHeight = 44.dp
 
 /**
  * Compact vertical poster for the similar-games rail: cover, name, genre tags.
@@ -50,6 +53,11 @@ fun GamePosterCard(
     }
     val platformFamilies = remember(game.platforms) {
         resolvePlatformFamilies(game.platforms)
+    }
+    val tagsBlockHeight = with(LocalDensity.current) {
+        val chipRowHeight =
+            MaterialTheme.typography.labelSmall.lineHeight.toDp() + ChipVerticalPadding * 2
+        maxOf(TagsBlockMinHeight, chipRowHeight * 2 + TagsRowGap)
     }
     Surface(
         onClick = onClick,
@@ -120,36 +128,42 @@ fun GamePosterCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(TagsBlockHeight),
+                        .height(tagsBlockHeight),
                     contentAlignment = Alignment.TopCenter,
                 ) {
-                if (genreTags.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
-                    ) {
-                        genreTags.forEach { tag ->
-                            Surface(
-                                shape = ChipShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                border = BorderStroke(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outlineVariant,
-                                ),
-                            ) {
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                )
+                    if (genreTags.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(
+                                4.dp,
+                                Alignment.CenterHorizontally,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(TagsRowGap),
+                            maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
+                        ) {
+                            genreTags.forEach { tag ->
+                                Surface(
+                                    shape = ChipShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant,
+                                    ),
+                                ) {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(
+                                            horizontal = 6.dp,
+                                            vertical = ChipVerticalPadding,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
-                }
                 }
             }
         }
