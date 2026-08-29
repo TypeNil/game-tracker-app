@@ -65,9 +65,6 @@ class DiscoverScreenTest {
             ),
         )
         composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertIsDisplayed()
-        composeTestRule.onNodeWithText(
-            composeTestRule.activity.getString(R.string.discover_charts_loading),
-        ).assertIsDisplayed()
     }
 
     @Test

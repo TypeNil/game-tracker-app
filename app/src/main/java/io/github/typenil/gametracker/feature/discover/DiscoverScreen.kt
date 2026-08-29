@@ -420,7 +420,6 @@ private fun ChartsFeed(
 
         if (currentRailState.games.isEmpty() && currentRailState.isLoading) {
             FeedSkeleton(
-                label = stringResource(R.string.discover_charts_loading),
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
