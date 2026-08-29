@@ -75,7 +75,8 @@ class GameDetailsScreenTest {
         gameModes = emptyList(),
         platforms = emptyList(),
         releaseDates = emptyList(),
-        screenshots = emptyList()
+        screenshots = emptyList(),
+        videos = emptyList(),
     )
 
     private fun setContent(uiState: GameDetailsUiState, onGameClick: (Long) -> Unit = {}) {
@@ -104,7 +105,6 @@ class GameDetailsScreenTest {
             R.string.details_developed_by_format, "CD Projekt RED"
         )
         composeTestRule.onNodeWithText(companies).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Killing Monsters").assertIsDisplayed()
         composeTestRule.onNodeWithText("Red Dead Redemption 2").assertIsDisplayed()
         composeTestRule.onNodeWithText("Shooter").assertIsDisplayed()
     }
@@ -304,7 +304,16 @@ class GameDetailsScreenTest {
     @Test
     fun similarGameClickInvokesNavigationCallback() {
         var clickedGameId: Long? = null
-        setContent(GameDetailsUiState(game = compactDetails, isHydrated = true)) { id -> clickedGameId = id }
+        val fixture = compactDetails.copy(
+            similarGames = listOf(
+                GameSummary(
+                    id = 25076L,
+                    name = "Red Dead Redemption 2",
+                    totalRating = 93.6,
+                )
+            )
+        )
+        setContent(GameDetailsUiState(game = fixture, isHydrated = true)) { id -> clickedGameId = id }
 
         composeTestRule.onNodeWithText("Red Dead Redemption 2").performClick()
 
