@@ -149,7 +149,10 @@
           "Mac"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_witcher3_1.jpg",
+    "timeToBeatMainSeconds": 183600,
+    "timeToBeatCompleteSeconds": 622800
   },
   {
     "id": 119133,
@@ -283,7 +286,10 @@
           "PC"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_eldenring_1.jpg",
+    "timeToBeatMainSeconds": 205200,
+    "timeToBeatCompleteSeconds": 478800
   },
   {
     "id": 119171,
@@ -422,7 +428,10 @@
           "PC"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_bg3_1.jpg",
+    "timeToBeatMainSeconds": 270000,
+    "timeToBeatCompleteSeconds": 543600
   },
   {
     "id": 112875,
@@ -563,7 +572,10 @@
           "Xbox Series X|S"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_gow_ragnarok_1.jpg",
+    "timeToBeatMainSeconds": 100800,
+    "timeToBeatCompleteSeconds": 288000
   },
   {
     "id": 1877,
@@ -716,7 +728,10 @@
           "Mac"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_cyberpunk_1.jpg",
+    "timeToBeatMainSeconds": 90000,
+    "timeToBeatCompleteSeconds": 370800
   },
   {
     "id": 119388,
@@ -832,7 +847,10 @@
           "Xbox Series X|S"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_zelda_totk_1.jpg",
+    "timeToBeatMainSeconds": 198000,
+    "timeToBeatCompleteSeconds": 849600
   },
   {
     "id": 14593,
@@ -959,7 +977,10 @@
           "Mac"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_hollow_knight_1.jpg",
+    "timeToBeatMainSeconds": 97200,
+    "timeToBeatCompleteSeconds": 226800
   },
   {
     "id": 204350,
@@ -1081,7 +1102,10 @@
           "Mac"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_tlou_1.jpg",
+    "timeToBeatMainSeconds": 55800,
+    "timeToBeatCompleteSeconds": 129600
   },
   {
     "id": 25076,
@@ -1210,7 +1234,10 @@
           "Mac"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_rdr2_1.jpg",
+    "timeToBeatMainSeconds": 180000,
+    "timeToBeatCompleteSeconds": 536400
   },
   {
     "id": 72,
@@ -1346,6 +1373,9 @@
           "Mac"
         ]
       }
-    ]
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/shot_portal2_1.jpg",
+    "timeToBeatMainSeconds": 30600,
+    "timeToBeatCompleteSeconds": 75600
   }
 ]

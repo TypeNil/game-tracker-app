@@ -39,6 +39,23 @@ data class IgdbScreenshot(
 )
 
 @Serializable
+data class IgdbArtwork(
+    val id: Long? = null,
+    @SerialName("image_id")
+    val imageId: String? = null
+)
+
+/** IGDB game_time_to_beats: средние времена прохождения в секундах. */
+@Serializable
+data class IgdbGameTimeToBeats(
+    val id: Long? = null,
+    /** Main story, seconds. */
+    val hastily: Long? = null,
+    /** 100% completion, seconds. */
+    val completely: Long? = null
+)
+
+@Serializable
 data class IgdbVideo(
     val id: Long? = null,
     val name: String? = null,
@@ -113,7 +130,10 @@ data class IgdbGame(
     val screenshots: List<IgdbScreenshot>? = null,
     val videos: List<IgdbVideo>? = null,
     @SerialName("similar_games")
-    val similarGames: List<IgdbSimilarGame>? = null
+    val similarGames: List<IgdbSimilarGame>? = null,
+    val artworks: List<IgdbArtwork>? = null,
+    @SerialName("game_time_to_beats")
+    val gameTimeToBeats: IgdbGameTimeToBeats? = null
 )
 
 @Serializable
@@ -183,7 +203,10 @@ data class GameDetailsDto(
     val companies: List<GameCompanyDto> = emptyList(),
     val screenshots: List<String> = emptyList(),
     val videos: List<GameVideoDto> = emptyList(),
-    val similarGames: List<SimilarGameDto> = emptyList()
+    val similarGames: List<SimilarGameDto> = emptyList(),
+    val artworkUrl: String? = null,
+    val timeToBeatMainSeconds: Long? = null,
+    val timeToBeatCompleteSeconds: Long? = null
 )
 
 // Apicalypse не умеет лимитить sub-запросы: IGDB отдаёт все связанные сущности,
@@ -300,5 +323,10 @@ fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
     companies = this.involvedCompanies.toCompanyList(),
     screenshots = this.screenshots.toScreenshotUrlList(),
     videos = this.videos.toVideoList(),
-    similarGames = this.similarGames.toSimilarGameList()
+    similarGames = this.similarGames.toSimilarGameList(),
+    artworkUrl = this.artworks.orEmpty()
+        .firstOrNull { !it.imageId.isNullOrBlank() }
+        ?.let { igdbImageUrl(it.imageId, rawUrl = null, IMAGE_SIZE_720P) },
+    timeToBeatMainSeconds = this.gameTimeToBeats?.hastily,
+    timeToBeatCompleteSeconds = this.gameTimeToBeats?.completely
 )

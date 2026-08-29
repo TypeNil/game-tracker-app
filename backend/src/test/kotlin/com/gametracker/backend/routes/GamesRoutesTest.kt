@@ -322,6 +322,8 @@ class GamesRoutesTest {
                         {"id": 4, "company": {"id": 777}}
                     ],
                     "screenshots": [$screenshots],
+                    "artworks": [{"id": 2}, {"id": 1, "image_id": "art1"}],
+                    "game_time_to_beats": {"hastily": 183600, "completely": 622800},
                     "videos": [$videos],
                     "similar_games": [$similarGames]
                 }
@@ -393,6 +395,10 @@ class GamesRoutesTest {
             assertEquals(listOf("PC"), game.similarGames[0].platforms)
             // Fallback totalRating ?: rating
             assertEquals(85.0, game.similarGames[1].totalRating!!, 0.01)
+            // Artwork без image_id пропускается; времена прохождения в секундах
+            assertEquals("https://images.igdb.com/igdb/image/upload/t_720p/art1.jpg", game.artworkUrl)
+            assertEquals(183600L, game.timeToBeatMainSeconds)
+            assertEquals(622800L, game.timeToBeatCompleteSeconds)
             cache.close()
         }
 

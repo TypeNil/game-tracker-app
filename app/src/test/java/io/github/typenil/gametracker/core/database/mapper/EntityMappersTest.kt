@@ -148,7 +148,10 @@ class EntityMappersTest {
                     platforms = listOf("PC"),
                 ),
             ),
-            url = "https://www.igdb.com/games/the-witcher-3-wild-hunt"
+            url = "https://www.igdb.com/games/the-witcher-3-wild-hunt",
+            artworkUrl = "https://images.igdb.com/igdb/image/upload/t_720p/art1.jpg",
+            timeToBeatMainSeconds = 183600L,
+            timeToBeatCompleteSeconds = 622800L
         )
 
         val entity = details.toEntity(cachedAtEpochSeconds = 1700000000L)

@@ -94,7 +94,10 @@ fun GameDetailsDto.toDomain(): GameDetails {
                 platforms = it.platforms,
             )
         },
-        url = url
+        url = url,
+        artworkUrl = artworkUrl,
+        timeToBeatMainSeconds = timeToBeatMainSeconds,
+        timeToBeatCompleteSeconds = timeToBeatCompleteSeconds
     )
 }
 

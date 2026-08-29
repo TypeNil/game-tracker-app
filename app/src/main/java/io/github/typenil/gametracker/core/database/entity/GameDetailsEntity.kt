@@ -41,7 +41,7 @@ data class SimilarGameColumn(
 )
 
 /**
- * Room entity caching the enriched details response (schema v3).
+ * Room entity caching the enriched details response (schema v5).
  *
  * Intentionally WITHOUT a foreign key to `games`: this row is a derived,
  * re-fetchable snapshot that is self-contained for rendering (similar games are
@@ -68,5 +68,8 @@ data class GameDetailsEntity(
     val screenshots: List<String>,
     val videos: List<VideoColumn>,
     val similarGames: List<SimilarGameColumn>,
-    val cachedAtEpochSeconds: Long
+    val cachedAtEpochSeconds: Long,
+    val artworkUrl: String? = null,
+    val timeToBeatMainSeconds: Long? = null,
+    val timeToBeatCompleteSeconds: Long? = null
 )

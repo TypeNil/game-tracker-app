@@ -153,26 +153,7 @@ fun GameCard(
                                 maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
                             ) {
                                 genreTags.forEach { tag ->
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        border = BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outlineVariant,
-                                        ),
-                                    ) {
-                                        Text(
-                                            text = tag,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(
-                                                horizontal = 10.dp,
-                                                vertical = 4.dp,
-                                            ),
-                                        )
-                                    }
+                                    TagChip(tag)
                                 }
                             }
                         }

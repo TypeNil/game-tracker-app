@@ -58,5 +58,8 @@ data class GameDetailsDto(
     val companies: List<CompanyDto> = emptyList(),
     val screenshots: List<String> = emptyList(),
     val videos: List<VideoDto> = emptyList(),
-    val similarGames: List<SimilarGameDto> = emptyList()
+    val similarGames: List<SimilarGameDto> = emptyList(),
+    val artworkUrl: String? = null,
+    val timeToBeatMainSeconds: Long? = null,
+    val timeToBeatCompleteSeconds: Long? = null
 )

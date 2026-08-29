@@ -164,7 +164,8 @@ class FakeBffDataSourceTest {
         val expectedKeys = setOf(
             "id", "name", "coverUrl", "rating", "releaseDateEpochSeconds", "summary", "genres", "platforms",
             "url", "totalRating", "totalRatingCount", "themes", "gameModes", "releaseDates",
-            "companies", "screenshots", "videos", "similarGames"
+            "companies", "screenshots", "videos", "similarGames",
+            "artworkUrl", "timeToBeatMainSeconds", "timeToBeatCompleteSeconds"
         )
         val releaseDateKeys = setOf("platform", "dateEpochSeconds", "year")
         val companyKeys = setOf("name", "isDeveloper", "isPublisher")
@@ -194,6 +195,8 @@ class FakeBffDataSourceTest {
 
         assertTrue(details.all { it.coverUrl?.startsWith("file:///android_asset/covers/") == true })
         assertTrue(details.all { it.screenshots.all { shot -> shot.startsWith("file:///android_asset/screenshots/") } })
+        assertTrue(details.all { it.artworkUrl?.startsWith("file:///android_asset/screenshots/") == true })
+        assertTrue(details.all { (it.timeToBeatMainSeconds ?: 0) > 0 && (it.timeToBeatCompleteSeconds ?: 0) > 0 })
         assertTrue(details.all { it.genres.isNotEmpty() && it.platforms.isNotEmpty() })
         assertTrue(details.all { it.videos.all { video -> video.videoId.isNotBlank() } })
         assertTrue(details.all { it.similarGames.isNotEmpty() && it.similarGames.all { s -> !s.name.isNullOrBlank() } })
