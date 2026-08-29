@@ -277,13 +277,14 @@ class MigrationTest {
         db = helper.runMigrationsAndValidate(testDbName, 5, true, MIGRATION_4_5)
 
         val emptyCursor = db.query(
-            "SELECT artworkUrl, timeToBeatMainSeconds, timeToBeatCompleteSeconds " +
+            "SELECT artworkUrl, timeToBeatMainSeconds, timeToBeatCompleteSeconds, cachedAtEpochSeconds " +
                 "FROM game_details WHERE gameId = 1"
         )
         assertTrue(emptyCursor.moveToFirst())
         assertTrue(emptyCursor.isNull(0))
         assertTrue(emptyCursor.isNull(1))
         assertTrue(emptyCursor.isNull(2))
+        assertEquals(0L, emptyCursor.getLong(3))
         emptyCursor.close()
 
         db.execSQL(

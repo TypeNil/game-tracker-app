@@ -104,6 +104,7 @@ object DatabaseMigrations {
             db.execSQL("ALTER TABLE `game_details` ADD COLUMN `artworkUrl` TEXT")
             db.execSQL("ALTER TABLE `game_details` ADD COLUMN `timeToBeatMainSeconds` INTEGER")
             db.execSQL("ALTER TABLE `game_details` ADD COLUMN `timeToBeatCompleteSeconds` INTEGER")
+            db.execSQL("UPDATE `game_details` SET `cachedAtEpochSeconds` = 0")
         }
     }
 }

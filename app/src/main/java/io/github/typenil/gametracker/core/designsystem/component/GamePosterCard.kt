@@ -126,6 +126,7 @@ fun GamePosterCard(
                 ) {
                     if (genreTags.isNotEmpty()) {
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -137,6 +138,7 @@ fun GamePosterCard(
                                         1.dp,
                                         MaterialTheme.colorScheme.outlineVariant,
                                     ),
+                                    modifier = Modifier.weight(1f, fill = false),
                                 ) {
                                     Text(
                                         text = tag,

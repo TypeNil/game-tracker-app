@@ -323,7 +323,7 @@ class GamesRoutesTest {
                     ],
                     "screenshots": [$screenshots],
                     "artworks": [{"id": 2}, {"id": 1, "image_id": "art1"}],
-                    "game_time_to_beats": {"hastily": 183600, "completely": 622800},
+                    "game_time_to_beats": [{"hastily": 183600, "completely": 622800}],
                     "videos": [$videos],
                     "similar_games": [$similarGames]
                 }

@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Spacer
@@ -74,7 +76,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -100,6 +101,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -141,7 +144,8 @@ private const val TITLE_DOCK_SCALE_MIN = 0.92f
 private const val TITLE_DOCK_SCALE_DELTA = 0.08f
 private const val APP_BAR_SCRIM_MAX_ALPHA = 0.45f
 private const val TRANSFORM_ORIGIN_CENTER_Y = 0.5f
-
+private const val TITLE_A11Y_MIN_ALPHA = 0.05f
+private const val TITLE_A11Y_MAX_ALPHA = 0.95f
 private val TITLE_DOCK_TRANSLATION_RANGE = 12.dp
 private val APP_BAR_BG_SCROLL_THRESHOLD = 120.dp
 private val TITLE_HANDOFF_START_OFFSET = 90.dp
@@ -219,29 +223,37 @@ fun GameDetailsScreen(
     }
 
     val game = uiState.game
-    val onShareClick: () -> Unit = {
-        game?.let { current ->
-            try {
-                context.startActivity(DetailsIntents.shareIntent(current.name, current.url))
-            } catch (_: ActivityNotFoundException) {
-                scope.launch { snackbarHostState.showSnackbar(shareError) }
+    val onShareClick = remember(context, game, shareError) {
+        {
+            game?.let { current ->
+                try {
+                    context.startActivity(DetailsIntents.shareIntent(current.name, current.url))
+                } catch (_: ActivityNotFoundException) {
+                    scope.launch { snackbarHostState.showSnackbar(shareError) }
+                }
             }
+            Unit
         }
     }
-    val onVideoClick: (GameVideo) -> Unit = { video ->
-        try {
-            context.startActivity(DetailsIntents.videoIntent(video.videoId))
-        } catch (_: ActivityNotFoundException) {
-            scope.launch { snackbarHostState.showSnackbar(videoError) }
+    val onVideoClick = remember(context, videoError) {
+        { video: GameVideo ->
+            try {
+                context.startActivity(DetailsIntents.videoIntent(video.videoId))
+            } catch (_: ActivityNotFoundException) {
+                scope.launch { snackbarHostState.showSnackbar(videoError) }
+            }
+            Unit
         }
     }
     val lazyListState = rememberLazyListState()
     val density = LocalDensity.current
     val bgScrollThresholdPx = with(density) { APP_BAR_BG_SCROLL_THRESHOLD.toPx() }
     val titleTranslationRangePx = with(density) { TITLE_DOCK_TRANSLATION_RANGE.toPx() }
+    val handoffStartPx = with(density) { TITLE_HANDOFF_START_OFFSET.toPx() }
+    val handoffEndPx = with(density) { TITLE_HANDOFF_END_OFFSET.toPx() }
 
-    val appBarBgAlpha by remember(lazyListState) {
-        derivedStateOf {
+    val appBarBgAlpha = remember(lazyListState, bgScrollThresholdPx) {
+        {
             if (lazyListState.firstVisibleItemIndex > 0) {
                 1f
             } else {
@@ -250,82 +262,29 @@ fun GameDetailsScreen(
         }
     }
 
-    val titleHandoffProgress by remember(lazyListState) {
-        derivedStateOf {
+    val titleHandoffProgress = remember(lazyListState, handoffStartPx, handoffEndPx) {
+        {
             if (lazyListState.firstVisibleItemIndex > 0) {
                 1f
             } else {
                 val offset = lazyListState.firstVisibleItemScrollOffset.toFloat()
-                val handoffStart = with(density) { TITLE_HANDOFF_START_OFFSET.toPx() }
-                val handoffEnd = with(density) { TITLE_HANDOFF_END_OFFSET.toPx() }
-                ((offset - handoffStart) / (handoffEnd - handoffStart)).coerceIn(0f, 1f)
+                ((offset - handoffStartPx) / (handoffEndPx - handoffStartPx)).coerceIn(0f, 1f)
             }
         }
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets.statusBars,
+        contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.navigationBars),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = game?.name ?: stringResource(R.string.details_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer {
-                            val progress = titleHandoffProgress
-                            alpha = progress
-                            translationY = titleTranslationRangePx * (1f - progress)
-                            scaleX = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
-                            scaleY = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
-                            transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
-                        },
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.background(
-                            color = MaterialTheme.colorScheme.surface.copy(
-                                alpha = (1f - appBarBgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
-                            ),
-                            shape = CircleShape,
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back_action_desc),
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onShareClick,
-                        enabled = game != null,
-                        modifier = Modifier.background(
-                            color = MaterialTheme.colorScheme.surface.copy(
-                                alpha = (1f - appBarBgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
-                            ),
-                            shape = CircleShape,
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Share,
-                            contentDescription = stringResource(R.string.details_share_desc),
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
-                        alpha = appBarBgAlpha,
-                    ),
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
-                        alpha = appBarBgAlpha,
-                    ),
-                ),
+            DetailsTopAppBar(
+                gameName = game?.name,
+                onBackClick = onBackClick,
+                onShareClick = onShareClick,
+                titleHandoffProgress = titleHandoffProgress,
+                appBarBgAlpha = appBarBgAlpha,
+                titleTranslationRangePx = titleTranslationRangePx,
             )
         }
     ) { innerPadding ->
@@ -355,7 +314,7 @@ fun GameDetailsScreen(
                 onEditLibraryClicked = onEditLibraryClicked,
                 contentTopPadding = innerPadding.calculateTopPadding(),
                 lazyListState = lazyListState,
-                titleHandoffProgress = { titleHandoffProgress },
+                titleHandoffProgress = titleHandoffProgress,
                 titleTranslationRangePx = titleTranslationRangePx,
                 modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
             )
@@ -370,6 +329,84 @@ fun GameDetailsScreen(
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DetailsTopAppBar(
+    gameName: String?,
+    onBackClick: () -> Unit,
+    onShareClick: () -> Unit,
+    titleHandoffProgress: () -> Float,
+    appBarBgAlpha: () -> Float,
+    titleTranslationRangePx: Float,
+) {
+    val bgAlpha = appBarBgAlpha()
+    TopAppBar(
+        title = {
+            val progress = titleHandoffProgress()
+            Text(
+                text = gameName ?: stringResource(R.string.details_title),
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .graphicsLayer {
+                        alpha = progress
+                        translationY = titleTranslationRangePx * (1f - progress)
+                        scaleX = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
+                        scaleY = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
+                        transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
+                    }
+                    .semantics {
+                        if (progress < TITLE_A11Y_MIN_ALPHA) {
+                            hideFromAccessibility()
+                        }
+                    },
+            )
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.background(
+                    color = MaterialTheme.colorScheme.surface.copy(
+                        alpha = (1f - bgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
+                    ),
+                    shape = CircleShape,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back_action_desc),
+                )
+            }
+        },
+        actions = {
+            IconButton(
+                onClick = onShareClick,
+                enabled = gameName != null,
+                modifier = Modifier.background(
+                    color = MaterialTheme.colorScheme.surface.copy(
+                        alpha = (1f - bgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
+                    ),
+                    shape = CircleShape,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Share,
+                    contentDescription = stringResource(R.string.details_share_desc),
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = bgAlpha,
+            ),
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = bgAlpha,
+            ),
+        ),
+    )
 }
 
 @Composable
@@ -612,16 +649,21 @@ private fun GameDetailsHeader(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer {
-                            val progress = titleHandoffProgress()
-                            alpha = (1f - progress).coerceIn(0f, 1f)
-                            translationY = -titleTranslationRangePx * progress
-                            scaleX = 1f - TITLE_DOCK_SCALE_DELTA * progress
-                            scaleY = 1f - TITLE_DOCK_SCALE_DELTA * progress
-                            transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
-                        },
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val progress = titleHandoffProgress()
+                                alpha = (1f - progress).coerceIn(0f, 1f)
+                                translationY = -titleTranslationRangePx * progress
+                                scaleX = 1f - TITLE_DOCK_SCALE_DELTA * progress
+                                scaleY = 1f - TITLE_DOCK_SCALE_DELTA * progress
+                                transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
+                            }
+                            .semantics {
+                                if (titleHandoffProgress() > TITLE_A11Y_MAX_ALPHA) {
+                                    hideFromAccessibility()
+                                }
+                            },
                     )
-
                     // Aggregate rating with vote count; falls back to the critic rating the
                     // catalog already carries while the details row is still hydrating.
                     Row(verticalAlignment = Alignment.CenterVertically) {

@@ -133,7 +133,7 @@ data class IgdbGame(
     val similarGames: List<IgdbSimilarGame>? = null,
     val artworks: List<IgdbArtwork>? = null,
     @SerialName("game_time_to_beats")
-    val gameTimeToBeats: IgdbGameTimeToBeats? = null
+    val gameTimeToBeats: List<IgdbGameTimeToBeats>? = null
 )
 
 @Serializable
@@ -327,6 +327,6 @@ fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
     artworkUrl = this.artworks.orEmpty()
         .firstOrNull { !it.imageId.isNullOrBlank() }
         ?.let { igdbImageUrl(it.imageId, rawUrl = null, IMAGE_SIZE_720P) },
-    timeToBeatMainSeconds = this.gameTimeToBeats?.hastily,
-    timeToBeatCompleteSeconds = this.gameTimeToBeats?.completely
+    timeToBeatMainSeconds = this.gameTimeToBeats?.firstOrNull()?.hastily,
+    timeToBeatCompleteSeconds = this.gameTimeToBeats?.firstOrNull()?.completely
 )
