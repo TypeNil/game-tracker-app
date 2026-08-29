@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
@@ -48,6 +50,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -171,6 +174,10 @@ private fun DiscoverContent(
         LazyListState()
     }
     val activeListState = if (uiState.selectedTab == DiscoverTab.FOR_YOU) forYouListState else chartsListState
+    val pagerState = rememberPagerState(
+        initialPage = uiState.selectedTab.ordinal,
+        pageCount = { DiscoverTab.entries.size },
+    )
     val pullState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
     var lastHandledScrollToTopTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
@@ -181,10 +188,23 @@ private fun DiscoverContent(
             activeListState.scrollToItem(0)
         }
     }
+    LaunchedEffect(uiState.selectedTab) {
+        val index = uiState.selectedTab.ordinal
+        if (pagerState.currentPage != index) {
+            pagerState.animateScrollToPage(index)
+        }
+    }
+    LaunchedEffect(pagerState.settledPage) {
+        val tab = DiscoverTab.entries[pagerState.settledPage]
+        if (tab != uiState.selectedTab) {
+            onSelectTab(tab)
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         DiscoverTabHeader(
             selectedTab = uiState.selectedTab,
+            currentPage = pagerState.currentPage,
             onSelectTab = onSelectTab,
             onTabReselected = {
                 coroutineScope.launch {
@@ -199,21 +219,29 @@ private fun DiscoverContent(
             state = pullState,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when (uiState.selectedTab) {
-                DiscoverTab.FOR_YOU -> ForYouFeed(
-                    uiState = uiState,
-                    listState = forYouListState,
-                    onGameClick = onGameClick,
-                    onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
-                    onLoadMoreForYou = onLoadMoreForYou,
-                )
-                DiscoverTab.CHARTS -> ChartsFeed(
-                    uiState = uiState,
-                    onGameClick = onGameClick,
-                    onLoadMoreRail = onLoadMoreRail,
-                    onSelectRail = onSelectRail,
-                    onLibraryAction = onLibraryAction,
-                )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("discover_pager"),
+            ) { page ->
+                when (DiscoverTab.entries[page]) {
+                    DiscoverTab.FOR_YOU -> ForYouFeed(
+                        uiState = uiState,
+                        listState = forYouListState,
+                        onGameClick = onGameClick,
+                        onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
+                        onLoadMoreForYou = onLoadMoreForYou,
+                    )
+                    DiscoverTab.CHARTS -> ChartsFeed(
+                        uiState = uiState,
+                        listState = chartsListState,
+                        onGameClick = onGameClick,
+                        onLoadMoreRail = onLoadMoreRail,
+                        onSelectRail = onSelectRail,
+                        onLibraryAction = onLibraryAction,
+                    )
+                }
             }
         }
     }
@@ -221,17 +249,18 @@ private fun DiscoverContent(
 @Composable
 private fun DiscoverTabHeader(
     selectedTab: DiscoverTab,
+    currentPage: Int,
     onSelectTab: (DiscoverTab) -> Unit,
     onTabReselected: (DiscoverTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PrimaryTabRow(
-        selectedTabIndex = selectedTab.ordinal,
+        selectedTabIndex = currentPage,
         modifier = modifier.fillMaxWidth(),
     ) {
         DiscoverTab.entries.forEach { tab ->
             Tab(
-                selected = selectedTab == tab,
+                selected = currentPage == tab.ordinal,
                 onClick = {
                     if (selectedTab == tab) {
                         onTabReselected(tab)
@@ -242,7 +271,7 @@ private fun DiscoverTabHeader(
                 text = {
                     Text(
                         text = stringResource(tab.titleRes),
-                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (currentPage == tab.ordinal) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
             )
@@ -343,15 +372,13 @@ private fun ColdStartCard(
 @Composable
 private fun ChartsFeed(
     uiState: DiscoverUiState,
+    listState: LazyListState,
     onGameClick: (Long) -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit,
     onSelectRail: (DiscoverRail) -> Unit,
     onLibraryAction: (Game) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val listState = rememberSaveable(uiState.selectedRail, saver = LazyListState.Saver) {
-        LazyListState()
-    }
     val currentRailState = uiState.rails.firstOrNull { it.rail == uiState.selectedRail }
         ?: DiscoverRailState(uiState.selectedRail)
     val shouldLoadMore by remember(currentRailState.games.size) {
