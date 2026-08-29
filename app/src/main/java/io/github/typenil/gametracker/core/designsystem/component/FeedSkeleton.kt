@@ -39,8 +39,8 @@ private val LabelReserve = 24.dp
 
 @Composable
 fun FeedSkeleton(
-    label: String,
     modifier: Modifier = Modifier,
+    label: String? = null,
 ) {
     val barColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val rowHeight = CoverWidth / GAME_COVER_ASPECT_RATIO + GtDimens.Card
@@ -49,18 +49,21 @@ fun FeedSkeleton(
             .fillMaxWidth()
             .testTag(FEED_SKELETON_TEST_TAG),
     ) {
-        val rows = ((maxHeight - GtDimens.Gutter * 2 - LabelReserve) / rowHeight)
+        val labelReserve = if (label.isNullOrBlank()) 0.dp else LabelReserve
+        val rows = ((maxHeight - GtDimens.Gutter * 2 - labelReserve) / rowHeight)
             .toInt()
             .coerceIn(1, SKELETON_ROWS)
         Column(
             modifier = Modifier.padding(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(GtDimens.Card),
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (!label.isNullOrBlank()) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             repeat(rows) {
                 Row(
                     modifier = Modifier

@@ -88,7 +88,14 @@ fun GameDetails.toEntity(
         screenshots = this.screenshots,
         videos = this.videos.map { VideoColumn(videoId = it.videoId, name = it.name) },
         similarGames = this.similarGames.map {
-            SimilarGameColumn(id = it.id, name = it.name, coverUrl = it.coverUrl, totalRating = it.totalRating)
+            SimilarGameColumn(
+                id = it.id,
+                name = it.name,
+                coverUrl = it.coverUrl,
+                totalRating = it.totalRating,
+                genres = it.genres,
+                platforms = it.platforms,
+            )
         },
         cachedAtEpochSeconds = cachedAtEpochSeconds
     )
@@ -120,7 +127,14 @@ fun GameDetailsEntity.toDomain(): GameDetails {
         screenshots = this.screenshots,
         videos = this.videos.map { GameVideo(videoId = it.videoId, name = it.name) },
         similarGames = this.similarGames.map {
-            GameSummary(id = it.id, name = it.name, coverUrl = it.coverUrl, totalRating = it.totalRating)
+            GameSummary(
+                id = it.id,
+                name = it.name,
+                coverUrl = it.coverUrl,
+                totalRating = it.totalRating,
+                genres = it.genres,
+                platforms = it.platforms,
+            )
         },
         url = this.url
     )

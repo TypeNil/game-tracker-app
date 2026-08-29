@@ -35,7 +35,9 @@ data class SimilarGameColumn(
     val id: Long,
     val name: String? = null,
     val coverUrl: String? = null,
-    val totalRating: Double? = null
+    val totalRating: Double? = null,
+    val genres: List<String> = emptyList(),
+    val platforms: List<String> = emptyList(),
 )
 
 /**

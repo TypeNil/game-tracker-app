@@ -95,7 +95,15 @@ class GameMappersTest {
             companies = listOf(CompanyDto(name = "CD Projekt RED", isDeveloper = true)),
             screenshots = listOf("https://example.com/shot.jpg"),
             videos = listOf(VideoDto(videoId = "abc123", name = "Trailer")),
-            similarGames = listOf(SimilarGameDto(id = 25076L, name = "Red Dead Redemption 2", totalRating = 93.6))
+            similarGames = listOf(
+                SimilarGameDto(
+                    id = 25076L,
+                    name = "Red Dead Redemption 2",
+                    totalRating = 93.6,
+                    genres = listOf("Shooter"),
+                    platforms = listOf("PC"),
+                ),
+            )
         )
 
         val domain = dto.toDomain()
@@ -114,6 +122,8 @@ class GameMappersTest {
         assertEquals("abc123", domain.videos.single().videoId)
         assertEquals(25076L, domain.similarGames.single().id)
         assertEquals(93.6, domain.similarGames.single().totalRating!!, 0.001)
+        assertEquals(listOf("Shooter"), domain.similarGames.single().genres)
+        assertEquals(listOf("PC"), domain.similarGames.single().platforms)
     }
 
     @Test

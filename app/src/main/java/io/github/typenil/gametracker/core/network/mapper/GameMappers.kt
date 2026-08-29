@@ -85,7 +85,14 @@ fun GameDetailsDto.toDomain(): GameDetails {
         screenshots = screenshots,
         videos = videos.map { GameVideo(videoId = it.videoId, name = it.name) },
         similarGames = similarGames.map {
-            GameSummary(id = it.id, name = it.name, coverUrl = it.coverUrl, totalRating = it.totalRating)
+            GameSummary(
+                id = it.id,
+                name = it.name,
+                coverUrl = it.coverUrl,
+                totalRating = it.totalRating,
+                genres = it.genres,
+                platforms = it.platforms,
+            )
         },
         url = url
     )

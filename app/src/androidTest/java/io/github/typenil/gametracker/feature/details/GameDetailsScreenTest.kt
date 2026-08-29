@@ -44,7 +44,15 @@ class GameDetailsScreenTest {
         companies = listOf(GameCompany(name = "CD Projekt RED", isDeveloper = true)),
         screenshots = listOf("https://example.com/shot1.jpg"),
         videos = listOf(GameVideo(videoId = "abc123", name = "Killing Monsters")),
-        similarGames = listOf(GameSummary(id = 25076L, name = "Red Dead Redemption 2", totalRating = 93.6)),
+        similarGames = listOf(
+            GameSummary(
+                id = 25076L,
+                name = "Red Dead Redemption 2",
+                totalRating = 93.6,
+                genres = listOf("Shooter"),
+                platforms = listOf("PC"),
+            ),
+        ),
         url = "https://www.igdb.com/games/the-witcher-3-wild-hunt"
     )
 
@@ -92,6 +100,7 @@ class GameDetailsScreenTest {
         composeTestRule.onNodeWithText(companies).assertIsDisplayed()
         composeTestRule.onNodeWithText("Killing Monsters").assertIsDisplayed()
         composeTestRule.onNodeWithText("Red Dead Redemption 2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shooter").assertIsDisplayed()
     }
 
     @Test

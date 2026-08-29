@@ -151,7 +151,9 @@ class RequestModelsTest {
         assertTrue(
             query.contains(
                 "similar_games.id, similar_games.name, similar_games.cover.image_id, " +
-                    "similar_games.total_rating, similar_games.rating"
+                    "similar_games.total_rating, similar_games.rating, " +
+                    "similar_games.genres.name, similar_games.platforms.name, " +
+                    "similar_games.platforms.abbreviation"
             )
         )
         assertTrue(query.contains("limit 1;"))

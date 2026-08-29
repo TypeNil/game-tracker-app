@@ -169,7 +169,7 @@ class FakeBffDataSourceTest {
         val releaseDateKeys = setOf("platform", "dateEpochSeconds", "year")
         val companyKeys = setOf("name", "isDeveloper", "isPublisher")
         val videoKeys = setOf("videoId", "name")
-        val similarKeys = setOf("id", "name", "coverUrl", "totalRating")
+        val similarKeys = setOf("id", "name", "coverUrl", "totalRating", "genres", "platforms")
 
         val elements = strictJson.parseToJsonElement(detailsString).jsonArray
         elements.forEachIndexed { index, element ->

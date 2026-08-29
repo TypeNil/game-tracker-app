@@ -466,12 +466,12 @@ private fun GameDetailsContent(
                         LazyRow(
                             modifier = Modifier.fillMaxWidth(),
                             contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             items(items = game.similarGames, key = { it.id }) { similar ->
                                 GamePosterCard(
                                     game = similar,
-                                    onClick = { onGameClick(similar.id) }
+                                    onClick = { onGameClick(similar.id) },
                                 )
                             }
                         }
