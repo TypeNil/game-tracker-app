@@ -281,8 +281,14 @@ class GamesRoutesTest {
         }
         val similarGames = (1..11).joinToString(",") {
             val ratingField = if (it == 2) """"rating": 85.0""" else """"total_rating": ${80.0 + it}"""
+            val extra = if (it == 1) {
+                """, "genres": [{"id": 5, "name": "Shooter"}], """ +
+                    """"platforms": [{"id": 6, "name": "PC (Microsoft Windows)", "abbreviation": "PC"}]"""
+            } else {
+                ""
+            }
             """{"id": ${2000 + it}, "name": "Similar $it", """ +
-                """"cover": {"id": $it, "image_id": "co$it"}, $ratingField}"""
+                """"cover": {"id": $it, "image_id": "co$it"}, $ratingField$extra}"""
         } + """, {"name": "Broken Similar", "cover": {"id": 99, "image_id": "co99"}}"""
         return """
             [
@@ -383,6 +389,8 @@ class GamesRoutesTest {
             assertTrue(game.similarGames.none { it.name == "Broken Similar" })
             assertEquals(2001L, game.similarGames[0].id)
             assertEquals("https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg", game.similarGames[0].coverUrl)
+            assertEquals(listOf("Shooter"), game.similarGames[0].genres)
+            assertEquals(listOf("PC"), game.similarGames[0].platforms)
             // Fallback totalRating ?: rating
             assertEquals(85.0, game.similarGames[1].totalRating!!, 0.01)
             cache.close()

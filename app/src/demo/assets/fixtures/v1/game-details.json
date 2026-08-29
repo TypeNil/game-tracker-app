@@ -105,19 +105,49 @@
         "id": 25076,
         "name": "Red Dead Redemption 2",
         "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
-        "totalRating": 93.65229910765777
+        "totalRating": 93.65229910765777,
+        "genres": [
+          "Shooter",
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 4",
+          "Xbox One"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       }
     ]
   },
@@ -208,19 +238,50 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       },
       {
         "id": 112875,
         "name": "God of War Ragnarök",
         "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
-        "totalRating": 92.75697496923962
+        "totalRating": 92.75697496923962,
+        "genres": [
+          "Action",
+          "Adventure",
+          "Hack and slash/Beat 'em up"
+        ],
+        "platforms": [
+          "PlayStation 4",
+          "PlayStation 5",
+          "PC"
+        ]
       }
     ]
   },
@@ -318,19 +379,48 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 112875,
         "name": "God of War Ragnarök",
         "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
-        "totalRating": 92.75697496923962
+        "totalRating": 92.75697496923962,
+        "genres": [
+          "Action",
+          "Adventure",
+          "Hack and slash/Beat 'em up"
+        ],
+        "platforms": [
+          "PlayStation 4",
+          "PlayStation 5",
+          "PC"
+        ]
       }
     ]
   },
@@ -430,19 +520,48 @@
         "id": 25076,
         "name": "Red Dead Redemption 2",
         "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
-        "totalRating": 93.65229910765777
+        "totalRating": 93.65229910765777,
+        "genres": [
+          "Shooter",
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 4",
+          "Xbox One"
+        ]
       },
       {
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       }
     ]
   },
@@ -553,19 +672,49 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       }
     ]
   },
@@ -640,19 +789,48 @@
         "id": 25076,
         "name": "Red Dead Redemption 2",
         "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
-        "totalRating": 93.65229910765777
+        "totalRating": 93.65229910765777,
+        "genres": [
+          "Shooter",
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 4",
+          "Xbox One"
+        ]
       },
       {
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       }
     ]
   },
@@ -737,19 +915,49 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       }
     ]
   },
@@ -829,19 +1037,49 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       }
     ]
   },
@@ -928,19 +1166,49 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       }
     ]
   },
@@ -1034,19 +1302,49 @@
         "id": 1942,
         "name": "The Witcher 3: Wild Hunt",
         "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
-        "totalRating": 92.75978573442862
+        "totalRating": 92.75978573442862,
+        "genres": [
+          "Role-playing (RPG)",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Nintendo Switch"
+        ]
       },
       {
         "id": 119133,
         "name": "Elden Ring",
         "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
-        "totalRating": 95.18151699273598
+        "totalRating": 95.18151699273598,
+        "genres": [
+          "Role-playing (RPG)",
+          "Action"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
       },
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 94.76679864490185
+        "totalRating": 94.76679864490185,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Turn-based strategy (TBS)"
+        ],
+        "platforms": [
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S",
+          "Mac"
+        ]
       }
     ]
   }

@@ -77,7 +77,9 @@ data class IgdbSimilarGame(
     val cover: IgdbSimilarCover? = null,
     @SerialName("total_rating")
     val totalRating: Double? = null,
-    val rating: Double? = null
+    val rating: Double? = null,
+    val genres: List<IgdbNamedExpansion>? = null,
+    val platforms: List<IgdbNamedExpansion>? = null,
 )
 
 @Serializable
@@ -152,7 +154,9 @@ data class SimilarGameDto(
     val id: Long,
     val name: String? = null,
     val coverUrl: String? = null,
-    val totalRating: Double? = null
+    val totalRating: Double? = null,
+    val genres: List<String> = emptyList(),
+    val platforms: List<String> = emptyList(),
 )
 
 /**
@@ -255,7 +259,11 @@ private fun List<IgdbSimilarGame>?.toSimilarGameList(): List<SimilarGameDto> =
                 id = id,
                 name = similar.name?.trim()?.takeIf(String::isNotEmpty),
                 coverUrl = similar.cover?.let { igdbImageUrl(it.imageId, rawUrl = null, IMAGE_SIZE_COVER_BIG) },
-                totalRating = similar.totalRating ?: similar.rating
+                totalRating = similar.totalRating ?: similar.rating,
+                genres = similar.genres.toNameList(),
+                platforms = similar.platforms.orEmpty().mapNotNull {
+                    displayPlatformName(it.name, it.abbreviation)
+                },
             )
         }
         .take(MAX_SIMILAR_GAMES)
