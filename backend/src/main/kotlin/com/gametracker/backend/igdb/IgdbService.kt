@@ -18,6 +18,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.discardRemaining
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
@@ -170,10 +171,14 @@ class IgdbService(
     private suspend fun handleNonSuccessStatus(response: HttpResponse): Nothing {
         val status = response.status
         val retryAfterHeader = response.headers[HttpHeaders.RetryAfter]
-        response.discardRemaining()
+        val errorBody = try {
+            response.bodyAsText()
+        } catch (_: Throwable) {
+            response.discardRemaining()
+            null
+        }
 
-        logger.error("IGDB request failed with status {}", status)
-
+        logger.error("IGDB request failed with status {}: {}", status, errorBody)
         when (status) {
             HttpStatusCode.TooManyRequests -> {
                 val retryAfterSeconds = parseRetryAfter(retryAfterHeader)
