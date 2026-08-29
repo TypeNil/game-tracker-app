@@ -131,9 +131,7 @@ data class IgdbGame(
     val videos: List<IgdbVideo>? = null,
     @SerialName("similar_games")
     val similarGames: List<IgdbSimilarGame>? = null,
-    val artworks: List<IgdbArtwork>? = null,
-    @SerialName("game_time_to_beats")
-    val gameTimeToBeats: List<IgdbGameTimeToBeats>? = null
+    val artworks: List<IgdbArtwork>? = null
 )
 
 @Serializable
@@ -305,7 +303,7 @@ fun IgdbGame.toDto(): GameDto = GameDto(
 fun IgdbGame.toGameDto(): GameDto = toDto()
 
 
-fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
+fun IgdbGame.toDetailsDto(ttb: IgdbGameTimeToBeats?): GameDetailsDto = GameDetailsDto(
     id = this.id,
     name = this.name,
     coverUrl = igdbImageUrl(this.cover?.imageId, this.cover?.url, IMAGE_SIZE_COVER_BIG),
@@ -327,6 +325,6 @@ fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
     artworkUrl = this.artworks.orEmpty()
         .firstOrNull { !it.imageId.isNullOrBlank() }
         ?.let { igdbImageUrl(it.imageId, rawUrl = null, IMAGE_SIZE_720P) },
-    timeToBeatMainSeconds = this.gameTimeToBeats?.firstOrNull()?.hastily,
-    timeToBeatCompleteSeconds = this.gameTimeToBeats?.firstOrNull()?.completely
+    timeToBeatMainSeconds = ttb?.hastily,
+    timeToBeatCompleteSeconds = ttb?.completely
 )

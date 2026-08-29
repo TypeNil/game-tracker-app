@@ -109,6 +109,29 @@ class IgdbServiceTest {
     }
 
     @Test
+    fun `queryGameTimeToBeats posts filtered query and parses seconds`() = runTest {
+        var queryBody = ""
+        val engine = MockEngine { request ->
+            assertTrue(request.url.encodedPath.endsWith("/v4/game_time_to_beats"))
+            queryBody = String(request.body.toByteArray())
+            respond(
+                content = """[{"id":7,"hastily":183600,"completely":622800}]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val rows = service.queryGameTimeToBeats(1020L)
+
+        assertTrue(queryBody.contains("where game_id = 1020"))
+        assertTrue(queryBody.contains("hastily"))
+        assertTrue(queryBody.contains("completely"))
+        assertEquals(1, rows.size)
+        assertEquals(183600L, rows[0].hastily)
+        assertEquals(622800L, rows[0].completely)
+    }
+
+    @Test
     fun `queryGames retries once upon 401 Unauthorized with token invalidation`() = runTest {
         var attempt = 0
         val engine = MockEngine { request ->

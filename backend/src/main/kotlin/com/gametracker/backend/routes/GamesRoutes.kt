@@ -23,6 +23,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("GamesRoutes")
@@ -95,9 +97,13 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
                 val request = GameDetailsRequest(id)
                 logger.info("Fetching game details (id={})", id)
                 val game = cache.getOrPut(request.cacheKey, CachePolicy.GAME_DETAILS) {
-                    val results = igdbService.queryGames(request.toApicalypseQuery())
-                    results.firstOrNull()?.toDetailsDto()
-                        ?: throw NoSuchElementException("Game with id $id not found")
+                    coroutineScope {
+                        val details = async { igdbService.queryGames(request.toApicalypseQuery()) }
+                        val ttb = async { igdbService.queryGameTimeToBeats(id) }
+                        val results = details.await().firstOrNull()
+                            ?: throw NoSuchElementException("Game with id $id not found")
+                        results.toDetailsDto(ttb.await().firstOrNull())
+                    }
                 }
                 call.respond<GameDetailsDto>(game)
             }

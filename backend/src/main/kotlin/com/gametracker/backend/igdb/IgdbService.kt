@@ -7,6 +7,7 @@ import com.gametracker.backend.error.UpstreamRateLimitException
 import com.gametracker.backend.error.UpstreamServiceUnavailableException
 import com.gametracker.backend.error.UpstreamTimeoutException
 import com.gametracker.backend.models.IgdbGame
+import com.gametracker.backend.models.IgdbGameTimeToBeats
 import com.gametracker.backend.models.IgdbPopularityPrimitive
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -38,6 +39,7 @@ private const val JITTER_MAX_MS = 50
 private const val DEFAULT_RETRY_AFTER_SECONDS = 5L
 private const val MAX_TRANSIENT_RETRIES = 2
 
+@Suppress("TooManyFunctions")
 class IgdbService(
     private val httpClient: HttpClient,
     private val tokenManager: IgdbTokenManager,
@@ -61,7 +63,6 @@ class IgdbService(
             response.discardRemaining()
         }
     }
-
     suspend fun queryPopularityPrimitives(apicalypseQuery: String): List<IgdbPopularityPrimitive> {
         logger.info("Executing IGDB query (path={}, length={})", IGDB_POPULARITY_PATH, apicalypseQuery.length)
         val response = executeWithRetry(IGDB_POPULARITY_PATH, apicalypseQuery)
@@ -71,6 +72,23 @@ class IgdbService(
             if (e is CancellationException) throw e
             logger.error("Failed to deserialize IGDB response", e)
             throw UpstreamBadGatewayException("Failed to deserialize IGDB popularity response", e)
+        } finally {
+            response.discardRemaining()
+        }
+    }
+
+
+
+    suspend fun queryGameTimeToBeats(gameId: Long): List<IgdbGameTimeToBeats> {
+        val apicalypseQuery = "fields hastily,completely,normally;\nwhere game_id = $gameId;\nlimit 1;"
+        logger.info("Executing IGDB query (path={}, length={})", IGDB_TTB_PATH, apicalypseQuery.length)
+        val response = executeWithRetry(IGDB_TTB_PATH, apicalypseQuery)
+        return try {
+            response.body()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.error("Failed to deserialize IGDB response", e)
+            throw UpstreamBadGatewayException("Failed to deserialize IGDB game_time_to_beats response", e)
         } finally {
             response.discardRemaining()
         }
@@ -133,6 +151,7 @@ class IgdbService(
     companion object {
         const val IGDB_GAMES_PATH = "/v4/games"
         const val IGDB_POPULARITY_PATH = "/v4/popularity_primitives"
+        const val IGDB_TTB_PATH = "/v4/game_time_to_beats"
         const val TRENDING_POPULARITY_TYPE = 1
     }
 
