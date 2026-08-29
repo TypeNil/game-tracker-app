@@ -12,12 +12,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +30,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -58,16 +62,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,11 +85,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +113,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.TagChip
+import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
@@ -119,20 +129,26 @@ import kotlinx.coroutines.launch
 /** Standard horizontal gutter for details sections. */
 private val DETAILS_GUTTER = GtDimens.Gutter
 
-/** Fixed portrait cover width in the details header. */
-private val HEADER_COVER_WIDTH = 120.dp
+/** Enlarged portrait cover width in the details header. */
+private val HEADER_COVER_WIDTH = 144.dp
 
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
 private val SCREENSHOT_ASPECT_RATIO = 16f / 9f
 
-/** Uniform summary card width in the facts row. */
-private val FACT_CARD_WIDTH = 160.dp
-
 private const val ARTWORK_ALPHA = 0.72f
 private const val ARTWORK_SCRIM_ALPHA = 0.15f
+private const val TITLE_DOCK_SCALE_MIN = 0.92f
+private const val TITLE_DOCK_SCALE_DELTA = 0.08f
+private const val APP_BAR_SCRIM_MAX_ALPHA = 0.45f
+private const val TRANSFORM_ORIGIN_CENTER_Y = 0.5f
+
+private val TITLE_DOCK_TRANSLATION_RANGE = 12.dp
+private val APP_BAR_BG_SCROLL_THRESHOLD = 120.dp
+private val TITLE_HANDOFF_START_OFFSET = 90.dp
+private val TITLE_HANDOFF_END_OFFSET = 150.dp
+
 /** Reference CTA fill for Add to Library. */
 private val LibraryCta = Color(0xFF4E3DCA)
-
 /**
  * Host composable wiring the [GameDetailsViewModel] into the stateless screen.
  * The gameId arrives via SavedStateHandle from the type-safe route argument,
@@ -219,13 +235,37 @@ fun GameDetailsScreen(
             scope.launch { snackbarHostState.showSnackbar(videoError) }
         }
     }
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val lazyListState = rememberLazyListState()
+    val density = LocalDensity.current
+    val bgScrollThresholdPx = with(density) { APP_BAR_BG_SCROLL_THRESHOLD.toPx() }
+    val titleTranslationRangePx = with(density) { TITLE_DOCK_TRANSLATION_RANGE.toPx() }
+
+    val appBarBgAlpha by remember(lazyListState) {
+        derivedStateOf {
+            if (lazyListState.firstVisibleItemIndex > 0) {
+                1f
+            } else {
+                (lazyListState.firstVisibleItemScrollOffset / bgScrollThresholdPx).coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    val titleHandoffProgress by remember(lazyListState) {
+        derivedStateOf {
+            if (lazyListState.firstVisibleItemIndex > 0) {
+                1f
+            } else {
+                val offset = lazyListState.firstVisibleItemScrollOffset.toFloat()
+                val handoffStart = with(density) { TITLE_HANDOFF_START_OFFSET.toPx() }
+                val handoffEnd = with(density) { TITLE_HANDOFF_END_OFFSET.toPx() }
+                ((offset - handoffStart) / (handoffEnd - handoffStart)).coerceIn(0f, 1f)
+            }
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
-        modifier = modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -234,33 +274,58 @@ fun GameDetailsScreen(
                         text = game?.name ?: stringResource(R.string.details_title),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.graphicsLayer {
+                            val progress = titleHandoffProgress
+                            alpha = progress
+                            translationY = titleTranslationRangePx * (1f - progress)
+                            scaleX = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
+                            scaleY = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
+                            transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
+                        },
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.background(
+                            color = MaterialTheme.colorScheme.surface.copy(
+                                alpha = (1f - appBarBgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
+                            ),
+                            shape = CircleShape,
+                        ),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back_action_desc)
+                            contentDescription = stringResource(R.string.back_action_desc),
                         )
                     }
                 },
                 actions = {
                     IconButton(
                         onClick = onShareClick,
-                        enabled = game != null
+                        enabled = game != null,
+                        modifier = Modifier.background(
+                            color = MaterialTheme.colorScheme.surface.copy(
+                                alpha = (1f - appBarBgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
+                            ),
+                            shape = CircleShape,
+                        ),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Share,
-                            contentDescription = stringResource(R.string.details_share_desc)
+                            contentDescription = stringResource(R.string.details_share_desc),
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+                        alpha = appBarBgAlpha,
+                    ),
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+                        alpha = appBarBgAlpha,
+                    ),
                 ),
-                scrollBehavior = scrollBehavior,
             )
         }
     ) { innerPadding ->
@@ -289,6 +354,9 @@ fun GameDetailsScreen(
                 onVideoClick = onVideoClick,
                 onEditLibraryClicked = onEditLibraryClicked,
                 contentTopPadding = innerPadding.calculateTopPadding(),
+                lazyListState = lazyListState,
+                titleHandoffProgress = { titleHandoffProgress },
+                titleTranslationRangePx = titleTranslationRangePx,
                 modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
             )
         }
@@ -314,7 +382,10 @@ private fun GameDetailsContent(
     onVideoClick: (GameVideo) -> Unit,
     onEditLibraryClicked: () -> Unit,
     contentTopPadding: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lazyListState: LazyListState = rememberLazyListState(),
+    titleHandoffProgress: () -> Float = { 0f },
+    titleTranslationRangePx: Float = 0f,
 ) {
     // Empty sections stay hidden so a catalog skeleton renders as a lean but
     // complete page rather than a wall of empty headers.
@@ -333,6 +404,7 @@ private fun GameDetailsContent(
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
+            state = lazyListState,
             contentPadding = PaddingValues(top = 0.dp, bottom = DETAILS_GUTTER),
             verticalArrangement = Arrangement.spacedBy(DETAILS_GUTTER),
             modifier = Modifier.fillMaxSize()
@@ -341,6 +413,8 @@ private fun GameDetailsContent(
                 GameDetailsHeader(
                     game = game,
                     contentTopPadding = contentTopPadding,
+                    titleHandoffProgress = titleHandoffProgress,
+                    titleTranslationRangePx = titleTranslationRangePx,
                 )
             }
 
@@ -359,18 +433,7 @@ private fun GameDetailsContent(
                         title = stringResource(R.string.details_section_about),
                         modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                        ) {
-                            Text(
-                                text = game.summary,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
+                        AboutBody(summary = game.summary)
                     }
                 }
             }
@@ -482,7 +545,9 @@ private fun GameDetailsContent(
 private fun GameDetailsHeader(
     game: GameDetails,
     contentTopPadding: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    titleHandoffProgress: () -> Float = { 0f },
+    titleTranslationRangePx: Float = 0f,
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         if (!game.artworkUrl.isNullOrBlank()) {
@@ -516,7 +581,8 @@ private fun GameDetailsHeader(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
@@ -529,7 +595,7 @@ private fun GameDetailsHeader(
                     if (!game.coverUrl.isNullOrBlank()) {
                         AsyncImage(
                             model = game.coverUrl,
-                            contentDescription = game.name,
+                            contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -546,6 +612,14 @@ private fun GameDetailsHeader(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.graphicsLayer {
+                            val progress = titleHandoffProgress()
+                            alpha = (1f - progress).coerceIn(0f, 1f)
+                            translationY = -titleTranslationRangePx * progress
+                            scaleX = 1f - TITLE_DOCK_SCALE_DELTA * progress
+                            scaleY = 1f - TITLE_DOCK_SCALE_DELTA * progress
+                            transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
+                        },
                     )
 
                     // Aggregate rating with vote count; falls back to the critic rating the
@@ -555,9 +629,15 @@ private fun GameDetailsHeader(
                         if (game.totalRatingCount != null) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.details_votes_count_format, game.totalRatingCount),
+                                text = stringResource(
+                                    R.string.details_votes_count_format,
+                                    game.totalRatingCount,
+                                ),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
                             )
                         }
                     }
@@ -571,7 +651,9 @@ private fun GameDetailsHeader(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    val headerTags = (game.genres + game.themes).distinct()
+                    val headerTags = (game.genres + game.themes)
+                        .map { formatGenreTag(it) }
+                        .distinct()
                     if (headerTags.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -607,7 +689,7 @@ private fun DetailsSection(
     }
 }
 
-/** Horizontal summary cards: first release, modes, platforms, time to beat. */
+/** Fixed two-column summary cards: release, modes, platforms, time to beat. */
 @Composable
 private fun GameDetailsFactsRow(
     game: GameDetails,
@@ -616,53 +698,96 @@ private fun GameDetailsFactsRow(
     val unknownDate = stringResource(R.string.details_date_unknown)
     val firstRelease = game.releaseDates.firstOrNull()
     val mainHours = game.timeToBeatMainSeconds?.toDisplayHours()
-    LazyRow(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val cards = buildList {
         if (firstRelease != null) {
-            item(key = "release") {
-                FactCard(
+            add(
+                FactCardData(
+                    testTag = "release",
                     icon = Icons.Filled.Event,
                     title = stringResource(R.string.details_card_release),
                     value = firstRelease.displayDate(unknownDate),
-                    sub = firstRelease.platform
+                    sub = firstRelease.platform,
                 )
-            }
+            )
         }
         if (game.gameModes.isNotEmpty()) {
-            item(key = "modes") {
-                FactCard(
+            add(
+                FactCardData(
+                    testTag = "modes",
                     icon = Icons.Filled.VideogameAsset,
                     title = stringResource(R.string.details_section_modes),
-                    value = game.gameModes.joinToString(", ")
+                    value = game.gameModes.joinToString(", ") { mode ->
+                        if (mode == "Co-operative") "Co-op" else mode
+                    }
                 )
-            }
+            )
         }
         if (game.platforms.isNotEmpty()) {
-            item(key = "platforms") {
-                FactCard(
+            add(
+                FactCardData(
+                    testTag = "platforms",
                     icon = Icons.Filled.Devices,
                     title = stringResource(R.string.details_section_platforms),
-                    value = game.platforms.joinToString(", ")
+                    value = game.platforms.joinToString(", "),
                 )
-            }
+            )
         }
         if (mainHours != null) {
-            item(key = "time") {
-                FactCard(
+            add(
+                FactCardData(
+                    testTag = "time",
                     icon = Icons.Filled.Schedule,
                     title = stringResource(R.string.details_card_time_to_beat),
                     value = stringResource(R.string.details_time_hours_format, mainHours),
                     sub = game.timeToBeatCompleteSeconds?.let { complete ->
-                        stringResource(R.string.details_time_complete_format, complete.toDisplayHours())
-                    }
+                        stringResource(
+                            R.string.details_time_complete_format,
+                            complete.toDisplayHours()
+                        )
+                    },
                 )
+            )
+        }
+    }
+
+    Column(
+        modifier = modifier.padding(horizontal = DETAILS_GUTTER),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        cards.chunked(2).forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                row.forEach { card ->
+                    FactCard(
+                        icon = card.icon,
+                        title = card.title,
+                        value = card.value,
+                        sub = card.sub,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .testTag("details-fact-card-${card.testTag}"),
+                    )
+                }
+                if (row.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
 }
+
+private data class FactCardData(
+    val testTag: String,
+    val icon: ImageVector,
+    val title: String,
+    val value: String,
+    val sub: String? = null,
+)
 
 /** Seconds in half an hour and in an hour, for rounding beats to whole hours. */
 private const val HALF_HOUR_SECONDS = 1_800L
@@ -676,17 +801,17 @@ private fun FactCard(
     icon: ImageVector,
     title: String,
     value: String,
-    sub: String? = null
+    sub: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
-            modifier = Modifier
-                .width(FACT_CARD_WIDTH)
-                .padding(12.dp),
+            modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
@@ -703,14 +828,13 @@ private fun FactCard(
                     text = title,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
             )
             if (sub != null) {
                 Text(
@@ -720,6 +844,46 @@ private fun FactCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutBody(summary: String) {
+    var expanded by rememberSaveable(summary) { mutableStateOf(false) }
+    var hasVisualOverflow by remember(summary) { mutableStateOf(false) }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { layoutResult ->
+                    if (!expanded) {
+                        hasVisualOverflow = layoutResult.hasVisualOverflow
+                    }
+                },
+            )
+            if (hasVisualOverflow || expanded) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(
+                        text = stringResource(
+                            if (expanded) {
+                                R.string.details_about_show_less
+                            } else {
+                                R.string.details_about_show_more
+                            }
+                        )
+                    )
+                }
             }
         }
     }

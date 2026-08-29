@@ -6,5 +6,9 @@ private const val MAX_CARD_GENRES = 2
 fun selectGenreTags(genres: List<String>): List<String> =
     cleanTags(genres).take(MAX_CARD_GENRES)
 
+/** Formats verbose genre names into compact chip labels. */
+fun formatGenreTag(tag: String): String =
+    if (tag == "Role-playing (RPG)") "RPG" else tag
+
 private fun cleanTags(tags: List<String>): List<String> =
-    tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    tags.map { formatGenreTag(it.trim()) }.filter { it.isNotEmpty() }.distinct()

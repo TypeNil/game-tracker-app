@@ -18,6 +18,18 @@ class GameCardTagsTest {
     }
 
     @Test
+    fun `selectGenreTags formats Role-playing RPG to RPG`() {
+        val tags = selectGenreTags(listOf("Role-playing (RPG)", "Adventure"))
+        assertEquals(listOf("RPG", "Adventure"), tags)
+    }
+
+    @Test
+    fun `formatGenreTag converts exact Role-playing RPG to RPG`() {
+        assertEquals("RPG", formatGenreTag("Role-playing (RPG)"))
+        assertEquals("Action", formatGenreTag("Action"))
+    }
+
+    @Test
     fun `selectGenreTags returns empty when input is empty`() {
         assertEquals(emptyList<String>(), selectGenreTags(emptyList()))
     }
