@@ -50,7 +50,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
@@ -62,7 +61,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.SnackbarHost
@@ -123,6 +121,7 @@ import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+import io.github.typenil.gametracker.feature.details.component.GameVideoCard
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -521,21 +520,11 @@ private fun GameDetailsContent(
                         title = stringResource(R.string.details_section_videos),
                         modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                     ) {
-                        game.videos.forEach { video ->
-                            OutlinedButton(
-                                onClick = { onVideoClick(video) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.PlayArrow,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = video.name ?: stringResource(R.string.details_watch_trailer)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            game.videos.forEach { video ->
+                                GameVideoCard(
+                                    video = video,
+                                    onClick = { onVideoClick(video) },
                                 )
                             }
                         }

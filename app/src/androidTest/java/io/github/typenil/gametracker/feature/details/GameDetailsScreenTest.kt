@@ -247,6 +247,25 @@ class GameDetailsScreenTest {
     }
 
     @Test
+    fun videoCardsShowTitleAndSourceSubtitle() {
+        val videoDetails = compactDetails.copy(
+            videos = listOf(
+                GameVideo(videoId = "abc123", name = "Gameplay Trailer"),
+                GameVideo(videoId = "def456", name = null),
+            ),
+            similarGames = emptyList(),
+        )
+        setContent(GameDetailsUiState(game = videoDetails, isHydrated = true))
+
+        val defaultTrailerTitle = composeTestRule.activity.getString(R.string.details_watch_trailer)
+        val youtubeSource = composeTestRule.activity.getString(R.string.details_video_source)
+
+        composeTestRule.onNodeWithText("Gameplay Trailer").assertIsDisplayed()
+        composeTestRule.onNodeWithText(defaultTrailerTitle).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(youtubeSource)[0].assertIsDisplayed()
+    }
+
+    @Test
     fun shortAboutTextHidesExpansionToggle() {
         setContent(
             GameDetailsUiState(

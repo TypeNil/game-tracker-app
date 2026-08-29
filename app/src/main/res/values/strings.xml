@@ -40,6 +40,8 @@
     <string name="details_share_error">No app available to share this game.</string>
     <string name="details_video_error">No app available to open this video.</string>
     <string name="details_watch_trailer">Watch Trailer</string>
+    <string name="details_video_source">YouTube</string>
+    <string name="details_play_video_action">Play %1$s on YouTube</string>
     <string name="details_section_about">About</string>
     <string name="details_about_show_more">Show more</string>
     <string name="details_about_show_less">Show less</string>
