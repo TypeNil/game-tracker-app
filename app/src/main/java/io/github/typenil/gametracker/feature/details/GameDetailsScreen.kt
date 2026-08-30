@@ -2,8 +2,15 @@ package io.github.typenil.gametracker.feature.details
 
 import android.content.ActivityNotFoundException
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -48,6 +55,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Refresh
@@ -56,7 +64,6 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -148,7 +155,14 @@ private const val TITLE_A11Y_MAX_ALPHA = 0.95f
 private val TITLE_DOCK_TRANSLATION_RANGE = 12.dp
 private val APP_BAR_BG_SCROLL_THRESHOLD = 120.dp
 private val TITLE_HANDOFF_START_OFFSET = 90.dp
+
 private val TITLE_HANDOFF_END_OFFSET = 150.dp
+
+/** Collapsed About summary line count before the arrow toggle reveals the rest. */
+private const val ABOUT_COLLAPSED_LINES = 2
+
+/** Videos visible before the "Show all" toggle (BFF caps the list at five). */
+private const val VIDEOS_COLLAPSED_COUNT = 2
 
 /** Reference CTA fill for Add to Library. */
 private val LibraryCta = Color(0xFF4E3DCA)
@@ -288,16 +302,10 @@ fun GameDetailsScreen(
         }
     ) { innerPadding ->
         when {
-            uiState.isInitialLoading -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-
-            uiState.error != null && game == null -> GameDetailsErrorState(
+            // Full-screen skeleton renders inside the same LazyColumn as content
+            // (single list state), so the first hydrated frame replaces
+            // placeholders without a spinner swap or scroll-state conflict.
+            uiState.error != null && game == null && !uiState.isLoading -> GameDetailsErrorState(
                 error = uiState.error,
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
@@ -423,13 +431,6 @@ private fun GameDetailsContent(
     titleHandoffProgress: () -> Float = { 0f },
     titleTranslationRangePx: Float = 0f,
 ) {
-    // Empty sections stay hidden so a catalog skeleton renders as a lean but
-    // complete page rather than a wall of empty headers.
-    if (game == null) return
-    val hasFacts = game.releaseDates.isNotEmpty() ||
-        game.gameModes.isNotEmpty() ||
-        game.platforms.isNotEmpty() ||
-        game.timeToBeatMainSeconds != null
     val pullToRefreshState = rememberPullToRefreshState()
     var selectedScreenshotIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
@@ -446,109 +447,115 @@ private fun GameDetailsContent(
             modifier = Modifier.fillMaxSize()
         ) {
             item(key = "header") {
-                GameDetailsHeader(
-                    game = game,
-                    contentTopPadding = contentTopPadding,
-                    titleHandoffProgress = titleHandoffProgress,
-                    titleTranslationRangePx = titleTranslationRangePx,
-                )
-            }
-
-            item(key = "library-status") {
-                LibraryStatusCard(
-                    libraryEntry = libraryEntry,
-                    platform = game.platforms.firstOrNull(),
-                    onEditClicked = onEditLibraryClicked,
-                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                )
-            }
-
-            if (!game.summary.isNullOrBlank()) {
-                item(key = "about") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_about),
-                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        AboutBody(summary = game.summary)
-                    }
-                }
-            }
-
-            if (hasFacts) {
-                item(key = "facts") {
-                    GameDetailsFactsRow(
+                if (game == null) {
+                    DetailsHeaderSkeleton(
+                        contentTopPadding = contentTopPadding,
+                        titleTranslationRangePx = titleTranslationRangePx,
+                    )
+                } else {
+                    GameDetailsHeader(
                         game = game,
-                        modifier = Modifier.fillMaxWidth()
+                        contentTopPadding = contentTopPadding,
+                        titleHandoffProgress = titleHandoffProgress,
+                        titleTranslationRangePx = titleTranslationRangePx,
                     )
                 }
             }
 
-
-            if (game.screenshots.isNotEmpty()) {
-                item(key = "screenshots") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_screenshots),
-                        modifier = Modifier.fillMaxWidth(),
-                        titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            itemsIndexed(items = game.screenshots, key = { _, url -> url }) { index, screenshot ->
-                                AsyncImage(
-                                    model = screenshot,
-                                    contentDescription = stringResource(R.string.details_screenshot_desc),
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .width(260.dp)
-                                        .aspectRatio(SCREENSHOT_ASPECT_RATIO)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                        .clickable { selectedScreenshotIndex = index }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (game.videos.isNotEmpty()) {
-                item(key = "videos") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_videos),
+            // Empty sections stay hidden so a catalog skeleton renders as a lean
+            // but complete page rather than a wall of empty headers.
+            if (game != null) {
+                item(key = "library-status") {
+                    LibraryStatusCard(
+                        libraryEntry = libraryEntry,
+                        onEditClicked = onEditLibraryClicked,
                         modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            game.videos.forEach { video ->
-                                GameVideoCard(
-                                    video = video,
-                                    onClick = { onVideoClick(video) },
-                                )
+                    )
+                }
+
+                if (!game.summary.isNullOrBlank()) {
+                    item(key = "about") {
+                        AboutCard(
+                            summary = game.summary,
+                            modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                        )
+                    }
+                }
+
+                val hasFacts = game.releaseDates.isNotEmpty() ||
+                    game.gameModes.isNotEmpty() ||
+                    game.platforms.isNotEmpty() ||
+                    game.timeToBeatMainSeconds != null
+                if (hasFacts) {
+                    item(key = "facts") {
+                        GameDetailsFactsRow(
+                            game = game,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                if (game.screenshots.isNotEmpty()) {
+                    item(key = "screenshots") {
+                        DetailsSection(
+                            title = stringResource(R.string.details_section_screenshots),
+                            modifier = Modifier.fillMaxWidth(),
+                            titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                        ) {
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                itemsIndexed(
+                                    items = game.screenshots,
+                                    key = { _, url -> url }
+                                ) { index, screenshot ->
+                                    AsyncImage(
+                                        model = screenshot,
+                                        contentDescription = stringResource(R.string.details_screenshot_desc),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .width(260.dp)
+                                            .aspectRatio(SCREENSHOT_ASPECT_RATIO)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                            .clickable { selectedScreenshotIndex = index }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (game.similarGames.isNotEmpty()) {
-                item(key = "similar") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_similar),
-                        modifier = Modifier.fillMaxWidth(),
-                        titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        LazyRow(
+                if (game.videos.isNotEmpty()) {
+                    item(key = "videos") {
+                        VideosSection(
+                            videos = game.videos,
+                            onVideoClick = onVideoClick,
+                            modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                        )
+                    }
+                }
+
+                if (game.similarGames.isNotEmpty()) {
+                    item(key = "similar") {
+                        DetailsSection(
+                            title = stringResource(R.string.details_section_similar),
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                         ) {
-                            items(items = game.similarGames, key = { it.id }) { similar ->
-                                GamePosterCard(
-                                    game = similar,
-                                    onClick = { onGameClick(similar.id) },
-                                )
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(items = game.similarGames, key = { it.id }) { similar ->
+                                    GamePosterCard(
+                                        game = similar,
+                                        onClick = { onGameClick(similar.id) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -557,12 +564,14 @@ private fun GameDetailsContent(
         }
 
         selectedScreenshotIndex?.let { initialIndex ->
-            ScreenshotViewerDialog(
-                screenshots = game.screenshots,
-                initialIndex = initialIndex,
-                onDismissRequest = { selectedScreenshotIndex = null },
-                onPageChanged = { selectedScreenshotIndex = it }
-            )
+            game?.let { currentGame ->
+                ScreenshotViewerDialog(
+                    screenshots = currentGame.screenshots,
+                    initialIndex = initialIndex,
+                    onDismissRequest = { selectedScreenshotIndex = null },
+                    onPageChanged = { selectedScreenshotIndex = it }
+                )
+            }
         }
     }
 }
@@ -720,7 +729,7 @@ private fun DetailsSection(
     }
 }
 
-/** Fixed two-column summary cards: release, modes, platforms, time to beat. */
+/** Two-column summary cards; a lone leftover card spans the full row. */
 @Composable
 private fun GameDetailsFactsRow(
     game: GameDetails,
@@ -786,26 +795,38 @@ private fun GameDetailsFactsRow(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         cards.chunked(2).forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                row.forEach { card ->
-                    FactCard(
-                        icon = card.icon,
-                        title = card.title,
-                        value = card.value,
-                        sub = card.sub,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .testTag("details-fact-card-${card.testTag}"),
-                    )
-                }
-                if (row.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
+            if (row.size == 1) {
+                // A lone leftover card spans the row so the grid never shows a
+                // visually empty half (e.g. [Release][Modes] / [Platforms....]).
+                val card = row.first()
+                FactCard(
+                    icon = card.icon,
+                    title = card.title,
+                    value = card.value,
+                    sub = card.sub,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("details-fact-card-${card.testTag}"),
+                )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    row.forEach { card ->
+                        FactCard(
+                            icon = card.icon,
+                            title = card.title,
+                            value = card.value,
+                            sub = card.sub,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .testTag("details-fact-card-${card.testTag}"),
+                        )
+                    }
                 }
             }
         }
@@ -880,22 +901,72 @@ private fun FactCard(
     }
 }
 
+/** Collapsed About card: 2-line summary with an in-card header and arrow toggle. */
 @Composable
-private fun AboutBody(summary: String) {
+private fun AboutCard(
+    summary: String,
+    modifier: Modifier = Modifier,
+) {
     var expanded by rememberSaveable(summary) { mutableStateOf(false) }
     var hasVisualOverflow by remember(summary) { mutableStateOf(false) }
+    val showMoreDesc = stringResource(R.string.details_about_show_more)
+    val showLessDesc = stringResource(R.string.details_about_show_less)
+
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "aboutArrowRotation",
+    )
 
     Surface(
+        modifier = modifier.animateContentSize(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        ),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Header row height matches the FactCard rhythm (12dp top inset, 24dp
+        // icon); the whole row is the tap target so the arrow needs no
+        // minimum-touch-target padding that would inflate the top gap.
+        Column(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        enabled = hasVisualOverflow || expanded,
+                        onClickLabel = if (expanded) showLessDesc else showMoreDesc,
+                    ) { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.details_section_about),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                if (hasVisualOverflow || expanded) {
+                    Icon(
+                        imageVector = Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) showLessDesc else showMoreDesc,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .graphicsLayer { rotationZ = arrowRotation },
+                    )
+                }
+            }
             Text(
                 text = summary,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                maxLines = if (expanded) Int.MAX_VALUE else ABOUT_COLLAPSED_LINES,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { layoutResult ->
                     if (!expanded) {
@@ -903,19 +974,6 @@ private fun AboutBody(summary: String) {
                     }
                 },
             )
-            if (hasVisualOverflow || expanded) {
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(
-                        text = stringResource(
-                            if (expanded) {
-                                R.string.details_about_show_less
-                            } else {
-                                R.string.details_about_show_more
-                            }
-                        )
-                    )
-                }
-            }
         }
     }
 }
@@ -1074,7 +1132,6 @@ private fun LibraryStatusCard(
     libraryEntry: LibraryEntry?,
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
-    platform: String? = null,
 ) {
     AnimatedContent(
         targetState = libraryEntry,
@@ -1087,7 +1144,6 @@ private fun LibraryStatusCard(
         } else {
             InLibraryCard(
                 status = stringResource(entry.status.displayNameRes()),
-                platform = platform,
                 onClick = onEditClicked,
             )
         }
@@ -1140,7 +1196,6 @@ private fun AddToLibraryButton(
 @Composable
 private fun InLibraryCard(
     status: String,
-    platform: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1189,11 +1244,9 @@ private fun InLibraryCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = if (platform.isNullOrBlank()) {
-                        status
-                    } else {
-                        stringResource(R.string.library_in_library_meta, status, platform)
-                    },
+                    // Status only: no platform is auto-picked from the catalog list,
+                    // since the user does not choose one at add time.
+                    text = status,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -1204,6 +1257,152 @@ private fun InLibraryCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
+        }
+    }
+}
+
+/**
+ * Header placeholder shown while no Room row exists yet (cold navigation to an
+ * unseen game). Renders inside the shared LazyColumn so hydrated content
+ * replaces it without a spinner swap or a scroll-state conflict.
+ */
+@Composable
+private fun DetailsHeaderSkeleton(
+    contentTopPadding: Dp,
+    titleTranslationRangePx: Float,
+    modifier: Modifier = Modifier,
+) {
+    val shimmerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("details-skeleton")
+            .padding(top = contentTopPadding, start = DETAILS_GUTTER, end = DETAILS_GUTTER),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SkeletonBlock(
+                modifier = Modifier
+                    .width(HEADER_COVER_WIDTH)
+                    .aspectRatio(GAME_COVER_ASPECT_RATIO)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(shimmerColor)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(SKELETON_TITLE_FRACTION)
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerColor)
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(SKELETON_SUBTITLE_FRACTION)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonBlock(modifier: Modifier = Modifier) {
+    Box(modifier = modifier)
+}
+
+/** Placeholder bar proportions for the details header skeleton. */
+private const val SKELETON_TITLE_FRACTION = 0.7f
+private const val SKELETON_SUBTITLE_FRACTION = 0.4f
+private const val ARROW_EXPANDED_ROTATION = 180f
+private const val ARROW_COLLAPSED_ROTATION = 0f
+
+/**
+ * Videos list: at least [VIDEOS_COLLAPSED_COUNT] (when available); a toggle
+ * reveals the rest because the BFF caps the payload at five videos.
+ */
+@Composable
+private fun VideosSection(
+    videos: List<GameVideo>,
+    onVideoClick: (GameVideo) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val hasToggle = videos.size > VIDEOS_COLLAPSED_COUNT
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "videosArrowRotation",
+    )
+
+    DetailsSection(
+        title = stringResource(R.string.details_section_videos),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            videos.forEachIndexed { index, video ->
+                // Hidden trailers animate in/out per-card so the reveal tracks
+                // the container height change instead of popping in a block.
+                AnimatedVisibility(
+                    visible = !hasToggle || index < VIDEOS_COLLAPSED_COUNT || expanded,
+                    enter = expandVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow,
+                        )
+                    ) + fadeIn(),
+                    exit = shrinkVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow,
+                        )
+                    ) + fadeOut(),
+                ) {
+                    GameVideoCard(
+                        video = video,
+                        onClick = { onVideoClick(video) },
+                    )
+                }
+            }
+            if (hasToggle) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(
+                        text = if (expanded) {
+                            stringResource(R.string.details_about_show_less)
+                        } else {
+                            stringResource(R.string.details_videos_show_all, videos.size)
+                        }
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { rotationZ = arrowRotation },
+                    )
+                }
+            }
         }
     }
 }

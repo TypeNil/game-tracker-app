@@ -45,6 +45,7 @@
     <string name="details_section_about">About</string>
     <string name="details_about_show_more">Show more</string>
     <string name="details_about_show_less">Show less</string>
+    <string name="details_videos_show_all">Show all (%1$d)</string>
     <string name="details_section_modes">Game Modes</string>
     <string name="details_section_platforms">Platforms</string>
     <string name="details_section_screenshots">Screenshots</string>
@@ -95,7 +96,6 @@
     <!-- Details Library Action & Sheet -->
     <string name="library_add_to_library">Add to Library</string>
     <string name="library_in_library">In Library</string>
-    <string name="library_in_library_meta">%1$s · %2$s</string>
     <string name="library_add_to_library_subtitle">Track your progress, rate, and take notes</string>
     <string name="library_edit_entry_title">Edit in Library</string>
     <string name="library_status_label">Status</string>
