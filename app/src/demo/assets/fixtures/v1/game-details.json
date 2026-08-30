@@ -5,7 +5,7 @@
     "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
     "rating": 95.8,
     "releaseDateEpochSeconds": 1431993600,
-    "summary": "The Witcher: Wild Hunt is a story-driven open world RPG set in a fantasy universe.",
+    "summary": "You are Geralt of Rivia, mercenary monster slayer, on the trail of the child of prophecy in a war-torn open world. The Wild Hunt expands The Witcher universe with a massive non-linear story full of meaningful choices and consequences. Explore the No Man's Land and the free city of Novigrad, sail to the Skellige Isles, and hunt legendary beasts with a combat system refined over dozens of hours. Every decision shapes alliances, romances, and the fate of entire regions.",
     "genres": [
       "Role-playing (RPG)",
       "Adventure"
@@ -97,6 +97,18 @@
       {
         "videoId": "xQGam9OHSUo",
         "name": "TV Spot"
+      },
+      {
+        "videoId": "c0i88t5K500",
+        "name": "Killing Monsters Cinematic"
+      },
+      {
+        "videoId": "Sz1IzT0EEPY",
+        "name": "The Sword of Destiny Trailer"
+      },
+      {
+        "videoId": "d6zH_2TUsP4",
+        "name": "Launch Cinematic"
       }
     ],
     "similarGames": [
@@ -159,7 +171,7 @@
     "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
     "rating": 95.2,
     "releaseDateEpochSeconds": 1645747200,
-    "summary": "Elden Ring is an action-RPG developed by FromSoftware, set in the Lands Between.",
+    "summary": "Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring. A vast world where open fields with a variety of situations and huge dungeons with complex and three-dimensional designs are seamlessly connected. Travel the Lands Between on foot or atop your spectral steed, overcome colossal bosses whose shadows stretch across golden erdtrees, and forge your own legend amid demigods warring over shattered shards of the Elden Ring. Master dual-wielding, magic, and stealth in a punishing but fair combat system that rewards every hard-won lesson.",
     "genres": [
       "Role-playing (RPG)",
       "Action"

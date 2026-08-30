@@ -1358,7 +1358,6 @@ private fun VideosSection(
                     stiffness = Spring.StiffnessMediumLow,
                 ),
             ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             videos.forEachIndexed { index, video ->
                 // Hidden trailers animate in/out per-card so the reveal tracks
@@ -1381,6 +1380,7 @@ private fun VideosSection(
                     GameVideoCard(
                         video = video,
                         onClick = { onVideoClick(video) },
+                        modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
             }
