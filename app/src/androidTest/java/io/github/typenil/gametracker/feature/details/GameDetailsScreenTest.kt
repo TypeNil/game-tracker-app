@@ -411,6 +411,8 @@ class GameDetailsScreenTest {
         composeTestRule.onNodeWithText(expectedDate).assertIsDisplayed()
         composeTestRule.onNodeWithText("PC").assertIsDisplayed()
     }
+
+    @Test
     fun videosCollapseToShowAllToggleRevealsRest() {
         val videoDetails = compactDetails.copy(
             videos = listOf(
