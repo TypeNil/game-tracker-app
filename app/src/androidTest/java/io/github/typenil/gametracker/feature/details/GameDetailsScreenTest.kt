@@ -1,7 +1,9 @@
 package io.github.typenil.gametracker.feature.details
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
@@ -104,17 +106,23 @@ class GameDetailsScreenTest {
                 ),
             ) {
                 GameTrackerTheme {
-                    GameDetailsScreen(
-                        uiState = uiState,
-                        onGameClick = onGameClick,
-                        onBackClick = {},
-                        onRefresh = {},
-                        onRetry = {},
-                        onUserMessageShown = {},
-                        modifier = viewportWidth
-                            ?.let { Modifier.width(it) }
-                            ?: Modifier,
-                    )
+                    val screenContent: @Composable () -> Unit = {
+                        GameDetailsScreen(
+                            uiState = uiState,
+                            onGameClick = onGameClick,
+                            onBackClick = {},
+                            onRefresh = {},
+                            onRetry = {},
+                            onUserMessageShown = {},
+                        )
+                    }
+                    if (viewportWidth != null) {
+                        Box(modifier = Modifier.width(viewportWidth)) {
+                            screenContent()
+                        }
+                    } else {
+                        screenContent()
+                    }
                 }
             }
         }
