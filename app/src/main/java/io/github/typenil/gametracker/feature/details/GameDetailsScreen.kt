@@ -65,18 +65,12 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import io.github.typenil.gametracker.feature.details.component.PlatformsBottomSheet
-import io.github.typenil.gametracker.feature.details.component.TagsBottomSheet
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -98,23 +92,25 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -123,18 +119,25 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
+import io.github.typenil.gametracker.core.designsystem.component.TagChip
+import io.github.typenil.gametracker.core.designsystem.component.OverflowTagChip
+import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
+import io.github.typenil.gametracker.core.designsystem.component.formatPlatformDisplayName
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
-import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
-import io.github.typenil.gametracker.core.designsystem.component.TagChip
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+import io.github.typenil.gametracker.feature.details.component.GameModesBottomSheet
 import io.github.typenil.gametracker.feature.details.component.GameVideoCard
+import io.github.typenil.gametracker.feature.details.component.PlatformsBottomSheet
+import io.github.typenil.gametracker.feature.details.component.TagsBottomSheet
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.IntrinsicSize
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -145,7 +148,7 @@ import kotlinx.coroutines.launch
 private val DETAILS_GUTTER = GtDimens.Gutter
 
 /** Enlarged portrait cover width in the details header. */
-private val HEADER_COVER_WIDTH = 144.dp
+private val HEADER_COVER_WIDTH = 124.dp
 
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
 private val SCREENSHOT_ASPECT_RATIO = 16f / 9f
@@ -203,6 +206,7 @@ private enum class DetailsOverflowSheet {
     None,
     Platforms,
     Tags,
+    GameModes,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -327,6 +331,7 @@ fun GameDetailsScreen(
                 onEditLibraryClicked = onEditLibraryClicked,
                 onPlatformsClick = { overflowSheet = DetailsOverflowSheet.Platforms },
                 onTagsOverflowClick = { overflowSheet = DetailsOverflowSheet.Tags },
+                onGameModesClick = { overflowSheet = DetailsOverflowSheet.GameModes },
                 contentTopPadding = innerPadding.calculateTopPadding(),
                 lazyListState = lazyListState,
                 titleHandoffProgress = titleHandoffProgress,
@@ -351,6 +356,14 @@ fun GameDetailsScreen(
                     TagsBottomSheet(
                         genres = currentGame.genres,
                         themes = currentGame.themes,
+                        onDismiss = { overflowSheet = DetailsOverflowSheet.None },
+                    )
+                }
+            }
+            DetailsOverflowSheet.GameModes -> {
+                game?.let { currentGame ->
+                    GameModesBottomSheet(
+                        gameModes = currentGame.gameModes,
                         onDismiss = { overflowSheet = DetailsOverflowSheet.None },
                     )
                 }
@@ -456,6 +469,7 @@ private fun GameDetailsContent(
     onEditLibraryClicked: () -> Unit,
     onPlatformsClick: () -> Unit,
     onTagsOverflowClick: () -> Unit,
+    onGameModesClick: () -> Unit,
     contentTopPadding: Dp,
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState(),
@@ -522,6 +536,7 @@ private fun GameDetailsContent(
                         GameDetailsFactsRow(
                             game = game,
                             onPlatformsClick = onPlatformsClick,
+                            onGameModesClick = onGameModesClick,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -728,42 +743,28 @@ private fun GameDetailsHeader(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                }
-            }
 
-            val tagPreview = remember(game.genres, game.themes) {
-                formatHeaderTagPreview(game.genres, game.themes)
-            }
-            if (tagPreview.previewTags.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    tagPreview.previewTags.forEach { tag ->
-                        TagChip(tag)
+                    val tagPreview = remember(game.genres, game.themes) {
+                        formatHeaderTagPreview(game.genres, game.themes)
                     }
-                    if (tagPreview.overflowCount > 0) {
-                        val overflowText = stringResource(R.string.details_more_count, tagPreview.overflowCount)
-                        val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
-                        val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
-                        Surface(
-                            onClick = onTagsOverflowClick,
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            modifier = Modifier.semantics {
-                                contentDescription = overflowDesc
-                            },
+                    if (tagPreview.previewTags.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(
-                                text = overflowText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            )
+                            tagPreview.previewTags.forEach { tag ->
+                                TagChip(tag)
+                            }
+                            if (tagPreview.overflowCount > 0) {
+                                val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
+                                val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
+                                OverflowTagChip(
+                                    text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
+                                    onClick = onTagsOverflowClick,
+                                    contentDescription = overflowDesc,
+                                )
+                            }
                         }
                     }
                 }
@@ -794,6 +795,7 @@ private fun DetailsSection(
 private fun GameDetailsFactsRow(
     game: GameDetails,
     onPlatformsClick: () -> Unit,
+    onGameModesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val unknownDate = stringResource(R.string.details_date_unknown)
@@ -807,19 +809,33 @@ private fun GameDetailsFactsRow(
                     icon = Icons.Filled.Event,
                     title = stringResource(R.string.details_card_release),
                     value = firstRelease.displayDate(unknownDate),
-                    sub = firstRelease.platform,
+                    sub = formatPlatformDisplayName(firstRelease.platform),
                 )
             )
         }
         if (game.gameModes.isNotEmpty()) {
+            val modesPreview = formatGameModesPreview(game.gameModes)
+            val isClickable = game.gameModes.size > 1
+            val subText = if (modesPreview.overflowCount > 0) {
+                stringResource(R.string.details_more_count, modesPreview.overflowCount)
+            } else {
+                null
+            }
+            val a11yDesc = if (isClickable) {
+                stringResource(R.string.details_modes_more_desc, game.gameModes.size)
+            } else {
+                null
+            }
             add(
                 FactCardData(
                     testTag = "modes",
                     icon = Icons.Filled.VideogameAsset,
                     title = stringResource(R.string.details_section_modes),
-                    value = game.gameModes.joinToString(", ") { mode ->
-                        if (mode == "Co-operative") "Co-op" else mode
-                    }
+                    value = modesPreview.previewText,
+                    sub = subText,
+                    isClickable = isClickable,
+                    onClick = if (isClickable) onGameModesClick else null,
+                    contentDescription = a11yDesc,
                 )
             )
         }
@@ -828,6 +844,11 @@ private fun GameDetailsFactsRow(
             val isClickable = game.platforms.size > 1 || game.releaseDates.size > 1
             val subText = if (platformsPreview.overflowCount > 0) {
                 stringResource(R.string.details_more_count, platformsPreview.overflowCount)
+            } else {
+                null
+            }
+            val a11yDesc = if (isClickable) {
+                stringResource(R.string.details_platforms_more_desc, game.platforms.size)
             } else {
                 null
             }
@@ -840,6 +861,7 @@ private fun GameDetailsFactsRow(
                     sub = subText,
                     isClickable = isClickable,
                     onClick = if (isClickable) onPlatformsClick else null,
+                    contentDescription = a11yDesc,
                 )
             )
         }
@@ -877,6 +899,7 @@ private fun GameDetailsFactsRow(
                     sub = card.sub,
                     isClickable = card.isClickable,
                     onClick = card.onClick,
+                    contentDescription = card.contentDescription,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("details-fact-card-${card.testTag}"),
@@ -896,6 +919,7 @@ private fun GameDetailsFactsRow(
                             sub = card.sub,
                             isClickable = card.isClickable,
                             onClick = card.onClick,
+                            contentDescription = card.contentDescription,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -916,7 +940,9 @@ private data class FactCardData(
     val sub: String? = null,
     val isClickable: Boolean = false,
     val onClick: (() -> Unit)? = null,
+    val contentDescription: String? = null,
 )
+
 /** Seconds in half an hour and in an hour, for rounding beats to whole hours. */
 private const val HALF_HOUR_SECONDS = 1_800L
 private const val HOUR_SECONDS = 3_600L
@@ -933,11 +959,17 @@ private fun FactCard(
     modifier: Modifier = Modifier,
     isClickable: Boolean = false,
     onClick: (() -> Unit)? = null,
+    contentDescription: String? = null,
 ) {
-    val surfaceModifier = if (onClick != null) {
+    val clickModifier = if (onClick != null) {
         modifier.clickable(onClick = onClick, role = Role.Button)
     } else {
         modifier
+    }
+    val surfaceModifier = if (contentDescription != null) {
+        clickModifier.semantics { this.contentDescription = contentDescription }
+    } else {
+        clickModifier
     }
     Surface(
         modifier = surfaceModifier,

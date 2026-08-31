@@ -59,6 +59,7 @@
     <string name="details_more_count">+%1$d more</string>
     <string name="details_more_tags_desc">Show all %1$d genres and themes</string>
     <string name="details_platforms_more_desc">Show all %1$d platforms and release dates</string>
+    <string name="details_modes_more_desc">Show all %1$d game modes</string>
     <string name="details_card_release">Release</string>
     <string name="details_card_time_to_beat">Time to Beat</string>
     <string name="details_time_hours_format">≈%1$d h</string>

@@ -29,19 +29,19 @@
     ],
     "releaseDates": [
       {
-        "platform": "Xbox One",
-        "dateEpochSeconds": 1431993600,
-        "year": 2015
-      },
-      {
         "platform": "PC",
         "dateEpochSeconds": 1431993600,
         "year": 2015
       },
       {
-        "platform": "PlayStation 4",
+        "platform": "PlayStation 5",
         "dateEpochSeconds": 1431993600,
         "year": 2015
+      },
+      {
+        "platform": "Xbox Series X|S",
+        "dateEpochSeconds": 1670976000,
+        "year": 2022
       },
       {
         "platform": "Nintendo Switch",
@@ -49,9 +49,14 @@
         "year": 2021
       },
       {
-        "platform": "Xbox Series X|S",
-        "dateEpochSeconds": 1670976000,
-        "year": 2022
+        "platform": "Xbox One",
+        "dateEpochSeconds": 1431993600,
+        "year": 2015
+      },
+      {
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1431993600,
+        "year": 2015
       }
     ],
     "companies": [
@@ -201,22 +206,22 @@
         "year": 2022
       },
       {
-        "platform": "PlayStation 4",
-        "dateEpochSeconds": 1645747200,
-        "year": 2022
-      },
-      {
         "platform": "PlayStation 5",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       },
       {
-        "platform": "Xbox One",
+        "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       },
       {
-        "platform": "Xbox Series X|S",
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1645747200,
+        "year": 2022
+      },
+      {
+        "platform": "Xbox One",
         "dateEpochSeconds": 1645747200,
         "year": 2022
       }
@@ -335,21 +340,6 @@
     "releaseDates": [
       {
         "platform": "PC",
-        "dateEpochSeconds": 1601942400,
-        "year": 2020
-      },
-      {
-        "platform": "Mac",
-        "dateEpochSeconds": 1601942400,
-        "year": 2020
-      },
-      {
-        "platform": "Stadia",
-        "dateEpochSeconds": 1601942400,
-        "year": 2020
-      },
-      {
-        "platform": "PC",
         "dateEpochSeconds": 1691020800,
         "year": 2023
       },
@@ -357,6 +347,26 @@
         "platform": "PlayStation 5",
         "dateEpochSeconds": 1693958400,
         "year": 2023
+      },
+      {
+        "platform": "Xbox Series X|S",
+        "dateEpochSeconds": 1691020800,
+        "year": 2023
+      },
+      {
+        "platform": "Mac",
+        "dateEpochSeconds": 1601942400,
+        "year": 2020
+      },
+      {
+        "platform": "PC",
+        "dateEpochSeconds": 1601942400,
+        "year": 2020
+      },
+      {
+        "platform": "Stadia",
+        "dateEpochSeconds": 1601942400,
+        "year": 2020
       }
     ],
     "companies": [
@@ -621,6 +631,16 @@
         "year": 2020
       },
       {
+        "platform": "PlayStation 5",
+        "dateEpochSeconds": 1607558400,
+        "year": 2020
+      },
+      {
+        "platform": "Xbox Series X|S",
+        "dateEpochSeconds": 1644883200,
+        "year": 2022
+      },
+      {
         "platform": "Xbox One",
         "dateEpochSeconds": 1607558400,
         "year": 2020
@@ -634,11 +654,6 @@
         "platform": "PlayStation 4",
         "dateEpochSeconds": 1607558400,
         "year": 2020
-      },
-      {
-        "platform": "Xbox Series X|S",
-        "dateEpochSeconds": 1644883200,
-        "year": 2022
       }
     ],
     "companies": [
@@ -889,12 +904,27 @@
     ],
     "releaseDates": [
       {
-        "platform": "Linux",
+        "platform": "PC",
         "dateEpochSeconds": 1487894400,
         "year": 2017
       },
       {
-        "platform": "PC",
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1487894400,
+        "year": 2017
+      },
+      {
+        "platform": "Xbox One",
+        "dateEpochSeconds": 1487894400,
+        "year": 2017
+      },
+      {
+        "platform": "Nintendo Switch",
+        "dateEpochSeconds": 1528761600,
+        "year": 2018
+      },
+      {
+        "platform": "Linux",
         "dateEpochSeconds": 1487894400,
         "year": 2017
       },
@@ -907,11 +937,6 @@
         "platform": "Nintendo Wii U",
         "dateEpochSeconds": 1514678400,
         "year": 2017
-      },
-      {
-        "platform": "Nintendo Switch",
-        "dateEpochSeconds": 1528761600,
-        "year": 2018
       }
     ],
     "companies": [
@@ -1146,6 +1171,11 @@
     ],
     "releaseDates": [
       {
+        "platform": "PC",
+        "dateEpochSeconds": 1572912000,
+        "year": 2019
+      },
+      {
         "platform": "PlayStation 4",
         "dateEpochSeconds": 1540512000,
         "year": 2018
@@ -1154,11 +1184,6 @@
         "platform": "Xbox One",
         "dateEpochSeconds": 1540512000,
         "year": 2018
-      },
-      {
-        "platform": "PC",
-        "dateEpochSeconds": 1572912000,
-        "year": 2019
       },
       {
         "platform": "Stadia",
@@ -1280,11 +1305,6 @@
     ],
     "releaseDates": [
       {
-        "platform": "Mac",
-        "dateEpochSeconds": 1303084800,
-        "year": 2011
-      },
-      {
         "platform": "PC",
         "dateEpochSeconds": 1303084800,
         "year": 2011
@@ -1297,6 +1317,16 @@
       {
         "platform": "Xbox 360",
         "dateEpochSeconds": 1303430400,
+        "year": 2011
+      },
+      {
+        "platform": "Nintendo Switch",
+        "dateEpochSeconds": 1303171200,
+        "year": 2011
+      },
+      {
+        "platform": "Mac",
+        "dateEpochSeconds": 1303084800,
         "year": 2011
       },
       {
@@ -1398,7 +1428,7 @@
       "Adventure"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "Xbox 360",
       "PlayStation 4",
       "Nintendo Switch"
@@ -1415,7 +1445,22 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
+        "dateEpochSeconds": 1293753600,
+        "year": 2010
+      },
+      {
+        "platform": "Xbox 360",
+        "dateEpochSeconds": 1293753600,
+        "year": 2010
+      },
+      {
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1293753600,
+        "year": 2010
+      },
+      {
+        "platform": "Nintendo Switch",
         "dateEpochSeconds": 1293753600,
         "year": 2010
       }
@@ -1448,7 +1493,7 @@
           "Indie"
         ],
         "platforms": [
-          "PC (Microsoft Windows)",
+          "PC",
           "Nintendo Switch"
         ]
       }
@@ -1468,7 +1513,7 @@
       "Adventure"
     ],
     "platforms": [
-      "PC (Microsoft Windows)"
+      "PC"
     ],
     "url": "https://www.igdb.com/games/silk",
     "totalRating": 72.0,
@@ -1479,7 +1524,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
         "dateEpochSeconds": 1568246400,
         "year": 2019
       }
@@ -1512,7 +1557,7 @@
           "Indie"
         ],
         "platforms": [
-          "PC (Microsoft Windows)",
+          "PC",
           "Nintendo Switch"
         ]
       }
@@ -1588,7 +1633,7 @@
         "platforms": [
           "PlayStation 4",
           "Xbox One",
-          "PC (Microsoft Windows)"
+          "PC"
         ]
       }
     ],
@@ -1652,7 +1697,7 @@
       "Shooter"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "MS-DOS",
       "PlayStation"
     ],
@@ -1671,7 +1716,17 @@
     ],
     "releaseDates": [
       {
+        "platform": "PC",
+        "dateEpochSeconds": 755481600,
+        "year": 1993
+      },
+      {
         "platform": "MS-DOS",
+        "dateEpochSeconds": 755481600,
+        "year": 1993
+      },
+      {
+        "platform": "PlayStation",
         "dateEpochSeconds": 755481600,
         "year": 1993
       }
@@ -1708,7 +1763,7 @@
           "Puzzle"
         ],
         "platforms": [
-          "PC (Microsoft Windows)"
+          "PC"
         ]
       }
     ],
@@ -1727,7 +1782,7 @@
       "Shooter"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 4",
       "Xbox One",
       "Nintendo Switch"
@@ -1746,7 +1801,22 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
+        "dateEpochSeconds": 1463097600,
+        "year": 2016
+      },
+      {
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1463097600,
+        "year": 2016
+      },
+      {
+        "platform": "Xbox One",
+        "dateEpochSeconds": 1463097600,
+        "year": 2016
+      },
+      {
+        "platform": "Nintendo Switch",
         "dateEpochSeconds": 1463097600,
         "year": 2016
       }
@@ -1782,7 +1852,7 @@
           "Shooter"
         ],
         "platforms": [
-          "PC (Microsoft Windows)"
+          "PC"
         ]
       }
     ],
@@ -1802,7 +1872,7 @@
       "Simulator"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "PlayStation 4",
       "PlayStation 3",
@@ -1834,49 +1904,9 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
         "dateEpochSeconds": 1321574400,
         "year": 2011
-      },
-      {
-        "platform": "Xbox 360",
-        "dateEpochSeconds": 1336521600,
-        "year": 2012
-      },
-      {
-        "platform": "PlayStation 3",
-        "dateEpochSeconds": 1387238400,
-        "year": 2013
-      },
-      {
-        "platform": "PlayStation 4",
-        "dateEpochSeconds": 1409788800,
-        "year": 2014
-      },
-      {
-        "platform": "Xbox One",
-        "dateEpochSeconds": 1409875200,
-        "year": 2014
-      },
-      {
-        "platform": "PlayStation Vita",
-        "dateEpochSeconds": 1413244800,
-        "year": 2014
-      },
-      {
-        "platform": "Wii U",
-        "dateEpochSeconds": 1450310400,
-        "year": 2015
-      },
-      {
-        "platform": "Nintendo Switch",
-        "dateEpochSeconds": 1494460800,
-        "year": 2017
-      },
-      {
-        "platform": "Nintendo 3DS",
-        "dateEpochSeconds": 1505260800,
-        "year": 2017
       },
       {
         "platform": "PlayStation 5",
@@ -1884,13 +1914,73 @@
         "year": 2020
       },
       {
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1409788800,
+        "year": 2014
+      },
+      {
+        "platform": "PlayStation 3",
+        "dateEpochSeconds": 1387238400,
+        "year": 2013
+      },
+      {
         "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1604966400,
         "year": 2020
       },
       {
+        "platform": "Xbox One",
+        "dateEpochSeconds": 1409875200,
+        "year": 2014
+      },
+      {
+        "platform": "Xbox 360",
+        "dateEpochSeconds": 1336521600,
+        "year": 2012
+      },
+      {
+        "platform": "Nintendo Switch",
+        "dateEpochSeconds": 1494460800,
+        "year": 2017
+      },
+      {
+        "platform": "Wii U",
+        "dateEpochSeconds": 1450310400,
+        "year": 2015
+      },
+      {
+        "platform": "Nintendo 3DS",
+        "dateEpochSeconds": 1505260800,
+        "year": 2017
+      },
+      {
+        "platform": "PlayStation Vita",
+        "dateEpochSeconds": 1413244800,
+        "year": 2014
+      },
+      {
+        "platform": "macOS",
+        "dateEpochSeconds": 1321574400,
+        "year": 2011
+      },
+      {
+        "platform": "Linux",
+        "dateEpochSeconds": 1321574400,
+        "year": 2011
+      },
+      {
         "platform": "Android",
         "dateEpochSeconds": 1318723200,
+        "year": 2011
+      },
+      {
+        "platform": "iOS",
+        "dateEpochSeconds": 1321574400,
+        "year": 2011
+      },
+      {
+        "platform": "Meta Quest 3",
+        "dateEpochSeconds": 1321574400,
         "year": 2011
       }
     ],
@@ -1942,7 +2032,7 @@
       "Tactical"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "Xbox Series X|S"
     ],
@@ -1963,7 +2053,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
         "dateEpochSeconds": 1636070400,
         "year": 2021
       },
@@ -2082,7 +2172,7 @@
       "Puzzle"
     ],
     "platforms": [
-      "PC (Microsoft Windows)"
+      "PC"
     ],
     "url": null,
     "totalRating": 69.0,
@@ -2095,7 +2185,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
         "dateEpochSeconds": 1704067200,
         "year": 2024
       }
@@ -2119,7 +2209,7 @@
           "Indie"
         ],
         "platforms": [
-          "PC (Microsoft Windows)",
+          "PC",
           "Nintendo Switch"
         ]
       }
@@ -2148,7 +2238,7 @@
       "Indie"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "Xbox Series X|S"
     ],
@@ -2173,7 +2263,17 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
+        "dateEpochSeconds": 1672531200,
+        "year": 2023
+      },
+      {
+        "platform": "PlayStation 5",
+        "dateEpochSeconds": 1672531200,
+        "year": 2023
+      },
+      {
+        "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1672531200,
         "year": 2023
       }
@@ -2207,7 +2307,7 @@
         ],
         "platforms": [
           "PlayStation 5",
-          "PC (Microsoft Windows)"
+          "PC"
         ]
       }
     ],
@@ -2228,7 +2328,7 @@
       "Strategy"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "Xbox Series X|S"
     ],
@@ -2245,7 +2345,17 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
+        "dateEpochSeconds": 1690848000,
+        "year": 2023
+      },
+      {
+        "platform": "PlayStation 5",
+        "dateEpochSeconds": 1690848000,
+        "year": 2023
+      },
+      {
+        "platform": "Xbox Series X|S",
         "dateEpochSeconds": 1690848000,
         "year": 2023
       }
@@ -2279,7 +2389,7 @@
           "Adventure"
         ],
         "platforms": [
-          "PC (Microsoft Windows)",
+          "PC",
           "PlayStation 5",
           "Xbox Series X|S"
         ]
@@ -2301,7 +2411,7 @@
       "Sport"
     ],
     "platforms": [
-      "PC (Microsoft Windows)"
+      "PC"
     ],
     "url": "https://www.igdb.com/games/competitive-arena-pro",
     "totalRating": 58.0,
@@ -2315,7 +2425,7 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC (Microsoft Windows)",
+        "platform": "PC",
         "dateEpochSeconds": 1640995200,
         "year": 2022
       }
@@ -2348,7 +2458,7 @@
           "Puzzle"
         ],
         "platforms": [
-          "PC (Microsoft Windows)"
+          "PC"
         ]
       }
     ],

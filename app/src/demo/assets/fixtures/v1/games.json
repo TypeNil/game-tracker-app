@@ -191,7 +191,7 @@
       "Adventure"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "Xbox 360",
       "PlayStation 4",
       "Nintendo Switch"
@@ -208,7 +208,7 @@
       "Adventure"
     ],
     "platforms": [
-      "PC (Microsoft Windows)"
+      "PC"
     ]
   },
   {
@@ -253,7 +253,7 @@
       "Shooter"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "MS-DOS",
       "PlayStation"
     ]
@@ -269,7 +269,7 @@
       "Shooter"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 4",
       "Xbox One",
       "Nintendo Switch"
@@ -287,7 +287,7 @@
       "Simulator"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "PlayStation 4",
       "PlayStation 3",
@@ -317,7 +317,7 @@
       "Tactical"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "Xbox Series X|S"
     ]
@@ -334,7 +334,7 @@
       "Puzzle"
     ],
     "platforms": [
-      "PC (Microsoft Windows)"
+      "PC"
     ]
   },
   {
@@ -357,7 +357,7 @@
       "Indie"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "Xbox Series X|S"
     ]
@@ -375,7 +375,7 @@
       "Strategy"
     ],
     "platforms": [
-      "PC (Microsoft Windows)",
+      "PC",
       "PlayStation 5",
       "Xbox Series X|S"
     ]
@@ -392,7 +392,7 @@
       "Sport"
     ],
     "platforms": [
-      "PC (Microsoft Windows)"
+      "PC"
     ]
   }
 ]

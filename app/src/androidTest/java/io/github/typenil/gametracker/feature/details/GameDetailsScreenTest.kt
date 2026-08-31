@@ -512,13 +512,16 @@ class GameDetailsScreenTest {
         val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
         setContent(GameDetailsUiState(game = game, isHydrated = true))
 
-        // First 3 tags shown in preview
+        // First 2 tags shown in preview
         composeTestRule.onNodeWithText("RPG", useUnmergedTree = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Shooter", useUnmergedTree = true).assertIsDisplayed()
 
-        // Overflow "+7 more" chip is shown and clickable
-        composeTestRule.onNodeWithText("+7 more", useUnmergedTree = true).assertIsDisplayed().performClick()
+        // Overflow "+8 more" chip is shown with a11y content description and is clickable
+        val overflowDesc = composeTestRule.activity.getString(
+            R.string.details_more_tags_desc,
+            genres.size + themes.size,
+        )
+        composeTestRule.onNodeWithContentDescription(overflowDesc).assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
 
         // Bottom sheet opens and shows all genres and themes
@@ -530,6 +533,21 @@ class GameDetailsScreenTest {
         }
     }
 
+    @Test
+    fun gameModesFactCardWithMultipleModesOpensBottomSheet() {
+        val modes = listOf("Single player", "Multiplayer", "Co-operative", "Split screen")
+        val game = compactDetails.copy(gameModes = modes, similarGames = emptyList())
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        // Fact card shows preview and overflow "+2 more"
+        composeTestRule.onNodeWithTag("details-fact-card-modes").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+
+        // Bottom sheet opens and displays all game modes
+        composeTestRule.onAllNodesWithText("Single-player")[0].assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Co-op")[0].assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Split screen")[0].assertIsDisplayed()
+    }
     @Test
     fun platformsFactCardWithMultiplePlatformsOpensBottomSheet() {
         val platforms = listOf("PC", "PlayStation 5", "Xbox Series X", "Nintendo Switch")

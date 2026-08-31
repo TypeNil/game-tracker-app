@@ -1,9 +1,12 @@
 package io.github.typenil.gametracker.feature.details
 
 import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
+import io.github.typenil.gametracker.core.designsystem.component.formatPlatformDisplayName
 import io.github.typenil.gametracker.core.model.GameReleaseDate
-const val HEADER_TAGS_PREVIEW_LIMIT = 3
+
+const val HEADER_TAGS_PREVIEW_LIMIT = 2
 const val PLATFORMS_PREVIEW_LIMIT = 2
+const val GAME_MODES_PREVIEW_LIMIT = 2
 
 data class HeaderTagsPreview(
     val previewTags: List<String>,
@@ -11,6 +14,11 @@ data class HeaderTagsPreview(
 )
 
 data class PlatformsPreview(
+    val previewText: String,
+    val overflowCount: Int,
+)
+
+data class GameModesPreview(
     val previewText: String,
     val overflowCount: Int,
 )
@@ -34,6 +42,14 @@ fun formatHeaderTagPreview(
     return HeaderTagsPreview(previewTags = preview, overflowCount = allTags.size - limit)
 }
 
+/** Formats a game mode name for concise display. */
+fun formatGameModeName(rawMode: String): String = when (rawMode.trim()) {
+    "Co-operative" -> "Co-op"
+    "Massively Multiplayer Online (MMO)" -> "MMO"
+    "Single player" -> "Single-player"
+    else -> rawMode.trim()
+}
+
 /** Formats platform names for the 2-column fact card preview. */
 fun formatPlatformsPreview(
     platforms: List<String>,
@@ -42,16 +58,39 @@ fun formatPlatformsPreview(
     if (platforms.isEmpty()) {
         return PlatformsPreview(previewText = "", overflowCount = 0)
     }
-    if (platforms.size <= limit) {
+    val formatted = platforms.map { formatPlatformDisplayName(it) }.distinct()
+    if (formatted.size <= limit) {
         return PlatformsPreview(
-            previewText = platforms.joinToString(", "),
+            previewText = formatted.joinToString(", "),
             overflowCount = 0,
         )
     }
-    val preview = platforms.take(limit).joinToString(", ")
+    val preview = formatted.take(limit).joinToString(", ")
     return PlatformsPreview(
         previewText = preview,
-        overflowCount = platforms.size - limit,
+        overflowCount = formatted.size - limit,
+    )
+}
+
+/** Formats game modes for the 2-column fact card preview. */
+fun formatGameModesPreview(
+    gameModes: List<String>,
+    limit: Int = GAME_MODES_PREVIEW_LIMIT,
+): GameModesPreview {
+    if (gameModes.isEmpty()) {
+        return GameModesPreview(previewText = "", overflowCount = 0)
+    }
+    val formatted = gameModes.map { formatGameModeName(it) }.distinct()
+    if (formatted.size <= limit) {
+        return GameModesPreview(
+            previewText = formatted.joinToString(", "),
+            overflowCount = 0,
+        )
+    }
+    val preview = formatted.take(limit).joinToString(", ")
+    return GameModesPreview(
+        previewText = preview,
+        overflowCount = formatted.size - limit,
     )
 }
 
@@ -64,14 +103,39 @@ fun mergePlatformsAndReleases(
     releaseDates: List<GameReleaseDate>,
     unknownDateLabel: String,
 ): List<PlatformReleaseItem> {
-    val datesByPlatform = releaseDates.associateBy { it.platform }
-    val allPlatformNames = (platforms + releaseDates.map { it.platform }).distinct()
+    val datesByPlatform = mutableMapOf<String, GameReleaseDate>()
+    for (releaseDate in releaseDates) {
+        val normalized = formatPlatformDisplayName(releaseDate.platform)
+        val existing = datesByPlatform[normalized]
+        if (existing == null) {
+            datesByPlatform[normalized] = releaseDate
+        } else {
+            val existingEpoch = existing.dateEpochSeconds
+            val newEpoch = releaseDate.dateEpochSeconds
+            when {
+                existingEpoch == null && newEpoch != null -> datesByPlatform[normalized] = releaseDate
+                existingEpoch != null && newEpoch != null && newEpoch < existingEpoch -> datesByPlatform[normalized] = releaseDate
+                existingEpoch == null && newEpoch == null -> {
+                    val existingYear = existing.year
+                    val newYear = releaseDate.year
+                    if (existingYear == null || (newYear != null && newYear < existingYear)) {
+                        datesByPlatform[normalized] = releaseDate
+                    }
+                }
+            }
+        }
+    }
+
+    val allPlatformNames = (
+        platforms.map { formatPlatformDisplayName(it) } +
+            releaseDates.map { formatPlatformDisplayName(it.platform) }
+    ).filter(String::isNotBlank).distinct()
 
     return allPlatformNames.map { platformName ->
         val releaseDate = datesByPlatform[platformName]
         PlatformReleaseItem(
             platform = platformName,
-            displayDate = releaseDate?.displayDate(unknownDateLabel),
+            displayDate = releaseDate?.displayDate(unknownDateLabel) ?: unknownDateLabel,
         )
     }.sortedWith(
         compareBy<PlatformReleaseItem> { item ->
@@ -83,7 +147,11 @@ fun mergePlatformsAndReleases(
             }
         }.thenBy { item ->
             val date = datesByPlatform[item.platform]
-            date?.dateEpochSeconds ?: -(date?.year?.toLong() ?: 0L)
+            date?.dateEpochSeconds
+                ?: date?.year?.let { year ->
+                    java.time.Year.of(year).atDay(1).atStartOfDay(java.time.ZoneOffset.UTC).toEpochSecond()
+                }
+                ?: Long.MAX_VALUE
         }.thenBy { it.platform.lowercase() }
     )
 }

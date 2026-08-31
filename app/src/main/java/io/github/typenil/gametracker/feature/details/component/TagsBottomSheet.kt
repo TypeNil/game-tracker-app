@@ -20,6 +20,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,6 +43,12 @@ fun TagsBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val title = stringResource(R.string.details_section_genres_and_themes)
+    val formattedGenres = remember(genres) {
+        genres.map(::formatGenreTag).filter(String::isNotBlank).distinct()
+    }
+    val formattedThemes = remember(themes) {
+        themes.map(::formatGenreTag).filter(String::isNotBlank).distinct()
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -63,19 +70,19 @@ fun TagsBottomSheet(
                 fontWeight = FontWeight.Bold,
             )
 
-            if (genres.isNotEmpty()) {
+            if (formattedGenres.isNotEmpty()) {
                 TagsCategorySection(
                     title = stringResource(R.string.details_section_genres),
                     icon = Icons.Filled.Category,
-                    tags = genres.map { formatGenreTag(it) }.distinct(),
+                    tags = formattedGenres,
                 )
             }
 
-            if (themes.isNotEmpty()) {
+            if (formattedThemes.isNotEmpty()) {
                 TagsCategorySection(
                     title = stringResource(R.string.details_section_themes),
                     icon = Icons.Filled.Style,
-                    tags = themes.map { formatGenreTag(it) }.distinct(),
+                    tags = formattedThemes,
                 )
             }
         }

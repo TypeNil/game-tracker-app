@@ -11,7 +11,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.GroupWork
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
@@ -31,27 +38,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.designsystem.component.PlatformIconView
-import io.github.typenil.gametracker.core.model.GameReleaseDate
-import io.github.typenil.gametracker.feature.details.PlatformReleaseItem
-import io.github.typenil.gametracker.feature.details.mergePlatformsAndReleases
+import io.github.typenil.gametracker.feature.details.formatGameModeName
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlatformsBottomSheet(
-    platforms: List<String>,
-    releaseDates: List<GameReleaseDate>,
+fun GameModesBottomSheet(
+    gameModes: List<String>,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val title = stringResource(R.string.details_platforms_and_releases)
-    val unknownDateLabel = stringResource(R.string.details_date_unknown)
-
-    val items = remember(platforms, releaseDates, unknownDateLabel) {
-        mergePlatformsAndReleases(platforms, releaseDates, unknownDateLabel)
+    val title = stringResource(R.string.details_section_modes)
+    val formattedModes = remember(gameModes) {
+        gameModes.map(::formatGameModeName).filter(String::isNotBlank).distinct()
     }
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -78,20 +79,21 @@ fun PlatformsBottomSheet(
             }
 
             items(
-                items = items,
-                key = { it.platform },
-            ) { item ->
-                PlatformReleaseRow(item = item)
+                items = formattedModes,
+                key = { it },
+            ) { mode ->
+                GameModeRow(mode = mode)
             }
         }
     }
 }
 
 @Composable
-private fun PlatformReleaseRow(
-    item: PlatformReleaseItem,
+private fun GameModeRow(
+    mode: String,
     modifier: Modifier = Modifier,
 ) {
+    val icon = modeIconFor(mode)
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -100,49 +102,37 @@ private fun PlatformReleaseRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+            Text(
+                text = mode,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
-            ) {
-                PlatformIconView(
-                    platform = item.platform,
-                    iconSize = 22.dp,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = item.platform,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            if (item.displayDate != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Event,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        text = item.displayDate,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            }
+            )
         }
+    }
+}
+
+private fun modeIconFor(mode: String): ImageVector {
+    val lower = mode.lowercase(Locale.ROOT)
+    return when {
+        lower.contains("single") -> Icons.Filled.Person
+        lower.contains("split") -> Icons.AutoMirrored.Filled.CallSplit
+        lower.contains("co-op") || lower.contains("cooperative") || lower.contains("coop") -> Icons.Filled.GroupWork
+        lower.contains("mmo") || lower.contains("massively") -> Icons.Filled.Public
+        lower.contains("battle") || lower.contains("royale") -> Icons.Filled.Shield
+        lower.contains("multi") -> Icons.Filled.Group
+        else -> Icons.Filled.VideogameAsset
     }
 }
