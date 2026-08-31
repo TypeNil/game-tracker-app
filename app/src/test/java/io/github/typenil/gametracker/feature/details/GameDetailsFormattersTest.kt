@@ -143,6 +143,15 @@ class GameDetailsFormattersTest {
     }
 
     @Test
+    fun formatHeaderTagPreview_withFourTags_showsThreeAndOneOverflow() {
+        val genres = listOf("RPG", "Adventure", "Shooter", "Platform")
+
+        val result = formatHeaderTagPreview(genres, emptyList())
+        assertEquals(listOf("RPG", "Adventure", "Shooter"), result.previewTags)
+        assertEquals(1, result.overflowCount)
+    }
+
+    @Test
     fun formatHeaderTagPreview_ignoresBlankAndDuplicateNormalizedTags() {
         val genres = listOf("", "   ", "Role-playing (RPG)")
         val themes = listOf("RPG", "   ", "Fantasy")
