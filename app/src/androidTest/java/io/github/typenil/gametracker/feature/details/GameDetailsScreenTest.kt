@@ -501,8 +501,56 @@ class GameDetailsScreenTest {
     @Test
     fun nullSummaryHidesAboutSection() {
         val game = compactDetails.copy(summary = null)
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
         val aboutHeader = composeTestRule.activity.getString(R.string.details_section_about)
         composeTestRule.onNodeWithText(aboutHeader).assertDoesNotExist()
+    }
+
+    @Test
+    fun nonNullSummaryShowsAboutSection() {
+        val game = compactDetails.copy(summary = "An epic open world RPG adventure.")
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        val aboutHeader = composeTestRule.activity.getString(R.string.details_section_about)
+        composeTestRule.onNodeWithText(aboutHeader).assertIsDisplayed()
+    }
+
+    @Test
+    fun releaseDateEpochSecondsFallbackShowsReleaseCard() {
+        val game = compactDetails.copy(
+            releaseDates = emptyList(),
+            releaseDateEpochSeconds = 1431993600L, // May 19, 2015
+            similarGames = emptyList(),
+        )
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        val releaseTitle = composeTestRule.activity.getString(R.string.details_card_release)
+        val unknownDate = composeTestRule.activity.getString(R.string.details_date_unknown)
+        val expectedDate = GameReleaseDate(platform = "", dateEpochSeconds = 1431993600L).displayDate(unknownDate)
+
+        composeTestRule.onNodeWithText(releaseTitle).assertIsDisplayed()
+        composeTestRule.onNodeWithText(expectedDate).assertIsDisplayed()
+    }
+
+    @Test
+    fun aboutHeaderHasAtLeast48dpTouchBoundsAndExpandsOnClick() {
+        val longSummary = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8"
+        val game = compactDetails.copy(summary = longSummary, similarGames = emptyList())
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        val showMoreDesc = composeTestRule.activity.getString(R.string.details_about_show_more)
+        val showLessDesc = composeTestRule.activity.getString(R.string.details_about_show_less)
+
+        val bounds = composeTestRule
+            .onNodeWithContentDescription(showMoreDesc)
+            .getUnclippedBoundsInRoot()
+        assertTrue((bounds.bottom - bounds.top) >= 48.dp)
+
+        composeTestRule.onNodeWithContentDescription(showMoreDesc).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithContentDescription(showLessDesc).assertIsDisplayed()
     }
 
     @Test

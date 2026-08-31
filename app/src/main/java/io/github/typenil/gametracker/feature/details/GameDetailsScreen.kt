@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -528,6 +529,7 @@ private fun GameDetailsContent(
                 }
 
                 val hasFacts = game.releaseDates.isNotEmpty() ||
+                    game.releaseDateEpochSeconds != null ||
                     game.gameModes.isNotEmpty() ||
                     game.platforms.isNotEmpty() ||
                     game.timeToBeatMainSeconds != null
@@ -800,16 +802,26 @@ private fun GameDetailsFactsRow(
 ) {
     val unknownDate = stringResource(R.string.details_date_unknown)
     val firstRelease = game.releaseDates.firstOrNull()
+    val releaseText = firstRelease?.displayDate(unknownDate)
+        ?: game.releaseDateEpochSeconds?.let { epoch ->
+            GameReleaseDate(
+                platform = "",
+                dateEpochSeconds = epoch,
+            ).displayDate(unknownDate)
+        }
     val mainHours = game.timeToBeatMainSeconds?.toDisplayHours()
     val cards = buildList {
-        if (firstRelease != null) {
+        if (releaseText != null) {
             add(
                 FactCardData(
                     testTag = "release",
                     icon = Icons.Filled.Event,
                     title = stringResource(R.string.details_card_release),
-                    value = firstRelease.displayDate(unknownDate),
-                    sub = formatPlatformDisplayName(firstRelease.platform),
+                    value = releaseText,
+                    sub = firstRelease
+                        ?.platform
+                        ?.let(::formatPlatformDisplayName)
+                        ?.takeIf(String::isNotBlank),
                 )
             )
         }
@@ -1044,6 +1056,7 @@ private fun AboutCard(
     var hasVisualOverflow by remember(summary) { mutableStateOf(false) }
     val showMoreDesc = stringResource(R.string.details_about_show_more)
     val showLessDesc = stringResource(R.string.details_about_show_less)
+    val actionDescription = if (expanded) showLessDesc else showMoreDesc
     val headerInteractionSource = remember { MutableInteractionSource() }
 
     val arrowRotation by animateFloatAsState(
@@ -1075,13 +1088,19 @@ private fun AboutCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .sizeIn(minHeight = 48.dp)
                     .then(
                         if (hasVisualOverflow || expanded) {
-                            Modifier.clickable(
-                                interactionSource = headerInteractionSource,
-                                indication = null,
-                                onClick = { expanded = !expanded },
-                            )
+                            Modifier
+                                .clickable(
+                                    interactionSource = headerInteractionSource,
+                                    indication = null,
+                                    role = Role.Button,
+                                    onClick = { expanded = !expanded },
+                                )
+                                .semantics(mergeDescendants = true) {
+                                    contentDescription = actionDescription
+                                }
                         } else {
                             Modifier
                         }
@@ -1103,7 +1122,7 @@ private fun AboutCard(
                     if (hasVisualOverflow || expanded) {
                         Icon(
                             imageVector = Icons.Filled.ExpandMore,
-                            contentDescription = if (expanded) showLessDesc else showMoreDesc,
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .size(24.dp)

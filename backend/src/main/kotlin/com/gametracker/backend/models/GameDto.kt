@@ -1,8 +1,10 @@
+@file:Suppress("TooManyFunctions")
 package com.gametracker.backend.models
 
+import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
 @Serializable
 data class IgdbNamedItem(
     val id: Long? = null,
@@ -225,7 +227,14 @@ internal fun igdbImageUrl(imageId: String?, rawUrl: String?, size: String): Stri
 internal fun List<IgdbNamedExpansion>?.toNameList(): List<String> =
     orEmpty().mapNotNull { item -> item.name?.trim()?.takeIf(String::isNotEmpty) }
 
-
+private fun GameReleaseDateDto.releaseSortKey(): Long =
+    dateEpochSeconds
+        ?: year?.let {
+            LocalDate.of(it, 1, 1)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toEpochSecond()
+        }
+        ?: Long.MAX_VALUE
 
 private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto> =
     orEmpty()
@@ -244,8 +253,7 @@ private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto>
         .sortedByDescending { it.dateEpochSeconds != null }
         .distinctBy { it.platform to it.year }
         .take(MAX_RELEASE_DATES)
-        .sortedBy { it.dateEpochSeconds ?: it.year?.toLong() ?: Long.MAX_VALUE }
-
+        .sortedBy { it.releaseSortKey() }
 private fun List<IgdbInvolvedCompany>?.toCompanyList(): List<GameCompanyDto> =
     orEmpty().mapNotNull { involved ->
         val name = involved.company?.name?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
