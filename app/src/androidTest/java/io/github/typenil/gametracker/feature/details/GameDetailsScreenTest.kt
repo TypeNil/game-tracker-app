@@ -601,8 +601,6 @@ class GameDetailsScreenTest {
         assertTrue((bounds.bottom - bounds.top) >= 48.dp)
 
         composeTestRule.onNodeWithContentDescription(overflowDesc).assertIsDisplayed().performClick()
-        composeTestRule.waitForIdle()
-        // Bottom sheet opens and shows all genres and themes
         genres.forEach { genre ->
             composeTestRule.onAllNodesWithText(genre, useUnmergedTree = true)[0].assertIsDisplayed()
         }

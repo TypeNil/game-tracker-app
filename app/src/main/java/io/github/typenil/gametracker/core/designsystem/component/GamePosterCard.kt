@@ -5,7 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,11 +34,14 @@ const val GAME_COVER_ASPECT_RATIO = 3f / 4f
 
 private val ChipShape = RoundedCornerShape(8.dp)
 private val ChipVerticalPadding = 2.dp
+private val TagsRowGap = 4.dp
+private val TagsBlockMinHeight = 44.dp
+
 /**
  * Compact vertical poster for the similar-games rail: cover, name, genre tags.
- * Uses 1-line title and single-row chip height so all cards in the carousel
- * have identical uniform height and start-aligned typography.
+ * Platform families sit on the cover so they stay visible without stretching the card.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GamePosterCard(
     game: GameSummary,
@@ -50,12 +54,14 @@ fun GamePosterCard(
     val platformFamilies = remember(game.platforms) {
         resolvePlatformFamilies(game.platforms)
     }
-    val chipRowHeight = with(LocalDensity.current) {
-        MaterialTheme.typography.labelSmall.lineHeight.toDp() + ChipVerticalPadding * 2
+    val tagsBlockHeight = with(LocalDensity.current) {
+        val chipRowHeight =
+            MaterialTheme.typography.labelSmall.lineHeight.toDp() + ChipVerticalPadding * 2
+        maxOf(TagsBlockMinHeight, chipRowHeight * 2 + TagsRowGap)
     }
     Surface(
         onClick = onClick,
-        modifier = modifier.width(140.dp),
+        modifier = modifier.width(128.dp),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -108,27 +114,31 @@ fun GamePosterCard(
                     .fillMaxWidth()
                     .padding(start = 8.dp, top = 6.dp, end = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.Start,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     text = game.name.orEmpty(),
                     style = MaterialTheme.typography.labelLarge,
-                    textAlign = TextAlign.Start,
-                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    minLines = 2,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(chipRowHeight),
-                    contentAlignment = Alignment.CenterStart,
+                        .height(tagsBlockHeight),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
                     if (genreTags.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start),
-                            verticalAlignment = Alignment.CenterVertically,
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(
+                                4.dp,
+                                Alignment.CenterHorizontally,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(TagsRowGap),
+                            maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
                         ) {
                             genreTags.forEach { tag ->
                                 Surface(
@@ -138,7 +148,6 @@ fun GamePosterCard(
                                         1.dp,
                                         MaterialTheme.colorScheme.outlineVariant,
                                     ),
-                                    modifier = Modifier.weight(1f, fill = false),
                                 ) {
                                     Text(
                                         text = tag,
