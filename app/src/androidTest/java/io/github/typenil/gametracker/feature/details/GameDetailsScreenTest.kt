@@ -601,12 +601,10 @@ class GameDetailsScreenTest {
         val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
         setContent(GameDetailsUiState(game = game, isHydrated = true))
 
-        // Three preview tags are displayed across two rows
+        // First tag shown in single-line preview
         composeTestRule.onNodeWithText("RPG", useUnmergedTree = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Shooter", useUnmergedTree = true).assertIsDisplayed()
 
-        // Overflow "+7 more" chip is shown with a11y content description and is clickable
+        // Overflow "+9 more" chip is shown with a11y content description and is clickable
         val overflowDesc = composeTestRule.activity.getString(
             R.string.details_more_tags_desc,
             genres.size + themes.size,
@@ -627,33 +625,26 @@ class GameDetailsScreenTest {
     }
 
     @Test
-    fun tagPreview_withExactlyThreeTags_showsAllOnTwoRowsWithoutOverflow() {
-        val genres = listOf("Role-playing (RPG)", "Adventure", "Shooter")
+    fun tagPreview_withTwoTags_showsBothTagsWithoutOverflow() {
+        val genres = listOf("Role-playing (RPG)", "Adventure")
         val game = compactDetails.copy(genres = genres, themes = emptyList(), similarGames = emptyList())
         setContent(GameDetailsUiState(game = game, isHydrated = true))
 
         val rpgNode = composeTestRule.onNodeWithText("RPG", useUnmergedTree = true)
         val adventureNode = composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true)
-        val shooterNode = composeTestRule.onNodeWithText("Shooter", useUnmergedTree = true)
 
         rpgNode.assertIsDisplayed()
         adventureNode.assertIsDisplayed()
-        shooterNode.assertIsDisplayed()
 
-        // Row 2 tag (Shooter) is placed below Row 1 tags (RPG, Adventure)
-        val rpgBounds = rpgNode.getUnclippedBoundsInRoot()
-        val shooterBounds = shooterNode.getUnclippedBoundsInRoot()
-        assertTrue(shooterBounds.top >= rpgBounds.bottom)
-
-        // No overflow chip is displayed when all 3 tags fit in preview
+        // No overflow chip is displayed when all 2 tags fit in preview
         val zeroOverflowText = composeTestRule.activity.getString(R.string.details_more_count, 0)
         composeTestRule.onNodeWithText(zeroOverflowText).assertDoesNotExist()
-        val overflowDesc = composeTestRule.activity.getString(R.string.details_more_tags_desc, 3)
+        val overflowDesc = composeTestRule.activity.getString(R.string.details_more_tags_desc, 2)
         composeTestRule.onNodeWithContentDescription(overflowDesc).assertDoesNotExist()
     }
 
     @Test
-    fun tagPreview_atTwoXFontScale_rendersTwoRowsAndKeepsOverflowTouchTarget() {
+    fun tagPreview_atTwoXFontScale_staysOnOneRowAndKeepsOverflowTouchTarget() {
         val genres = listOf("Hack and slash/Beat 'em up", "Role-playing (RPG)", "Adventure")
         val themes = listOf("Fantasy", "Sci-Fi")
         val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
@@ -662,8 +653,8 @@ class GameDetailsScreenTest {
             fontScale = 2f,
         )
 
-        val firstTagNode = composeTestRule.onNodeWithText("Hack & Slash / Beat 'em up", useUnmergedTree = true)
-        firstTagNode.assertIsDisplayed()
+        val tagNode = composeTestRule.onNodeWithText("Hack & Slash / Beat 'em up", useUnmergedTree = true)
+        tagNode.assertIsDisplayed()
 
         val totalTags = genres.size + themes.size
         val overflowDesc = composeTestRule.activity.getString(
@@ -673,8 +664,16 @@ class GameDetailsScreenTest {
         val overflowNode = composeTestRule.onNodeWithContentDescription(overflowDesc)
         overflowNode.assertIsDisplayed()
 
-        // Overflow chip maintains 48x48dp hit box
+        val tagBounds = tagNode.getUnclippedBoundsInRoot()
         val overflowBounds = overflowNode.getUnclippedBoundsInRoot()
+
+        // The tag preview and overflow chip sit side-by-side on the same row (tag is to the left of overflow chip)
+        assertTrue(tagBounds.right <= overflowBounds.left)
+        // Tag vertical bounds are centered within the row height of the overflow chip
+        assertTrue(tagBounds.top >= overflowBounds.top)
+        assertTrue(tagBounds.bottom <= overflowBounds.bottom)
+
+        // Overflow chip maintains 48x48dp hit box
         assertTrue((overflowBounds.right - overflowBounds.left) >= 48.dp)
         assertTrue((overflowBounds.bottom - overflowBounds.top) >= 48.dp)
     }

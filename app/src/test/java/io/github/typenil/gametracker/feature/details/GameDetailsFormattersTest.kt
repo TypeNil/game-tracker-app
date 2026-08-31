@@ -123,32 +123,32 @@ class GameDetailsFormattersTest {
     }
 
     @Test
-    fun formatHeaderTagPreview_withThreeTags_showsAllWithoutOverflow() {
+    fun formatHeaderTagPreview_whenWithinLimit_showsAllTagsWithoutOverflow() {
         val genres = listOf("Role-playing (RPG)", "Adventure")
-        val themes = listOf("Fantasy")
 
-        val result = formatHeaderTagPreview(genres, themes)
-        assertEquals(listOf("RPG", "Adventure", "Fantasy"), result.previewTags)
+        val result = formatHeaderTagPreview(genres, emptyList())
+        assertEquals(listOf("RPG", "Adventure"), result.previewTags)
         assertEquals(0, result.overflowCount)
     }
 
     @Test
-    fun formatHeaderTagPreview_withMoreThanThreeTags_showsThreeAndOverflow() {
-        val genres = listOf("RPG", "Adventure", "Shooter")
-        val themes = listOf("Fantasy", "Sci-Fi")
+    fun formatHeaderTagPreview_withThreeTags_showsOneAndTwoOverflow() {
+        val genres = listOf("Role-playing (RPG)", "Adventure")
+        val themes = listOf("Fantasy")
 
         val result = formatHeaderTagPreview(genres, themes)
-        assertEquals(listOf("RPG", "Adventure", "Shooter"), result.previewTags)
+        assertEquals(listOf("RPG"), result.previewTags)
         assertEquals(2, result.overflowCount)
     }
 
     @Test
-    fun formatHeaderTagPreview_withFourTags_showsThreeAndOneOverflow() {
-        val genres = listOf("RPG", "Adventure", "Shooter", "Platform")
+    fun formatHeaderTagPreview_withMoreThanThreeTags_showsOneAndOverflow() {
+        val genres = listOf("RPG", "Adventure", "Shooter")
+        val themes = listOf("Fantasy", "Sci-Fi")
 
-        val result = formatHeaderTagPreview(genres, emptyList())
-        assertEquals(listOf("RPG", "Adventure", "Shooter"), result.previewTags)
-        assertEquals(1, result.overflowCount)
+        val result = formatHeaderTagPreview(genres, themes)
+        assertEquals(listOf("RPG"), result.previewTags)
+        assertEquals(4, result.overflowCount)
     }
 
     @Test

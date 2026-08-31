@@ -749,47 +749,26 @@ private fun GameDetailsHeader(
                         formatHeaderTagPreview(game.genres, game.themes)
                     }
                     if (tagPreview.previewTags.isNotEmpty()) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            val firstRowTags = tagPreview.previewTags.take(2)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                firstRowTags.forEach { tag ->
-                                    TagChip(
-                                        text = tag,
-                                        modifier = Modifier.weight(1f, fill = false),
-                                    )
-                                }
+                            tagPreview.previewTags.forEach { tag ->
+                                TagChip(
+                                    text = tag,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
                             }
-                            val secondRowTag = tagPreview.previewTags.getOrNull(2)
-                            if (secondRowTag != null || tagPreview.overflowCount > 0) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    if (secondRowTag != null) {
-                                        TagChip(
-                                            text = secondRowTag,
-                                            modifier = Modifier.weight(1f, fill = false),
-                                        )
-                                    }
-                                    if (tagPreview.overflowCount > 0) {
-                                        val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
-                                        val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
-                                        OverflowTagChip(
-                                            text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
-                                            onClick = onTagsOverflowClick,
-                                            contentDescription = overflowDesc,
-                                            modifier = Modifier.weight(1f, fill = false),
-                                        )
-                                    }
-                                }
+                            if (tagPreview.overflowCount > 0) {
+                                val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
+                                val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
+                                OverflowTagChip(
+                                    text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
+                                    onClick = onTagsOverflowClick,
+                                    contentDescription = overflowDesc,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
                             }
                         }
                     }

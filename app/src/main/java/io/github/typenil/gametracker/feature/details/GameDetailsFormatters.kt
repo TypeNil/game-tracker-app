@@ -4,7 +4,8 @@ import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
 import io.github.typenil.gametracker.core.designsystem.component.formatPlatformDisplayName
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 
-const val HEADER_TAGS_PREVIEW_LIMIT = 3
+const val HEADER_TAGS_INLINE_LIMIT = 2
+private const val OVERFLOW_PREVIEW_TAGS_COUNT = 1
 const val PLATFORMS_PREVIEW_LIMIT = 2
 const val PLATFORMS_PREVIEW_LIMIT_HALF = 2
 const val PLATFORMS_PREVIEW_LIMIT_FULL = 4
@@ -47,20 +48,25 @@ fun resolveFactsTopology(
 
 /**
  * Formats genres and themes for the compact details header preview:
- * shows up to [HEADER_TAGS_PREVIEW_LIMIT] tags across two rows with overflow counter for the rest.
+ * shows up to [inlineLimit] tags when no overflow exists, or [OVERFLOW_PREVIEW_TAGS_COUNT] tag
+ * accompanied by the overflow counter when total tags exceed [inlineLimit].
  */
 fun formatHeaderTagPreview(
     genres: List<String>,
     themes: List<String>,
+    inlineLimit: Int = HEADER_TAGS_INLINE_LIMIT,
 ): HeaderTagsPreview {
     val allTags = (genres + themes)
         .map { formatGenreTag(it) }
         .filter { it.isNotBlank() }
         .distinct()
-    val previewTags = allTags.take(HEADER_TAGS_PREVIEW_LIMIT)
+    if (allTags.size <= inlineLimit) {
+        return HeaderTagsPreview(previewTags = allTags, overflowCount = 0)
+    }
+    val preview = allTags.take(OVERFLOW_PREVIEW_TAGS_COUNT)
     return HeaderTagsPreview(
-        previewTags = previewTags,
-        overflowCount = allTags.size - previewTags.size,
+        previewTags = preview,
+        overflowCount = allTags.size - OVERFLOW_PREVIEW_TAGS_COUNT,
     )
 }
 
