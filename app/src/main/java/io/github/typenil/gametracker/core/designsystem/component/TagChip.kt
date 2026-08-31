@@ -57,15 +57,20 @@ fun TagChip(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    TagChipSurface(modifier = modifier) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(TagChipPadding),
-        )
+    Box(
+        modifier = modifier.sizeIn(minHeight = 48.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        TagChipSurface {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(TagChipPadding),
+            )
+        }
     }
 }
 

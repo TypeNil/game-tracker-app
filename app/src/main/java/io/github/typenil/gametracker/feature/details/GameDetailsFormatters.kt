@@ -38,8 +38,11 @@ fun formatHeaderTagPreview(
     if (allTags.size <= limit) {
         return HeaderTagsPreview(previewTags = allTags, overflowCount = 0)
     }
-    val preview = allTags.take(limit)
-    return HeaderTagsPreview(previewTags = preview, overflowCount = allTags.size - limit)
+    // When overflowing, show 1 tag + "+N more" so the compact header row never wraps
+    // in the constrained right column of the details header.
+    val previewCount = 1
+    val preview = allTags.take(previewCount)
+    return HeaderTagsPreview(previewTags = preview, overflowCount = allTags.size - previewCount)
 }
 
 /** Formats a game mode name for concise display. */

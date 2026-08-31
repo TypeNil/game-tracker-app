@@ -586,11 +586,10 @@ class GameDetailsScreenTest {
         val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
         setContent(GameDetailsUiState(game = game, isHydrated = true))
 
-        // First 2 tags shown in preview
+        // First tag shown in single-line preview
         composeTestRule.onNodeWithText("RPG", useUnmergedTree = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true).assertIsDisplayed()
 
-        // Overflow "+8 more" chip is shown with a11y content description and is clickable
+        // Overflow "+9 more" chip is shown with a11y content description and is clickable
         val overflowDesc = composeTestRule.activity.getString(
             R.string.details_more_tags_desc,
             genres.size + themes.size,

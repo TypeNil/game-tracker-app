@@ -53,8 +53,16 @@ class GameDetailsFormattersTest {
         val themes = listOf("Fantasy", "Sci-Fi", "Survival")
 
         val result = formatHeaderTagPreview(genres, themes, limit = 2)
+        assertEquals(listOf("RPG"), result.previewTags)
+        assertEquals(4, result.overflowCount)
+    }
+
+    @Test
+    fun formatHeaderTagPreview_whenWithinLimit_showsAllTagsWithoutOverflow() {
+        val genres = listOf("RPG", "Adventure")
+        val result = formatHeaderTagPreview(genres, emptyList(), limit = 2)
         assertEquals(listOf("RPG", "Adventure"), result.previewTags)
-        assertEquals(3, result.overflowCount)
+        assertEquals(0, result.overflowCount)
     }
     @Test
     fun formatPlatformsPreview_normalizesNamesAndCalculatesOverflow() {

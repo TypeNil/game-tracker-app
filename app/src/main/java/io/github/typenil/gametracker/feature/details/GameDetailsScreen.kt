@@ -753,6 +753,7 @@ private fun GameDetailsHeader(
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             tagPreview.previewTags.forEach { tag ->
@@ -1079,15 +1080,12 @@ private fun AboutCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            modifier = Modifier
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow,
-                    ),
-                )
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
         ) {
             Row(
                 modifier = Modifier
@@ -1108,7 +1106,8 @@ private fun AboutCard(
                         } else {
                             Modifier
                         }
-                    ),
+                    )
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -1141,6 +1140,7 @@ private fun AboutCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = if (expanded) Int.MAX_VALUE else ABOUT_COLLAPSED_LINES,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 12.dp),
                 onTextLayout = { layoutResult ->
                     if (!expanded) {
                         hasVisualOverflow = layoutResult.hasVisualOverflow ||
