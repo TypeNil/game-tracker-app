@@ -38,4 +38,34 @@ class GameDtoTest {
         assertEquals(null, dto.releaseDates[1].dateEpochSeconds)
         assertEquals(2026, dto.releaseDates[1].year)
     }
+
+    @Test
+    fun `toDetailsDto sorts chronologically before truncating to MAX_RELEASE_DATES`() {
+        val releases = (2030 downTo 2017).mapIndexed { index, year ->
+            IgdbReleaseDate(
+                id = index.toLong(),
+                date = null,
+                y = year,
+                platform = IgdbNamedExpansion(id = index.toLong(), name = "Platform $year", abbreviation = "P$year"),
+            )
+        }
+        val game = IgdbGame(
+            id = 100L,
+            name = "Long Lived Game",
+            firstReleaseDate = null,
+            releaseDates = releases,
+        )
+
+        val dto = game.toDetailsDto(ttb = null)
+
+        assertEquals(12, dto.releaseDates.size)
+        // Earliest year (2017) must be preserved at index 0
+        assertEquals("Platform 2017", dto.releaseDates[0].platform)
+        assertEquals(2017, dto.releaseDates[0].year)
+        // 12th entry must be 2028 (2017..2028 = 12 items)
+        assertEquals("Platform 2028", dto.releaseDates[11].platform)
+        assertEquals(2028, dto.releaseDates[11].year)
+        // Years 2029 and 2030 must be truncated
+        assertEquals(false, dto.releaseDates.any { it.year == 2029 || it.year == 2030 })
+    }
 }

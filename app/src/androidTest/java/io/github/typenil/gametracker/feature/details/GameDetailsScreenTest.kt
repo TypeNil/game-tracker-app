@@ -376,6 +376,7 @@ class GameDetailsScreenTest {
     @Test
     fun releaseDateWithoutInstant_showsTba() {
         val tba = compactDetails.copy(
+            releaseDateEpochSeconds = null,
             releaseDates = listOf(
                 GameReleaseDate(platform = "PC", dateEpochSeconds = null, year = null),
             ),
@@ -386,7 +387,30 @@ class GameDetailsScreenTest {
             composeTestRule.activity.getString(R.string.details_date_unknown)
         ).assertIsDisplayed()
     }
+
     @Test
+    fun undatedPlatformReleaseFallsBackToGeneralReleaseDate() {
+        val game = compactDetails.copy(
+            releaseDateEpochSeconds = 1431993600L, // 2015-05-19
+            releaseDates = listOf(
+                GameReleaseDate(
+                    platform = "PC",
+                    dateEpochSeconds = null,
+                    year = null,
+                )
+            ),
+            similarGames = emptyList(),
+        )
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        val releaseTitle = composeTestRule.activity.getString(R.string.details_card_release)
+        val unknownDate = composeTestRule.activity.getString(R.string.details_date_unknown)
+        val expectedDate = GameReleaseDate(platform = "", dateEpochSeconds = 1431993600L).displayDate(unknownDate)
+
+        composeTestRule.onNodeWithText(releaseTitle).assertIsDisplayed()
+        composeTestRule.onNodeWithText(expectedDate).assertIsDisplayed()
+        composeTestRule.onNodeWithText("PC").assertIsDisplayed()
+    }
     fun videosCollapseToShowAllToggleRevealsRest() {
         val videoDetails = compactDetails.copy(
             videos = listOf(

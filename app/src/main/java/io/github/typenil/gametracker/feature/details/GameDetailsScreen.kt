@@ -802,13 +802,17 @@ private fun GameDetailsFactsRow(
 ) {
     val unknownDate = stringResource(R.string.details_date_unknown)
     val firstRelease = game.releaseDates.firstOrNull()
-    val releaseText = firstRelease?.displayDate(unknownDate)
+    val datedRelease = firstRelease?.takeIf {
+        it.dateEpochSeconds != null || it.year != null
+    }
+    val releaseText = datedRelease?.displayDate(unknownDate)
         ?: game.releaseDateEpochSeconds?.let { epoch ->
             GameReleaseDate(
                 platform = "",
                 dateEpochSeconds = epoch,
             ).displayDate(unknownDate)
         }
+        ?: unknownDate.takeIf { firstRelease != null }
     val mainHours = game.timeToBeatMainSeconds?.toDisplayHours()
     val cards = buildList {
         if (releaseText != null) {

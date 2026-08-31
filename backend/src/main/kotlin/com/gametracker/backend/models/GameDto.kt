@@ -252,8 +252,8 @@ private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto>
         // Записи с точной датой выигрывают дедупликацию по (platform, year)
         .sortedByDescending { it.dateEpochSeconds != null }
         .distinctBy { it.platform to it.year }
-        .take(MAX_RELEASE_DATES)
         .sortedBy { it.releaseSortKey() }
+        .take(MAX_RELEASE_DATES)
 private fun List<IgdbInvolvedCompany>?.toCompanyList(): List<GameCompanyDto> =
     orEmpty().mapNotNull { involved ->
         val name = involved.company?.name?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
