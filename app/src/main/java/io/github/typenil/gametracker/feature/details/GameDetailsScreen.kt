@@ -749,26 +749,47 @@ private fun GameDetailsHeader(
                         formatHeaderTagPreview(game.genres, game.themes)
                     }
                     if (tagPreview.previewTags.isNotEmpty()) {
-                        Row(
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            tagPreview.previewTags.forEach { tag ->
-                                TagChip(
-                                    text = tag,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
+                            val firstRowTags = tagPreview.previewTags.take(2)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                firstRowTags.forEach { tag ->
+                                    TagChip(
+                                        text = tag,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                    )
+                                }
                             }
-                            if (tagPreview.overflowCount > 0) {
-                                val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
-                                val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
-                                OverflowTagChip(
-                                    text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
-                                    onClick = onTagsOverflowClick,
-                                    contentDescription = overflowDesc,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
+                            val secondRowTag = tagPreview.previewTags.getOrNull(2)
+                            if (secondRowTag != null || tagPreview.overflowCount > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (secondRowTag != null) {
+                                        TagChip(
+                                            text = secondRowTag,
+                                            modifier = Modifier.weight(1f, fill = false),
+                                        )
+                                    }
+                                    if (tagPreview.overflowCount > 0) {
+                                        val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
+                                        val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
+                                        OverflowTagChip(
+                                            text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
+                                            onClick = onTagsOverflowClick,
+                                            contentDescription = overflowDesc,
+                                            modifier = Modifier.weight(1f, fill = false),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -817,6 +838,14 @@ private fun GameDetailsFactsRow(
         }
         ?: unknownDate.takeIf { firstRelease != null }
     val mainHours = game.timeToBeatMainSeconds?.toDisplayHours()
+    val topology = remember(releaseText, game.gameModes, game.platforms, mainHours) {
+        resolveFactsTopology(
+            hasRelease = releaseText != null,
+            hasModes = game.gameModes.isNotEmpty(),
+            hasPlatforms = game.platforms.isNotEmpty(),
+            hasTime = mainHours != null,
+        )
+    }
     val cards = buildList {
         if (releaseText != null) {
             add(
@@ -859,7 +888,15 @@ private fun GameDetailsFactsRow(
             )
         }
         if (game.platforms.isNotEmpty()) {
-            val platformsPreview = formatPlatformsPreview(game.platforms)
+            val platformsLimit = if (topology.platformsFullWidth) {
+                PLATFORMS_PREVIEW_LIMIT_FULL
+            } else {
+                PLATFORMS_PREVIEW_LIMIT_HALF
+            }
+            val platformsPreview = formatPlatformsPreview(
+                platforms = game.platforms,
+                limit = platformsLimit,
+            )
             val isClickable = game.platforms.size > 1 || game.releaseDates.size > 1
             val subText = if (platformsPreview.overflowCount > 0) {
                 stringResource(R.string.details_more_count, platformsPreview.overflowCount)
@@ -881,6 +918,7 @@ private fun GameDetailsFactsRow(
                     isClickable = isClickable,
                     onClick = if (isClickable) onPlatformsClick else null,
                     contentDescription = a11yDesc,
+                    valueMaxLines = if (topology.platformsFullWidth) 2 else 1,
                 )
             )
         }
@@ -919,6 +957,7 @@ private fun GameDetailsFactsRow(
                     isClickable = card.isClickable,
                     onClick = card.onClick,
                     contentDescription = card.contentDescription,
+                    valueMaxLines = card.valueMaxLines,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("details-fact-card-${card.testTag}"),
@@ -939,6 +978,7 @@ private fun GameDetailsFactsRow(
                             isClickable = card.isClickable,
                             onClick = card.onClick,
                             contentDescription = card.contentDescription,
+                            valueMaxLines = card.valueMaxLines,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -960,6 +1000,7 @@ private data class FactCardData(
     val isClickable: Boolean = false,
     val onClick: (() -> Unit)? = null,
     val contentDescription: String? = null,
+    val valueMaxLines: Int = 1,
 )
 
 /** Seconds in half an hour and in an hour, for rounding beats to whole hours. */
@@ -979,6 +1020,7 @@ private fun FactCard(
     isClickable: Boolean = false,
     onClick: (() -> Unit)? = null,
     contentDescription: String? = null,
+    valueMaxLines: Int = 1,
 ) {
     val clickModifier = if (onClick != null) {
         modifier.clickable(onClick = onClick, role = Role.Button)
@@ -1036,7 +1078,7 @@ private fun FactCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
+                maxLines = valueMaxLines,
                 overflow = TextOverflow.Ellipsis,
             )
             if (sub != null) {

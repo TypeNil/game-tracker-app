@@ -5,7 +5,9 @@ import io.github.typenil.gametracker.core.designsystem.component.formatPlatformD
 import io.github.typenil.gametracker.core.designsystem.component.resolvePlatformFamily
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GameDetailsFormattersTest {
@@ -48,26 +50,131 @@ class GameDetailsFormattersTest {
         assertNull(resolvePlatformFamily("Commodore / Amiga"))
     }
     @Test
-    fun formatHeaderTagPreview_limitsTagsAndCalculatesOverflow() {
-        val genres = listOf("RPG", "Adventure")
-        val themes = listOf("Fantasy", "Sci-Fi", "Survival")
+    fun resolveFactsTopology_correctlyDeterminesPlatformsSpan() {
+        // 1. Release + Modes + Platforms (3 cards, odd, no time -> full width)
+        assertTrue(
+            resolveFactsTopology(
+                hasRelease = true,
+                hasModes = true,
+                hasPlatforms = true,
+                hasTime = false,
+            ).platformsFullWidth
+        )
 
-        val result = formatHeaderTagPreview(genres, themes, inlineLimit = 2)
-        assertEquals(listOf("RPG"), result.previewTags)
-        assertEquals(4, result.overflowCount)
+        // 2. Release + Platforms (2 cards, even -> half width)
+        assertFalse(
+            resolveFactsTopology(
+                hasRelease = true,
+                hasModes = false,
+                hasPlatforms = true,
+                hasTime = false,
+            ).platformsFullWidth
+        )
+
+        // 3. Modes + Platforms (2 cards, even -> half width)
+        assertFalse(
+            resolveFactsTopology(
+                hasRelease = false,
+                hasModes = true,
+                hasPlatforms = true,
+                hasTime = false,
+            ).platformsFullWidth
+        )
+
+        // 4. Platforms only (1 card, odd, no time -> full width)
+        assertTrue(
+            resolveFactsTopology(
+                hasRelease = false,
+                hasModes = false,
+                hasPlatforms = true,
+                hasTime = false,
+            ).platformsFullWidth
+        )
+
+        // 5. Release + Modes + Platforms + Time (4 cards, even -> half width)
+        assertFalse(
+            resolveFactsTopology(
+                hasRelease = true,
+                hasModes = true,
+                hasPlatforms = true,
+                hasTime = true,
+            ).platformsFullWidth
+        )
+
+        // 6. Release + Platforms + Time (3 cards, odd, but Time is last -> half width)
+        assertFalse(
+            resolveFactsTopology(
+                hasRelease = true,
+                hasModes = false,
+                hasPlatforms = true,
+                hasTime = true,
+            ).platformsFullWidth
+        )
+
+        // 7. No platforms present -> false
+        assertFalse(
+            resolveFactsTopology(
+                hasRelease = true,
+                hasModes = true,
+                hasPlatforms = false,
+                hasTime = false,
+            ).platformsFullWidth
+        )
     }
 
     @Test
-    fun formatHeaderTagPreview_whenWithinLimit_showsAllTagsWithoutOverflow() {
-        val genres = listOf("RPG", "Adventure")
-        val result = formatHeaderTagPreview(genres, emptyList(), inlineLimit = 2)
-        assertEquals(listOf("RPG", "Adventure"), result.previewTags)
+    fun formatHeaderTagPreview_withThreeTags_showsAllWithoutOverflow() {
+        val genres = listOf("Role-playing (RPG)", "Adventure")
+        val themes = listOf("Fantasy")
+
+        val result = formatHeaderTagPreview(genres, themes)
+        assertEquals(listOf("RPG", "Adventure", "Fantasy"), result.previewTags)
         assertEquals(0, result.overflowCount)
     }
+
     @Test
-    fun formatPlatformsPreview_normalizesNamesAndCalculatesOverflow() {
-        val platforms = listOf("PC (Microsoft Windows)", "PlayStation 5", "Xbox Series X|S", "Nintendo Switch")
-        val result = formatPlatformsPreview(platforms, limit = 2)
+    fun formatHeaderTagPreview_withMoreThanThreeTags_showsThreeAndOverflow() {
+        val genres = listOf("RPG", "Adventure", "Shooter")
+        val themes = listOf("Fantasy", "Sci-Fi")
+
+        val result = formatHeaderTagPreview(genres, themes)
+        assertEquals(listOf("RPG", "Adventure", "Shooter"), result.previewTags)
+        assertEquals(2, result.overflowCount)
+    }
+
+    @Test
+    fun formatHeaderTagPreview_ignoresBlankAndDuplicateNormalizedTags() {
+        val genres = listOf("", "   ", "Role-playing (RPG)")
+        val themes = listOf("RPG", "   ", "Fantasy")
+
+        val result = formatHeaderTagPreview(genres, themes)
+        assertEquals(listOf("RPG", "Fantasy"), result.previewTags)
+        assertEquals(0, result.overflowCount)
+    }
+
+    @Test
+    fun formatPlatformsPreview_withFourLimit_showsUpToFourPlatformsAndOverflow() {
+        val platforms = listOf(
+            "PC (Microsoft Windows)",
+            "PlayStation 5",
+            "Xbox Series X|S",
+            "Nintendo Switch",
+            "Macintosh",
+        )
+        val result = formatPlatformsPreview(platforms, limit = PLATFORMS_PREVIEW_LIMIT_FULL)
+        assertEquals("PC, PlayStation 5, Xbox Series X|S, Nintendo Switch", result.previewText)
+        assertEquals(1, result.overflowCount)
+    }
+
+    @Test
+    fun formatPlatformsPreview_withHalfLimit_showsTwoPlatformsAndOverflow() {
+        val platforms = listOf(
+            "PC (Microsoft Windows)",
+            "PlayStation 5",
+            "Xbox Series X|S",
+            "Nintendo Switch",
+        )
+        val result = formatPlatformsPreview(platforms, limit = PLATFORMS_PREVIEW_LIMIT_HALF)
         assertEquals("PC, PlayStation 5", result.previewText)
         assertEquals(2, result.overflowCount)
     }

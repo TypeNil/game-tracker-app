@@ -1,6 +1,8 @@
 package io.github.typenil.gametracker.feature.details
-
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -83,17 +86,29 @@ class GameDetailsScreenTest {
         screenshots = emptyList(),
         videos = emptyList(),
     )
-    private fun setContent(uiState: GameDetailsUiState, onGameClick: (Long) -> Unit = {}) {
+    private fun setContent(
+        uiState: GameDetailsUiState,
+        fontScale: Float = 1f,
+        onGameClick: (Long) -> Unit = {},
+    ) {
         composeTestRule.setContent {
-            GameTrackerTheme {
-                GameDetailsScreen(
-                    uiState = uiState,
-                    onGameClick = onGameClick,
-                    onBackClick = {},
-                    onRefresh = {},
-                    onRetry = {},
-                    onUserMessageShown = {}
-                )
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(
+                    density = currentDensity.density,
+                    fontScale = fontScale,
+                ),
+            ) {
+                GameTrackerTheme {
+                    GameDetailsScreen(
+                        uiState = uiState,
+                        onGameClick = onGameClick,
+                        onBackClick = {},
+                        onRefresh = {},
+                        onRetry = {},
+                        onUserMessageShown = {},
+                    )
+                }
             }
         }
     }
@@ -586,10 +601,12 @@ class GameDetailsScreenTest {
         val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
         setContent(GameDetailsUiState(game = game, isHydrated = true))
 
-        // First tag shown in single-line preview
+        // Three preview tags are displayed across two rows
         composeTestRule.onNodeWithText("RPG", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shooter", useUnmergedTree = true).assertIsDisplayed()
 
-        // Overflow "+9 more" chip is shown with a11y content description and is clickable
+        // Overflow "+7 more" chip is shown with a11y content description and is clickable
         val overflowDesc = composeTestRule.activity.getString(
             R.string.details_more_tags_desc,
             genres.size + themes.size,
@@ -610,14 +627,41 @@ class GameDetailsScreenTest {
     }
 
     @Test
-    fun tagPreview_withLongGenreAndLargeFontScale_staysOnOneRow() {
+    fun tagPreview_withExactlyThreeTags_showsAllOnTwoRowsWithoutOverflow() {
+        val genres = listOf("Role-playing (RPG)", "Adventure", "Shooter")
+        val game = compactDetails.copy(genres = genres, themes = emptyList(), similarGames = emptyList())
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        val rpgNode = composeTestRule.onNodeWithText("RPG", useUnmergedTree = true)
+        val adventureNode = composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true)
+        val shooterNode = composeTestRule.onNodeWithText("Shooter", useUnmergedTree = true)
+
+        rpgNode.assertIsDisplayed()
+        adventureNode.assertIsDisplayed()
+        shooterNode.assertIsDisplayed()
+
+        // Row 2 tag (Shooter) is placed below Row 1 tags (RPG, Adventure)
+        val rpgBounds = rpgNode.getUnclippedBoundsInRoot()
+        val shooterBounds = shooterNode.getUnclippedBoundsInRoot()
+        assertTrue(shooterBounds.top >= rpgBounds.bottom)
+
+        // No overflow chip is displayed when all 3 tags fit in preview
+        val overflowPrefix = composeTestRule.activity.getString(R.string.details_more_count, 0).substringBefore("0")
+        composeTestRule.onNodeWithText(overflowPrefix, substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun tagPreview_atTwoXFontScale_rendersTwoRowsAndKeepsOverflowTouchTarget() {
         val genres = listOf("Hack and slash/Beat 'em up", "Role-playing (RPG)", "Adventure")
         val themes = listOf("Fantasy", "Sci-Fi")
         val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
-        setContent(GameDetailsUiState(game = game, isHydrated = true))
+        setContent(
+            uiState = GameDetailsUiState(game = game, isHydrated = true),
+            fontScale = 2f,
+        )
 
-        val tagNode = composeTestRule.onNodeWithText("Hack & Slash / Beat 'em up", useUnmergedTree = true)
-        tagNode.assertIsDisplayed()
+        val firstTagNode = composeTestRule.onNodeWithText("Hack & Slash / Beat 'em up", useUnmergedTree = true)
+        firstTagNode.assertIsDisplayed()
 
         val totalTags = genres.size + themes.size
         val overflowDesc = composeTestRule.activity.getString(
@@ -627,18 +671,56 @@ class GameDetailsScreenTest {
         val overflowNode = composeTestRule.onNodeWithContentDescription(overflowDesc)
         overflowNode.assertIsDisplayed()
 
-        val tagBounds = tagNode.getUnclippedBoundsInRoot()
-        val overflowBounds = overflowNode.getUnclippedBoundsInRoot()
-
-        // The tag preview and overflow chip sit side-by-side on the same row (tag is to the left of overflow chip)
-        assertTrue(tagBounds.right <= overflowBounds.left)
-        // Tag vertical bounds are centered within the row height of the overflow chip
-        assertTrue(tagBounds.top >= overflowBounds.top)
-        assertTrue(tagBounds.bottom <= overflowBounds.bottom)
-
         // Overflow chip maintains 48x48dp hit box
+        val overflowBounds = overflowNode.getUnclippedBoundsInRoot()
         assertTrue((overflowBounds.right - overflowBounds.left) >= 48.dp)
         assertTrue((overflowBounds.bottom - overflowBounds.top) >= 48.dp)
+    }
+
+    @Test
+    fun platformsFactCard_whenFullWidth_showsUpToFourPlatforms() {
+        val platforms = listOf("PC", "PlayStation 5", "Xbox Series X", "Nintendo Switch")
+        val game = compactDetails.copy(
+            releaseDates = details.releaseDates,
+            gameModes = listOf("Single player"),
+            platforms = platforms,
+            similarGames = emptyList(),
+        )
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        // 3 cards total (Release, Modes, Platforms) -> Platforms spans full width and displays 4 platforms
+        val platformsText = "PC, PlayStation 5, Xbox Series X, Nintendo Switch"
+        composeTestRule
+            .onNodeWithText(platformsText, useUnmergedTree = true)
+            .assertIsDisplayed()
+            .assertNotEllipsized(maxLines = 2)
+
+        // No overflow text since all 4 fit in full width limit
+        val overflowPrefix = composeTestRule.activity.getString(R.string.details_more_count, 0).substringBefore("0")
+        composeTestRule.onNodeWithText(overflowPrefix, substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun platformsFactCard_whenHalfWidth_showsTwoPlatformsAndOverflow() {
+        val platforms = listOf("PC", "PlayStation 5", "Xbox Series X", "Nintendo Switch")
+        val game = compactDetails.copy(
+            releaseDates = details.releaseDates,
+            gameModes = listOf("Single player"),
+            platforms = platforms,
+            timeToBeatMainSeconds = 36000L,
+            similarGames = emptyList(),
+        )
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        // 4 cards total (Release, Modes, Platforms, Time) -> Platforms is half width and displays 2 platforms
+        val platformsText = "PC, PlayStation 5"
+        composeTestRule
+            .onNodeWithText(platformsText, useUnmergedTree = true)
+            .assertIsDisplayed()
+            .assertNotEllipsized(maxLines = 1)
+
+        val overflowText = composeTestRule.activity.getString(R.string.details_more_count, 2)
+        composeTestRule.onNodeWithText(overflowText).assertIsDisplayed()
     }
     @Test
     fun gameModesFactCardWithMultipleModesOpensBottomSheet() {
@@ -703,4 +785,16 @@ class GameDetailsScreenTest {
         composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.details_section_videos)).assertDoesNotExist()
     }
 
+    private fun SemanticsNodeInteraction.assertNotEllipsized(
+        maxLines: Int,
+    ): SemanticsNodeInteraction = apply {
+        val results = mutableListOf<TextLayoutResult>()
+        performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
+            action(results)
+        }
+        val layout = results.single()
+        assertTrue(layout.lineCount <= maxLines)
+        assertFalse(layout.hasVisualOverflow)
+        assertFalse((0 until layout.lineCount).any(layout::isLineEllipsized))
+    }
 }
