@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
@@ -750,14 +749,16 @@ private fun GameDetailsHeader(
                         formatHeaderTagPreview(game.genres, game.themes)
                     }
                     if (tagPreview.previewTags.isNotEmpty()) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically,
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             tagPreview.previewTags.forEach { tag ->
-                                TagChip(tag)
+                                TagChip(
+                                    text = tag,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
                             }
                             if (tagPreview.overflowCount > 0) {
                                 val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
@@ -766,6 +767,7 @@ private fun GameDetailsHeader(
                                     text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
                                     onClick = onTagsOverflowClick,
                                     contentDescription = overflowDesc,
+                                    modifier = Modifier.weight(1f, fill = false),
                                 )
                             }
                         }

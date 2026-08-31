@@ -52,7 +52,7 @@ class GameDetailsFormattersTest {
         val genres = listOf("RPG", "Adventure")
         val themes = listOf("Fantasy", "Sci-Fi", "Survival")
 
-        val result = formatHeaderTagPreview(genres, themes, limit = 2)
+        val result = formatHeaderTagPreview(genres, themes, inlineLimit = 2)
         assertEquals(listOf("RPG"), result.previewTags)
         assertEquals(4, result.overflowCount)
     }
@@ -60,7 +60,7 @@ class GameDetailsFormattersTest {
     @Test
     fun formatHeaderTagPreview_whenWithinLimit_showsAllTagsWithoutOverflow() {
         val genres = listOf("RPG", "Adventure")
-        val result = formatHeaderTagPreview(genres, emptyList(), limit = 2)
+        val result = formatHeaderTagPreview(genres, emptyList(), inlineLimit = 2)
         assertEquals(listOf("RPG", "Adventure"), result.previewTags)
         assertEquals(0, result.overflowCount)
     }

@@ -610,6 +610,37 @@ class GameDetailsScreenTest {
     }
 
     @Test
+    fun tagPreview_withLongGenreAndLargeFontScale_staysOnOneRow() {
+        val genres = listOf("Hack and slash/Beat 'em up", "Role-playing (RPG)", "Adventure")
+        val themes = listOf("Fantasy", "Sci-Fi")
+        val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        val tagNode = composeTestRule.onNodeWithText("Hack & Slash / Beat 'em up", useUnmergedTree = true)
+        tagNode.assertIsDisplayed()
+
+        val totalTags = genres.size + themes.size
+        val overflowDesc = composeTestRule.activity.getString(
+            R.string.details_more_tags_desc,
+            totalTags,
+        )
+        val overflowNode = composeTestRule.onNodeWithContentDescription(overflowDesc)
+        overflowNode.assertIsDisplayed()
+
+        val tagBounds = tagNode.getUnclippedBoundsInRoot()
+        val overflowBounds = overflowNode.getUnclippedBoundsInRoot()
+
+        // The tag preview and overflow chip sit side-by-side on the same row (tag is to the left of overflow chip)
+        assertTrue(tagBounds.right <= overflowBounds.left)
+        // Tag vertical bounds are centered within the row height of the overflow chip
+        assertTrue(tagBounds.top >= overflowBounds.top)
+        assertTrue(tagBounds.bottom <= overflowBounds.bottom)
+
+        // Overflow chip maintains 48x48dp hit box
+        assertTrue((overflowBounds.right - overflowBounds.left) >= 48.dp)
+        assertTrue((overflowBounds.bottom - overflowBounds.top) >= 48.dp)
+    }
+    @Test
     fun gameModesFactCardWithMultipleModesOpensBottomSheet() {
         val modes = listOf("Single player", "Multiplayer", "Co-operative", "Split screen")
         val game = compactDetails.copy(gameModes = modes, similarGames = emptyList())
