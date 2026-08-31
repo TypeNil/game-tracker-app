@@ -79,10 +79,10 @@ class GameDetailsScreenTest {
         gameModes = emptyList(),
         platforms = emptyList(),
         releaseDates = emptyList(),
+        releaseDateEpochSeconds = null,
         screenshots = emptyList(),
         videos = emptyList(),
     )
-
     private fun setContent(uiState: GameDetailsUiState, onGameClick: (Long) -> Unit = {}) {
         composeTestRule.setContent {
             GameTrackerTheme {
