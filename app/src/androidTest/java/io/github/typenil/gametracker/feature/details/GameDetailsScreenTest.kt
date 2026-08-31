@@ -646,8 +646,10 @@ class GameDetailsScreenTest {
         assertTrue(shooterBounds.top >= rpgBounds.bottom)
 
         // No overflow chip is displayed when all 3 tags fit in preview
-        val overflowPrefix = composeTestRule.activity.getString(R.string.details_more_count, 0).substringBefore("0")
-        composeTestRule.onNodeWithText(overflowPrefix, substring = true).assertDoesNotExist()
+        val zeroOverflowText = composeTestRule.activity.getString(R.string.details_more_count, 0)
+        composeTestRule.onNodeWithText(zeroOverflowText).assertDoesNotExist()
+        val overflowDesc = composeTestRule.activity.getString(R.string.details_more_tags_desc, 3)
+        composeTestRule.onNodeWithContentDescription(overflowDesc).assertDoesNotExist()
     }
 
     @Test
@@ -696,8 +698,8 @@ class GameDetailsScreenTest {
             .assertNotEllipsized(maxLines = 2)
 
         // No overflow text since all 4 fit in full width limit
-        val overflowPrefix = composeTestRule.activity.getString(R.string.details_more_count, 0).substringBefore("0")
-        composeTestRule.onNodeWithText(overflowPrefix, substring = true).assertDoesNotExist()
+        val zeroOverflowText = composeTestRule.activity.getString(R.string.details_more_count, 0)
+        composeTestRule.onNodeWithText(zeroOverflowText).assertDoesNotExist()
     }
 
     @Test
