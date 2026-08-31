@@ -664,6 +664,15 @@ class GameDetailsScreenTest {
         val overflowNode = composeTestRule.onNodeWithContentDescription(overflowDesc)
         overflowNode.assertIsDisplayed()
 
+        val overflowText = composeTestRule.activity.getString(
+            R.string.details_more_count,
+            totalTags - 1,
+        )
+        composeTestRule
+            .onNodeWithText(overflowText, useUnmergedTree = true)
+            .assertIsDisplayed()
+            .assertNotEllipsized(maxLines = 1)
+
         val tagBounds = tagNode.getUnclippedBoundsInRoot()
         val overflowBounds = overflowNode.getUnclippedBoundsInRoot()
 

@@ -767,7 +767,6 @@ private fun GameDetailsHeader(
                                     text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
                                     onClick = onTagsOverflowClick,
                                     contentDescription = overflowDesc,
-                                    modifier = Modifier.weight(1f, fill = false),
                                 )
                             }
                         }
