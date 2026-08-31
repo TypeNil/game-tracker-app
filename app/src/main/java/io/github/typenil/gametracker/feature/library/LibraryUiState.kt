@@ -2,7 +2,7 @@ package io.github.typenil.gametracker.feature.library
 
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
-
+import java.util.Locale
 data class LibraryUiState(
     val allGames: List<LibraryGame> = emptyList(),
     val filteredGames: List<LibraryGame> = emptyList(),
@@ -40,23 +40,29 @@ sealed interface HoursSaveState {
 fun sortLibraryGames(
     games: List<LibraryGame>,
     sortOption: LibrarySortOption,
-): List<LibraryGame> {
-    return when (sortOption) {
-        LibrarySortOption.UPDATED_DESC ->
-            games.sortedByDescending { it.entry.updatedAtEpochSeconds }
-        LibrarySortOption.USER_RATING_DESC ->
-            games.sortedWith(
-                compareByDescending<LibraryGame> { it.entry.userRating ?: -1 }
-                    .thenByDescending { it.entry.updatedAtEpochSeconds }
-            )
-        LibrarySortOption.TITLE_ASC ->
-            games.sortedBy { it.game.name.lowercase() }
-        LibrarySortOption.HOURS_PLAYED_DESC ->
-            games.sortedWith(
-                compareByDescending<LibraryGame> { it.entry.hoursPlayed }
-                    .thenByDescending { it.entry.updatedAtEpochSeconds }
-            )
-    }
+): List<LibraryGame> = when (sortOption) {
+    LibrarySortOption.UPDATED_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.updatedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
+    LibrarySortOption.USER_RATING_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.userRating ?: -1 }
+                .thenByDescending { it.entry.updatedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
+    LibrarySortOption.TITLE_ASC ->
+        games.sortedWith(
+            compareBy<LibraryGame> { it.game.name.lowercase(Locale.ROOT) }
+                .thenBy { it.game.id }
+        )
+    LibrarySortOption.HOURS_PLAYED_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.hoursPlayed }
+                .thenByDescending { it.entry.updatedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
 }
 
 internal fun filterLibraryGames(

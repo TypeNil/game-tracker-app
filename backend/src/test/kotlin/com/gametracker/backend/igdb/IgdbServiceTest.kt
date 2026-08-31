@@ -248,4 +248,22 @@ class IgdbServiceTest {
         assertTrue(result.exceptionOrNull() is UpstreamServiceUnavailableException)
         assertEquals(3, attempts)
     }
+
+    @Test
+    fun `queryGames on non-success status does not expose upstream body in exception message`() = runTest {
+        val sensitiveBody = "sensitive-internal-upstream-error-details"
+        val engine = MockEngine {
+            respond(
+                content = sensitiveBody,
+                status = HttpStatusCode.InternalServerError,
+                headers = headersOf(HttpHeaders.ContentType, "text/plain")
+            )
+        }
+
+        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val result = runCatching { service.queryGames("fields name;") }
+        val ex = result.exceptionOrNull()
+        assertTrue(ex is UpstreamBadGatewayException)
+        assertFalse(ex!!.message!!.contains(sensitiveBody))
+    }
 }

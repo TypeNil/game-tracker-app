@@ -65,26 +65,23 @@ class LibraryViewModel @Inject constructor(
     private val _filterFavoritesOnly = MutableStateFlow(false)
     private val _searchQuery = MutableStateFlow("")
     private val _isSearchActive = MutableStateFlow(false)
-    private val _sortState = MutableStateFlow(SortState())
+    private val _sortOption = MutableStateFlow(LibrarySortOption.UPDATED_DESC)
     private val _userMessageRes = MutableStateFlow<Int?>(null)
     private val _hoursSaveState = MutableStateFlow<HoursSaveState>(HoursSaveState.Idle)
-
-    private var lastFilterState: FilterState? = null
-    private var stableGameOrder: List<Long> = emptyList()
 
     private val _filterState = combine(
         _selectedTab,
         _filterFavoritesOnly,
         _searchQuery,
         _isSearchActive,
-        _sortState,
-    ) { selectedTab, favoritesOnly, query, isSearchActive, sortState ->
+        _sortOption,
+    ) { selectedTab, favoritesOnly, query, isSearchActive, sortOption ->
         FilterState(
             selectedTab = selectedTab,
             favoritesOnly = favoritesOnly,
             query = query,
             isSearchActive = isSearchActive,
-            sortState = sortState,
+            sortOption = sortOption,
         )
     }
 
@@ -95,7 +92,7 @@ class LibraryViewModel @Inject constructor(
         _hoursSaveState,
     ) { allGames, filterState, userMessageRes, hoursSaveState ->
         val counts = computeTabCounts(allGames)
-        val orderedAllGames = orderLibraryGames(allGames, filterState)
+        val orderedAllGames = sortLibraryGames(allGames, filterState.sortOption)
         val filtered = filterLibraryGames(
             allGames = orderedAllGames,
             selectedTab = filterState.selectedTab,
@@ -120,34 +117,6 @@ class LibraryViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = LibraryUiState(isLoading = true)
     )
-
-    private fun orderLibraryGames(
-        allGames: List<LibraryGame>,
-        filterState: FilterState,
-    ): List<LibraryGame> {
-        val filterChanged = filterState != lastFilterState
-        lastFilterState = filterState
-
-        val ordered = if (filterChanged || stableGameOrder.isEmpty()) {
-            val sorted = sortLibraryGames(allGames, filterState.sortOption)
-            stableGameOrder = sorted.map { it.game.id }
-            sorted
-        } else {
-            val gamesById = allGames.associateBy { it.game.id }
-            val existingGames = stableGameOrder.mapNotNull { gamesById[it] }
-            val existingIds = stableGameOrder.toSet()
-            val newGames = allGames.filter { it.game.id !in existingIds }
-            val sortedNewGames = if (newGames.isNotEmpty()) {
-                sortLibraryGames(newGames, filterState.sortOption)
-            } else {
-                emptyList()
-            }
-            val combined = sortedNewGames + existingGames
-            stableGameOrder = combined.map { it.game.id }
-            combined
-        }
-        return ordered
-    }
     fun onTabSelected(tab: LibraryTab) {
         _selectedTab.value = tab
     }
@@ -168,7 +137,7 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onSortOptionSelected(sortOption: LibrarySortOption) {
-        _sortState.update { SortState(option = sortOption, version = it.version + 1) }
+        _sortOption.value = sortOption
     }
 
     fun onClearSearch() {
@@ -241,18 +210,11 @@ class LibraryViewModel @Inject constructor(
     }
 
 
-    private data class SortState(
-        val option: LibrarySortOption = LibrarySortOption.UPDATED_DESC,
-        val version: Int = 0,
-    )
-
     private data class FilterState(
         val selectedTab: LibraryTab,
         val favoritesOnly: Boolean,
         val query: String,
         val isSearchActive: Boolean,
-        val sortState: SortState,
-    ) {
-        val sortOption: LibrarySortOption get() = sortState.option
-    }
+        val sortOption: LibrarySortOption,
+    )
 }

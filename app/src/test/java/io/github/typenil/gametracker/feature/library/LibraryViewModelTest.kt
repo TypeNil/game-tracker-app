@@ -411,7 +411,7 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun `status update keeps current order until the filter changes`() = runTest {
+    fun `updated sort reorders when updated timestamp changes`() = runTest {
         fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
         val viewModel = createViewModel()
 
@@ -429,58 +429,71 @@ class LibraryViewModelTest {
             testScheduler.advanceUntilIdle()
             fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, updatedEldenRing)
 
-            // Order must stay visually stable: Hades remains 1st, Elden Ring remains 2nd.
-            assertEquals(listOf(hades, updatedEldenRing), awaitItem().filteredGames)
-
-            // Changing sort option triggers fresh re-sort.
-            viewModel.onSortOptionSelected(LibrarySortOption.UPDATED_DESC)
+            // Reorders immediately to put newest updated at top
             assertEquals(listOf(updatedEldenRing, hades), awaitItem().filteredGames)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `favorite toggle does not jump item position until filter changes`() = runTest {
-        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
+    fun `rating sort reorders when user rating changes`() = runTest {
+        val lowRated = hades.copy(entry = hades.entry.copy(userRating = 5))
+        val highRated = eldenRing.copy(entry = eldenRing.entry.copy(userRating = 8))
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(highRated, lowRated)
         val viewModel = createViewModel()
+        viewModel.onSortOptionSelected(LibrarySortOption.USER_RATING_DESC)
 
         viewModel.uiState.test {
-            assertEquals(listOf(hades, eldenRing), awaitItem().filteredGames)
+            assertEquals(listOf(highRated, lowRated), awaitItem().filteredGames)
 
-            val updatedEldenRing = eldenRing.copy(
-                entry = eldenRing.entry.copy(
-                    isFavorite = false,
-                    updatedAtEpochSeconds = 950L,
-                ),
-            )
-            viewModel.onToggleFavorite(eldenRing.game.id)
-            testScheduler.advanceUntilIdle()
-            fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, updatedEldenRing)
+            // Hades rating updated to 10
+            val topRatedHades = lowRated.copy(entry = lowRated.entry.copy(userRating = 10))
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(highRated, topRatedHades)
 
-            // Elden Ring stays at index 1
-            assertEquals(listOf(hades, updatedEldenRing), awaitItem().filteredGames)
-
-            viewModel.onSortOptionSelected(LibrarySortOption.TITLE_ASC)
-            assertEquals(listOf(updatedEldenRing, hades), awaitItem().filteredGames)
+            assertEquals(listOf(topRatedHades, highRated), awaitItem().filteredGames)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `newly added game is prepended while preserving existing items order`() = runTest {
-        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
+    fun `hours sort reorders when hours change`() = runTest {
+        val moreHours = hades.copy(entry = hades.entry.copy(hoursPlayed = 50))
+        val lessHours = eldenRing.copy(entry = eldenRing.entry.copy(hoursPlayed = 10))
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(moreHours, lessHours)
         val viewModel = createViewModel()
+        viewModel.onSortOptionSelected(LibrarySortOption.HOURS_PLAYED_DESC)
 
         viewModel.uiState.test {
-            assertEquals(listOf(hades, eldenRing), awaitItem().filteredGames)
+            assertEquals(listOf(moreHours, lessHours), awaitItem().filteredGames)
 
-            // Hollow Knight is added with newest updatedAt
-            fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing, hollowKnight)
-            assertEquals(listOf(hollowKnight, hades, eldenRing), awaitItem().filteredGames)
+            // Elden Ring hours updated to 100
+            val grindEldenRing = lessHours.copy(entry = lessHours.entry.copy(hoursPlayed = 100))
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(moreHours, grindEldenRing)
+
+            assertEquals(listOf(grindEldenRing, moreHours), awaitItem().filteredGames)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
+    @Test
+    fun `details hydration preserves deterministic order when sort keys are tied`() = runTest {
+        // Both games have same updatedAtEpochSeconds (500L), ordered deterministically by ID (1L < 2L)
+        val game1 = hades.copy(entry = hades.entry.copy(updatedAtEpochSeconds = 500L))
+        val game2 = eldenRing.copy(entry = eldenRing.entry.copy(updatedAtEpochSeconds = 500L))
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(game1, game2)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(game1, game2), awaitItem().filteredGames)
+
+            // Hydrating game2 with banner without changing sort key preserves deterministic order
+            val hydratedGame2 = game2.copy(bannerUrl = "https://example.com/banner.jpg")
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(game1, hydratedGame2)
+
+            assertEquals(listOf(game1, hydratedGame2), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
     @Test
     fun `user rating sort places unrated games at bottom and sorts rated games descending`() = runTest {
         val rated10 = hades.copy(entry = hades.entry.copy(userRating = 10))

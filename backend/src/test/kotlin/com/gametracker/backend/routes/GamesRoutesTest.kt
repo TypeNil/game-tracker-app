@@ -411,7 +411,51 @@ class GamesRoutesTest {
             assertEquals(622800L, game.timeToBeatCompleteSeconds)
             cache.close()
         }
+    @Test
+    fun `game details returns 200 with null time to beat when optional endpoint fails`() = testApplication {
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/v4/game_time_to_beats")) {
+                respond(
+                    content = """{"message": "Rate limited"}""",
+                    status = HttpStatusCode.TooManyRequests,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.RetryAfter to listOf("5"))
+                )
+            } else {
+                respond(
+                    content = sampleIgdbJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
+        val client = HttpClient(engine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+        val service = IgdbService(client, mockTokenManager, mockConfig)
+        val cache = BffCache()
 
+        application {
+            testModule(service, cache)
+        }
+
+        val testClient = createClient {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        val response = testClient.get("/v1/games/1020")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val game = response.body<GameDetailsDto>()
+        assertEquals(1020L, game.id)
+        assertEquals("The Witcher 3: Wild Hunt", game.name)
+        assertNull(game.timeToBeatMainSeconds)
+        assertNull(game.timeToBeatCompleteSeconds)
+        cache.close()
+    }
     /**
      * Реальная форма sparse-ответа IGDB (live id 87388 PapiHop): отсутствующие
      * сущности IGDB опускает целиком — ни cover, ни списков, ни null-литералов.
