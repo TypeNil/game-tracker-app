@@ -521,9 +521,14 @@ class GameDetailsScreenTest {
             R.string.details_more_tags_desc,
             genres.size + themes.size,
         )
+        val bounds = composeTestRule
+            .onNodeWithContentDescription(overflowDesc)
+            .getUnclippedBoundsInRoot()
+        assertTrue((bounds.right - bounds.left) >= 48.dp)
+        assertTrue((bounds.bottom - bounds.top) >= 48.dp)
+
         composeTestRule.onNodeWithContentDescription(overflowDesc).assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
-
         // Bottom sheet opens and shows all genres and themes
         genres.forEach { genre ->
             composeTestRule.onAllNodesWithText(genre, useUnmergedTree = true)[0].assertIsDisplayed()

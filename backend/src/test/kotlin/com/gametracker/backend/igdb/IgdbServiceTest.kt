@@ -1,11 +1,15 @@
 package com.gametracker.backend.igdb
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.gametracker.backend.application.IgdbConfig
 import com.gametracker.backend.auth.IgdbTokenManager
 import com.gametracker.backend.error.UpstreamBadGatewayException
 import com.gametracker.backend.error.UpstreamRateLimitException
 import com.gametracker.backend.error.UpstreamServiceUnavailableException
 import io.ktor.client.HttpClient
+import org.slf4j.LoggerFactory
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
@@ -247,6 +251,40 @@ class IgdbServiceTest {
         val result = runCatching { service.queryGames("fields name;") }
         assertTrue(result.exceptionOrNull() is UpstreamServiceUnavailableException)
         assertEquals(3, attempts)
+    }
+
+    @Test
+    fun `queryGames does not log non-success upstream body`() = runTest {
+        val sensitiveBody = "sensitive-internal-upstream-error-details"
+        val logger = LoggerFactory.getLogger("IgdbService") as Logger
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+
+        try {
+            val engine = MockEngine {
+                respond(
+                    content = sensitiveBody,
+                    status = HttpStatusCode.InternalServerError,
+                    headers = headersOf(HttpHeaders.ContentType, "text/plain"),
+                )
+            }
+            val service = IgdbService(
+                createClient(engine),
+                TestTokenManager(),
+                mockConfig,
+            )
+
+            runCatching { service.queryGames("fields name;") }
+
+            assertTrue(
+                appender.list.none {
+                    it.formattedMessage.contains(sensitiveBody)
+                }
+            )
+        } finally {
+            logger.detachAppender(appender)
+            appender.stop()
+        }
     }
 
     @Test
