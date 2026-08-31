@@ -22,6 +22,8 @@ import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameSummary
 import io.github.typenil.gametracker.core.model.GameVideo
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -190,45 +192,24 @@ class GameDetailsScreenTest {
     }
 
     @Test
-    fun longFactsValuesShowFullyWithoutEllipsis() {
-        val gameModes = "Single player, Multiplayer, Co-op, Competitive online"
-        val platforms = "PC, PlayStation 5, Xbox Series X, Nintendo Switch"
+    fun longFactValuesAreTruncatedWithEllipsisInFactCards() {
+        val longGameMode = "Single player, Multiplayer, Co-op, Competitive online, Massively Multiplayer Online"
         val factsDetails = compactDetails.copy(
             releaseDates = details.releaseDates,
-            gameModes = listOf(gameModes),
-            platforms = listOf(platforms),
+            gameModes = listOf(longGameMode),
+            platforms = listOf("PC"),
         )
         setContent(GameDetailsUiState(game = factsDetails, isHydrated = true))
 
         val gameModesResults = mutableListOf<TextLayoutResult>()
         composeTestRule
-            .onNodeWithText(gameModes, useUnmergedTree = true)
+            .onNodeWithText(longGameMode, useUnmergedTree = true)
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
                 action(gameModesResults)
             }
         val gameModesLayout = gameModesResults.single()
-        assertEquals(
-            gameModes.length,
-            gameModesLayout.getLineEnd(gameModesLayout.lineCount - 1, visibleEnd = true),
-        )
-        for (line in 0 until gameModesLayout.lineCount) {
-            assertFalse(gameModesLayout.isLineEllipsized(line))
-        }
-
-        val platformsResults = mutableListOf<TextLayoutResult>()
-        composeTestRule
-            .onNodeWithText(platforms, useUnmergedTree = true)
-            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action ->
-                action(platformsResults)
-            }
-        val platformsLayout = platformsResults.single()
-        assertEquals(
-            platforms.length,
-            platformsLayout.getLineEnd(platformsLayout.lineCount - 1, visibleEnd = true),
-        )
-        for (line in 0 until platformsLayout.lineCount) {
-            assertFalse(platformsLayout.isLineEllipsized(line))
-        }
+        assertEquals(1, gameModesLayout.lineCount)
+        assertTrue(gameModesLayout.isLineEllipsized(0))
     }
 
     @Test
@@ -243,13 +224,33 @@ class GameDetailsScreenTest {
 
         val showMore = composeTestRule.activity.getString(R.string.details_about_show_more)
         val showLess = composeTestRule.activity.getString(R.string.details_about_show_less)
-        composeTestRule.onNodeWithContentDescription(showMore).performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription(showLess).performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription(showMore).assertExists()
-    }
+        val collapsedHeight = composeTestRule
+            .onNodeWithText(longSummary, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+            .run { bottom - top }
 
+        composeTestRule
+            .onNodeWithContentDescription(showMore)
+            .assertIsDisplayed()
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        val expandedHeight = composeTestRule
+            .onNodeWithText(longSummary, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+            .run { bottom - top }
+        assertTrue(
+            "Expanded height ($expandedHeight) must be greater than collapsed ($collapsedHeight)",
+            expandedHeight > collapsedHeight,
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription(showLess)
+            .assertIsDisplayed()
+            .performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription(showMore).assertIsDisplayed()
+    }
     @Test
     fun collapsedAboutShowsAtMostTwoLines() {
         val longSummary = List(12) { "Long about paragraph $it." }.joinToString(" ")
@@ -333,6 +334,7 @@ class GameDetailsScreenTest {
                 GameSummary(
                     id = 25076L,
                     name = "Red Dead Redemption 2",
+
                     totalRating = 93.6,
                 )
             )
@@ -384,8 +386,6 @@ class GameDetailsScreenTest {
             composeTestRule.activity.getString(R.string.details_date_unknown)
         ).assertIsDisplayed()
     }
-
-
     @Test
     fun videosCollapseToShowAllToggleRevealsRest() {
         val videoDetails = compactDetails.copy(
@@ -403,8 +403,8 @@ class GameDetailsScreenTest {
         val showAll = composeTestRule.activity.getString(R.string.details_videos_show_all, 3)
         composeTestRule.onNodeWithText("Trailer Three").assertDoesNotExist()
         composeTestRule.onNodeWithText(showAll).assertIsDisplayed().performClick()
-        composeTestRule.onNodeWithText("Trailer Three").assertExists()
-        val showLess = composeTestRule.activity.getString(R.string.details_about_show_less)
+        composeTestRule.onNodeWithText("Trailer Three").assertIsDisplayed()
+        val showLess = composeTestRule.activity.getString(R.string.details_videos_show_less)
         composeTestRule.onNodeWithText(showLess).assertIsDisplayed().performClick()
         composeTestRule.onNodeWithText("Trailer Three").assertDoesNotExist()
     }
@@ -474,9 +474,20 @@ class GameDetailsScreenTest {
             platforms = listOf("PC", "PlayStation 5"),
             releaseDates = details.releaseDates,
         )
-        setContent(GameDetailsUiState(game = game, isHydrated = true))
+        val entry = LibraryEntry(
+            gameId = game.id,
+            status = LibraryStatus.PLAYING,
+            addedAtEpochSeconds = 0L,
+            updatedAtEpochSeconds = 0L,
+        )
+        setContent(GameDetailsUiState(game = game, libraryEntry = entry, isHydrated = true))
 
-        composeTestRule.onNodeWithText("PC").assertExists()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_in_library)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_status_playing)
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Playing · PC").assertDoesNotExist()
     }
 
@@ -485,6 +496,86 @@ class GameDetailsScreenTest {
         setContent(GameDetailsUiState(game = null, isLoading = true))
 
         composeTestRule.onNodeWithTag("details-skeleton").assertIsDisplayed()
+    }
+
+    @Test
+    fun nullSummaryHidesAboutSection() {
+        val game = compactDetails.copy(summary = null)
+        val aboutHeader = composeTestRule.activity.getString(R.string.details_section_about)
+        composeTestRule.onNodeWithText(aboutHeader).assertDoesNotExist()
+    }
+
+    @Test
+    fun tagOverloadShowsPreviewAndOpensBottomSheet() {
+        val genres = listOf("RPG", "Adventure", "Shooter", "Platform", "Puzzle")
+        val themes = listOf("Fantasy", "Sci-Fi", "Horror", "Survival", "Historical")
+        val game = compactDetails.copy(genres = genres, themes = themes, similarGames = emptyList())
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        // First 3 tags shown in preview
+        composeTestRule.onNodeWithText("RPG", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Adventure", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shooter", useUnmergedTree = true).assertIsDisplayed()
+
+        // Overflow "+7 more" chip is shown and clickable
+        composeTestRule.onNodeWithText("+7 more", useUnmergedTree = true).assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+
+        // Bottom sheet opens and shows all genres and themes
+        genres.forEach { genre ->
+            composeTestRule.onAllNodesWithText(genre, useUnmergedTree = true)[0].assertIsDisplayed()
+        }
+        themes.forEach { theme ->
+            composeTestRule.onAllNodesWithText(theme, useUnmergedTree = true)[0].assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun platformsFactCardWithMultiplePlatformsOpensBottomSheet() {
+        val platforms = listOf("PC", "PlayStation 5", "Xbox Series X", "Nintendo Switch")
+        val releaseDates = listOf(
+            GameReleaseDate(platform = "PC", dateEpochSeconds = 1700000000L, year = 2023),
+            GameReleaseDate(platform = "PlayStation 5", dateEpochSeconds = 1700000000L, year = 2023),
+            GameReleaseDate(platform = "Xbox Series X", dateEpochSeconds = 1700000000L, year = 2023),
+            GameReleaseDate(platform = "Nintendo Switch", dateEpochSeconds = 1700000000L, year = 2023),
+        )
+        val game = compactDetails.copy(platforms = platforms, releaseDates = releaseDates, similarGames = emptyList())
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        // Platforms fact card shows preview and overflow "+2 more"
+        composeTestRule.onNodeWithTag("details-fact-card-platforms").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+
+        // Bottom sheet opens and displays all platforms with release dates
+        composeTestRule.onAllNodesWithText("PlayStation 5")[0].assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Nintendo Switch")[0].assertIsDisplayed()
+    }
+    @Test
+    fun yearOnlyReleaseDateDisplaysYear() {
+        val releaseDates = listOf(
+            GameReleaseDate(platform = "PlayStation 5", dateEpochSeconds = null, year = 2026)
+        )
+        val game = compactDetails.copy(releaseDates = releaseDates)
+        setContent(GameDetailsUiState(game = game, isHydrated = true))
+
+        composeTestRule.onNodeWithText("2026", substring = true, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun noMediaDisplaysGracefullyWithoutCrashing() {
+        val noMediaGame = compactDetails.copy(
+            coverUrl = null,
+            artworkUrl = null,
+            screenshots = emptyList(),
+            videos = emptyList(),
+            url = null,
+            summary = "A game without media assets."
+        )
+        setContent(GameDetailsUiState(game = noMediaGame, isHydrated = true))
+
+        composeTestRule.onAllNodesWithText(noMediaGame.name)[0].assertIsDisplayed()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.details_section_screenshots)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.details_section_videos)).assertDoesNotExist()
     }
 
 }

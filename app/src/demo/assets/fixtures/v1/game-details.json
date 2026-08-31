@@ -1384,5 +1384,976 @@
     "artworkUrl": "file:///android_asset/screenshots/shot_portal2_1.jpg",
     "timeToBeatMainSeconds": 30600,
     "timeToBeatCompleteSeconds": 75600
+  },
+  {
+    "id": 900001,
+    "name": "Cthulhu Saves the World: Super Hyper Enhanced Championship Edition Alpha",
+    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "rating": 82.0,
+    "releaseDateEpochSeconds": 1293753600,
+    "summary": "The lord of insanity, Cthulhu, is all set to plunge the world into despair and destruction when his powers are sealed away by a mysterious sorcerer.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Indie",
+      "Adventure"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "Xbox 360",
+      "PlayStation 4",
+      "Nintendo Switch"
+    ],
+    "url": "https://www.igdb.com/games/cthulhu-saves-the-world",
+    "totalRating": 84.5,
+    "totalRatingCount": 120,
+    "themes": [
+      "Comedy",
+      "Fantasy"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1293753600,
+        "year": 2010
+      }
+    ],
+    "companies": [
+      {
+        "name": "Zeboyd Games",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/1942_1.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 14593,
+        "name": "Hollow Knight",
+        "coverUrl": "file:///android_asset/covers/14593.jpg",
+        "totalRating": 91.8,
+        "genres": [
+          "Platform",
+          "Adventure",
+          "Indie"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)",
+          "Nintendo Switch"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/1942_1.jpg",
+    "timeToBeatMainSeconds": 25200,
+    "timeToBeatCompleteSeconds": 54000
+  },
+  {
+    "id": 900002,
+    "name": "Silk",
+    "coverUrl": "file:///android_asset/covers/14593.jpg",
+    "rating": 74.0,
+    "releaseDateEpochSeconds": 1568246400,
+    "summary": null,
+    "genres": [
+      "Adventure"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)"
+    ],
+    "url": "https://www.igdb.com/games/silk",
+    "totalRating": 72.0,
+    "totalRatingCount": 45,
+    "themes": [],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1568246400,
+        "year": 2019
+      }
+    ],
+    "companies": [
+      {
+        "name": "Huey Games",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/14593_1.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 14593,
+        "name": "Hollow Knight",
+        "coverUrl": "file:///android_asset/covers/14593.jpg",
+        "totalRating": 91.8,
+        "genres": [
+          "Platform",
+          "Adventure",
+          "Indie"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)",
+          "Nintendo Switch"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/14593_1.jpg",
+    "timeToBeatMainSeconds": 18000,
+    "timeToBeatCompleteSeconds": 36000
+  },
+  {
+    "id": 900003,
+    "name": "Grand Theft Auto VI",
+    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Grand Theft Auto VI heads to the state of Leonida, home to the neon-soaked streets of Vice City and beyond in the biggest, most immersive evolution of the Grand Theft Auto series yet.",
+    "genres": [
+      "Shooter",
+      "Adventure"
+    ],
+    "platforms": [
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ],
+    "url": "https://www.igdb.com/games/grand-theft-auto-vi",
+    "totalRating": null,
+    "totalRatingCount": null,
+    "themes": [
+      "Action",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PlayStation 5",
+        "dateEpochSeconds": null,
+        "year": 2026
+      },
+      {
+        "platform": "Xbox Series X|S",
+        "dateEpochSeconds": null,
+        "year": 2026
+      }
+    ],
+    "companies": [
+      {
+        "name": "Rockstar Games",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/1877_1.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "QdBZY2fkU-0",
+        "name": "Trailer 1"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 25076,
+        "name": "Red Dead Redemption 2",
+        "coverUrl": "file:///android_asset/covers/25076.jpg",
+        "totalRating": 96.0,
+        "genres": [
+          "Shooter",
+          "Adventure"
+        ],
+        "platforms": [
+          "PlayStation 4",
+          "Xbox One",
+          "PC (Microsoft Windows)"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/1877_1.jpg",
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": null
+  },
+  {
+    "id": 900004,
+    "name": "Retro Space Invaders 1978",
+    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": 268185600,
+    "summary": "A classic 1978 arcade game where the player defeats waves of descending aliens with a horizontally moving laser cannon to earn points.",
+    "genres": [
+      "Shooter",
+      "Arcade"
+    ],
+    "platforms": [
+      "Arcade"
+    ],
+    "url": "https://www.igdb.com/games/space-invaders",
+    "totalRating": null,
+    "totalRatingCount": null,
+    "themes": [
+      "Science fiction"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer"
+    ],
+    "releaseDates": [
+      {
+        "platform": "Arcade",
+        "dateEpochSeconds": 268185600,
+        "year": 1978
+      }
+    ],
+    "companies": [
+      {
+        "name": "Taito",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [],
+    "videos": [],
+    "similarGames": [],
+    "artworkUrl": null,
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": null
+  },
+  {
+    "id": 900005,
+    "name": "Doom",
+    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "rating": 85.0,
+    "releaseDateEpochSeconds": 755481600,
+    "summary": "The classic 1993 first-person shooter developed by id Software. In the role of a space marine, the player fights through hordes of invading demons on Mars.",
+    "genres": [
+      "Shooter"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "MS-DOS",
+      "PlayStation"
+    ],
+    "url": "https://www.igdb.com/games/doom",
+    "totalRating": 86.0,
+    "totalRatingCount": 450,
+    "themes": [
+      "Action",
+      "Science fiction",
+      "Horror"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative"
+    ],
+    "releaseDates": [
+      {
+        "platform": "MS-DOS",
+        "dateEpochSeconds": 755481600,
+        "year": 1993
+      }
+    ],
+    "companies": [
+      {
+        "name": "id Software",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "GT Interactive Software",
+        "isDeveloper": false,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/1942_1.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "8t48vD1bK98",
+        "name": "Classic Gameplay"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 72,
+        "name": "Portal 2",
+        "coverUrl": "file:///android_asset/covers/72.jpg",
+        "totalRating": 94.6,
+        "genres": [
+          "Shooter",
+          "Puzzle"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/1942_1.jpg",
+    "timeToBeatMainSeconds": 18000,
+    "timeToBeatCompleteSeconds": 36000
+  },
+  {
+    "id": 900006,
+    "name": "Doom",
+    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "rating": 86.0,
+    "releaseDateEpochSeconds": 1463097600,
+    "summary": "The 2016 modern reboot of the legendary Doom franchise by id Software and Bethesda Softworks.",
+    "genres": [
+      "Shooter"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 4",
+      "Xbox One",
+      "Nintendo Switch"
+    ],
+    "url": "https://www.igdb.com/games/doom--1",
+    "totalRating": 85.5,
+    "totalRatingCount": 1800,
+    "themes": [
+      "Action",
+      "Science fiction",
+      "Horror"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1463097600,
+        "year": 2016
+      }
+    ],
+    "companies": [
+      {
+        "name": "id Software",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Bethesda Softworks",
+        "isDeveloper": false,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/1877_1.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "RO90omga8D4",
+        "name": "Launch Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 900005,
+        "name": "Doom",
+        "coverUrl": "file:///android_asset/covers/1942.jpg",
+        "totalRating": 86.0,
+        "genres": [
+          "Shooter"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/1877_1.jpg",
+    "timeToBeatMainSeconds": 43200,
+    "timeToBeatCompleteSeconds": 97200
+  },
+  {
+    "id": 900007,
+    "name": "Multiplatform Sandbox Quest",
+    "coverUrl": "file:///android_asset/covers/119388.jpg",
+    "rating": 88.0,
+    "releaseDateEpochSeconds": 1321574400,
+    "summary": "An expansive sandbox quest released and maintained on sixteen different gaming platforms across three console generations.",
+    "genres": [
+      "Adventure",
+      "Simulator"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "PlayStation 4",
+      "PlayStation 3",
+      "Xbox Series X|S",
+      "Xbox One",
+      "Xbox 360",
+      "Nintendo Switch",
+      "Wii U",
+      "Nintendo 3DS",
+      "PlayStation Vita",
+      "macOS",
+      "Linux",
+      "Android",
+      "iOS",
+      "Meta Quest 3"
+    ],
+    "url": "https://www.igdb.com/games/multiplatform-sandbox-quest",
+    "totalRating": 89.0,
+    "totalRatingCount": 500,
+    "themes": [
+      "Open world",
+      "Sandbox",
+      "Survival"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1321574400,
+        "year": 2011
+      },
+      {
+        "platform": "Xbox 360",
+        "dateEpochSeconds": 1336521600,
+        "year": 2012
+      },
+      {
+        "platform": "PlayStation 3",
+        "dateEpochSeconds": 1387238400,
+        "year": 2013
+      },
+      {
+        "platform": "PlayStation 4",
+        "dateEpochSeconds": 1409788800,
+        "year": 2014
+      },
+      {
+        "platform": "Xbox One",
+        "dateEpochSeconds": 1409875200,
+        "year": 2014
+      },
+      {
+        "platform": "PlayStation Vita",
+        "dateEpochSeconds": 1413244800,
+        "year": 2014
+      },
+      {
+        "platform": "Wii U",
+        "dateEpochSeconds": 1450310400,
+        "year": 2015
+      },
+      {
+        "platform": "Nintendo Switch",
+        "dateEpochSeconds": 1494460800,
+        "year": 2017
+      },
+      {
+        "platform": "Nintendo 3DS",
+        "dateEpochSeconds": 1505260800,
+        "year": 2017
+      },
+      {
+        "platform": "PlayStation 5",
+        "dateEpochSeconds": 1605139200,
+        "year": 2020
+      },
+      {
+        "platform": "Xbox Series X|S",
+        "dateEpochSeconds": 1604966400,
+        "year": 2020
+      },
+      {
+        "platform": "Android",
+        "dateEpochSeconds": 1318723200,
+        "year": 2011
+      }
+    ],
+    "companies": [
+      {
+        "name": "Mojang Studios",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/119388_1.jpg",
+      "file:///android_asset/screenshots/119388_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 119388,
+        "name": "The Legend of Zelda: Tears of the Kingdom",
+        "coverUrl": "file:///android_asset/covers/119388.jpg",
+        "totalRating": 95.5,
+        "genres": [
+          "Adventure",
+          "Role-playing (RPG)"
+        ],
+        "platforms": [
+          "Nintendo Switch"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/119388_1.jpg",
+    "timeToBeatMainSeconds": 144000,
+    "timeToBeatCompleteSeconds": 360000
+  },
+  {
+    "id": 900008,
+    "name": "Mega Studio Blockbuster Online",
+    "coverUrl": "file:///android_asset/covers/112875.jpg",
+    "rating": 79.0,
+    "releaseDateEpochSeconds": 1636070400,
+    "summary": "A large-scale multiplayer production with twelve credited development and publishing entities worldwide.",
+    "genres": [
+      "Shooter",
+      "Tactical"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ],
+    "url": "https://www.igdb.com/games/mega-studio-blockbuster",
+    "totalRating": 75.0,
+    "totalRatingCount": 3400,
+    "themes": [
+      "Action",
+      "Warfare"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer",
+      "Co-operative",
+      "Split screen",
+      "Massively Multiplayer Online (MMO)",
+      "Battle Royale"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1636070400,
+        "year": 2021
+      },
+      {
+        "platform": "PlayStation 5",
+        "dateEpochSeconds": 1636070400,
+        "year": 2021
+      },
+      {
+        "platform": "Xbox Series X|S",
+        "dateEpochSeconds": 1636070400,
+        "year": 2021
+      }
+    ],
+    "companies": [
+      {
+        "name": "Apex Global Games",
+        "isDeveloper": true,
+        "isPublisher": true
+      },
+      {
+        "name": "Titan Co-Dev Studio",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Horizon Art Works",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Vanguard Audio Labs",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Nexus QA Team",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Pulse Engine Group",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Orbit Animation",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Delta Porting Solutions",
+        "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Apex North America",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Apex Europe Ltd",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Apex Asia Pacific",
+        "isDeveloper": false,
+        "isPublisher": true
+      },
+      {
+        "name": "Apex Latin America",
+        "isDeveloper": false,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/112875_1.jpg",
+      "file:///android_asset/screenshots/112875_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Reveal Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 112875,
+        "name": "God of War Ragnarök",
+        "coverUrl": "file:///android_asset/covers/112875.jpg",
+        "totalRating": 93.7,
+        "genres": [
+          "Hack and slash/Beat 'em up",
+          "Adventure"
+        ],
+        "platforms": [
+          "PlayStation 5",
+          "PlayStation 4"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/112875_1.jpg",
+    "timeToBeatMainSeconds": 54000,
+    "timeToBeatCompleteSeconds": 180000
+  },
+  {
+    "id": 900009,
+    "name": "Mystery Indie Project",
+    "coverUrl": null,
+    "rating": 71.0,
+    "releaseDateEpochSeconds": 1704067200,
+    "summary": "An enigmatic indie title developed in secret with no promotional media, trailers, or artwork.",
+    "genres": [
+      "Indie",
+      "Puzzle"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)"
+    ],
+    "url": null,
+    "totalRating": 69.0,
+    "totalRatingCount": 30,
+    "themes": [
+      "Mystery"
+    ],
+    "gameModes": [
+      "Single player"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1704067200,
+        "year": 2024
+      }
+    ],
+    "companies": [
+      {
+        "name": "Anonymous Dev",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [],
+    "videos": [],
+    "similarGames": [
+      {
+        "id": 14593,
+        "name": "Hollow Knight",
+        "coverUrl": "file:///android_asset/covers/14593.jpg",
+        "totalRating": 91.8,
+        "genres": [
+          "Indie"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)",
+          "Nintendo Switch"
+        ]
+      }
+    ],
+    "artworkUrl": null,
+    "timeToBeatMainSeconds": 21600,
+    "timeToBeatCompleteSeconds": 43200
+  },
+  {
+    "id": 900010,
+    "name": "Tag Overload: Unlimited Edition",
+    "coverUrl": "file:///android_asset/covers/204350.jpg",
+    "rating": 84.0,
+    "releaseDateEpochSeconds": 1672531200,
+    "summary": "A genre-blending masterpiece incorporating elements of almost every game mechanic and atmospheric theme known in gaming history.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Adventure",
+      "Shooter",
+      "Platform",
+      "Puzzle",
+      "Strategy",
+      "Hack and slash/Beat 'em up",
+      "Simulator",
+      "Tactical",
+      "Indie"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ],
+    "url": "https://www.igdb.com/games/tag-overload",
+    "totalRating": 83.0,
+    "totalRatingCount": 88,
+    "themes": [
+      "Action",
+      "Fantasy",
+      "Science fiction",
+      "Horror",
+      "Survival",
+      "Historical",
+      "Stealth",
+      "Comedy",
+      "Drama",
+      "Open world"
+    ],
+    "gameModes": [
+      "Single player",
+      "Multiplayer"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1672531200,
+        "year": 2023
+      }
+    ],
+    "companies": [
+      {
+        "name": "Universal Interactive",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/204350_1.jpg",
+      "file:///android_asset/screenshots/204350_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Gameplay Preview"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 204350,
+        "name": "The Last of Us Part I",
+        "coverUrl": "file:///android_asset/covers/204350.jpg",
+        "totalRating": 92.4,
+        "genres": [
+          "Shooter",
+          "Adventure"
+        ],
+        "platforms": [
+          "PlayStation 5",
+          "PC (Microsoft Windows)"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/204350_1.jpg",
+    "timeToBeatMainSeconds": 72000,
+    "timeToBeatCompleteSeconds": 144000
+  },
+  {
+    "id": 900011,
+    "name": "Endless Lore Chronicles: The Ancient Prophecy of Forgotten Realms",
+    "coverUrl": "file:///android_asset/covers/119171.jpg",
+    "rating": 91.0,
+    "releaseDateEpochSeconds": 1690848000,
+    "summary": "In the primordial age of the world before the stars were counted, three elder dragons fashioned the world from stardust and sacred fire. For millennia, the kingdoms of man, elf, and dwarf prospered under the benevolent gaze of the Celestial Guardians.\n\nYet when the Shadow of the Abyssal Veil crept across the northern mountains, the ancient pact was shattered. Brother turned upon brother, and the great spires of Eldoria crumbled into ash and sorrow. A chosen hero must now arise from the desolate wastes of the Outer Rim, bearing the Mark of the Sunweaver and wielding the Blade of Eternal Dawns.\n\nJourney across vast continents spanning frozen tundras, sun-scorched deserts, and subterranean dwarven citadels. Meet over three hundred fully voiced companions, each with their own branching storylines, moral dilemmas, and hidden loyalties. Engage in tactical turn-based combat where every positioning choice, elemental synergy, and environmental hazard can turn the tide of battle.\n\nCraft legendary armaments using forgotten alchemical recipes, tame mythical beasts to traverse uncharted mountain ranges, and make world-altering political decisions that determine the fate of entire empires. The prophecy awaits its fulfillment, but whether in triumph or cataclysm remains entirely in your hands.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Adventure",
+      "Strategy"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ],
+    "url": "https://www.igdb.com/games/endless-lore-chronicles",
+    "totalRating": 90.5,
+    "totalRatingCount": 650,
+    "themes": [
+      "Fantasy",
+      "Drama"
+    ],
+    "gameModes": [
+      "Single player",
+      "Co-operative"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1690848000,
+        "year": 2023
+      }
+    ],
+    "companies": [
+      {
+        "name": "Mythic Realm Studios",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/119171_1.jpg",
+      "file:///android_asset/screenshots/119171_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Story Cinematic"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 119171,
+        "name": "Baldur's Gate 3",
+        "coverUrl": "file:///android_asset/covers/119171.jpg",
+        "totalRating": 96.1,
+        "genres": [
+          "Role-playing (RPG)",
+          "Strategy",
+          "Adventure"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)",
+          "PlayStation 5",
+          "Xbox Series X|S"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/119171_1.jpg",
+    "timeToBeatMainSeconds": 288000,
+    "timeToBeatCompleteSeconds": 540000
+  },
+  {
+    "id": 900012,
+    "name": "Competitive Arena Pro",
+    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "rating": 42.0,
+    "releaseDateEpochSeconds": 1640995200,
+    "summary": "A purely multiplayer competitive arena shooter with no campaign or story mode.",
+    "genres": [
+      "Shooter",
+      "Sport"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)"
+    ],
+    "url": "https://www.igdb.com/games/competitive-arena-pro",
+    "totalRating": 58.0,
+    "totalRatingCount": 1500,
+    "themes": [
+      "Action"
+    ],
+    "gameModes": [
+      "Multiplayer",
+      "Battle Royale"
+    ],
+    "releaseDates": [
+      {
+        "platform": "PC (Microsoft Windows)",
+        "dateEpochSeconds": 1640995200,
+        "year": 2022
+      }
+    ],
+    "companies": [
+      {
+        "name": "Arena Corp",
+        "isDeveloper": true,
+        "isPublisher": true
+      }
+    ],
+    "screenshots": [
+      "file:///android_asset/screenshots/72_1.jpg",
+      "file:///android_asset/screenshots/72_2.jpg"
+    ],
+    "videos": [
+      {
+        "videoId": "dQw4w9WgXcQ",
+        "name": "Season 1 Trailer"
+      }
+    ],
+    "similarGames": [
+      {
+        "id": 72,
+        "name": "Portal 2",
+        "coverUrl": "file:///android_asset/covers/72.jpg",
+        "totalRating": 94.6,
+        "genres": [
+          "Shooter",
+          "Puzzle"
+        ],
+        "platforms": [
+          "PC (Microsoft Windows)"
+        ]
+      }
+    ],
+    "artworkUrl": "file:///android_asset/screenshots/72_1.jpg",
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": 720000
   }
 ]

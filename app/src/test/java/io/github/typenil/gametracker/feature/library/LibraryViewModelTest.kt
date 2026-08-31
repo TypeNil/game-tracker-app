@@ -410,6 +410,119 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun `status update keeps current order until the filter changes`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(hades, eldenRing), awaitItem().filteredGames)
+
+            // Elden Ring is 2nd (updatedAt=400L). Update its status with newest updatedAt (900L).
+            val updatedEldenRing = eldenRing.copy(
+                entry = eldenRing.entry.copy(
+                    status = LibraryStatus.PLAYING,
+                    updatedAtEpochSeconds = 900L,
+                ),
+            )
+            viewModel.onStatusSelected(eldenRing.game.id, LibraryStatus.PLAYING)
+            testScheduler.advanceUntilIdle()
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, updatedEldenRing)
+
+            // Order must stay visually stable: Hades remains 1st, Elden Ring remains 2nd.
+            assertEquals(listOf(hades, updatedEldenRing), awaitItem().filteredGames)
+
+            // Changing sort option triggers fresh re-sort.
+            viewModel.onSortOptionSelected(LibrarySortOption.UPDATED_DESC)
+            assertEquals(listOf(updatedEldenRing, hades), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `favorite toggle does not jump item position until filter changes`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(hades, eldenRing), awaitItem().filteredGames)
+
+            val updatedEldenRing = eldenRing.copy(
+                entry = eldenRing.entry.copy(
+                    isFavorite = false,
+                    updatedAtEpochSeconds = 950L,
+                ),
+            )
+            viewModel.onToggleFavorite(eldenRing.game.id)
+            testScheduler.advanceUntilIdle()
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, updatedEldenRing)
+
+            // Elden Ring stays at index 1
+            assertEquals(listOf(hades, updatedEldenRing), awaitItem().filteredGames)
+
+            viewModel.onSortOptionSelected(LibrarySortOption.TITLE_ASC)
+            assertEquals(listOf(updatedEldenRing, hades), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `newly added game is prepended while preserving existing items order`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(hades, eldenRing), awaitItem().filteredGames)
+
+            // Hollow Knight is added with newest updatedAt
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing, hollowKnight)
+            assertEquals(listOf(hollowKnight, hades, eldenRing), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `user rating sort places unrated games at bottom and sorts rated games descending`() = runTest {
+        val rated10 = hades.copy(entry = hades.entry.copy(userRating = 10))
+        val unrated = eldenRing.copy(entry = eldenRing.entry.copy(userRating = null))
+        val rated8 = hollowKnight.copy(entry = hollowKnight.entry.copy(userRating = 8))
+
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(rated10, unrated, rated8)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            // Default sort is UPDATED_DESC
+            awaitItem()
+
+            viewModel.onSortOptionSelected(LibrarySortOption.USER_RATING_DESC)
+            assertEquals(listOf(rated10, rated8, unrated), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `same title games are both preserved and search matches both`() = runTest {
+        val doom1993 = hades.copy(
+            game = hades.game.copy(id = 900005L, name = "Doom"),
+            entry = hades.entry.copy(gameId = 900005L)
+        )
+        val doom2016 = eldenRing.copy(
+            game = eldenRing.game.copy(id = 900006L, name = "Doom"),
+            entry = eldenRing.entry.copy(gameId = 900006L)
+        )
+
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(doom1993, doom2016)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(doom1993, doom2016), awaitItem().filteredGames)
+
+            viewModel.onSearchQueryChanged("Doom")
+            assertEquals(listOf(doom1993, doom2016), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
 

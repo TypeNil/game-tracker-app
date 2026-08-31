@@ -16,10 +16,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,8 +29,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -50,19 +50,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import io.github.typenil.gametracker.feature.details.component.PlatformsBottomSheet
+import io.github.typenil.gametracker.feature.details.component.TagsBottomSheet
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -105,9 +112,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.semantics.hideFromAccessibility
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -121,7 +128,6 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.TagChip
-import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
@@ -193,13 +199,12 @@ fun GameDetailsRoute(
         modifier = modifier
     )
 }
+private enum class DetailsOverflowSheet {
+    None,
+    Platforms,
+    Tags,
+}
 
-/**
- * Stateless Game Details screen: artwork backdrop with cover/title, genre and
- * theme chips, library CTA, outlined About, summary facts row (release, modes,
- * platforms, time to beat), screenshots, videos (external intent), similar
- * games and share.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameDetailsScreen(
@@ -221,6 +226,7 @@ fun GameDetailsScreen(
     onRemoveFromLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var overflowSheet by rememberSaveable { mutableStateOf(DetailsOverflowSheet.None) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -319,6 +325,8 @@ fun GameDetailsScreen(
                 onGameClick = onGameClick,
                 onVideoClick = onVideoClick,
                 onEditLibraryClicked = onEditLibraryClicked,
+                onPlatformsClick = { overflowSheet = DetailsOverflowSheet.Platforms },
+                onTagsOverflowClick = { overflowSheet = DetailsOverflowSheet.Tags },
                 contentTopPadding = innerPadding.calculateTopPadding(),
                 lazyListState = lazyListState,
                 titleHandoffProgress = titleHandoffProgress,
@@ -327,6 +335,27 @@ fun GameDetailsScreen(
             )
         }
 
+        when (overflowSheet) {
+            DetailsOverflowSheet.None -> Unit
+            DetailsOverflowSheet.Platforms -> {
+                game?.let { currentGame ->
+                    PlatformsBottomSheet(
+                        platforms = currentGame.platforms,
+                        releaseDates = currentGame.releaseDates,
+                        onDismiss = { overflowSheet = DetailsOverflowSheet.None },
+                    )
+                }
+            }
+            DetailsOverflowSheet.Tags -> {
+                game?.let { currentGame ->
+                    TagsBottomSheet(
+                        genres = currentGame.genres,
+                        themes = currentGame.themes,
+                        onDismiss = { overflowSheet = DetailsOverflowSheet.None },
+                    )
+                }
+            }
+        }
         if (uiState.isEditingLibrary) {
             EditLibrarySheet(
                 initialEntry = uiState.libraryEntry,
@@ -425,6 +454,8 @@ private fun GameDetailsContent(
     onGameClick: (Long) -> Unit,
     onVideoClick: (GameVideo) -> Unit,
     onEditLibraryClicked: () -> Unit,
+    onPlatformsClick: () -> Unit,
+    onTagsOverflowClick: () -> Unit,
     contentTopPadding: Dp,
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState(),
@@ -456,12 +487,12 @@ private fun GameDetailsContent(
                     GameDetailsHeader(
                         game = game,
                         contentTopPadding = contentTopPadding,
+                        onTagsOverflowClick = onTagsOverflowClick,
                         titleHandoffProgress = titleHandoffProgress,
                         titleTranslationRangePx = titleTranslationRangePx,
                     )
                 }
             }
-
             // Empty sections stay hidden so a catalog skeleton renders as a lean
             // but complete page rather than a wall of empty headers.
             if (game != null) {
@@ -490,11 +521,11 @@ private fun GameDetailsContent(
                     item(key = "facts") {
                         GameDetailsFactsRow(
                             game = game,
+                            onPlatformsClick = onPlatformsClick,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
-
                 if (game.screenshots.isNotEmpty()) {
                     item(key = "screenshots") {
                         DetailsSection(
@@ -580,6 +611,7 @@ private fun GameDetailsContent(
 private fun GameDetailsHeader(
     game: GameDetails,
     contentTopPadding: Dp,
+    onTagsOverflowClick: () -> Unit,
     modifier: Modifier = Modifier,
     titleHandoffProgress: () -> Float = { 0f },
     titleTranslationRangePx: Float = 0f,
@@ -617,7 +649,7 @@ private fun GameDetailsHeader(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Box(
                     modifier = Modifier
@@ -627,6 +659,12 @@ private fun GameDetailsHeader(
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
                 ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Image,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(48.dp),
+                    )
                     if (!game.coverUrl.isNullOrBlank()) {
                         AsyncImage(
                             model = game.coverUrl,
@@ -636,7 +674,6 @@ private fun GameDetailsHeader(
                         )
                     }
                 }
-
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -691,26 +728,49 @@ private fun GameDetailsHeader(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    val headerTags = (game.genres + game.themes)
-                        .map { formatGenreTag(it) }
-                        .distinct()
-                    if (headerTags.isNotEmpty()) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                }
+            }
+
+            val tagPreview = remember(game.genres, game.themes) {
+                formatHeaderTagPreview(game.genres, game.themes)
+            }
+            if (tagPreview.previewTags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    tagPreview.previewTags.forEach { tag ->
+                        TagChip(tag)
+                    }
+                    if (tagPreview.overflowCount > 0) {
+                        val overflowText = stringResource(R.string.details_more_count, tagPreview.overflowCount)
+                        val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
+                        val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
+                        Surface(
+                            onClick = onTagsOverflowClick,
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.semantics {
+                                contentDescription = overflowDesc
+                            },
                         ) {
-                            headerTags.forEach { tag ->
-                                TagChip(tag)
-                            }
+                            Text(
+                                text = overflowText,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
                         }
                     }
                 }
             }
-
         }
     }
 }
-
 @Composable
 private fun DetailsSection(
     title: String,
@@ -733,6 +793,7 @@ private fun DetailsSection(
 @Composable
 private fun GameDetailsFactsRow(
     game: GameDetails,
+    onPlatformsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val unknownDate = stringResource(R.string.details_date_unknown)
@@ -763,12 +824,22 @@ private fun GameDetailsFactsRow(
             )
         }
         if (game.platforms.isNotEmpty()) {
+            val platformsPreview = formatPlatformsPreview(game.platforms)
+            val isClickable = game.platforms.size > 1 || game.releaseDates.size > 1
+            val subText = if (platformsPreview.overflowCount > 0) {
+                stringResource(R.string.details_more_count, platformsPreview.overflowCount)
+            } else {
+                null
+            }
             add(
                 FactCardData(
                     testTag = "platforms",
                     icon = Icons.Filled.Devices,
                     title = stringResource(R.string.details_section_platforms),
-                    value = game.platforms.joinToString(", "),
+                    value = platformsPreview.previewText,
+                    sub = subText,
+                    isClickable = isClickable,
+                    onClick = if (isClickable) onPlatformsClick else null,
                 )
             )
         }
@@ -804,6 +875,8 @@ private fun GameDetailsFactsRow(
                     title = card.title,
                     value = card.value,
                     sub = card.sub,
+                    isClickable = card.isClickable,
+                    onClick = card.onClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("details-fact-card-${card.testTag}"),
@@ -821,6 +894,8 @@ private fun GameDetailsFactsRow(
                             title = card.title,
                             value = card.value,
                             sub = card.sub,
+                            isClickable = card.isClickable,
+                            onClick = card.onClick,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -839,8 +914,9 @@ private data class FactCardData(
     val title: String,
     val value: String,
     val sub: String? = null,
+    val isClickable: Boolean = false,
+    val onClick: (() -> Unit)? = null,
 )
-
 /** Seconds in half an hour and in an hour, for rounding beats to whole hours. */
 private const val HALF_HOUR_SECONDS = 1_800L
 private const val HOUR_SECONDS = 3_600L
@@ -855,9 +931,16 @@ private fun FactCard(
     value: String,
     sub: String? = null,
     modifier: Modifier = Modifier,
+    isClickable: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
+    val surfaceModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick, role = Role.Button)
+    } else {
+        modifier
+    }
     Surface(
-        modifier = modifier,
+        modifier = surfaceModifier,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -867,32 +950,50 @@ private fun FactCard(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (isClickable) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
             }
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             if (sub != null) {
                 Text(
                     text = sub,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (isClickable) FontWeight.Medium else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -911,39 +1012,50 @@ private fun AboutCard(
     var hasVisualOverflow by remember(summary) { mutableStateOf(false) }
     val showMoreDesc = stringResource(R.string.details_about_show_more)
     val showLessDesc = stringResource(R.string.details_about_show_less)
+    val headerInteractionSource = remember { MutableInteractionSource() }
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "aboutArrowRotation",
     )
 
     Surface(
-        modifier = modifier.animateContentSize(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-        ),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        // Header row height matches the FactCard rhythm (12dp top inset, 24dp
-        // icon); the whole row is the tap target so the arrow needs no
-        // minimum-touch-target padding that would inflate the top gap.
-        Column(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 16.dp)) {
+        Column(
+            modifier = Modifier
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                )
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(
-                        enabled = hasVisualOverflow || expanded,
-                        onClickLabel = if (expanded) showLessDesc else showMoreDesc,
-                    ) { expanded = !expanded },
+                    .then(
+                        if (hasVisualOverflow || expanded) {
+                            Modifier.clickable(
+                                interactionSource = headerInteractionSource,
+                                indication = null,
+                                onClick = { expanded = !expanded },
+                            )
+                        } else {
+                            Modifier
+                        }
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = stringResource(R.string.details_section_about),
@@ -952,14 +1064,20 @@ private fun AboutCard(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
-                if (hasVisualOverflow || expanded) {
-                    Icon(
-                        imageVector = Icons.Filled.ExpandMore,
-                        contentDescription = if (expanded) showLessDesc else showMoreDesc,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .graphicsLayer { rotationZ = arrowRotation },
-                    )
+                Box(
+                    modifier = Modifier.size(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (hasVisualOverflow || expanded) {
+                        Icon(
+                            imageVector = Icons.Filled.ExpandMore,
+                            contentDescription = if (expanded) showLessDesc else showMoreDesc,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer { rotationZ = arrowRotation },
+                        )
+                    }
                 }
             }
             Text(
@@ -970,13 +1088,15 @@ private fun AboutCard(
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { layoutResult ->
                     if (!expanded) {
-                        hasVisualOverflow = layoutResult.hasVisualOverflow
+                        hasVisualOverflow = layoutResult.hasVisualOverflow ||
+                            layoutResult.lineCount > ABOUT_COLLAPSED_LINES
                     }
                 },
             )
         }
     }
 }
+
 
 @Composable
 private fun GameDetailsErrorState(
@@ -1336,12 +1456,12 @@ private fun VideosSection(
     onVideoClick: (GameVideo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var expanded by rememberSaveable(videos.map(GameVideo::videoId)) { mutableStateOf(false) }
     val hasToggle = videos.size > VIDEOS_COLLAPSED_COUNT
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "videosArrowRotation",
@@ -1349,49 +1469,48 @@ private fun VideosSection(
 
     DetailsSection(
         title = stringResource(R.string.details_section_videos),
-        modifier = modifier
+        modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier.animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-            ),
-        ) {
+        Column {
             videos.forEachIndexed { index, video ->
-                // Hidden trailers animate in/out per-card so the reveal tracks
-                // the container height change instead of popping in a block.
-                AnimatedVisibility(
-                    visible = !hasToggle || index < VIDEOS_COLLAPSED_COUNT || expanded,
-                    enter = expandVertically(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow,
-                        )
-                    ) + fadeIn(),
-                    exit = shrinkVertically(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow,
-                        )
-                    ) + fadeOut(),
-                ) {
+                if (!hasToggle || index < VIDEOS_COLLAPSED_COUNT) {
                     GameVideoCard(
                         video = video,
                         onClick = { onVideoClick(video) },
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
+                } else {
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        ) + fadeIn(),
+                        exit = shrinkVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        ) + fadeOut(),
+                    ) {
+                        GameVideoCard(
+                            video = video,
+                            onClick = { onVideoClick(video) },
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                 }
             }
             if (hasToggle) {
                 TextButton(onClick = { expanded = !expanded }) {
                     Text(
                         text = if (expanded) {
-                            stringResource(R.string.details_about_show_less)
+                            stringResource(R.string.details_videos_show_less)
                         } else {
                             stringResource(R.string.details_videos_show_all, videos.size)
-                        }
+                        },
                     )
                     Icon(
                         imageVector = Icons.Filled.ExpandMore,

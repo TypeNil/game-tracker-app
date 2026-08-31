@@ -5,9 +5,17 @@
     "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
     "rating": 95.8,
     "releaseDateEpochSeconds": 1431993600,
-    "summary": "The Witcher: Wild Hunt is a story-driven open world RPG set in a fantasy universe.",
-    "genres": ["Role-playing (RPG)", "Adventure"],
-    "platforms": ["PC", "PlayStation 5", "Xbox Series X|S", "Nintendo Switch"]
+    "summary": "You are Geralt of Rivia, mercenary monster slayer, on the trail of the child of prophecy in a war-torn open world. The Wild Hunt expands The Witcher universe with a massive non-linear story full of meaningful choices and consequences. Explore the No Man's Land and the free city of Novigrad, sail to the Skellige Isles, and hunt legendary beasts with a combat system refined over dozens of hours. Every decision shapes alliances, romances, and the fate of entire regions.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Adventure"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S",
+      "Nintendo Switch"
+    ]
   },
   {
     "id": 119133,
@@ -15,9 +23,16 @@
     "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
     "rating": 95.2,
     "releaseDateEpochSeconds": 1645747200,
-    "summary": "Elden Ring is an action-RPG developed by FromSoftware, set in the Lands Between.",
-    "genres": ["Role-playing (RPG)", "Action"],
-    "platforms": ["PC", "PlayStation 5", "Xbox Series X|S"]
+    "summary": "Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring. A vast world where open fields with a variety of situations and huge dungeons with complex and three-dimensional designs are seamlessly connected. Travel the Lands Between on foot or atop your spectral steed, overcome colossal bosses whose shadows stretch across golden erdtrees, and forge your own legend amid demigods warring over shattered shards of the Elden Ring. Master dual-wielding, magic, and stealth in a punishing but fair combat system that rewards every hard-won lesson.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Action"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ]
   },
   {
     "id": 119171,
@@ -26,8 +41,17 @@
     "rating": 96.1,
     "releaseDateEpochSeconds": 1691020800,
     "summary": "An ancient evil has returned to Baldur's Gate, intent on devouring it from the inside out.",
-    "genres": ["Role-playing (RPG)", "Strategy", "Turn-based strategy (TBS)"],
-    "platforms": ["PC", "PlayStation 5", "Xbox Series X|S", "Mac"]
+    "genres": [
+      "Role-playing (RPG)",
+      "Strategy",
+      "Turn-based strategy (TBS)"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S",
+      "Mac"
+    ]
   },
   {
     "id": 112875,
@@ -36,8 +60,16 @@
     "rating": 93.7,
     "releaseDateEpochSeconds": 1667952000,
     "summary": "Kratos and Atreus must journey to each of the Nine Realms in search of answers.",
-    "genres": ["Action", "Adventure", "Hack and slash/Beat 'em up"],
-    "platforms": ["PlayStation 4", "PlayStation 5", "PC"]
+    "genres": [
+      "Action",
+      "Adventure",
+      "Hack and slash/Beat 'em up"
+    ],
+    "platforms": [
+      "PlayStation 4",
+      "PlayStation 5",
+      "PC"
+    ]
   },
   {
     "id": 1877,
@@ -46,8 +78,16 @@
     "rating": 87.4,
     "releaseDateEpochSeconds": 1607558400,
     "summary": "Cyberpunk 2077 is an open-world, action-adventure RPG set in Night City.",
-    "genres": ["Role-playing (RPG)", "Shooter", "Action"],
-    "platforms": ["PC", "PlayStation 5", "Xbox Series X|S"]
+    "genres": [
+      "Role-playing (RPG)",
+      "Shooter",
+      "Action"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ]
   },
   {
     "id": 119388,
@@ -56,8 +96,14 @@
     "rating": 95.5,
     "releaseDateEpochSeconds": 1683849600,
     "summary": "An epic adventure across the land and skies of Hyrule awaits in Tears of the Kingdom.",
-    "genres": ["Adventure", "Action", "Puzzle"],
-    "platforms": ["Nintendo Switch"]
+    "genres": [
+      "Adventure",
+      "Action",
+      "Puzzle"
+    ],
+    "platforms": [
+      "Nintendo Switch"
+    ]
   },
   {
     "id": 14593,
@@ -66,8 +112,17 @@
     "rating": 91.8,
     "releaseDateEpochSeconds": 1487894400,
     "summary": "Forge your own path in Hollow Knight! An epic action adventure through an insect kingdom.",
-    "genres": ["Platform", "Adventure", "Indie"],
-    "platforms": ["PC", "PlayStation 4", "Xbox One", "Nintendo Switch"]
+    "genres": [
+      "Platform",
+      "Adventure",
+      "Indie"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 4",
+      "Xbox One",
+      "Nintendo Switch"
+    ]
   },
   {
     "id": 204350,
@@ -76,8 +131,15 @@
     "rating": 92.4,
     "releaseDateEpochSeconds": 1662076800,
     "summary": "Joel is hired to smuggle 14-year-old Ellie out of a military quarantine zone.",
-    "genres": ["Shooter", "Adventure", "Action"],
-    "platforms": ["PlayStation 5", "PC"]
+    "genres": [
+      "Shooter",
+      "Adventure",
+      "Action"
+    ],
+    "platforms": [
+      "PlayStation 5",
+      "PC"
+    ]
   },
   {
     "id": 25076,
@@ -86,8 +148,16 @@
     "rating": 96.0,
     "releaseDateEpochSeconds": 1540512000,
     "summary": "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run.",
-    "genres": ["Shooter", "Role-playing (RPG)", "Adventure"],
-    "platforms": ["PC", "PlayStation 4", "Xbox One"]
+    "genres": [
+      "Shooter",
+      "Role-playing (RPG)",
+      "Adventure"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 4",
+      "Xbox One"
+    ]
   },
   {
     "id": 72,
@@ -96,7 +166,233 @@
     "rating": 94.6,
     "releaseDateEpochSeconds": 1303171200,
     "summary": "Sequel to the acclaimed Portal (2007), Portal 2 pits the protagonist against a corrupt AI.",
-    "genres": ["Shooter", "Platform", "Puzzle"],
-    "platforms": ["PC", "PlayStation 3", "Xbox 360", "Nintendo Switch"]
+    "genres": [
+      "Shooter",
+      "Platform",
+      "Puzzle"
+    ],
+    "platforms": [
+      "PC",
+      "PlayStation 3",
+      "Xbox 360",
+      "Nintendo Switch"
+    ]
+  },
+  {
+    "id": 900001,
+    "name": "Cthulhu Saves the World: Super Hyper Enhanced Championship Edition Alpha",
+    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "rating": 82.0,
+    "releaseDateEpochSeconds": 1293753600,
+    "summary": "The lord of insanity, Cthulhu, is all set to plunge the world into despair and destruction when his powers are sealed away by a mysterious sorcerer.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Indie",
+      "Adventure"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "Xbox 360",
+      "PlayStation 4",
+      "Nintendo Switch"
+    ]
+  },
+  {
+    "id": 900002,
+    "name": "Silk",
+    "coverUrl": "file:///android_asset/covers/14593.jpg",
+    "rating": 74.0,
+    "releaseDateEpochSeconds": 1568246400,
+    "summary": null,
+    "genres": [
+      "Adventure"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)"
+    ]
+  },
+  {
+    "id": 900003,
+    "name": "Grand Theft Auto VI",
+    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Grand Theft Auto VI heads to the state of Leonida, home to the neon-soaked streets of Vice City and beyond in the biggest, most immersive evolution of the Grand Theft Auto series yet.",
+    "genres": [
+      "Shooter",
+      "Adventure"
+    ],
+    "platforms": [
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ]
+  },
+  {
+    "id": 900004,
+    "name": "Retro Space Invaders 1978",
+    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": 268185600,
+    "summary": "A classic 1978 arcade game where the player defeats waves of descending aliens with a horizontally moving laser cannon to earn points.",
+    "genres": [
+      "Shooter",
+      "Arcade"
+    ],
+    "platforms": [
+      "Arcade"
+    ]
+  },
+  {
+    "id": 900005,
+    "name": "Doom",
+    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "rating": 85.0,
+    "releaseDateEpochSeconds": 755481600,
+    "summary": "The classic 1993 first-person shooter developed by id Software. In the role of a space marine, the player fights through hordes of invading demons on Mars.",
+    "genres": [
+      "Shooter"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "MS-DOS",
+      "PlayStation"
+    ]
+  },
+  {
+    "id": 900006,
+    "name": "Doom",
+    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "rating": 86.0,
+    "releaseDateEpochSeconds": 1463097600,
+    "summary": "The 2016 modern reboot of the legendary Doom franchise by id Software and Bethesda Softworks.",
+    "genres": [
+      "Shooter"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 4",
+      "Xbox One",
+      "Nintendo Switch"
+    ]
+  },
+  {
+    "id": 900007,
+    "name": "Multiplatform Sandbox Quest",
+    "coverUrl": "file:///android_asset/covers/119388.jpg",
+    "rating": 88.0,
+    "releaseDateEpochSeconds": 1321574400,
+    "summary": "An expansive sandbox quest released and maintained on sixteen different gaming platforms across three console generations.",
+    "genres": [
+      "Adventure",
+      "Simulator"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "PlayStation 4",
+      "PlayStation 3",
+      "Xbox Series X|S",
+      "Xbox One",
+      "Xbox 360",
+      "Nintendo Switch",
+      "Wii U",
+      "Nintendo 3DS",
+      "PlayStation Vita",
+      "macOS",
+      "Linux",
+      "Android",
+      "iOS",
+      "Meta Quest 3"
+    ]
+  },
+  {
+    "id": 900008,
+    "name": "Mega Studio Blockbuster Online",
+    "coverUrl": "file:///android_asset/covers/112875.jpg",
+    "rating": 79.0,
+    "releaseDateEpochSeconds": 1636070400,
+    "summary": "A large-scale multiplayer production with twelve credited development and publishing entities worldwide.",
+    "genres": [
+      "Shooter",
+      "Tactical"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ]
+  },
+  {
+    "id": 900009,
+    "name": "Mystery Indie Project",
+    "coverUrl": null,
+    "rating": 71.0,
+    "releaseDateEpochSeconds": 1704067200,
+    "summary": "An enigmatic indie title developed in secret with no promotional media, trailers, or artwork.",
+    "genres": [
+      "Indie",
+      "Puzzle"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)"
+    ]
+  },
+  {
+    "id": 900010,
+    "name": "Tag Overload: Unlimited Edition",
+    "coverUrl": "file:///android_asset/covers/204350.jpg",
+    "rating": 84.0,
+    "releaseDateEpochSeconds": 1672531200,
+    "summary": "A genre-blending masterpiece incorporating elements of almost every game mechanic and atmospheric theme known in gaming history.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Adventure",
+      "Shooter",
+      "Platform",
+      "Puzzle",
+      "Strategy",
+      "Hack and slash/Beat 'em up",
+      "Simulator",
+      "Tactical",
+      "Indie"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ]
+  },
+  {
+    "id": 900011,
+    "name": "Endless Lore Chronicles: The Ancient Prophecy of Forgotten Realms",
+    "coverUrl": "file:///android_asset/covers/119171.jpg",
+    "rating": 91.0,
+    "releaseDateEpochSeconds": 1690848000,
+    "summary": "In the primordial age of the world before the stars were counted, three elder dragons fashioned the world from stardust and sacred fire. For millennia, the kingdoms of man, elf, and dwarf prospered under the benevolent gaze of the Celestial Guardians.\n\nYet when the Shadow of the Abyssal Veil crept across the northern mountains, the ancient pact was shattered. Brother turned upon brother, and the great spires of Eldoria crumbled into ash and sorrow. A chosen hero must now arise from the desolate wastes of the Outer Rim, bearing the Mark of the Sunweaver and wielding the Blade of Eternal Dawns.\n\nJourney across vast continents spanning frozen tundras, sun-scorched deserts, and subterranean dwarven citadels. Meet over three hundred fully voiced companions, each with their own branching storylines, moral dilemmas, and hidden loyalties. Engage in tactical turn-based combat where every positioning choice, elemental synergy, and environmental hazard can turn the tide of battle.\n\nCraft legendary armaments using forgotten alchemical recipes, tame mythical beasts to traverse uncharted mountain ranges, and make world-altering political decisions that determine the fate of entire empires. The prophecy awaits its fulfillment, but whether in triumph or cataclysm remains entirely in your hands.",
+    "genres": [
+      "Role-playing (RPG)",
+      "Adventure",
+      "Strategy"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)",
+      "PlayStation 5",
+      "Xbox Series X|S"
+    ]
+  },
+  {
+    "id": 900012,
+    "name": "Competitive Arena Pro",
+    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "rating": 42.0,
+    "releaseDateEpochSeconds": 1640995200,
+    "summary": "A purely multiplayer competitive arena shooter with no campaign or story mode.",
+    "genres": [
+      "Shooter",
+      "Sport"
+    ],
+    "platforms": [
+      "PC (Microsoft Windows)"
+    ]
   }
 ]
