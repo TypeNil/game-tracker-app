@@ -1,4 +1,7 @@
 package io.github.typenil.gametracker.feature.details
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
@@ -89,6 +92,7 @@ class GameDetailsScreenTest {
     private fun setContent(
         uiState: GameDetailsUiState,
         fontScale: Float = 1f,
+        viewportWidth: Dp? = null,
         onGameClick: (Long) -> Unit = {},
     ) {
         composeTestRule.setContent {
@@ -107,6 +111,9 @@ class GameDetailsScreenTest {
                         onRefresh = {},
                         onRetry = {},
                         onUserMessageShown = {},
+                        modifier = viewportWidth
+                            ?.let { Modifier.width(it) }
+                            ?: Modifier,
                     )
                 }
             }
@@ -651,8 +658,8 @@ class GameDetailsScreenTest {
         setContent(
             uiState = GameDetailsUiState(game = game, isHydrated = true),
             fontScale = 2f,
+            viewportWidth = 320.dp,
         )
-
         val tagNode = composeTestRule.onNodeWithText("Hack & Slash / Beat 'em up", useUnmergedTree = true)
         tagNode.assertIsDisplayed()
 
