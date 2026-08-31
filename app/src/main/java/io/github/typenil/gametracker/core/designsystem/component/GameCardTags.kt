@@ -7,8 +7,18 @@ fun selectGenreTags(genres: List<String>): List<String> =
     cleanTags(genres).take(MAX_CARD_GENRES)
 
 /** Formats verbose genre names into compact chip labels. */
-fun formatGenreTag(tag: String): String =
-    if (tag == "Role-playing (RPG)") "RPG" else tag
+fun formatGenreTag(tag: String): String = when (tag.trim()) {
+    "Role-playing (RPG)" -> "RPG"
+    "Hack and slash/Beat 'em up" -> "Hack & Slash"
+    "Turn-based strategy (TBS)" -> "TBS"
+    "Real-time strategy (RTS)" -> "RTS"
+    "Massively Multiplayer Online (MMO)" -> "MMO"
+    "Card & Board Game" -> "Card Game"
+    "Visual Novel" -> "Visual Novel"
+    "Point-and-click" -> "Point & Click"
+    "Quiz/Trivia" -> "Trivia"
+    else -> tag.trim()
+}
 
 private fun cleanTags(tags: List<String>): List<String> =
-    tags.map { formatGenreTag(it.trim()) }.filter { it.isNotEmpty() }.distinct()
+    tags.map { formatGenreTag(it) }.filter { it.isNotEmpty() }.distinct()
