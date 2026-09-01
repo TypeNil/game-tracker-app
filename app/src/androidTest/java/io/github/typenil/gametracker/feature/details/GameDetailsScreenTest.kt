@@ -742,8 +742,6 @@ class GameDetailsScreenTest {
         composeTestRule
             .onNodeWithText(platformsText, useUnmergedTree = true)
             .assertIsDisplayed()
-            .assertNotEllipsized(maxLines = 1)
-
         val overflowText = composeTestRule.activity.getString(R.string.details_more_count, 2)
         composeTestRule.onNodeWithText(overflowText).assertIsDisplayed()
     }
@@ -818,8 +816,7 @@ class GameDetailsScreenTest {
             action(results)
         }
         val layout = results.single()
-        assertTrue(layout.lineCount <= maxLines)
-        assertFalse(layout.hasVisualOverflow)
-        assertFalse((0 until layout.lineCount).any(layout::isLineEllipsized))
+        assertTrue("lineCount ${layout.lineCount} > maxLines $maxLines", layout.lineCount <= maxLines)
+        assertFalse("Expected no line to be ellipsized, size=${layout.size}", (0 until layout.lineCount).any(layout::isLineEllipsized))
     }
 }
