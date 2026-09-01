@@ -14,7 +14,7 @@ object IgdbQueryBuilder {
     const val DEFAULT_FIELDS = "name, rating, cover.url, cover.image_id, first_release_date, summary, genres.name, platforms.name"
 
     fun buildSearch(query: String, limit: Int = 20, offset: Int = 0): String {
-        return SearchRequest(query, limit, offset).toApicalypseQuery()
+        return SearchRequest(rawQuery = query, limitParam = limit, offsetParam = offset).toApicalypseQuery()
     }
 
     fun buildTopRated(limit: Int = 20, offset: Int = 0): String {

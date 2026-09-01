@@ -29,10 +29,54 @@
     <string name="search_hint">Search games by title…</string>
     <string name="search_clear_desc">Clear search query</string>
     <string name="search_idle_title">Search Video Games</string>
-    <string name="search_idle_subtitle">Type a title above to search through the IGDB catalog</string>
+    <string name="search_idle_subtitle">Type a title above or browse with filters below</string>
     <string name="search_empty_results_format">No games found for \"%1$s\"</string>
     <string name="search_empty_action">Clear search</string>
     <string name="search_loading_games">Searching games…</string>
+
+    <!-- Search Sorting -->
+    <string name="search_sort_relevance">Relevance</string>
+    <string name="search_sort_rating_desc">Highest Rated</string>
+    <string name="search_sort_date_desc">Newest First</string>
+    <string name="search_sort_date_asc">Oldest First</string>
+    <string name="search_sort_name_asc">Title (A–Z)</string>
+
+    <!-- Search Filter Options -->
+    <string name="search_filter_year_all">All Time</string>
+    <string name="search_filter_year_this_year">This Year</string>
+    <string name="search_filter_year_last_year">Last Year</string>
+    <string name="search_filter_year_last_3">Last 3 Years</string>
+    <string name="search_filter_year_2010s">2010s</string>
+    <string name="search_filter_year_retro">Retro (&lt;2010)</string>
+
+    <string name="search_filter_rating_any">Any Rating</string>
+    <string name="search_filter_rating_70">70+ Good</string>
+    <string name="search_filter_rating_80">80+ Great</string>
+    <string name="search_filter_rating_90">90+ Masterpiece</string>
+
+    <!-- Search UI & Accessibility -->
+    <string name="search_filters_title">Filters</string>
+    <string name="search_filters_count_format">Filters (%1$d)</string>
+    <string name="search_filters_button_desc">Open search filters</string>
+    <string name="search_sort_button_desc">Change sorting, current: %1$s</string>
+    <string name="search_filter_reset">Reset</string>
+    <string name="search_filter_reset_all">Reset all filters</string>
+    <string name="search_filter_apply">Apply</string>
+    <string name="search_filter_section_sort">Sort By</string>
+    <string name="search_filter_section_genres">Genres</string>
+    <string name="search_filter_section_platforms">Platforms</string>
+    <string name="search_filter_section_year">Release Year</string>
+    <string name="search_filter_section_rating">Minimum Rating</string>
+    <string name="search_remove_filter_desc">Remove %1$s filter</string>
+    <string name="search_results_count_format">Found %1$d games</string>
+    <string name="search_results_count_single">Found 1 game</string>
+    <string name="search_recent_title">Recent Searches</string>
+    <string name="search_recent_clear_all">Clear all</string>
+    <string name="search_recent_remove_desc">Remove %1$s from recent searches</string>
+    <string name="search_presets_title">Quick Presets</string>
+    <string name="search_empty_filters_title">No games match selected filters</string>
+    <string name="search_empty_filters_subtitle">Try clearing some filters or changing your criteria</string>
+    <string name="search_empty_filters_action">Reset filters</string>
     <string name="details_title">Game Details</string>
     <string name="details_date_unknown">TBA</string>
     <string name="error_not_found">Game not found.</string>

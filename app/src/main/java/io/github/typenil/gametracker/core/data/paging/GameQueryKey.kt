@@ -19,20 +19,40 @@ sealed interface GameQueryKey {
 
 
     data class Search(
-        val query: String,
+        val query: String = "",
+        val genres: List<String> = emptyList(),
+        val platforms: List<String> = emptyList(),
+        val minRating: Int? = null,
+        val minYear: Int? = null,
+        val maxYear: Int? = null,
         val sort: String? = null,
-        val platform: Int? = null
     ) : GameQueryKey {
         override val key: String = buildString {
             append(KEY_PREFIX_SEARCH)
             append(normalize(query))
-            if (!sort.isNullOrBlank()) {
+            if (genres.isNotEmpty()) {
+                append("|genres=")
+                append(genres.map(::normalize).sorted().joinToString(","))
+            }
+            if (platforms.isNotEmpty()) {
+                append("|platforms=")
+                append(platforms.map(::normalize).sorted().joinToString(","))
+            }
+            if (minRating != null) {
+                append("|minRating=")
+                append(minRating)
+            }
+            if (minYear != null) {
+                append("|minYear=")
+                append(minYear)
+            }
+            if (maxYear != null) {
+                append("|maxYear=")
+                append(maxYear)
+            }
+            if (query.isBlank() && !sort.isNullOrBlank()) {
                 append("|sort=")
                 append(sort.trim().lowercase(Locale.ROOT))
-            }
-            if (platform != null) {
-                append("|platform=")
-                append(platform)
             }
         }
     }
@@ -62,5 +82,18 @@ sealed interface GameQueryKey {
          * Returns canonical search query key for raw text input.
          */
         fun search(rawQuery: String): String = Search(rawQuery).key
+
+        /**
+         * Maps domain [io.github.typenil.gametracker.core.model.GameSearchQuery] to canonical [Search] query key.
+         */
+        fun fromDomain(domainQuery: io.github.typenil.gametracker.core.model.GameSearchQuery): Search = Search(
+            query = domainQuery.query,
+            genres = domainQuery.genres,
+            platforms = domainQuery.platforms,
+            minRating = domainQuery.minRating,
+            minYear = domainQuery.minYear,
+            maxYear = domainQuery.maxYear,
+            sort = domainQuery.sort,
+        )
     }
 }

@@ -11,14 +11,15 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.dao.NotificationEventDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
+import io.github.typenil.gametracker.core.database.dao.SearchHistoryDao
 import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.entity.NotificationEventEntity
 import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
+import io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
-
 /**
  * Main Room Database for GameTracker application (SSOT).
  */
@@ -30,9 +31,10 @@ import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
         RemoteKeyEntity::class,
         LibraryEntryEntity::class,
         GameDetailsEntity::class,
-        NotificationEventEntity::class
+        NotificationEventEntity::class,
+        SearchHistoryEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(GameTrackerTypeConverters::class, GameDetailsColumnConverters::class)
@@ -41,9 +43,9 @@ abstract class GameTrackerDatabase : RoomDatabase() {
     abstract fun gameDao(): GameDao
 
     abstract fun gameDetailsDao(): GameDetailsDao
-
     abstract fun searchDao(): SearchDao
 
+    abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun remoteKeyDao(): RemoteKeyDao
 
     abstract fun libraryDao(): LibraryDao

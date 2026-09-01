@@ -31,12 +31,32 @@ class GameQueryKeyTest {
     }
 
     @Test
-    fun `Search includes sort and platform when provided`() {
-        val search = GameQueryKey.Search(
+    fun `Search includes filters in canonical key and ignores sort when query is present`() {
+        val searchWithQuery = GameQueryKey.Search(
             query = "Witcher",
-            sort = "RATING_DESC",
-            platform = 48
+            genres = listOf("Role-playing (RPG)", "Adventure"),
+            platforms = listOf("PC (Microsoft Windows)"),
+            minRating = 80,
+            minYear = 2020,
+            maxYear = 2024,
+            sort = "rating",
         )
-        assertEquals("q:witcher|sort=rating_desc|platform=48", search.key)
+        assertEquals(
+            "q:witcher|genres=adventure,role-playing (rpg)|platforms=pc (microsoft windows)|minRating=80|minYear=2020|maxYear=2024",
+            searchWithQuery.key,
+        )
+    }
+
+    @Test
+    fun `Search includes sort in canonical key when query is blank`() {
+        val catalogSearch = GameQueryKey.Search(
+            query = "",
+            genres = listOf("RPG"),
+            sort = "rating",
+        )
+        assertEquals(
+            "q:|genres=rpg|sort=rating",
+            catalogSearch.key,
+        )
     }
 }

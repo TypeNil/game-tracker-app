@@ -52,8 +52,8 @@ class GameRepositoryTest {
     private val gameDao: GameDao = mockk(relaxed = true)
     private val gameDetailsDao: GameDetailsDao = mockk(relaxed = true)
     private val searchDao: SearchDao = mockk(relaxed = true)
+    private val searchHistoryDao: io.github.typenil.gametracker.core.database.dao.SearchHistoryDao = mockk(relaxed = true)
     private val remoteKeyDao: RemoteKeyDao = mockk(relaxed = true)
-
     private val passThroughTransactionRunner = object : TransactionRunner {
         override suspend fun <T> invoke(block: suspend () -> T): T = block()
     }
@@ -148,6 +148,7 @@ class GameRepositoryTest {
             gameDao = gameDao,
             gameDetailsDao = gameDetailsDao,
             searchDao = searchDao,
+            searchHistoryDao = searchHistoryDao,
             remoteKeyDao = remoteKeyDao,
             transactionRunner = passThroughTransactionRunner,
             ioDispatcher = testDispatcher,
@@ -378,7 +379,7 @@ class GameRepositoryTest {
     fun `searchGames saves query with prefix and does not collide with discover key`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
-        coEvery { remoteDataSource.searchGames("discover:top-rated", 20, 0) } returns listOf(
+        coEvery { remoteDataSource.searchGames(query = "discover:top-rated", limit = 20, offset = 0) } returns listOf(
             sampleGameDto.copy(id = 101L, name = "Discovered Game")
         )
 
@@ -411,8 +412,7 @@ class GameRepositoryTest {
             resultCount = 1
         )
         coEvery { searchDao.getSearchQuery("q:witcher") } returns existingQueryEntity
-        coEvery { remoteDataSource.searchGames("witcher", 20, 0) } returns listOf(sampleGameDto)
-
+        coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)
         val result = repository.searchGames("witcher", 20, 0)
 
         assertTrue(result is AppResult.Success)
@@ -428,8 +428,7 @@ class GameRepositoryTest {
         val responseBody = """{"code":"RATE_LIMIT_EXCEEDED","message":"Too many requests"}"""
             .toResponseBody("application/json".toMediaType())
         val httpException = HttpException(Response.error<String>(429, responseBody))
-        coEvery { remoteDataSource.searchGames(any(), any(), any()) } throws httpException
-
+        coEvery { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws httpException
         val result = repository.searchGames("witcher", 20, 0)
 
         assertTrue(result is AppResult.Error)
@@ -600,5 +599,49 @@ class GameRepositoryTest {
         }
         coVerify(exactly = 1) { gameDao.deleteStaleUnsavedGames(500_000L) }
         coVerify(exactly = 1) { gameDetailsDao.deleteStaleDetails(500_000L) }
+    }
+
+    @Test
+    fun `searchGames records user search history on non-blank query`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { remoteDataSource.searchGames(query = "Elden Ring", limit = 20, offset = 0) } returns listOf(sampleGameDto)
+
+        val result = repository.searchGames("Elden Ring", 20, 0)
+        assertTrue(result is AppResult.Success)
+
+        val historySlot = slot<io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity>()
+        coVerify(exactly = 1) { searchHistoryDao.upsertSearchHistory(capture(historySlot)) }
+        assertEquals("elden ring", historySlot.captured.normalizedQuery)
+        assertEquals("Elden Ring", historySlot.captured.displayQuery)
+    }
+
+    @Test
+    fun `searchGames does not record user search history on blank query with filters`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val query = io.github.typenil.gametracker.core.model.GameSearchQuery(
+            query = "",
+            genres = listOf("RPG"),
+        )
+        coEvery { remoteDataSource.searchGames(query = "", genres = listOf("RPG"), limit = 20, offset = 0) } returns listOf(sampleGameDto)
+
+        val result = repository.searchGames(query, 20, 0)
+        assertTrue(result is AppResult.Success)
+
+        coVerify(exactly = 0) { searchHistoryDao.upsertSearchHistory(any()) }
+    }
+
+    @Test
+    fun `getRecentSearchQueriesFlow observes searchHistoryDao`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        every { searchHistoryDao.observeRecentSearchQueries(10) } returns flowOf(listOf("Zelda", "Witcher"))
+
+        repository.getRecentSearchQueriesFlow(10).test {
+            val history = awaitItem()
+            assertEquals(listOf("Zelda", "Witcher"), history)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

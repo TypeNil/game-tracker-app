@@ -81,26 +81,150 @@ object SearchQueryValidator {
 }
 
 /**
- * Каноническая модель запроса поиска игр.
+ * Разрешенные поля сортировки для запросов поиска и фильтрации каталога.
+ */
+enum class SearchSortField(val igdbField: String, val direction: String) {
+    RELEVANCE("", ""),
+    RATING("rating", "desc"),
+    FIRST_RELEASE_DATE_DESC("first_release_date", "desc"),
+    FIRST_RELEASE_DATE_ASC("first_release_date", "asc"),
+    NAME_ASC("name", "asc");
+
+    companion object {
+        fun fromParam(raw: String?): SearchSortField = when (raw?.lowercase()?.trim()) {
+            null, "", "relevance" -> RELEVANCE
+            "rating", "rating_desc" -> RATING
+            "first_release_date", "first_release_date_desc" -> FIRST_RELEASE_DATE_DESC
+            "first_release_date_asc" -> FIRST_RELEASE_DATE_ASC
+            "name", "name_asc" -> NAME_ASC
+            else -> throw IllegalArgumentException("Query parameter 'sort' has an unsupported value '$raw'")
+        }
+    }
+}
+
+/**
+ * Каноническая модель запроса поиска и фильтрации игр.
  */
 class SearchRequest(
     rawQuery: String?,
+    genresParam: String? = null,
+    platformsParam: String? = null,
+    minRatingParam: Int? = null,
+    minYearParam: Int? = null,
+    maxYearParam: Int? = null,
+    sortParam: String? = null,
     limitParam: Int? = null,
-    offsetParam: Int? = null
+    offsetParam: Int? = null,
 ) {
-    val canonicalQuery: String = SearchQueryValidator.validateAndNormalize(rawQuery)
-    val limit: Int = (limitParam ?: 20).coerceIn(1, 30)
-    val offset: Int = (offsetParam ?: 0).coerceIn(0, 1000)
+    val canonicalQuery: String? = rawQuery?.takeIf { it.isNotBlank() }?.let {
+        SearchQueryValidator.validateAndNormalize(it)
+    }
+    val genres: List<String> = parseTags(genresParam, "genres", MAX_GENRES)
+    val platforms: List<String> = parseTags(platformsParam, "platforms", MAX_PLATFORMS)
+    val minRating: Int? = minRatingParam?.coerceIn(0, 100)
+    val minYear: Int? = minYearParam?.also { require(it in MIN_YEAR..MAX_YEAR) { "minYear must be between $MIN_YEAR and $MAX_YEAR" } }
+    val maxYear: Int? = maxYearParam?.also { require(it in MIN_YEAR..MAX_YEAR) { "maxYear must be between $MIN_YEAR and $MAX_YEAR" } }
+    val sort: SearchSortField = SearchSortField.fromParam(sortParam)
+    val limit: Int = (limitParam ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
+    val offset: Int = (offsetParam ?: 0).coerceIn(0, MAX_OFFSET)
 
-    val cacheKey: String = "search_${canonicalQuery}_${limit}_${offset}"
+    val hasFilters: Boolean = genres.isNotEmpty() || platforms.isNotEmpty() ||
+        minRating != null || minYear != null || maxYear != null
 
-    fun toApicalypseQuery(): String {
-        val builder = StringBuilder(QUERY_FIELDS)
-        builder.append("search \"$canonicalQuery\";\n")
-        builder.append("where cover != null;\n")
-        builder.append("limit $limit;\n")
-        builder.append("offset $offset;")
-        return builder.toString()
+    init {
+        if (minYear != null && maxYear != null) {
+            require(minYear <= maxYear) { "minYear cannot be greater than maxYear" }
+        }
+        require(canonicalQuery != null || hasFilters) {
+            "Search requires 'q' or at least one filter"
+        }
+    }
+
+    val cacheKey: String = buildString {
+        append("search_")
+        append(canonicalQuery.orEmpty())
+        append('|')
+        append(genres.sorted().joinToString(","))
+        append('|')
+        append(platforms.sorted().joinToString(","))
+        append('|')
+        append(minRating ?: "")
+        append('|')
+        append(minYear ?: "")
+        append('|')
+        append(maxYear ?: "")
+        append('|')
+        append(sort.name)
+        append('|')
+        append(limit)
+        append('|')
+        append(offset)
+    }
+
+    fun toApicalypseQuery(): String = buildString {
+        append(QUERY_FIELDS)
+        canonicalQuery?.let { append("search \"$it\";\n") }
+        append("where ")
+        val whereClauses = buildList {
+            add("cover != null")
+            if (genres.isNotEmpty()) {
+                add("genres.name = ${quotedList(genres)}")
+            }
+            if (platforms.isNotEmpty()) {
+                add("platforms.name = ${quotedList(platforms)}")
+            }
+            if (minRating != null) {
+                add("rating >= $minRating")
+            }
+            if (minYear != null) {
+                val startEpoch = java.time.Year.of(minYear)
+                    .atDay(1)
+                    .atStartOfDay(java.time.ZoneOffset.UTC)
+                    .toEpochSecond()
+                add("first_release_date >= $startEpoch")
+            }
+            if (maxYear != null) {
+                val endEpoch = java.time.Year.of(maxYear)
+                    .atMonth(12)
+                    .atEndOfMonth()
+                    .atTime(23, 59, 59)
+                    .toEpochSecond(java.time.ZoneOffset.UTC)
+                add("first_release_date <= $endEpoch")
+            }
+        }
+        append(whereClauses.joinToString(" & "))
+        append(";\n")
+        if (canonicalQuery == null && sort != SearchSortField.RELEVANCE) {
+            append("sort ${sort.igdbField} ${sort.direction};\n")
+        }
+        append("limit $limit;\n")
+        append("offset $offset;")
+    }
+
+    companion object {
+        const val DEFAULT_LIMIT = 20
+        const val MAX_LIMIT = 30
+        const val MAX_OFFSET = 1000
+        const val MAX_GENRES = 10
+        const val MAX_PLATFORMS = 25
+        const val MIN_YEAR = 1970
+        const val MAX_YEAR = 2100
+
+        private fun parseTags(raw: String?, label: String, max: Int): List<String> {
+            if (raw.isNullOrBlank()) return emptyList()
+            val tags = raw.split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map(TagNameValidator::validate)
+                .distinct()
+            if (tags.size > max) {
+                throw IllegalArgumentException("Query parameter '$label' accepts at most $max values")
+            }
+            return tags
+        }
+
+        private fun quotedList(values: List<String>): String =
+            values.joinToString(prefix = "(", postfix = ")") { "\"$it\"" }
     }
 }
 

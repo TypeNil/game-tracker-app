@@ -333,4 +333,43 @@ class FakeBffDataSourceTest {
         assertEquals(2, page.nextOffset)
         assertTrue(!page.endReached)
     }
+
+    @Test
+    fun `searchGames filters mock games by query text`() = runTest {
+        val results = fakeDataSource.searchGames(query = "Witcher", limit = 10, offset = 0)
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { game ->
+            game.name.contains("Witcher", ignoreCase = true) ||
+                game.genres.any { g -> g.contains("Witcher", ignoreCase = true) }
+        })
+    }
+
+    @Test
+    fun `searchGames with filters only applies genre and rating filters and sort`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            genres = listOf("Role-playing (RPG)"),
+            minRating = 90,
+            sort = "rating_desc",
+            limit = 10,
+            offset = 0,
+        )
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { (it.rating ?: 0.0) >= 90.0 })
+        assertTrue(results.all { it.genres.contains("Role-playing (RPG)") })
+        // Verify sorted by rating desc
+        for (i in 0 until results.size - 1) {
+            assertTrue((results[i].rating ?: 0.0) >= (results[i + 1].rating ?: 0.0))
+        }
+    }
+
+    @Test
+    fun `searchGames rejects blank query without any filters`() = runTest {
+        try {
+            fakeDataSource.searchGames(query = "   ", limit = 10, offset = 0)
+            fail("Expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+            // Expected
+        }
+    }
 }

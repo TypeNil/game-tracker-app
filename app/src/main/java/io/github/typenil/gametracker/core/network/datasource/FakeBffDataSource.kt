@@ -102,21 +102,63 @@ class FakeBffDataSource @Inject constructor(
     }
 
 
-    override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
-        if (query.isBlank()) {
-            throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
+    override suspend fun searchGames(
+        query: String?,
+        genres: List<String>,
+        platforms: List<String>,
+        minRating: Int?,
+        minYear: Int?,
+        maxYear: Int?,
+        sort: String?,
+        limit: Int,
+        offset: Int,
+    ): List<GameDto> {
+        val trimmedQuery = query?.trim()?.takeIf { it.isNotEmpty() }
+        val hasFilters = genres.isNotEmpty() || platforms.isNotEmpty() ||
+            minRating != null || minYear != null || maxYear != null
+        if (trimmedQuery == null && !hasFilters) {
+            throw IllegalArgumentException("Search requires 'q' or at least one filter")
         }
         validatePagination(limit, offset)
 
-        val trimmed = query.trim()
-        val filtered = mockGames.filter {
-            it.name.contains(trimmed, ignoreCase = true) ||
-                it.genres.any { genre -> genre.contains(trimmed, ignoreCase = true) }
+        var filtered = mockGames.filter { game ->
+            val matchesQuery = trimmedQuery == null ||
+                game.name.contains(trimmedQuery, ignoreCase = true) ||
+                game.genres.any { it.contains(trimmedQuery, ignoreCase = true) }
+            val matchesGenres = genres.isEmpty() ||
+                game.genres.any { g -> genres.any { target -> target.equals(g, ignoreCase = true) } }
+            val matchesPlatforms = platforms.isEmpty() ||
+                game.platforms.any { p ->
+                    platforms.any { target ->
+                        target.equals(p, ignoreCase = true) ||
+                            p.contains(target, ignoreCase = true) ||
+                            target.contains(p, ignoreCase = true)
+                    }
+                }
+            val matchesRating = minRating == null || (game.rating ?: 0.0) >= minRating
+            val gameYear = game.releaseDateEpochSeconds?.let {
+                java.time.Instant.ofEpochSecond(it).atOffset(java.time.ZoneOffset.UTC).year
+            }
+            val matchesMinYear = minYear == null || (gameYear != null && gameYear >= minYear)
+            val matchesMaxYear = maxYear == null || (gameYear != null && gameYear <= maxYear)
+
+            matchesQuery && matchesGenres && matchesPlatforms && matchesRating && matchesMinYear && matchesMaxYear
         }
+
+        if (trimmedQuery == null && sort != null) {
+            filtered = when (sort.lowercase()) {
+                "rating", "rating_desc" -> filtered.sortedByDescending { it.rating ?: -1.0 }
+                "first_release_date", "first_release_date_desc" ->
+                    filtered.sortedByDescending { it.releaseDateEpochSeconds ?: Long.MIN_VALUE }
+                "first_release_date_asc" -> filtered.sortedBy { it.releaseDateEpochSeconds ?: Long.MAX_VALUE }
+                "name", "name_asc" -> filtered.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
+                else -> filtered
+            }
+        }
+
         if (offset >= filtered.size) return emptyList()
         return filtered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
     }
-
     override suspend fun getGameDetails(id: Long): GameDetailsDto {
         if (id <= 0) {
             throw IllegalArgumentException("Game ID must be a positive integer")

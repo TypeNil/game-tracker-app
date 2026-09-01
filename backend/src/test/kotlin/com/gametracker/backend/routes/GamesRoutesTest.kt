@@ -35,6 +35,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.time.Duration.Companion.seconds
 
+@Suppress("LargeClass")
 class GamesRoutesTest {
 
     private val mockConfig = object : IgdbConfig {
@@ -225,6 +226,53 @@ class GamesRoutesTest {
         val games = response.body<List<GameDto>>()
         assertEquals(1, games.size)
         assertEquals("The Witcher 3: Wild Hunt", games[0].name)
+        cache.close()
+    }
+
+    @Test
+    fun `search with filters only returns matching games`() = testApplication {
+        val service = createMockService()
+        val cache = BffCache()
+
+        application {
+            testModule(service, cache)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        val response = client.get("/v1/games/search?genres=Role-playing+(RPG)&minRating=80&sort=rating_desc")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val games = response.body<List<GameDto>>()
+        assertEquals(1, games.size)
+        assertEquals("The Witcher 3: Wild Hunt", games[0].name)
+        cache.close()
+    }
+
+    @Test
+    fun `search with empty query and no filters returns 400 Bad Request`() = testApplication {
+        val service = createMockService()
+        val cache = BffCache()
+
+        application {
+            testModule(service, cache)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        val response = client.get("/v1/games/search")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+
+        val error = response.body<ErrorResponse>()
+        assertEquals("BAD_REQUEST", error.code)
         cache.close()
     }
 

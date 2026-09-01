@@ -79,16 +79,34 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
 
             get("/games/search") {
                 val query = call.request.queryParameters["q"]
+                val genres = call.request.queryParameters["genres"]
+                val platforms = call.request.queryParameters["platforms"]
+                val minRating = parseIntegerParam(call.request.queryParameters["minRating"], "minRating")
+                val minYear = parseIntegerParam(call.request.queryParameters["minYear"], "minYear")
+                val maxYear = parseIntegerParam(call.request.queryParameters["maxYear"], "maxYear")
+                val sort = call.request.queryParameters["sort"]
                 val limit = parseIntegerParam(call.request.queryParameters["limit"], "limit")
                 val offset = parseIntegerParam(call.request.queryParameters["offset"], "offset")
-                val request = SearchRequest(query, limit, offset)
+                val request = SearchRequest(
+                    rawQuery = query,
+                    genresParam = genres,
+                    platformsParam = platforms,
+                    minRatingParam = minRating,
+                    minYearParam = minYear,
+                    maxYearParam = maxYear,
+                    sortParam = sort,
+                    limitParam = limit,
+                    offsetParam = offset,
+                )
                 logger.info(
-                    "Searching games (queryLength={}, limit={}, offset={})",
-                    request.canonicalQuery.length,
+                    "Searching games (queryLength={}, hasFilters={}, limit={}, offset={})",
+                    request.canonicalQuery?.length ?: 0,
+                    request.hasFilters,
                     limit,
                     offset,
                 )
-                val games = cache.getOrPut(request.cacheKey, CachePolicy.SEARCH) {
+                val policy = if (request.canonicalQuery != null) CachePolicy.SEARCH else CachePolicy.POPULAR
+                val games = cache.getOrPut(request.cacheKey, policy) {
                     igdbService.queryGames(request.toApicalypseQuery()).mapNotNull { it.toGameDto() }
                 }
                 call.respond<List<GameDto>>(games)

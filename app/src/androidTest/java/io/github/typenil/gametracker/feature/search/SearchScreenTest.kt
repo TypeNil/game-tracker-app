@@ -266,6 +266,111 @@ class SearchScreenTest {
     }
 
     @Test
+    fun filterBar_rendersActiveFilterChips_andForwardsRemovals() {
+        var genreRemoved = false
+        val filters = SearchFilters(
+            genres = setOf("Role-playing (RPG)"),
+            platforms = setOf(io.github.typenil.gametracker.core.designsystem.component.PlatformFamily.PC),
+            minRating = MinRatingFilter.R80,
+            releaseYear = ReleaseYearFilter.THIS_YEAR,
+            sort = SearchSortOption.RATING_DESC,
+        )
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(
+                    query = "",
+                    filters = filters,
+                    result = SearchResultUiState.Content(sampleGames),
+                ),
+                onQueryChange = {},
+                onClearQuery = {},
+                onRetry = {},
+                onGameClick = {},
+                onBackClick = {},
+                onRemoveGenre = { genreRemoved = true },
+            )
+        }
+
+        // Active count format in filter button: Filters (4)
+        val context = composeTestRule.activity
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filters_count_format, 4)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_sort_rating_desc)).assertIsDisplayed()
+        composeTestRule.onNodeWithText("RPG").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.platform_pc)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filter_year_this_year)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filter_rating_80)).assertIsDisplayed()
+
+        // Click remove RPG filter
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.search_remove_filter_desc, "RPG")).performClick()
+        assertTrue(genreRemoved)
+    }
+
+    @Test
+    fun idleState_rendersRecentSearchesAndPresets() {
+        var selectedQuery = ""
+        var quickPresetGenre: String? = null
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(
+                    query = "",
+                    recentQueries = listOf("Elden Ring", "Cyberpunk"),
+                    result = SearchResultUiState.Idle,
+                ),
+                onQueryChange = {},
+                onClearQuery = {},
+                onRetry = {},
+                onGameClick = {},
+                onBackClick = {},
+                onSelectRecentQuery = { selectedQuery = it },
+                onQuickPresetSelected = { genre, _ -> quickPresetGenre = genre },
+            )
+        }
+
+        val context = composeTestRule.activity
+        composeTestRule.onNodeWithText(context.getString(R.string.search_presets_title)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_recent_title)).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Elden Ring").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cyberpunk").assertIsDisplayed()
+
+        // Click recent query
+        composeTestRule.onNodeWithText("Elden Ring").performClick()
+        assertEquals("Elden Ring", selectedQuery)
+
+        // Click quick preset
+        composeTestRule.onNodeWithText("RPG").performClick()
+        assertEquals("Role-playing (RPG)", quickPresetGenre)
+    }
+
+    @Test
+    fun emptyStateWithConstraints_rendersFilterEmptyMessageAndResetAction() {
+        val context = composeTestRule.activity
+        var resetClicked = false
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(
+                    query = "",
+                    filters = SearchFilters(genres = setOf("Action")),
+                    result = SearchResultUiState.Empty(query = "", hasConstraints = true),
+                ),
+                onQueryChange = {},
+                onClearQuery = {},
+                onRetry = {},
+                onGameClick = {},
+                onBackClick = {},
+                onResetFilters = { resetClicked = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText(context.getString(R.string.search_empty_filters_title)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_empty_filters_subtitle)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_empty_filters_action)).performClick()
+        assertTrue(resetClicked)
+    }
+
+    @Test
     fun searchRoute_typingQuery_displaysLoading_thenDisplaysResultGames() {
         val fakeRepository = FakeDeferredGameRepository()
         val savedStateHandle = SavedStateHandle()
@@ -348,20 +453,22 @@ class SearchScreenTest {
             limit: Int,
         ) = AppResult.Success(emptyList<io.github.typenil.gametracker.core.model.RecommendationCandidate>())
 
+        override fun getSearchResultsFlow(query: io.github.typenil.gametracker.core.model.GameSearchQuery): Flow<List<Game>> = searchFlow
 
-        override fun getSearchResultsFlow(query: String): Flow<List<Game>> = searchFlow
-
-        override fun getPagedSearchResults(query: String, pageSize: Int): Flow<PagingData<Game>> {
+        override fun getPagedSearchResults(query: io.github.typenil.gametracker.core.model.GameSearchQuery, pageSize: Int): Flow<PagingData<Game>> {
             return flowOf(PagingData.empty())
         }
 
-        override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<Unit> {
-            capturedQuery = query
+        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int, offset: Int): AppResult<Unit> {
+            capturedQuery = query.query
             capturedLimit = limit
             capturedOffset = offset
             return deferredResult.await()
         }
 
+        override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> = flowOf(emptyList())
+        override suspend fun deleteSearchQuery(query: String): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun clearSearchHistory(): AppResult<Unit> = AppResult.Success(Unit)
         override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> = flowOf(null)
 
         override fun isGameDetailsHydratedFlow(id: Long): Flow<Boolean> = flowOf(false)

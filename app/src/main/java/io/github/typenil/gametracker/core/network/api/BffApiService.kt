@@ -32,11 +32,16 @@ interface BffApiService {
 
     @GET("v1/games/search")
     suspend fun searchGames(
-        @Query("q") query: String,
+        @Query("q") query: String? = null,
+        @Query("genres") genres: String? = null,
+        @Query("platforms") platforms: String? = null,
+        @Query("minRating") minRating: Int? = null,
+        @Query("minYear") minYear: Int? = null,
+        @Query("maxYear") maxYear: Int? = null,
+        @Query("sort") sort: String? = null,
         @Query("limit") limit: Int? = null,
-        @Query("offset") offset: Int? = null
+        @Query("offset") offset: Int? = null,
     ): List<GameDto>
-
     @GET("v1/games/{id}")
     suspend fun getGameDetails(
         @Path("id") id: Long

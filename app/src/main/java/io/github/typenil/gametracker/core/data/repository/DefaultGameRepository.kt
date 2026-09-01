@@ -14,9 +14,12 @@ import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
+import io.github.typenil.gametracker.core.database.dao.SearchHistoryDao
 import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
+import io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
+import io.github.typenil.gametracker.core.model.GameSearchQuery
 import io.github.typenil.gametracker.core.database.mapper.toDomain
 import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
@@ -46,18 +49,19 @@ class DefaultGameRepository internal constructor(
     private val gameDao: GameDao,
     private val gameDetailsDao: GameDetailsDao,
     private val searchDao: SearchDao,
+    private val searchHistoryDao: SearchHistoryDao,
     private val remoteKeyDao: RemoteKeyDao,
     private val transactionRunner: TransactionRunner,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     private val nowEpochSeconds: () -> Long
 ) : GameRepository {
-
     @Inject
     constructor(
         remoteDataSource: BffRemoteDataSource,
         gameDao: GameDao,
         gameDetailsDao: GameDetailsDao,
         searchDao: SearchDao,
+        searchHistoryDao: SearchHistoryDao,
         remoteKeyDao: RemoteKeyDao,
         transactionRunner: TransactionRunner,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
@@ -66,6 +70,7 @@ class DefaultGameRepository internal constructor(
         gameDao = gameDao,
         gameDetailsDao = gameDetailsDao,
         searchDao = searchDao,
+        searchHistoryDao = searchHistoryDao,
         remoteKeyDao = remoteKeyDao,
         transactionRunner = transactionRunner,
         ioDispatcher = ioDispatcher,
@@ -315,30 +320,42 @@ class DefaultGameRepository internal constructor(
     }
 
 
-    override fun getSearchResultsFlow(query: String): Flow<List<Game>> {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) {
+    override fun getSearchResultsFlow(query: GameSearchQuery): Flow<List<Game>> {
+        if (!query.shouldSearch) {
             return flowOf(emptyList())
         }
-        val cacheKey = GameQueryKey.search(trimmed)
+        val cacheKey = GameQueryKey.fromDomain(query).key
         return searchDao.getSearchResultsFlow(cacheKey)
             .map { it.toDomain() }
             .flowOn(ioDispatcher)
     }
 
     @OptIn(ExperimentalPagingApi::class)
-    override fun getPagedSearchResults(query: String, pageSize: Int): Flow<PagingData<Game>> {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) {
+    override fun getPagedSearchResults(
+        query: GameSearchQuery,
+        pageSize: Int,
+    ): Flow<PagingData<Game>> {
+        if (!query.shouldSearch) {
             return flowOf(PagingData.empty())
         }
         val safePageSize = pageSize.coerceIn(1, 30)
-        val queryKey = GameQueryKey.search(trimmed)
+        val queryKey = GameQueryKey.fromDomain(query).key
+        val ttl = if (query.query.isBlank()) GameQueryKey.DISCOVER_TTL_SECONDS else GameQueryKey.SEARCH_TTL_SECONDS
         val mediator = GamesRemoteMediator(
             queryKey = queryKey,
-            ttlSeconds = GameQueryKey.SEARCH_TTL_SECONDS,
+            ttlSeconds = ttl,
             fetcher = { limit, offset ->
-                remoteDataSource.searchGames(query = trimmed, limit = limit, offset = offset).toDomain()
+                remoteDataSource.searchGames(
+                    query = query.query,
+                    genres = query.genres,
+                    platforms = query.platforms,
+                    minRating = query.minRating,
+                    minYear = query.minYear,
+                    maxYear = query.maxYear,
+                    sort = query.sort,
+                    limit = limit,
+                    offset = offset,
+                ).toDomain()
             },
             gameDao = gameDao,
             searchDao = searchDao,
@@ -359,19 +376,29 @@ class DefaultGameRepository internal constructor(
         ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
     }
 
-    override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<Unit> {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) {
+    @Suppress("LongMethod")
+    override suspend fun searchGames(
+        query: GameSearchQuery,
+        limit: Int,
+        offset: Int,
+    ): AppResult<Unit> {
+        if (!query.shouldSearch) {
             return AppResult.Success(Unit)
         }
 
         return withContext(ioDispatcher) {
             runSuspendCatching {
-                val cacheKey = GameQueryKey.search(trimmed)
+                val cacheKey = GameQueryKey.fromDomain(query).key
                 val remoteGames = remoteDataSource.searchGames(
-                    query = trimmed,
+                    query = query.query,
+                    genres = query.genres,
+                    platforms = query.platforms,
+                    minRating = query.minRating,
+                    minYear = query.minYear,
+                    maxYear = query.maxYear,
+                    sort = query.sort,
                     limit = limit,
-                    offset = offset
+                    offset = offset,
                 ).toDomain()
                 val nowSeconds = nowEpochSeconds()
                 val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
@@ -406,11 +433,48 @@ class DefaultGameRepository internal constructor(
                             lastUpdatedEpochSeconds = nowSeconds
                         )
                     )
+
+                    if (query.query.isNotBlank()) {
+                        searchHistoryDao.upsertSearchHistory(
+                            SearchHistoryEntity(
+                                normalizedQuery = GameQueryKey.normalize(query.query),
+                                displayQuery = query.query.trim(),
+                                lastQueriedAtEpochSeconds = nowSeconds,
+                            )
+                        )
+                    }
                 }
 
                 runSuspendCatching {
                     clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
                 }
+            }.fold(
+                onSuccess = { AppResult.Success(Unit) },
+                onFailure = { AppResult.Error(it.toAppError()) }
+            )
+        }
+    }
+
+    override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> {
+        return searchHistoryDao.observeRecentSearchQueries(limit)
+            .flowOn(ioDispatcher)
+    }
+
+    override suspend fun deleteSearchQuery(query: String): AppResult<Unit> {
+        return withContext(ioDispatcher) {
+            runSuspendCatching {
+                searchHistoryDao.deleteSearchHistory(GameQueryKey.normalize(query))
+            }.fold(
+                onSuccess = { AppResult.Success(Unit) },
+                onFailure = { AppResult.Error(it.toAppError()) }
+            )
+        }
+    }
+
+    override suspend fun clearSearchHistory(): AppResult<Unit> {
+        return withContext(ioDispatcher) {
+            runSuspendCatching {
+                searchHistoryDao.clearAllSearchHistory()
             }.fold(
                 onSuccess = { AppResult.Success(Unit) },
                 onFailure = { AppResult.Error(it.toAppError()) }

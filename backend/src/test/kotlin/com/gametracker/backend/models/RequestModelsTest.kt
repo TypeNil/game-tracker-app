@@ -15,7 +15,7 @@ class RequestModelsTest {
         assertEquals("the witcher 3: wild hunt!", request.canonicalQuery)
         assertEquals(15, request.limit)
         assertEquals(10, request.offset)
-        assertEquals("search_the witcher 3: wild hunt!_15_10", request.cacheKey)
+        assertTrue(request.cacheKey.startsWith("search_the witcher 3: wild hunt!"))
 
         val apicalypse = request.toApicalypseQuery()
         assertTrue(apicalypse.contains("search \"the witcher 3: wild hunt!\";"))
@@ -25,19 +25,77 @@ class RequestModelsTest {
     }
 
     @Test
-    fun `SearchRequest throws on blank query`() {
+    fun `SearchRequest throws on blank query without filters`() {
         val ex = assertThrows(IllegalArgumentException::class.java) {
             SearchRequest("   ")
         }
-        assertEquals("Search query 'q' parameter cannot be blank", ex.message)
+        assertEquals("Search requires 'q' or at least one filter", ex.message)
     }
 
     @Test
-    fun `SearchRequest throws on null query`() {
+    fun `SearchRequest throws on null query without filters`() {
         val ex = assertThrows(IllegalArgumentException::class.java) {
             SearchRequest(null)
         }
-        assertEquals("Search query 'q' parameter cannot be blank", ex.message)
+        assertEquals("Search requires 'q' or at least one filter", ex.message)
+    }
+
+    @Test
+    fun `SearchRequest accepts filters with null or blank query and applies sort`() {
+        val request = SearchRequest(
+            rawQuery = null,
+            genresParam = "Role-playing (RPG), Adventure",
+            platformsParam = "PC (Microsoft Windows)",
+            minRatingParam = 85,
+            minYearParam = 2023,
+            maxYearParam = 2024,
+            sortParam = "rating_desc",
+            limitParam = 25,
+            offsetParam = 0,
+        )
+
+        assertEquals(null, request.canonicalQuery)
+        assertTrue(request.hasFilters)
+        assertEquals(listOf("Role-playing (RPG)", "Adventure"), request.genres)
+        assertEquals(listOf("PC (Microsoft Windows)"), request.platforms)
+        assertEquals(85, request.minRating)
+        assertEquals(2023, request.minYear)
+        assertEquals(2024, request.maxYear)
+        assertEquals(SearchSortField.RATING, request.sort)
+
+        val apicalypse = request.toApicalypseQuery()
+        assertFalse(apicalypse.contains("search \""))
+        assertTrue(apicalypse.contains("genres.name = (\"Role-playing (RPG)\", \"Adventure\")"))
+        assertTrue(apicalypse.contains("platforms.name = (\"PC (Microsoft Windows)\")"))
+        assertTrue(apicalypse.contains("rating >= 85"))
+        assertTrue(apicalypse.contains("first_release_date >="))
+        assertTrue(apicalypse.contains("first_release_date <="))
+        assertTrue(apicalypse.contains("sort rating desc;"))
+    }
+
+    @Test
+    fun `SearchRequest with query and filters does not add sort clause to apicalypse`() {
+        val request = SearchRequest(
+            rawQuery = "Zelda",
+            genresParam = "Adventure",
+            sortParam = "rating",
+        )
+
+        val apicalypse = request.toApicalypseQuery()
+        assertTrue(apicalypse.contains("search \"zelda\";"))
+        assertTrue(apicalypse.contains("genres.name = (\"Adventure\")"))
+        assertFalse(apicalypse.contains("sort rating"))
+    }
+
+    @Test
+    fun `SearchRequest rejects invalid sort parameter`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(
+                rawQuery = "Elden",
+                sortParam = "unsupported_sort",
+            )
+        }
+        assertTrue(ex.message?.contains("unsupported value") == true)
     }
 
     @Test

@@ -51,3 +51,18 @@ data class SearchResultCrossRef(
     val gameId: Long,
     val position: Int
 )
+
+/**
+ * Room entity representing persistent user search history.
+ */
+@Entity(
+    tableName = "search_history",
+    indices = [
+        Index("lastQueriedAtEpochSeconds")
+    ]
+)
+data class SearchHistoryEntity(
+    @PrimaryKey val normalizedQuery: String,
+    val displayQuery: String,
+    val lastQueriedAtEpochSeconds: Long
+)
