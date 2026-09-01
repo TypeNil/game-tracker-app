@@ -29,6 +29,11 @@
       "id": "double-ascii-space",
       "input": "Grand  Theft",
       "expected": "grand theft"
+    },
+    {
+      "id": "zwj-stripped",
+      "input": "DOOM\u200d",
+      "expected": "doom"
     }
   ],
   "accepted": [
@@ -67,6 +72,10 @@
     {
       "id": "decomposed-100-e",
       "input": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301"
+    },
+    {
+      "id": "zwj-letter-adjacent",
+      "input": "DOOM\u200d"
     }
   ],
   "rejected": [
@@ -121,6 +130,10 @@
     {
       "id": "arabic-letter-mark",
       "input": "\u061cDOOM"
+    },
+    {
+      "id": "standalone-zwj",
+      "input": "\u200d"
     }
   ],
   "pagination": [

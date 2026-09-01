@@ -197,7 +197,7 @@ class RequestModelsTest {
             "Game [Demo]" to "game [demo]",
             "Zelda ⚔️" to "zelda ⚔️",
             "Metal Gear | Solid" to "metal gear | solid",
-            "Family 👨‍👩‍👧" to "family 👨‍👩‍👧",
+            "Family 👨‍👩‍👧" to "family 👨👩👧",
         )
         for ((input, expected) in cases) {
             val request = SearchRequest(input)
@@ -232,9 +232,12 @@ class RequestModelsTest {
     }
 
     @Test
-    fun `SearchRequest allows ZWJ and variation selectors for compound emoji`() {
+    fun `SearchRequest accepts ZWJ in input but strips it from the canonical form`() {
         val request = SearchRequest("Woman 👩\u200D💻 Coding")
-        assertEquals("woman 👩‍💻 coding", request.canonicalQuery)
+        assertEquals("woman 👩💻 coding", request.canonicalQuery)
+        // Variation selectors (U+FE0F) are combining marks: they survive the canonical form.
+        val withVariation = SearchRequest("Zelda ⚔️")
+        assertEquals("zelda ⚔️", withVariation.canonicalQuery)
     }
 
     @Test

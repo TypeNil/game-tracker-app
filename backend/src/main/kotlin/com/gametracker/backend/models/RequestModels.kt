@@ -137,6 +137,9 @@ object SearchQueryValidator {
 
         val canonical = normalizeSpaceCharacters(normalized).trim().lowercase(Locale.ROOT)
         if (canonical.isEmpty()) {
+            if (normalized.codePoints().anyMatch { it == ZERO_WIDTH_JOINER }) {
+                throw IllegalArgumentException("Search query contains invisible or bidi control characters")
+            }
             throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
         }
 
@@ -155,12 +158,16 @@ object SearchQueryValidator {
     private fun normalizeSpaceCharacters(value: String): String = buildString(value.length) {
         var previousWasSpace = false
         value.codePoints().forEach { cp ->
-            if (cp == ' '.code || Character.isSpaceChar(cp)) {
-                if (!previousWasSpace) append(' ')
-                previousWasSpace = true
-            } else {
-                appendCodePoint(cp)
-                previousWasSpace = false
+            when {
+                cp == ZERO_WIDTH_JOINER -> Unit
+                cp == ' '.code || Character.isSpaceChar(cp) -> {
+                    if (!previousWasSpace) append(' ')
+                    previousWasSpace = true
+                }
+                else -> {
+                    appendCodePoint(cp)
+                    previousWasSpace = false
+                }
             }
         }
     }

@@ -74,6 +74,12 @@ object SearchInputPolicy {
         // is produced for every input. Only one code point beyond the limit is needed to make a
         // clearly-invalid input surface TOO_LONG instead of a truncated-but-valid search.
         val canonical = canonicalize(normalized)
+        if (
+            canonical == null &&
+            normalized.codePoints().anyMatch { it == ZERO_WIDTH_JOINER }
+        ) {
+            return SearchInputValidation.Invalid(SearchInputViolation.INVISIBLE_FORMAT)
+        }
         if (canonical != null && canonical.codePointCount(0, canonical.length) > MAX_LENGTH) {
             return SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG)
         }
@@ -102,12 +108,16 @@ object SearchInputPolicy {
     private fun normalizeSpaceCharacters(value: String): String = buildString(value.length) {
         var previousWasSpace = false
         value.codePoints().forEach { cp ->
-            if (cp == ' '.code || Character.isSpaceChar(cp)) {
-                if (!previousWasSpace) append(' ')
-                previousWasSpace = true
-            } else {
-                appendCodePoint(cp)
-                previousWasSpace = false
+            when {
+                cp == ZERO_WIDTH_JOINER -> Unit
+                cp == ' '.code || Character.isSpaceChar(cp) -> {
+                    if (!previousWasSpace) append(' ')
+                    previousWasSpace = true
+                }
+                else -> {
+                    appendCodePoint(cp)
+                    previousWasSpace = false
+                }
             }
         }
     }

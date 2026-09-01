@@ -163,9 +163,15 @@ class OfflineAcceptanceTest {
         assertTrue(offlineRefreshDiscover is AppResult.Error)
         assertEquals(AppError.NetworkError, (offlineRefreshDiscover as AppResult.Error).error)
 
+        // The TTL gate skips the network when the cached window is fresh and terminal (end of
+        // list was reported), so an offline search on the cached query still succeeds from Room.
         val offlineSearch = repository.searchGames(query = "witcher", limit = 20)
-        assertTrue(offlineSearch is AppResult.Error)
-        assertEquals(AppError.NetworkError, (offlineSearch as AppResult.Error).error)
+        assertTrue(offlineSearch is AppResult.Success)
+
+        // An uncached query must still hit the network and fail while offline.
+        val offlineUncachedSearch = repository.searchGames(query = "cyberpunk", limit = 20)
+        assertTrue("offline uncached search result: $offlineUncachedSearch", offlineUncachedSearch is AppResult.Error)
+        assertEquals(AppError.NetworkError, (offlineUncachedSearch as AppResult.Error).error)
 
         // Step 3: Re-open cached data offline (SSOT order preserved)
         val cachedDiscover = repository.getTopRatedGamesFlow().first()
