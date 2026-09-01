@@ -115,7 +115,9 @@ fun SearchFilterSheet(
                 FilterSection(title = stringResource(R.string.search_filter_section_sort)) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        // 0dp: chips carry a standard 48dp minimum interactive size, so the
+                        // visible pill spacing already comes from the touch-target insets.
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         for (option in SearchSortOption.entries) {
                             val selected = draftFilters.sort == option
@@ -140,7 +142,9 @@ fun SearchFilterSheet(
                 FilterSection(title = stringResource(R.string.search_filter_section_platforms)) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        // 0dp: chips carry a standard 48dp minimum interactive size, so the
+                        // visible pill spacing already comes from the touch-target insets.
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         for (platform in PlatformFamily.entries) {
                             val selected = draftFilters.platforms.contains(platform)
@@ -192,7 +196,9 @@ fun SearchFilterSheet(
 
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        // 0dp: chips carry a standard 48dp minimum interactive size, so the
+                        // visible pill spacing already comes from the touch-target insets.
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         for (genreWireName in visibleGenres) {
                             val selected = draftFilters.genres.contains(genreWireName)
@@ -264,7 +270,9 @@ fun SearchFilterSheet(
                 FilterSection(title = stringResource(R.string.search_filter_section_year)) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        // 0dp: chips carry a standard 48dp minimum interactive size, so the
+                        // visible pill spacing already comes from the touch-target insets.
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         for (yearOption in ReleaseYearFilter.entries) {
                             val selected = draftFilters.releaseYear == yearOption
@@ -289,7 +297,9 @@ fun SearchFilterSheet(
                 FilterSection(title = stringResource(R.string.search_filter_section_rating)) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        // 0dp: chips carry a standard 48dp minimum interactive size, so the
+                        // visible pill spacing already comes from the touch-target insets.
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         for (ratingOption in MinRatingFilter.entries) {
                             val selected = draftFilters.minRating == ratingOption
