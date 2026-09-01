@@ -46,6 +46,7 @@ import retrofit2.Response
 import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass") // Test suite grows with every search-contract case; an artificial split adds nothing.
 class GameRepositoryTest {
 
     private val remoteDataSource: BffRemoteDataSource = mockk()
@@ -649,7 +650,7 @@ class GameRepositoryTest {
         coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
             queryKey = key,
             prevOffset = null,
-            nextOffset = 30,
+            nextOffset = null, // terminal page: server reported end of list
             lastUpdatedEpochSeconds = freshAt,
         )
 
@@ -681,6 +682,86 @@ class GameRepositoryTest {
         coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)
 
         val result = repository.searchGames("witcher", 20, 0, force = true)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `fresh 20 row cache refetches when 30 rows are requested and nextOffset exists`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val key = GameQueryKey.search("witcher")
+        val freshAt = TEST_NOW_SECONDS - 60
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = freshAt,
+            lastQueriedAtEpochSeconds = freshAt,
+            resultCount = 20,
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 20
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = 20,
+            lastUpdatedEpochSeconds = freshAt,
+        )
+        coEvery { remoteDataSource.searchGames(query = "witcher", limit = 30, offset = 0) } returns listOf(sampleGameDto)
+
+        val result = repository.searchGames("witcher", 30, 0)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `fresh terminal cache smaller than limit skips refresh`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val key = GameQueryKey.search("witcher")
+        val freshAt = TEST_NOW_SECONDS - 60
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = freshAt,
+            lastQueriedAtEpochSeconds = freshAt,
+            resultCount = 10,
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 10
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = null,
+            lastUpdatedEpochSeconds = freshAt,
+        )
+
+        val result = repository.searchGames("witcher", 30, 0)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `non-zero offset is never skipped by the first-page TTL gate`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val key = GameQueryKey.search("witcher")
+        val freshAt = TEST_NOW_SECONDS - 60
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = freshAt,
+            lastQueriedAtEpochSeconds = freshAt,
+            resultCount = 30,
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 30
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = 60,
+            lastUpdatedEpochSeconds = freshAt,
+        )
+        coEvery { remoteDataSource.searchGames(query = "witcher", limit = 30, offset = 30) } returns listOf(sampleGameDto)
+
+        val result = repository.searchGames("witcher", 30, 30)
 
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }

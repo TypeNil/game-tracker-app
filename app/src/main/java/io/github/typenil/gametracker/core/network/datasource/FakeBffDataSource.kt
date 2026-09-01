@@ -123,13 +123,12 @@ class FakeBffDataSource @Inject constructor(
         if (safeQuery == null && !hasFilters) {
             throw IllegalArgumentException("Search requires 'q' or at least one filter")
         }
-        val safeLimit = limit.coerceIn(1, MAX_LIMIT)
-        val safeOffset = offset.coerceIn(0, MAX_OFFSET)
+        val safeLimit = normalizeLimit(limit)
+        val safeOffset = normalizeOffset(offset)
 
         var filtered = mockGames.filter { game ->
             val matchesQuery = safeQuery == null ||
-                SearchInputPolicy.canonicalize(game.name).orEmpty().contains(safeQuery) &&
-                    game.coverUrl != null
+                SearchInputPolicy.canonicalize(game.name).orEmpty().contains(safeQuery)
             val details = mockDetailsById[game.id]
             val gameGenres = details?.genres ?: game.genres
             val gameThemes = details?.themes.orEmpty()
@@ -159,7 +158,8 @@ class FakeBffDataSource @Inject constructor(
             val matchesMinYear = minYear == null || (gameYear != null && gameYear >= minYear)
             val matchesMaxYear = maxYear == null || (gameYear != null && gameYear <= maxYear)
 
-            matchesQuery && matchesGenres && matchesPlatforms && matchesRating && matchesMinYear && matchesMaxYear
+            game.coverUrl != null && matchesQuery && matchesGenres && matchesPlatforms && matchesRating &&
+                matchesMinYear && matchesMaxYear
         }
 
         if (safeQuery == null && sort != null) {
@@ -301,6 +301,10 @@ class FakeBffDataSource @Inject constructor(
 
     companion object {
         private const val MAX_LIMIT = 30
-        private const val MAX_OFFSET = 500
+        private const val MAX_OFFSET = 1_000
+
+        internal fun normalizeLimit(raw: Int): Int = raw.coerceIn(1, MAX_LIMIT)
+
+        internal fun normalizeOffset(raw: Int): Int = raw.coerceIn(0, MAX_OFFSET)
     }
 }

@@ -78,7 +78,8 @@ import io.github.typenil.gametracker.feature.search.component.SearchFilterBar
 import io.github.typenil.gametracker.feature.search.component.SearchFilterSheet
 
 private fun SearchInputViolation.messageRes(): Int = when (this) {
-    SearchInputViolation.QUOTE_OR_BACKSLASH, SearchInputViolation.TOO_LONG -> R.string.search_input_error_unsupported_chars
+    SearchInputViolation.TOO_LONG -> R.string.search_input_error_too_long
+    SearchInputViolation.QUOTE_OR_BACKSLASH -> R.string.search_input_error_unsupported_chars
     SearchInputViolation.CONTROL_CHAR, SearchInputViolation.INVISIBLE_FORMAT -> R.string.search_input_error_invisible_chars
 }
 

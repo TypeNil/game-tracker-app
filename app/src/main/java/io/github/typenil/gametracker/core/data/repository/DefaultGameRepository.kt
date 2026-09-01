@@ -407,7 +407,7 @@ class DefaultGameRepository internal constructor(
                 }
 
                 // TTL gate: a structurally intact, recently refreshed cache skips the network.
-                if (!force && isSearchCacheFresh(cacheKey, nowSeconds)) {
+                if (!force && offset == 0 && isSearchCacheFresh(cacheKey, nowSeconds, requiredCount = limit)) {
                     return@runSuspendCatching Unit
                 }
 
@@ -468,17 +468,27 @@ class DefaultGameRepository internal constructor(
 
     /**
      * A search cache is fresh only when the metadata agrees with the actually stored rows and the
-     * remote key was refreshed within the search TTL. A fresh remote key alone cannot prove that
-     * local results survived cache cleanup, cascade deletes, or crashes.
+     * remote key was refreshed within the search TTL, AND the cached result set already covers the
+     * requested first-page window: either enough rows for [requiredCount] or a terminal remote key
+     * (the server reported end of list). A fresh but undersized window (e.g. a previous limit=20
+     * search) must not suppress the fetch for a limit=30 request.
      */
-    private suspend fun isSearchCacheFresh(cacheKey: String, nowSeconds: Long): Boolean {
-        val metadata = searchDao.getSearchQuery(cacheKey)
+    private suspend fun isSearchCacheFresh(
+        cacheKey: String,
+        nowSeconds: Long,
+        requiredCount: Int,
+    ): Boolean {
+        val metadata = searchDao.getSearchQuery(cacheKey) ?: return false
         val actualCount = searchDao.countSearchResultsForQuery(cacheKey)
-        val remoteKey = remoteKeyDao.getRemoteKey(cacheKey)
-        val structurallyValid = metadata != null && actualCount == metadata.resultCount
-        return structurallyValid &&
-            remoteKey != null &&
-            (nowSeconds - remoteKey.lastUpdatedEpochSeconds) < GameQueryKey.SEARCH_TTL_SECONDS
+        val remoteKey = remoteKeyDao.getRemoteKey(cacheKey) ?: return false
+
+        if (actualCount != metadata.resultCount) return false
+
+        val ageSeconds = nowSeconds - remoteKey.lastUpdatedEpochSeconds
+        val isWithinTtl = ageSeconds in 0 until GameQueryKey.SEARCH_TTL_SECONDS
+        val hasRequestedWindow = actualCount >= requiredCount || remoteKey.nextOffset == null
+
+        return isWithinTtl && hasRequestedWindow
     }
 
     override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> {

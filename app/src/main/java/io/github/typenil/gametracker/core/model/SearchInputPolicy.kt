@@ -53,12 +53,10 @@ object SearchInputPolicy {
     }
 
     fun validate(raw: String): SearchInputValidation {
-        if (raw.codePointCount(0, raw.length) > MAX_LENGTH) {
-            return SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG)
-        }
+        val normalized = Normalizer.normalize(raw, Normalizer.Form.NFC)
         var i = 0
-        while (i < raw.length) {
-            val cp = raw.codePointAt(i)
+        while (i < normalized.length) {
+            val cp = normalized.codePointAt(i)
             val violation = when {
                 Character.isISOControl(cp) -> SearchInputViolation.CONTROL_CHAR
                 cp == '"'.code || cp == '\\'.code -> SearchInputViolation.QUOTE_OR_BACKSLASH
@@ -69,6 +67,15 @@ object SearchInputPolicy {
                 return SearchInputValidation.Invalid(violation)
             }
             i += Character.charCount(cp)
+        }
+
+        // The length limit applies to the canonical (NFC, collapsed, trimmed) form so that
+        // decomposed-but-contract-valid titles are not rejected, and the same verdict as the BFF
+        // is produced for every input. Only one code point beyond the limit is needed to make a
+        // clearly-invalid input surface TOO_LONG instead of a truncated-but-valid search.
+        val canonical = canonicalize(normalized)
+        if (canonical != null && canonical.codePointCount(0, canonical.length) > MAX_LENGTH) {
+            return SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG)
         }
         return SearchInputValidation.Valid(raw)
     }

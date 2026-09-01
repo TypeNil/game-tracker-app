@@ -58,6 +58,7 @@
     <string name="search_filter_rating_90_suffix">Masterpiece</string>
     <string name="search_input_error_unsupported_chars">Quotes and backslashes aren\'t supported in search</string>
     <string name="search_input_error_invisible_chars">Invisible characters aren\'t supported in search</string>
+    <string name="search_input_error_too_long">Search is limited to 100 characters</string>
 
     <!-- Search UI & Accessibility -->
     <string name="search_filters_title">Filters</string>

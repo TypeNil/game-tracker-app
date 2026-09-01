@@ -1,6 +1,7 @@
 package com.gametracker.backend.models
 
 import java.text.Normalizer
+import java.util.Locale
 
 /**
  * Invisible/format code points that cannot be part of a meaningful search query:
@@ -112,24 +113,17 @@ object SearchQueryValidator {
     const val MAX_LENGTH = 100
 
     fun validateAndNormalize(rawQuery: String?): String {
-        if (rawQuery.isNullOrBlank()) {
+        if (rawQuery == null) {
             throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
         }
 
-        // NBSP-like spaces collapse to regular spaces so visually identical queries share one canonical form.
-        val trimmed = normalizeSpaceCharacters(Normalizer.normalize(rawQuery, Normalizer.Form.NFC)).trim()
-        if (trimmed.isEmpty()) {
-            throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
-        }
-
-        val codePointCount = trimmed.codePointCount(0, trimmed.length)
-        if (codePointCount < MIN_LENGTH || codePointCount > MAX_LENGTH) {
-            throw IllegalArgumentException("Search query must be between $MIN_LENGTH and $MAX_LENGTH characters")
-        }
-
+        // Unified order with the client policy: NFC-normalize, then reject forbidden characters
+        // BEFORE trimming so padded control whitespace cannot slip past, then canonicalize and
+        // measure the canonical (trimmed, collapsed) length.
+        val normalized = Normalizer.normalize(rawQuery, Normalizer.Form.NFC)
         var i = 0
-        while (i < trimmed.length) {
-            val cp = trimmed.codePointAt(i)
+        while (i < normalized.length) {
+            val cp = normalized.codePointAt(i)
 
             // Единственные запреты: ISO control, кавычки и бэкслеши (Apicalypse literal), invisible format chars.
             if (Character.isISOControl(cp) || cp == '"'.code || cp == '\\'.code) {
@@ -142,7 +136,17 @@ object SearchQueryValidator {
             i += Character.charCount(cp)
         }
 
-        return trimmed.lowercase()
+        val canonical = normalizeSpaceCharacters(normalized).trim().lowercase(Locale.ROOT)
+        if (canonical.isEmpty()) {
+            throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
+        }
+
+        val codePointCount = canonical.codePointCount(0, canonical.length)
+        if (codePointCount < MIN_LENGTH || codePointCount > MAX_LENGTH) {
+            throw IllegalArgumentException("Search query must be between $MIN_LENGTH and $MAX_LENGTH characters")
+        }
+
+        return canonical
     }
 
     /**

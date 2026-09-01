@@ -14,6 +14,7 @@ import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.SearchInputValidation
+import io.github.typenil.gametracker.core.model.SearchInputViolation
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -37,6 +38,7 @@ import org.junit.Test
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicBoolean
 
+@Suppress("LargeClass") // Test suite grows with every search-contract case; an artificial split adds nothing.
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 
@@ -132,6 +134,65 @@ class SearchViewModelTest {
         }
 
         coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `101 code point query is preserved as invalid and never dispatched`() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        val tooLong = "a".repeat(101)
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onQueryChanged(tooLong)
+            runCurrent()
+
+            val state = awaitItem()
+            assertEquals(SearchResultUiState.Idle, state.result)
+            assertEquals(
+                SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG),
+                state.inputValidation,
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `decomposed 100 character title is dispatched verbatim and not truncated`() = runTest(testDispatcher) {
+        val decomposed = "e\u0301".repeat(100)
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == decomposed }) } returns searchFlow
+        coEvery {
+            repository.searchGames(match<GameSearchQuery> { it.query == decomposed }, any(), any(), any())
+        } coAnswers {
+            searchFlow.value = sampleGames
+            AppResult.Success(Unit)
+        }
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onQueryChanged(decomposed)
+            runCurrent()
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+
+            val loading = awaitItem()
+            assertEquals(decomposed, loading.query)
+
+            val content = awaitItem()
+            assertEquals(SearchResultUiState.Content(sampleGames), content.result)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        coVerify(exactly = 1) {
+            repository.searchGames(match<GameSearchQuery> { it.query == decomposed }, any(), any(), any())
+        }
     }
 
     @Test

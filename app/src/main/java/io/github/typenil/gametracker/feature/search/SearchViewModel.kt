@@ -64,14 +64,6 @@ class SearchViewModel @Inject constructor(
                 ?: SearchFilters(),
         )
 
-    val inputValidation: StateFlow<SearchInputValidation> = rawQuery
-        .map { SearchInputPolicy.validate(it) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = SearchInputPolicy.validate(savedStateHandle.get<String>(KEY_QUERY).orEmpty()),
-        )
-
     val recentQueries: StateFlow<List<String>> = gameRepository
         .getRecentSearchQueriesFlow(MAX_RECENT_QUERIES)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -272,7 +264,7 @@ class SearchViewModel @Inject constructor(
     }
 
     fun onQueryChanged(newQuery: String) {
-        savedStateHandle[KEY_QUERY] = newQuery.takeCodePoints(MAX_QUERY_LENGTH)
+        savedStateHandle[KEY_QUERY] = boundedQuery(newQuery)
     }
 
     fun onClearQuery() {
@@ -280,7 +272,7 @@ class SearchViewModel @Inject constructor(
     }
 
     fun onSelectRecentQuery(query: String) {
-        savedStateHandle[KEY_QUERY] = query.takeCodePoints(MAX_QUERY_LENGTH)
+        savedStateHandle[KEY_QUERY] = boundedQuery(query)
     }
 
     fun onRemoveRecentQuery(query: String) {
@@ -448,6 +440,23 @@ class SearchViewModel @Inject constructor(
     )
 
     private fun clockYear(): Int = Year.now(clock).value
+
+    /**
+     * Bounds the raw query stored in [SavedStateHandle] without changing the searched title.
+     * Truncating before validation would silently search for a shortened title: instead a raw
+     * input is truncated only when its canonical form is provably over the limit (one code point
+     * beyond it, so validation surfaces TOO_LONG). A decomposed-but-contract-valid title (e.g.
+     * 100 composed characters spelled with combining marks) is stored intact, exactly as the
+     * user typed it, and the BFF canonicalizes it.
+     */
+    private fun boundedQuery(raw: String): String {
+        if (raw.codePointCount(0, raw.length) <= MAX_QUERY_LENGTH) return raw
+        val canonical = SearchInputPolicy.canonicalize(raw)
+        if (canonical != null && canonical.codePointCount(0, canonical.length) <= MAX_QUERY_LENGTH) {
+            return raw
+        }
+        return raw.takeCodePoints(MAX_QUERY_LENGTH + 1)
+    }
 
 
     private sealed interface RefreshStatus {

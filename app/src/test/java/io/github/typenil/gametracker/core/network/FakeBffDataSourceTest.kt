@@ -339,8 +339,7 @@ class FakeBffDataSourceTest {
         val results = fakeDataSource.searchGames(query = "Witcher", limit = 10, offset = 0)
         assertTrue(results.isNotEmpty())
         assertTrue(results.all { game ->
-            game.name.contains("Witcher", ignoreCase = true) ||
-                game.genres.any { g -> g.contains("Witcher", ignoreCase = true) }
+            game.name.contains("Witcher", ignoreCase = true)
         })
     }
 

@@ -76,12 +76,16 @@ class FakeBffDataSourceContractTest {
     @Test
     fun `pagination is clamped silently like the BFF instead of rejected`() = runTest {
         // limit 0 -> clamped to 1; offset -5 -> clamped to 0
-        val zeroLimitNegativeOffset = search(query = null, minRating = 0, limit = 0, offset = -5)
-        assertEquals(1, zeroLimitNegativeOffset.size)
+        assertEquals(1, search(query = null, minRating = 0, limit = 0, offset = -5).size)
+
+        // The BFF clamps offset up to 1000 (not 500): an in-range offset must survive untouched.
+        assertEquals(501, FakeBffDataSource.normalizeOffset(501))
+        assertEquals(1000, FakeBffDataSource.normalizeOffset(2000))
+        assertEquals(30, FakeBffDataSource.normalizeLimit(500))
+        assertEquals(1, FakeBffDataSource.normalizeLimit(0))
 
         // Beyond the fixture end with an over-range offset: empty result, no exception
-        val overLimit = search(query = null, minRating = 0, limit = 500, offset = 2000)
-        assertTrue(overLimit.isEmpty())
+        assertTrue(search(query = null, minRating = 0, limit = 500, offset = 2000).isEmpty())
     }
 
     @Test
@@ -116,6 +120,20 @@ class FakeBffDataSourceContractTest {
         if (coverless != null) {
             val byName = search(query = coverless.name, minRating = null)
             assertTrue(byName.none { it.coverUrl == null })
+        }
+    }
+
+    @Test
+    fun `filter-only browse also excludes coverless games like the BFF`() = runTest {
+        val json = Json { ignoreUnknownKeys = true }
+        val games = json.decodeFromString<List<io.github.typenil.gametracker.core.network.model.GameDto>>(
+            File(fixturesDir, "fixtures/v1/games.json").readText(),
+        )
+        val coverless = games.firstOrNull { it.coverUrl == null }
+        if (coverless != null) {
+            val browse = search(query = null, minRating = 0)
+            assertTrue(browse.none { it.coverUrl == null })
+            assertTrue(browse.none { it.id == coverless.id })
         }
     }
 }

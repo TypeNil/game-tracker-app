@@ -12,11 +12,15 @@
     { "id": "brackets", "input": "Game [Demo]" },
     { "id": "emoji", "input": "Zelda \u2694\uFE0F" },
     { "id": "pipe", "input": "Metal Gear | Solid" },
-    { "id": "compound-emoji", "input": "Family \uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67" }
+    { "id": "compound-emoji", "input": "Family \uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67" },
+    { "id": "padded-101-canon", "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa " },
+    { "id": "decomposed-100-e", "input": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301" }
   ],
   "rejected": [
     { "id": "control-newline", "input": "Witcher\n3" },
     { "id": "control-tab", "input": "Cyberpunk\t2077" },
+    { "id": "leading-control-newline", "input": "\nDOOM" },
+    { "id": "trailing-control-tab", "input": "DOOM\t" },
     { "id": "quote", "input": "Grand \"Theft\" Auto" },
     { "id": "backslash", "input": "Witcher\\" },
     { "id": "zwsp", "input": "zero\u200Bwidth" },
