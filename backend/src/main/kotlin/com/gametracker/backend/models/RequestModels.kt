@@ -4,15 +4,14 @@ import java.text.Normalizer
 import java.util.Locale
 
 /**
- * Invisible/format code points that cannot be part of a meaningful search query:
- * zero width space & non-joiner, LRM/RLM, bidi embedding/override and isolate controls, BOM.
- * ZWJ (U+200D) and variation selectors (U+FE00..U+FE0F) stay allowed: compound emoji must remain searchable.
+ * Rejects the whole Unicode format category (zero-width, bidi controls, word joiner, ALM, BOM)
+ * instead of an enumerable subset; ZWJ (U+200D) stays allowed so compound emoji remain searchable.
+ * Variation selectors are combining marks, not format characters, so they pass through.
  */
-private val FORBIDDEN_FORMAT_CODE_POINTS = setOf(
-    0x200B, 0x200C, 0x200E, 0x200F,
-).plus(0x202A..0x202E)
-    .plus(0x2066..0x2069)
-    .plus(0xFEFF)
+private const val ZERO_WIDTH_JOINER = 0x200D
+
+private fun isForbiddenFormatCodePoint(codePoint: Int): Boolean =
+    Character.getType(codePoint) == Character.FORMAT.toInt() && codePoint != ZERO_WIDTH_JOINER
 
 /**
  * Escapes a string literal for an Apicalypse query. Double quotes and backslashes are the only
@@ -129,7 +128,7 @@ object SearchQueryValidator {
             if (Character.isISOControl(cp) || cp == '"'.code || cp == '\\'.code) {
                 throw IllegalArgumentException("Search query contains illegal control characters or quotes")
             }
-            if (cp in FORBIDDEN_FORMAT_CODE_POINTS) {
+            if (isForbiddenFormatCodePoint(cp)) {
                 throw IllegalArgumentException("Search query contains invisible or bidi control characters")
             }
 
@@ -150,11 +149,19 @@ object SearchQueryValidator {
     }
 
     /**
-     * Replaces NBSP-like whitespace with a regular space; every other character is preserved.
+     * Collapses every run of whitespace (ASCII spaces and Unicode space separators) into a single
+     * regular space before trimming, so visually equivalent inputs share one canonical form.
      */
     private fun normalizeSpaceCharacters(value: String): String = buildString(value.length) {
+        var previousWasSpace = false
         value.codePoints().forEach { cp ->
-            append(if (Character.isSpaceChar(cp) && cp != ' '.code) ' ' else String(Character.toChars(cp)))
+            if (cp == ' '.code || Character.isSpaceChar(cp)) {
+                if (!previousWasSpace) append(' ')
+                previousWasSpace = true
+            } else {
+                appendCodePoint(cp)
+                previousWasSpace = false
+            }
         }
     }
 }
@@ -195,9 +202,7 @@ class SearchRequest(
     limitParam: Int? = null,
     offsetParam: Int? = null,
 ) {
-    val canonicalQuery: String? = rawQuery?.takeIf { it.isNotBlank() }?.let {
-        SearchQueryValidator.validateAndNormalize(it)
-    }
+    val canonicalQuery: String? = rawQuery?.let { SearchQueryValidator.validateAndNormalize(it) }
     val genres: List<String> = parseTags(genresParam, "genres", MAX_GENRES)
     val platforms: List<String> = parseTags(platformsParam, "platforms", MAX_PLATFORMS)
     val minRating: Int? = minRatingParam?.coerceIn(0, 100)

@@ -347,7 +347,7 @@ class DefaultGameRepository internal constructor(
             ttlSeconds = ttl,
             fetcher = { limit, offset ->
                 remoteDataSource.searchGames(
-                    query = query.query,
+                    query = query.query.takeIf { it.isNotBlank() },
                     genres = query.genres,
                     platforms = query.platforms,
                     minRating = query.minRating,
@@ -411,7 +411,7 @@ class DefaultGameRepository internal constructor(
                 }
 
                 val remoteGames = remoteDataSource.searchGames(
-                    query = query.query,
+                    query = query.query.takeIf { it.isNotBlank() },
                     genres = query.genres,
                     platforms = query.platforms,
                     minRating = query.minRating,

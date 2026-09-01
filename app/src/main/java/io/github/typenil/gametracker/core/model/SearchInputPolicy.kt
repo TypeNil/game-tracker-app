@@ -60,7 +60,7 @@ object SearchInputPolicy {
             val violation = when {
                 Character.isISOControl(cp) -> SearchInputViolation.CONTROL_CHAR
                 cp == '"'.code || cp == '\\'.code -> SearchInputViolation.QUOTE_OR_BACKSLASH
-                cp in FORBIDDEN_FORMAT_CODE_POINTS -> SearchInputViolation.INVISIBLE_FORMAT
+                isForbiddenFormatCodePoint(cp) -> SearchInputViolation.INVISIBLE_FORMAT
                 else -> null
             }
             if (violation != null) {
@@ -100,15 +100,25 @@ object SearchInputPolicy {
     }
 
     private fun normalizeSpaceCharacters(value: String): String = buildString(value.length) {
+        var previousWasSpace = false
         value.codePoints().forEach { cp ->
-            append(if (Character.isSpaceChar(cp) && cp != ' '.code) ' ' else String(Character.toChars(cp)))
+            if (cp == ' '.code || Character.isSpaceChar(cp)) {
+                if (!previousWasSpace) append(' ')
+                previousWasSpace = true
+            } else {
+                appendCodePoint(cp)
+                previousWasSpace = false
+            }
         }
     }
 
-    private val FORBIDDEN_FORMAT_CODE_POINTS: Set<Int> = buildSet {
-        addAll(listOf(0x200B, 0x200C, 0x200E, 0x200F))
-        for (cp in 0x202A..0x202E) add(cp) // bidi embedding/override controls
-        for (cp in 0x2066..0x2069) add(cp) // bidi isolate controls
-        add(0xFEFF) // BOM inside a string
-    }
+    /**
+     * Rejects the whole Unicode format category (zero-width, bidi controls, word joiner, ALM, BOM)
+     * instead of an enumerable subset; ZWJ (U+200D) stays allowed so compound emoji remain searchable.
+     * Variation selectors are combining marks, not format characters, so they pass through.
+     */
+    private fun isForbiddenFormatCodePoint(codePoint: Int): Boolean =
+        Character.getType(codePoint) == Character.FORMAT.toInt() && codePoint != ZERO_WIDTH_JOINER
+
+    private const val ZERO_WIDTH_JOINER = 0x200D
 }

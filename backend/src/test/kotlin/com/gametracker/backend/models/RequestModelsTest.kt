@@ -29,7 +29,7 @@ class RequestModelsTest {
         val ex = assertThrows(IllegalArgumentException::class.java) {
             SearchRequest("   ")
         }
-        assertEquals("Search requires 'q' or at least one filter", ex.message)
+        assertEquals("Search query 'q' parameter cannot be blank", ex.message)
     }
 
     @Test
@@ -38,6 +38,28 @@ class RequestModelsTest {
             SearchRequest(null)
         }
         assertEquals("Search requires 'q' or at least one filter", ex.message)
+    }
+
+    @Test
+    fun `SearchRequest rejects control-only query even when filters are present`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(
+                rawQuery = "\n",
+                genresParam = "Action",
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(
+                rawQuery = "\t",
+                platformsParam = "PC (Microsoft Windows)",
+            )
+        }
+    }
+
+    @Test
+    fun `SearchRequest collapses whitespace runs before canonicalization`() {
+        val request = SearchRequest("Grand \u00A0\u2009 Theft")
+        assertEquals("grand theft", request.canonicalQuery)
     }
 
     @Test

@@ -152,6 +152,21 @@ class FakeBffDataSourceTest {
     }
 
     @Test
+    fun `searchGames rejects control-only query even when filters are present`() = runTest {
+        try {
+            fakeDataSource.searchGames(
+                query = "\n",
+                genres = listOf("Role-playing (RPG)"),
+                limit = 10,
+                offset = 0,
+            )
+            fail("Expected IllegalArgumentException for control-only query")
+        } catch (_: IllegalArgumentException) {
+            // Expected
+        }
+    }
+
+    @Test
     fun `searchGames finds games case-insensitively`() = runTest {
         val results = fakeDataSource.searchGames(query = "witcher", limit = 10, offset = 0)
 

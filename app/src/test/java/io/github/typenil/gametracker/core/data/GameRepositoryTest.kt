@@ -626,7 +626,7 @@ class GameRepositoryTest {
             query = "",
             genres = listOf("RPG"),
         )
-        coEvery { remoteDataSource.searchGames(query = "", genres = listOf("RPG"), limit = 20, offset = 0) } returns listOf(sampleGameDto)
+        coEvery { remoteDataSource.searchGames(query = null, genres = listOf("RPG"), limit = 20, offset = 0) } returns listOf(sampleGameDto)
 
         val result = repository.searchGames(query, 20)
         assertTrue(result is AppResult.Success)
