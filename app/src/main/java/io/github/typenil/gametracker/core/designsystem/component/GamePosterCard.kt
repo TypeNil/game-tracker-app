@@ -5,8 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,14 +34,11 @@ const val GAME_COVER_ASPECT_RATIO = 3f / 4f
 
 private val ChipShape = RoundedCornerShape(8.dp)
 private val ChipVerticalPadding = 2.dp
-private val TagsRowGap = 4.dp
-private val TagsBlockMinHeight = 44.dp
 
 /**
  * Compact vertical poster for the similar-games rail: cover, name, genre tags.
  * Platform families sit on the cover so they stay visible without stretching the card.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GamePosterCard(
     game: GameSummary,
@@ -54,10 +51,8 @@ fun GamePosterCard(
     val platformFamilies = remember(game.platforms) {
         resolvePlatformFamilies(game.platforms)
     }
-    val tagsBlockHeight = with(LocalDensity.current) {
-        val chipRowHeight =
-            MaterialTheme.typography.labelSmall.lineHeight.toDp() + ChipVerticalPadding * 2
-        maxOf(TagsBlockMinHeight, chipRowHeight * 2 + TagsRowGap)
+    val chipRowHeight = with(LocalDensity.current) {
+        MaterialTheme.typography.labelSmall.lineHeight.toDp() + ChipVerticalPadding * 2
     }
     Surface(
         onClick = onClick,
@@ -119,26 +114,26 @@ fun GamePosterCard(
                 Text(
                     text = game.name.orEmpty(),
                     style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    minLines = 2,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(tagsBlockHeight),
-                    contentAlignment = Alignment.TopCenter,
+                        .height(chipRowHeight),
+                    contentAlignment = Alignment.Center,
                 ) {
                     if (genreTags.isNotEmpty()) {
-                        FlowRow(
+                        Row(
                             horizontalArrangement = Arrangement.spacedBy(
                                 4.dp,
                                 Alignment.CenterHorizontally,
                             ),
-                            verticalArrangement = Arrangement.spacedBy(TagsRowGap),
-                            maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             genreTags.forEach { tag ->
                                 Surface(
@@ -148,6 +143,7 @@ fun GamePosterCard(
                                         1.dp,
                                         MaterialTheme.colorScheme.outlineVariant,
                                     ),
+                                    modifier = Modifier.weight(1f, fill = false),
                                 ) {
                                     Text(
                                         text = tag,
