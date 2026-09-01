@@ -398,7 +398,6 @@ class SearchScreenTest {
 
         assertEquals("witcher", fakeRepository.capturedQuery)
         assertEquals(30, fakeRepository.capturedLimit)
-        assertEquals(0, fakeRepository.capturedOffset)
 
         fakeRepository.searchFlow.value = sampleGames
         fakeRepository.deferredResult.complete(AppResult.Success(Unit))
@@ -416,8 +415,6 @@ class SearchScreenTest {
         var capturedQuery: String? = null
         @Volatile
         var capturedLimit: Int? = null
-        @Volatile
-        var capturedOffset: Int? = null
         val deferredResult = CompletableDeferred<AppResult<Unit>>()
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
 
@@ -453,12 +450,11 @@ class SearchScreenTest {
             return flowOf(PagingData.empty())
         }
 
-        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int, offset: Int,
+        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int,
             force: Boolean,
         ): AppResult<Unit> {
             capturedQuery = query.query
             capturedLimit = limit
-            capturedOffset = offset
             return deferredResult.await()
         }
 

@@ -59,11 +59,10 @@ interface GameRepository {
     suspend fun searchGames(
         query: io.github.typenil.gametracker.core.model.GameSearchQuery,
         limit: Int = 20,
-        offset: Int = 0,
         force: Boolean = false,
     ): AppResult<Unit>
-    suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0, force: Boolean = false): AppResult<Unit> =
-        searchGames(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), limit, offset, force)
+    suspend fun searchGames(query: String, limit: Int = 20, force: Boolean = false): AppResult<Unit> =
+        searchGames(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), limit, force)
     fun getRecentSearchQueriesFlow(limit: Int = 10): Flow<List<String>>
     suspend fun deleteSearchQuery(query: String): AppResult<Unit>
     suspend fun clearSearchHistory(): AppResult<Unit>

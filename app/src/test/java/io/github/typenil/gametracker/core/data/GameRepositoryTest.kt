@@ -367,7 +367,7 @@ class GameRepositoryTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
 
-        val result = repository.searchGames(query = "   ", limit = 20, offset = 0)
+        val result = repository.searchGames(query = "   ", limit = 20)
 
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any()) }
@@ -384,7 +384,7 @@ class GameRepositoryTest {
             sampleGameDto.copy(id = 101L, name = "Discovered Game")
         )
 
-        val result = repository.searchGames(query = "discover:top-rated", limit = 20, offset = 0)
+        val result = repository.searchGames(query = "discover:top-rated", limit = 20)
 
         assertTrue(result is AppResult.Success)
         val querySlot = slot<SearchQueryEntity>()
@@ -415,7 +415,7 @@ class GameRepositoryTest {
         )
         coEvery { searchDao.getSearchQuery(expectedKey) } returns existingQueryEntity
         coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)
-        val result = repository.searchGames("witcher", 20, 0)
+        val result = repository.searchGames("witcher", 20)
 
         assertTrue(result is AppResult.Success)
         val querySlot = slot<SearchQueryEntity>()
@@ -431,7 +431,7 @@ class GameRepositoryTest {
             .toResponseBody("application/json".toMediaType())
         val httpException = HttpException(Response.error<String>(429, responseBody))
         coEvery { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws httpException
-        val result = repository.searchGames("witcher", 20, 0)
+        val result = repository.searchGames("witcher", 20)
 
         assertTrue(result is AppResult.Error)
         val error = (result as AppResult.Error).error
@@ -609,7 +609,7 @@ class GameRepositoryTest {
         val repository = createRepository(testDispatcher)
         coEvery { remoteDataSource.searchGames(query = "Elden Ring", limit = 20, offset = 0) } returns listOf(sampleGameDto)
 
-        val result = repository.searchGames("Elden Ring", 20, 0)
+        val result = repository.searchGames("Elden Ring", 20)
         assertTrue(result is AppResult.Success)
 
         val historySlot = slot<io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity>()
@@ -628,7 +628,7 @@ class GameRepositoryTest {
         )
         coEvery { remoteDataSource.searchGames(query = "", genres = listOf("RPG"), limit = 20, offset = 0) } returns listOf(sampleGameDto)
 
-        val result = repository.searchGames(query, 20, 0)
+        val result = repository.searchGames(query, 20)
         assertTrue(result is AppResult.Success)
 
         coVerify(exactly = 0) { searchHistoryDao.upsertSearchHistory(any()) }
@@ -654,7 +654,7 @@ class GameRepositoryTest {
             lastUpdatedEpochSeconds = freshAt,
         )
 
-        val result = repository.searchGames("witcher", 20, 0)
+        val result = repository.searchGames("witcher", 20)
 
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
@@ -681,7 +681,7 @@ class GameRepositoryTest {
         )
         coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)
 
-        val result = repository.searchGames("witcher", 20, 0, force = true)
+        val result = repository.searchGames("witcher", 20, force = true)
 
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
@@ -708,7 +708,7 @@ class GameRepositoryTest {
         )
         coEvery { remoteDataSource.searchGames(query = "witcher", limit = 30, offset = 0) } returns listOf(sampleGameDto)
 
-        val result = repository.searchGames("witcher", 30, 0)
+        val result = repository.searchGames("witcher", 30)
 
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
@@ -734,37 +734,10 @@ class GameRepositoryTest {
             lastUpdatedEpochSeconds = freshAt,
         )
 
-        val result = repository.searchGames("witcher", 30, 0)
+        val result = repository.searchGames("witcher", 30)
 
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
-    }
-
-    @Test
-    fun `non-zero offset is never skipped by the first-page TTL gate`() = runTest {
-        val testDispatcher = StandardTestDispatcher(testScheduler)
-        val repository = createRepository(testDispatcher)
-        val key = GameQueryKey.search("witcher")
-        val freshAt = TEST_NOW_SECONDS - 60
-        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
-            query = key,
-            createdAtEpochSeconds = freshAt,
-            lastQueriedAtEpochSeconds = freshAt,
-            resultCount = 30,
-        )
-        coEvery { searchDao.countSearchResultsForQuery(key) } returns 30
-        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
-            queryKey = key,
-            prevOffset = null,
-            nextOffset = 60,
-            lastUpdatedEpochSeconds = freshAt,
-        )
-        coEvery { remoteDataSource.searchGames(query = "witcher", limit = 30, offset = 30) } returns listOf(sampleGameDto)
-
-        val result = repository.searchGames("witcher", 30, 30)
-
-        assertTrue(result is AppResult.Success)
-        coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test

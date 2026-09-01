@@ -148,7 +148,7 @@ class OfflineAcceptanceTest {
         assertEquals(20L, discoverGames[1].id)
         assertEquals(30L, discoverGames[2].id)
 
-        val searchResult = repository.searchGames(query = "witcher", limit = 20, offset = 0)
+        val searchResult = repository.searchGames(query = "witcher", limit = 20)
         assertTrue("Search refresh must succeed online", searchResult is AppResult.Success)
 
         val searchGames = repository.getSearchResultsFlow("witcher").first()
@@ -163,7 +163,7 @@ class OfflineAcceptanceTest {
         assertTrue(offlineRefreshDiscover is AppResult.Error)
         assertEquals(AppError.NetworkError, (offlineRefreshDiscover as AppResult.Error).error)
 
-        val offlineSearch = repository.searchGames(query = "witcher", limit = 20, offset = 0)
+        val offlineSearch = repository.searchGames(query = "witcher", limit = 20)
         assertTrue(offlineSearch is AppResult.Error)
         assertEquals(AppError.NetworkError, (offlineSearch as AppResult.Error).error)
 

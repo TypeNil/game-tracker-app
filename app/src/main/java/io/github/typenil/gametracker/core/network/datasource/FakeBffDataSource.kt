@@ -117,7 +117,13 @@ class FakeBffDataSource @Inject constructor(
         limit: Int,
         offset: Int,
     ): List<GameDto> {
-        val safeQuery = query?.let { SearchInputPolicy.canonicalize(it) }
+        // The live BFF rejects forbidden characters with HTTP 400; the fake must throw instead of
+        // silently canonicalizing them, so demo-flavor contract tests cannot pass inputs that
+        // would fail in production. Blank text is treated as absent, exactly like the BFF does
+        // for filter-only requests.
+        val safeQuery = query
+            ?.takeIf { it.isNotBlank() }
+            ?.let(SearchInputPolicy::validateOrThrow)
         val hasFilters = genres.isNotEmpty() || platforms.isNotEmpty() ||
             minRating != null || minYear != null || maxYear != null
         if (safeQuery == null && !hasFilters) {

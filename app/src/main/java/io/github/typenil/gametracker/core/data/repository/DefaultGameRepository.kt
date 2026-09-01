@@ -381,7 +381,6 @@ class DefaultGameRepository internal constructor(
     override suspend fun searchGames(
         query: GameSearchQuery,
         limit: Int,
-        offset: Int,
         force: Boolean,
     ): AppResult<Unit> {
         if (!query.shouldSearch) {
@@ -395,7 +394,7 @@ class DefaultGameRepository internal constructor(
 
                 // Search history records user intent; it must not depend on whether a network
                 // refresh was actually needed. The history trim keeps the table bounded.
-                if (query.query.isNotBlank() && offset == 0) {
+                if (query.query.isNotBlank()) {
                     searchHistoryDao.upsertSearchHistory(
                         SearchHistoryEntity(
                             normalizedQuery = GameQueryKey.normalize(query.query),
@@ -407,7 +406,7 @@ class DefaultGameRepository internal constructor(
                 }
 
                 // TTL gate: a structurally intact, recently refreshed cache skips the network.
-                if (!force && offset == 0 && isSearchCacheFresh(cacheKey, nowSeconds, requiredCount = limit)) {
+                if (!force && isSearchCacheFresh(cacheKey, nowSeconds, requiredCount = limit)) {
                     return@runSuspendCatching Unit
                 }
 
@@ -420,10 +419,9 @@ class DefaultGameRepository internal constructor(
                     maxYear = query.maxYear,
                     sort = query.sort,
                     limit = limit,
-                    offset = offset,
                 ).toDomain()
-                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
-                val nextOffset = if (isEndOfList) null else offset + remoteGames.size
+                val isEndOfList = remoteGames.size < limit
+                val nextOffset = if (isEndOfList) null else remoteGames.size
                 val distinctGames = remoteGames.distinctBy { it.id }
 
                 transactionRunner {
@@ -442,7 +440,7 @@ class DefaultGameRepository internal constructor(
                         SearchResultCrossRef(
                             query = cacheKey,
                             gameId = game.id,
-                            position = offset + index
+                            position = index
                         )
                     }
                     searchDao.insertSearchResults(crossRefs)

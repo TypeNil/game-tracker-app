@@ -76,14 +76,12 @@ class SearchViewModel @Inject constructor(
     private val userMessageRes = MutableStateFlow<Int?>(null)
 
     private val textCommands: Flow<SearchCommand> = rawQuery
-        .map(String::trim)
-        .distinctUntilChanged()
-        .map { query ->
+        .map { raw ->
             SearchCommand(
                 domainQuery = filterSnapshot.value
                     .toDomainFilters()
-                    .toDomainQuery(query, clockYear()),
-                shouldDebounce = query.isNotBlank(),
+                    .toDomainQuery(raw, clockYear()),
+                shouldDebounce = raw.isNotBlank(),
             )
         }
 
@@ -94,13 +92,13 @@ class SearchViewModel @Inject constructor(
             SearchCommand(
                 domainQuery = snapshot
                     .toDomainFilters()
-                    .toDomainQuery(rawQuery.value.trim(), clockYear()),
+                    .toDomainQuery(rawQuery.value, clockYear()),
                 shouldDebounce = false,
             )
         }
 
     private val retryCommands: Flow<SearchCommand> = retryEvents.map {
-        val query = rawQuery.value.trim()
+        val query = rawQuery.value
         val currentFilters = filterSnapshot.value.toDomainFilters()
         SearchCommand(
             domainQuery = currentFilters.toDomainQuery(query, clockYear()),
@@ -183,7 +181,7 @@ class SearchViewModel @Inject constructor(
         libraryUiFlow,
         userMessageRes,
     ) { searchBundle, library, message ->
-        val currentDomainQuery = searchBundle.filters.toDomainQuery(searchBundle.query.trim(), clockYear())
+        val currentDomainQuery = searchBundle.filters.toDomainQuery(searchBundle.query, clockYear())
         val resultState = when {
             !currentDomainQuery.shouldSearch -> SearchResultUiState.Idle
             searchBundle.queryValidation is SearchInputValidation.Invalid -> SearchResultUiState.Idle
@@ -237,7 +235,7 @@ class SearchViewModel @Inject constructor(
             val restoredQuery = savedStateHandle.get<String>(KEY_QUERY).orEmpty()
             val restoredFilters = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
                 ?: SearchFilters.Empty
-            val restoredShouldSearch = restoredFilters.toDomainQuery(restoredQuery.trim(), clockYear()).shouldSearch
+            val restoredShouldSearch = restoredFilters.toDomainQuery(restoredQuery, clockYear()).shouldSearch
             SearchUiState(
                 query = restoredQuery,
                 filters = restoredFilters,

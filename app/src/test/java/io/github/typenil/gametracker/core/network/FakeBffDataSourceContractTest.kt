@@ -136,4 +136,42 @@ class FakeBffDataSourceContractTest {
             assertTrue(browse.none { it.id == coverless.id })
         }
     }
+    @Test
+    fun `fake rejects the same forbidden characters as the live BFF`() = runTest {
+        val forbidden = listOf(
+            "Grand \"Theft\" Auto",
+            "Witcher\\",
+            "\nDOOM",
+            "DOOM\t",
+            "zero\u200Bwidth",
+            "bidi\u202Eembed",
+        )
+        for (input in forbidden) {
+            var rejected = false
+            try {
+                search(query = input, minRating = null)
+            } catch (_: IllegalArgumentException) {
+                rejected = true
+            }
+            assertTrue("Expected IllegalArgumentException for '$input'", rejected)
+        }
+    }
+
+    @Test
+    fun `fake accepts the punctuation and compound emoji the live BFF accepts`() = runTest {
+        val accepted = listOf(
+            "DOOM (2016)",
+            "Pok\u00E9mon Sword/Shield",
+            "Family \uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67",
+        )
+        for (input in accepted) {
+            var threw = false
+            try {
+                search(query = input, minRating = null)
+            } catch (_: IllegalArgumentException) {
+                threw = true
+            }
+            assertTrue("Expected acceptance of '$input'", !threw)
+        }
+    }
 }
