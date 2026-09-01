@@ -341,7 +341,7 @@ private fun SearchIdleState(
             .fillMaxSize()
             .padding(horizontal = GtDimens.Gutter),
         verticalArrangement = Arrangement.spacedBy(20.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
     ) {
 
         // 1. Recent Searches Section
