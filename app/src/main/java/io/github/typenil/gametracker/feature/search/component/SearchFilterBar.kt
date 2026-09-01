@@ -3,7 +3,6 @@ package io.github.typenil.gametracker.feature.search.component
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,7 +33,6 @@ import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.feature.search.MinRatingFilter
-import io.github.typenil.gametracker.feature.search.QuickSearchPreset
 import io.github.typenil.gametracker.feature.search.ReleaseYearFilter
 import io.github.typenil.gametracker.feature.search.SearchFilters
 import io.github.typenil.gametracker.feature.search.SearchSortOption
@@ -106,12 +104,11 @@ private val QuickPresetPlatforms = listOf(
 fun SearchFilterBar(
     filters: SearchFilters,
     onOpenFilterSheet: () -> Unit,
-    onRemoveGenre: (String) -> Unit,
-    onRemovePlatform: (PlatformFamily) -> Unit,
+    onToggleGenre: (String) -> Unit,
+    onTogglePlatform: (PlatformFamily) -> Unit,
     onRemoveReleaseYear: () -> Unit,
-    onRemoveMinRating: () -> Unit,
+    onToggleMinRating: (MinRatingFilter) -> Unit,
     onResetFilters: () -> Unit,
-    onQuickPresetSelected: (QuickSearchPreset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -152,13 +149,12 @@ fun SearchFilterBar(
                     modifier = Modifier.size(FilterChipDefaults.IconSize),
                 )
             },
-            modifier = Modifier.defaultMinSize(minHeight = 48.dp),
         )
 
         // 2. Vertical Divider between Filters button and quick presets / active chips
         VerticalDivider(
             modifier = Modifier
-                .height(24.dp)
+                .height(20.dp)
                 .padding(horizontal = 2.dp),
             color = MaterialTheme.colorScheme.outlineVariant,
         )
@@ -184,7 +180,6 @@ fun SearchFilterBar(
                         modifier = Modifier.size(FilterChipDefaults.IconSize),
                     )
                 },
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
         }
 
@@ -210,7 +205,6 @@ fun SearchFilterBar(
                         modifier = Modifier.size(InputChipDefaults.IconSize),
                     )
                 },
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
         }
 
@@ -220,7 +214,7 @@ fun SearchFilterBar(
                 val genreDisplay = formatGenreTag(genre)
                 InputChip(
                     selected = true,
-                    onClick = { onRemoveGenre(genre) },
+                    onClick = { onToggleGenre(genre) },
                     shape = SearchChipShape,
                     colors = inputColors,
                     border = searchInputChipBorder(selected = true),
@@ -237,7 +231,6 @@ fun SearchFilterBar(
                             modifier = Modifier.size(InputChipDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                 )
             }
         }
@@ -248,13 +241,7 @@ fun SearchFilterBar(
             val genreDisplay = formatGenreTag(genre)
             FilterChip(
                 selected = selected,
-                onClick = {
-                    if (selected) {
-                        onRemoveGenre(genre)
-                    } else {
-                        onQuickPresetSelected(QuickSearchPreset.Genre(genre))
-                    }
-                },
+                onClick = { onToggleGenre(genre) },
                 shape = SearchChipShape,
                 colors = chipColors,
                 border = searchChipBorder(selected = selected),
@@ -273,7 +260,6 @@ fun SearchFilterBar(
                         )
                     }
                 } else null,
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
         }
 
@@ -283,13 +269,7 @@ fun SearchFilterBar(
             val platformLabel = stringResource(platform.labelRes)
             FilterChip(
                 selected = selected,
-                onClick = {
-                    if (selected) {
-                        onRemovePlatform(platform)
-                    } else {
-                        onQuickPresetSelected(QuickSearchPreset.Platform(platform))
-                    }
-                },
+                onClick = { onTogglePlatform(platform) },
                 shape = SearchChipShape,
                 colors = chipColors,
                 border = searchChipBorder(selected = selected),
@@ -315,7 +295,6 @@ fun SearchFilterBar(
                         )
                     }
                 } else null,
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
         }
 
@@ -326,9 +305,9 @@ fun SearchFilterBar(
             selected = isRating80Selected,
             onClick = {
                 if (isRating80Selected) {
-                    onRemoveMinRating()
+                    onToggleMinRating(MinRatingFilter.ANY)
                 } else {
-                    onQuickPresetSelected(QuickSearchPreset.Rating80)
+                    onToggleMinRating(MinRatingFilter.R80)
                 }
             },
             shape = SearchChipShape,
@@ -349,7 +328,6 @@ fun SearchFilterBar(
                     )
                 }
             } else null,
-            modifier = Modifier.defaultMinSize(minHeight = 48.dp),
         )
 
         // Custom Rating chip (if rating != ANY and rating != R80, e.g. R70 or R90)
@@ -357,7 +335,7 @@ fun SearchFilterBar(
             val customRatingLabel = stringResource(filters.minRating.labelRes)
             InputChip(
                 selected = true,
-                onClick = onRemoveMinRating,
+                onClick = { onToggleMinRating(MinRatingFilter.ANY) },
                 shape = SearchChipShape,
                 colors = inputColors,
                 border = searchInputChipBorder(selected = true),
@@ -374,7 +352,6 @@ fun SearchFilterBar(
                         modifier = Modifier.size(InputChipDefaults.IconSize),
                     )
                 },
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
         }
 
@@ -401,7 +378,6 @@ fun SearchFilterBar(
                         color = MaterialTheme.colorScheme.error,
                     )
                 },
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
         }
     }

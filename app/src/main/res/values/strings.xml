@@ -68,6 +68,8 @@
     </plurals>
     <string name="search_filter_section_sort">Sort By</string>
     <string name="search_filter_section_genres">Genres</string>
+    <string name="search_filter_genres_show_all">Show all (%1$d)</string>
+    <string name="search_filter_genres_show_less">Show less</string>
     <string name="search_filter_section_platforms">Platforms</string>
     <string name="search_filter_section_year">Release Year</string>
     <string name="search_filter_section_rating">Minimum Rating</string>

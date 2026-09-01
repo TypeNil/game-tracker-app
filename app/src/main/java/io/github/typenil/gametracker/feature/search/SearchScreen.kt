@@ -91,16 +91,21 @@ fun SearchRoute(
         onRetry = viewModel::retry,
         onGameClick = onGameClick,
         onBackClick = onBackClick,
-        onRemoveGenre = viewModel::onGenreToggled,
-        onRemovePlatform = viewModel::onPlatformToggled,
+        onToggleGenre = viewModel::onGenreToggled,
+        onTogglePlatform = viewModel::onPlatformToggled,
         onRemoveReleaseYear = { viewModel.onReleaseYearSelected(ReleaseYearFilter.ALL) },
-        onRemoveMinRating = { viewModel.onMinRatingSelected(MinRatingFilter.ANY) },
+        onToggleMinRating = { rating ->
+            if (uiState.filters.minRating == rating) {
+                viewModel.onMinRatingSelected(MinRatingFilter.ANY)
+            } else {
+                viewModel.onMinRatingSelected(rating)
+            }
+        },
         onResetFilters = viewModel::onResetFilters,
         onApplyFilters = viewModel::onApplyFilters,
         onSelectRecentQuery = viewModel::onSelectRecentQuery,
         onRemoveRecentQuery = viewModel::onRemoveRecentQuery,
         onClearAllRecentQueries = viewModel::onClearAllRecentQueries,
-        onQuickPresetSelected = viewModel::onQuickPresetSelected,
         onLibraryAction = viewModel::onLibraryCardAction,
         onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
         onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
@@ -119,16 +124,15 @@ fun SearchScreen(
     onRetry: () -> Unit,
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit,
-    onRemoveGenre: (String) -> Unit = {},
-    onRemovePlatform: (PlatformFamily) -> Unit = {},
+    onToggleGenre: (String) -> Unit = {},
+    onTogglePlatform: (PlatformFamily) -> Unit = {},
     onRemoveReleaseYear: () -> Unit = {},
-    onRemoveMinRating: () -> Unit = {},
+    onToggleMinRating: (MinRatingFilter) -> Unit = {},
     onResetFilters: () -> Unit = {},
     onApplyFilters: (SearchFilters) -> Unit = {},
     onSelectRecentQuery: (String) -> Unit = {},
     onRemoveRecentQuery: (String) -> Unit = {},
     onClearAllRecentQueries: () -> Unit = {},
-    onQuickPresetSelected: (QuickSearchPreset) -> Unit = {},
     onLibraryAction: (Game) -> Unit = {},
     onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
@@ -222,12 +226,11 @@ fun SearchScreen(
             SearchFilterBar(
                 filters = uiState.filters,
                 onOpenFilterSheet = { isFilterSheetOpen = true },
-                onRemoveGenre = onRemoveGenre,
-                onRemovePlatform = onRemovePlatform,
+                onToggleGenre = onToggleGenre,
+                onTogglePlatform = onTogglePlatform,
                 onRemoveReleaseYear = onRemoveReleaseYear,
-                onRemoveMinRating = onRemoveMinRating,
+                onToggleMinRating = onToggleMinRating,
                 onResetFilters = onResetFilters,
-                onQuickPresetSelected = onQuickPresetSelected,
             )
 
             // Result State Container
@@ -307,6 +310,8 @@ private fun SearchIdleState(
     onClearAllRecentQueries: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (recentQueries.isEmpty()) return
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -314,26 +319,6 @@ private fun SearchIdleState(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(vertical = 16.dp),
     ) {
-        // 0. Guidance Header
-        item(key = "guidance_header") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.search_idle_title),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = stringResource(R.string.search_idle_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
 
         // 1. Recent Searches Section
         if (recentQueries.isNotEmpty()) {

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -29,6 +32,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +66,7 @@ fun SearchFilterSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     var draftFilters by rememberSaveable(stateSaver = SearchFilters.Saver) { mutableStateOf(initialFilters) }
+    var isGenresExpanded by rememberSaveable { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     ModalBottomSheet(
@@ -127,7 +132,6 @@ fun SearchFilterSheet(
                                         style = MaterialTheme.typography.labelMedium,
                                     )
                                 },
-                                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
                     }
@@ -167,19 +171,31 @@ fun SearchFilterSheet(
                                         modifier = Modifier.size(FilterChipDefaults.IconSize),
                                     )
                                 },
-                                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
                     }
                 }
 
-                // Section 3: Genres
+                // Section 3: Genres (Collapsible)
                 FilterSection(title = stringResource(R.string.search_filter_section_genres)) {
+                    val allGenres = SearchGenreCatalog.wireNames
+                    val initialVisibleCount = 8
+                    val visibleGenres = remember(isGenresExpanded, draftFilters.genres) {
+                        if (isGenresExpanded) {
+                            allGenres
+                        } else {
+                            val top = allGenres.take(initialVisibleCount)
+                            val extraSelected = draftFilters.genres.filter { !top.contains(it) }
+                            (top + extraSelected).distinct()
+                        }
+                    }
+                    val hasHiddenGenres = allGenres.size > visibleGenres.size
+
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        for (genreWireName in SearchGenreCatalog.wireNames) {
+                        for (genreWireName in visibleGenres) {
                             val selected = draftFilters.genres.contains(genreWireName)
                             FilterChip(
                                 selected = selected,
@@ -200,7 +216,46 @@ fun SearchFilterSheet(
                                         style = MaterialTheme.typography.labelMedium,
                                     )
                                 },
-                                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
+                            )
+                        }
+
+                        if (hasHiddenGenres || isGenresExpanded) {
+                            FilterChip(
+                                selected = false,
+                                onClick = { isGenresExpanded = !isGenresExpanded },
+                                shape = SearchChipShape,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    labelColor = MaterialTheme.colorScheme.primary,
+                                    iconColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = false,
+                                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    borderWidth = 1.dp,
+                                ),
+                                label = {
+                                    Text(
+                                        text = if (isGenresExpanded) {
+                                            stringResource(R.string.search_filter_genres_show_less)
+                                        } else {
+                                            stringResource(R.string.search_filter_genres_show_all, allGenres.size)
+                                        },
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = if (isGenresExpanded) {
+                                            Icons.Default.KeyboardArrowUp
+                                        } else {
+                                            Icons.Default.KeyboardArrowDown
+                                        },
+                                        contentDescription = null,
+                                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                    )
+                                },
                             )
                         }
                     }
@@ -226,7 +281,6 @@ fun SearchFilterSheet(
                                         style = MaterialTheme.typography.labelMedium,
                                     )
                                 },
-                                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
                     }
@@ -252,12 +306,10 @@ fun SearchFilterSheet(
                                         style = MaterialTheme.typography.labelMedium,
                                     )
                                 },
-                                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
             }
 

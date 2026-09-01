@@ -309,7 +309,7 @@ class SearchScreenTest {
     @Test
     fun idleState_rendersRecentSearchesAndPresets() {
         var selectedQuery = ""
-        var quickPresetGenre: String? = null
+        var toggledGenre: String? = null
 
         composeTestRule.setContent {
             SearchScreen(
@@ -324,9 +324,7 @@ class SearchScreenTest {
                 onGameClick = {},
                 onBackClick = {},
                 onSelectRecentQuery = { selectedQuery = it },
-                onQuickPresetSelected = { preset ->
-                    if (preset is QuickSearchPreset.Genre) quickPresetGenre = preset.name
-                },
+                onToggleGenre = { toggledGenre = it },
             )
         }
 
@@ -340,7 +338,7 @@ class SearchScreenTest {
 
         // Click quick preset
         composeTestRule.onNodeWithText("RPG").performClick()
-        assertEquals("Role-playing (RPG)", quickPresetGenre)
+        assertEquals("Role-playing (RPG)", toggledGenre)
     }
 
     @Test
