@@ -48,6 +48,7 @@ import io.github.typenil.gametracker.feature.search.SearchFilters
 import io.github.typenil.gametracker.feature.search.SearchGenreCatalog
 import io.github.typenil.gametracker.feature.search.SearchSortOption
 
+
 /**
  * Modal Bottom Sheet allowing the user to configure comprehensive search filters and sort preferences.
  */
@@ -104,6 +105,8 @@ fun SearchFilterSheet(
                     .padding(GtDimens.Gutter),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
+                val chipColors = searchChipColors()
+
                 // Section 1: Sort By
                 FilterSection(title = stringResource(R.string.search_filter_section_sort)) {
                     FlowRow(
@@ -111,10 +114,19 @@ fun SearchFilterSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         for (option in SearchSortOption.entries) {
+                            val selected = draftFilters.sort == option
                             FilterChip(
-                                selected = draftFilters.sort == option,
+                                selected = selected,
                                 onClick = { draftFilters = draftFilters.copy(sort = option) },
-                                label = { Text(stringResource(option.labelRes)) },
+                                shape = SearchChipShape,
+                                colors = chipColors,
+                                border = searchChipBorder(selected),
+                                label = {
+                                    Text(
+                                        text = stringResource(option.labelRes),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
                                 modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
@@ -139,7 +151,15 @@ fun SearchFilterSheet(
                                     }
                                     draftFilters = draftFilters.copy(platforms = updated)
                                 },
-                                label = { Text(stringResource(platform.labelRes)) },
+                                shape = SearchChipShape,
+                                colors = chipColors,
+                                border = searchChipBorder(selected),
+                                label = {
+                                    Text(
+                                        text = stringResource(platform.labelRes),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
                                 leadingIcon = {
                                     Icon(
                                         painter = painterResource(platform.iconRes),
@@ -171,7 +191,15 @@ fun SearchFilterSheet(
                                     }
                                     draftFilters = draftFilters.copy(genres = updated)
                                 },
-                                label = { Text(formatGenreTag(genreWireName)) },
+                                shape = SearchChipShape,
+                                colors = chipColors,
+                                border = searchChipBorder(selected),
+                                label = {
+                                    Text(
+                                        text = formatGenreTag(genreWireName),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
                                 modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
@@ -185,10 +213,19 @@ fun SearchFilterSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         for (yearOption in ReleaseYearFilter.entries) {
+                            val selected = draftFilters.releaseYear == yearOption
                             FilterChip(
-                                selected = draftFilters.releaseYear == yearOption,
+                                selected = selected,
                                 onClick = { draftFilters = draftFilters.copy(releaseYear = yearOption) },
-                                label = { Text(stringResource(yearOption.labelRes)) },
+                                shape = SearchChipShape,
+                                colors = chipColors,
+                                border = searchChipBorder(selected),
+                                label = {
+                                    Text(
+                                        text = stringResource(yearOption.labelRes),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
                                 modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }
@@ -202,10 +239,19 @@ fun SearchFilterSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         for (ratingOption in MinRatingFilter.entries) {
+                            val selected = draftFilters.minRating == ratingOption
                             FilterChip(
-                                selected = draftFilters.minRating == ratingOption,
+                                selected = selected,
                                 onClick = { draftFilters = draftFilters.copy(minRating = ratingOption) },
-                                label = { Text(stringResource(ratingOption.labelRes)) },
+                                shape = SearchChipShape,
+                                colors = chipColors,
+                                border = searchChipBorder(selected),
+                                label = {
+                                    Text(
+                                        text = stringResource(ratingOption.labelRes),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
                                 modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                             )
                         }

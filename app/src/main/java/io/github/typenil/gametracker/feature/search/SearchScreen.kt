@@ -4,12 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,8 +27,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +51,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +66,6 @@ import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
-import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
@@ -234,6 +227,7 @@ fun SearchScreen(
                 onRemoveReleaseYear = onRemoveReleaseYear,
                 onRemoveMinRating = onRemoveMinRating,
                 onResetFilters = onResetFilters,
+                onQuickPresetSelected = onQuickPresetSelected,
             )
 
             // Result State Container
@@ -249,7 +243,6 @@ fun SearchScreen(
                             onSelectRecentQuery = onSelectRecentQuery,
                             onRemoveRecentQuery = onRemoveRecentQuery,
                             onClearAllRecentQueries = onClearAllRecentQueries,
-                            onQuickPresetSelected = onQuickPresetSelected,
                         )
                     }
                     is SearchResultUiState.Loading -> {
@@ -306,14 +299,12 @@ fun SearchScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SearchIdleState(
     recentQueries: List<String>,
     onSelectRecentQuery: (String) -> Unit,
     onRemoveRecentQuery: (String) -> Unit,
     onClearAllRecentQueries: () -> Unit,
-    onQuickPresetSelected: (QuickSearchPreset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -326,7 +317,9 @@ private fun SearchIdleState(
         // 0. Guidance Header
         item(key = "guidance_header") {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
@@ -342,61 +335,7 @@ private fun SearchIdleState(
             }
         }
 
-        // 1. Quick Presets Section
-        item(key = "presets_section") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = stringResource(R.string.search_presets_title),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    val presets = listOf<Pair<QuickSearchPreset, @Composable () -> Unit>>(
-                        QuickSearchPreset.Genre("Role-playing (RPG)") to { Text(formatGenreTag("Role-playing (RPG)")) },
-                        QuickSearchPreset.Genre("Action") to { Text(formatGenreTag("Action")) },
-                        QuickSearchPreset.Genre("Adventure") to { Text(formatGenreTag("Adventure")) },
-                        QuickSearchPreset.Genre("Shooter") to { Text(formatGenreTag("Shooter")) },
-                        QuickSearchPreset.Genre("Indie") to { Text(formatGenreTag("Indie")) },
-                        QuickSearchPreset.Platform(PlatformFamily.PC) to {
-                            Text(stringResource(PlatformFamily.PC.labelRes))
-                        },
-                        QuickSearchPreset.Platform(PlatformFamily.PLAYSTATION) to {
-                            Text(stringResource(PlatformFamily.PLAYSTATION.labelRes))
-                        },
-                        QuickSearchPreset.Platform(PlatformFamily.XBOX) to {
-                            Text(stringResource(PlatformFamily.XBOX.labelRes))
-                        },
-                        QuickSearchPreset.Platform(PlatformFamily.NINTENDO) to {
-                            Text(stringResource(PlatformFamily.NINTENDO.labelRes))
-                        },
-                        QuickSearchPreset.Rating80 to { Text(stringResource(R.string.search_filter_rating_80)) },
-                    )
-                    for ((preset, labelComposable) in presets) {
-                        val platform = (preset as? QuickSearchPreset.Platform)?.family
-                        FilterChip(
-                            selected = false,
-                            onClick = { onQuickPresetSelected(preset) },
-                            label = labelComposable,
-                            leadingIcon = if (platform != null) {
-                                {
-                                    Icon(
-                                        painter = painterResource(platform.iconRes),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(FilterChipDefaults.IconSize),
-                                    )
-                                }
-                            } else null,
-                            modifier = Modifier.defaultMinSize(minHeight = 48.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        // 2. Recent Searches Section
+        // 1. Recent Searches Section
         if (recentQueries.isNotEmpty()) {
             item(key = "recent_section_header") {
                 Row(

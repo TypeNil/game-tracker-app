@@ -331,11 +331,9 @@ class SearchScreenTest {
         }
 
         val context = composeTestRule.activity
-        composeTestRule.onNodeWithText(context.getString(R.string.search_presets_title)).assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.search_recent_title)).assertIsDisplayed()
         composeTestRule.onNodeWithText("Elden Ring").assertIsDisplayed()
         composeTestRule.onNodeWithText("Cyberpunk").assertIsDisplayed()
-
         // Click recent query
         composeTestRule.onNodeWithText("Elden Ring").performClick()
         assertEquals("Elden Ring", selectedQuery)
