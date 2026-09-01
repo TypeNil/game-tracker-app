@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
 
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagingData
@@ -265,9 +266,12 @@ class SearchScreenTest {
 
     @Test
     fun filterBar_rendersActiveFilterChips_andForwardsRemovals() {
-        var genreRemoved = false
+        var genreToggled = false
         val filters = SearchFilters(
             genres = setOf("Role-playing (RPG)"),
+            platforms = setOf(io.github.typenil.gametracker.core.designsystem.component.PlatformFamily.PC),
+            minRating = MinRatingFilter.R80,
+            releaseYear = ReleaseYearFilter.THIS_YEAR,
             sort = SearchSortOption.RATING_DESC,
         )
 
@@ -283,18 +287,20 @@ class SearchScreenTest {
                 onRetry = {},
                 onGameClick = {},
                 onBackClick = {},
-                onToggleGenre = { genreRemoved = true },
+                onToggleGenre = { genreToggled = true },
             )
         }
 
         val context = composeTestRule.activity
-        composeTestRule.onNodeWithText(context.getString(R.string.search_filters_count_format, 1)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filters_count_format, 4)).assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.search_sort_rating_desc)).assertIsDisplayed()
-        composeTestRule.onNodeWithText("RPG").assertIsDisplayed()
-
-        // Click remove RPG filter
-        composeTestRule.onNodeWithContentDescription(context.getString(R.string.search_remove_filter_desc, "RPG")).performClick()
-        assertTrue(genreRemoved)
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filter_year_this_year)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("RPG").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.platform_pc)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filter_rating_80)).performScrollTo().assertIsDisplayed()
+        // Click toggle/remove RPG filter
+        composeTestRule.onNodeWithText("RPG").performScrollTo().performClick()
+        assertTrue(genreToggled)
     }
 
     @Test
