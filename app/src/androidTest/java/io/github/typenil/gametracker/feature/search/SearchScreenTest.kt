@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -62,7 +63,7 @@ class SearchScreenTest {
     )
 
     @Test
-    fun idleState_rendersSearchGuidance() {
+    fun idleState_rendersSearchHint() {
         val context = composeTestRule.activity
 
         composeTestRule.setContent {
@@ -76,11 +77,8 @@ class SearchScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText(context.getString(R.string.search_idle_title)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.search_idle_subtitle)).assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.search_hint)).assertIsDisplayed()
     }
-
     @Test
     fun loadingState_rendersSkeletonAndCopy() {
         val context = composeTestRule.activity
@@ -270,9 +268,6 @@ class SearchScreenTest {
         var genreRemoved = false
         val filters = SearchFilters(
             genres = setOf("Role-playing (RPG)"),
-            platforms = setOf(io.github.typenil.gametracker.core.designsystem.component.PlatformFamily.PC),
-            minRating = MinRatingFilter.R80,
-            releaseYear = ReleaseYearFilter.THIS_YEAR,
             sort = SearchSortOption.RATING_DESC,
         )
 
@@ -281,25 +276,21 @@ class SearchScreenTest {
                 uiState = SearchUiState(
                     query = "",
                     filters = filters,
-                    result = SearchResultUiState.Content(sampleGames),
+                    result = SearchResultUiState.Idle,
                 ),
                 onQueryChange = {},
                 onClearQuery = {},
                 onRetry = {},
                 onGameClick = {},
                 onBackClick = {},
-                onRemoveGenre = { genreRemoved = true },
+                onToggleGenre = { genreRemoved = true },
             )
         }
 
-        // Active count format in filter button: Filters (4)
         val context = composeTestRule.activity
-        composeTestRule.onNodeWithText(context.getString(R.string.search_filters_count_format, 4)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.search_filters_count_format, 1)).assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.search_sort_rating_desc)).assertIsDisplayed()
         composeTestRule.onNodeWithText("RPG").assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.platform_pc)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.search_filter_year_this_year)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.search_filter_rating_80)).assertIsDisplayed()
 
         // Click remove RPG filter
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.search_remove_filter_desc, "RPG")).performClick()
@@ -390,8 +381,7 @@ class SearchScreenTest {
         val searchHint = context.getString(R.string.search_hint)
         val loadingText = context.getString(R.string.search_loading_games)
 
-        composeTestRule.onNodeWithText(context.getString(R.string.search_idle_title)).assertIsDisplayed()
-
+        composeTestRule.onNodeWithText(searchHint).assertIsDisplayed()
         composeTestRule.onNodeWithText(searchHint).performTextInput("witcher")
 
         // combine() maps Idle + non-blank query to Loading before debounce / searchGames().

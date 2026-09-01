@@ -48,13 +48,13 @@ class OfflineAcceptanceTest {
     private lateinit var gameDao: GameDao
     private lateinit var gameDetailsDao: GameDetailsDao
     private lateinit var searchDao: SearchDao
+    private lateinit var searchHistoryDao: io.github.typenil.gametracker.core.database.dao.SearchHistoryDao
     private lateinit var remoteKeyDao: RemoteKeyDao
     private lateinit var libraryDao: LibraryDao
     private lateinit var repository: DefaultGameRepository
     private lateinit var testRemoteDataSource: TestRemoteDataSource
 
     private val testNow = 1_700_000_000L
-
     /**
      * Single shared scheduler: the repository's ioDispatcher and each runTest scope
      * must use the same TestCoroutineScheduler, otherwise combine/yield inside the
@@ -111,6 +111,7 @@ class OfflineAcceptanceTest {
         gameDao = database.gameDao()
         gameDetailsDao = database.gameDetailsDao()
         searchDao = database.searchDao()
+        searchHistoryDao = database.searchHistoryDao()
         remoteKeyDao = database.remoteKeyDao()
         libraryDao = database.libraryDao()
 
@@ -122,6 +123,7 @@ class OfflineAcceptanceTest {
             gameDao = gameDao,
             gameDetailsDao = gameDetailsDao,
             searchDao = searchDao,
+            searchHistoryDao = searchHistoryDao,
             remoteKeyDao = remoteKeyDao,
             transactionRunner = RoomTransactionRunner(database),
             ioDispatcher = testDispatcher,
@@ -299,7 +301,17 @@ class OfflineAcceptanceTest {
             return topRated
         }
 
-        override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
+        override suspend fun searchGames(
+            query: String?,
+            genres: List<String>,
+            platforms: List<String>,
+            minRating: Int?,
+            minYear: Int?,
+            maxYear: Int?,
+            sort: String?,
+            limit: Int,
+            offset: Int,
+        ): List<GameDto> {
             if (isOffline) throw IOException("Simulated Airplane Mode")
             return search
         }
