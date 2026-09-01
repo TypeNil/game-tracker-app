@@ -126,13 +126,20 @@ class FakeBffDataSource @Inject constructor(
                 game.name.contains(trimmedQuery, ignoreCase = true) ||
                 game.genres.any { it.contains(trimmedQuery, ignoreCase = true) }
             val matchesGenres = genres.isEmpty() ||
-                game.genres.any { g -> genres.any { target -> target.equals(g, ignoreCase = true) } }
+                genres.all { requestedGenre ->
+                    game.genres.any { it.equals(requestedGenre, ignoreCase = true) }
+                }
             val matchesPlatforms = platforms.isEmpty() ||
-                game.platforms.any { p ->
-                    platforms.any { target ->
-                        target.equals(p, ignoreCase = true) ||
-                            p.contains(target, ignoreCase = true) ||
-                            target.contains(p, ignoreCase = true)
+                platforms.any { requestedPlatform ->
+                    val canonicalRequested = if (requestedPlatform.equals("PC (Microsoft Windows)", ignoreCase = true)) {
+                        "PC"
+                    } else {
+                        requestedPlatform
+                    }
+                    game.platforms.any {
+                        it.equals(canonicalRequested, ignoreCase = true) ||
+                            it.contains(canonicalRequested, ignoreCase = true) ||
+                            canonicalRequested.contains(it, ignoreCase = true)
                     }
                 }
             val matchesRating = minRating == null || (game.rating ?: 0.0) >= minRating

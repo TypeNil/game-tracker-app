@@ -28,7 +28,7 @@ sealed interface GameQueryKey {
         val sort: String? = null,
     ) : GameQueryKey {
         override val key: String = buildString {
-            append("search:v2")
+            append("search:v3")
             append("|q=").append(encodePart(normalize(query)))
             append("|genres=").append(encodePart(encodeList(genres.map(::normalize))))
             append("|platforms=").append(encodePart(encodeList(platforms.map(::normalize))))

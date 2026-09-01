@@ -19,15 +19,15 @@ class GameQueryKeyTest {
         val keyComposed = GameQueryKey.search(composed)
         val keyDecomposed = GameQueryKey.search(decomposed)
 
-        org.junit.Assert.assertTrue(keyComposed.startsWith("search:v2|q=1:é"))
-        org.junit.Assert.assertTrue(keyDecomposed.startsWith("search:v2|q=1:é"))
+        org.junit.Assert.assertTrue(keyComposed.startsWith("search:v3|q=1:é"))
+        org.junit.Assert.assertTrue(keyDecomposed.startsWith("search:v3|q=1:é"))
         assertEquals(keyComposed, keyDecomposed)
     }
 
     @Test
     fun `Search produces clean versioned key`() {
         val key = GameQueryKey.search("  Cyberpunk 2077  ")
-        org.junit.Assert.assertTrue(key.startsWith("search:v2|q=14:cyberpunk 2077"))
+        org.junit.Assert.assertTrue(key.startsWith("search:v3|q=14:cyberpunk 2077"))
     }
 
     @Test
@@ -41,7 +41,7 @@ class GameQueryKeyTest {
             maxYear = 2024,
             sort = "rating",
         )
-        val expectedKey = "search:v2|q=7:witcher|genres=32:9:adventure18:role-playing (rpg)" +
+        val expectedKey = "search:v3|q=7:witcher|genres=32:9:adventure18:role-playing (rpg)" +
             "|platforms=25:22:pc (microsoft windows)|minRating=80|minYear=2020|maxYear=2024|sort="
         assertEquals(expectedKey, searchWithQuery.key)
     }
@@ -54,7 +54,7 @@ class GameQueryKeyTest {
             sort = "rating",
         )
         assertEquals(
-            "search:v2|q=0:|genres=5:3:rpg|platforms=0:|minRating=|minYear=|maxYear=|sort=rating",
+            "search:v3|q=0:|genres=5:3:rpg|platforms=0:|minRating=|minYear=|maxYear=|sort=rating",
             catalogSearch.key,
         )
     }

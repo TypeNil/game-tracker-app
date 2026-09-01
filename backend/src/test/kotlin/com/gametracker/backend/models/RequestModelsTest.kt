@@ -16,7 +16,7 @@ class RequestModelsTest {
         assertEquals("the witcher 3: wild hunt!", request.canonicalQuery)
         assertEquals(15, request.limit)
         assertEquals(10, request.offset)
-        assertTrue(request.cacheKey.startsWith("search:v2|q=25:the witcher 3: wild hunt!"))
+        assertTrue(request.cacheKey.startsWith("search:v3|q=25:the witcher 3: wild hunt!"))
         val apicalypse = request.toApicalypseQuery()
         assertTrue(apicalypse.contains("search \"the witcher 3: wild hunt!\";"))
         assertTrue(apicalypse.contains("cover.image_id"))
@@ -65,7 +65,8 @@ class RequestModelsTest {
 
         val apicalypse = request.toApicalypseQuery()
         assertFalse(apicalypse.contains("search \""))
-        assertTrue(apicalypse.contains("genres.name = (\"Role-playing (RPG)\", \"Adventure\")"))
+        assertTrue(apicalypse.contains("genres = (12) & genres = (31)"))
+        assertFalse(apicalypse.contains("genres.name ="))
         assertTrue(apicalypse.contains("platforms.name = (\"PC (Microsoft Windows)\")"))
         assertTrue(apicalypse.contains("rating >= 85"))
         assertTrue(apicalypse.contains("first_release_date >="))
@@ -83,9 +84,22 @@ class RequestModelsTest {
 
         val apicalypse = request.toApicalypseQuery()
         assertTrue(apicalypse.contains("search \"zelda\";"))
-        assertTrue(apicalypse.contains("genres.name = (\"Adventure\")"))
+        assertTrue(apicalypse.contains("genres = (31)"))
+        assertFalse(apicalypse.contains("genres.name ="))
         assertFalse(apicalypse.contains("sort rating"))
     }
+    @Test
+    fun `SearchRequest with RPG genre and Action theme maps to genre 12 and theme 1`() {
+        val request = SearchRequest(
+            rawQuery = null,
+            genresParam = "Role-playing (RPG), Action",
+            sortParam = "rating_desc",
+        )
+        val apicalypse = request.toApicalypseQuery()
+        assertTrue(apicalypse.contains("genres = (12) & themes = (1)"))
+        assertTrue(apicalypse.contains("sort rating desc;"))
+    }
+
 
     @Test
     fun `SearchRequest with text query produces identical cacheKey regardless of sortParam`() {
@@ -197,7 +211,7 @@ class RequestModelsTest {
 
         val request = SearchRequest(rawQuery = null, genresParam = all22Genres)
         assertEquals(22, request.genres.size)
-        assertTrue(request.cacheKey.startsWith("search:v2|q=0:"))
+        assertTrue(request.cacheKey.startsWith("search:v3|q=0:"))
     }
 
     @Test

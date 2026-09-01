@@ -17,6 +17,59 @@ private val TAG_PUNCTUATION = setOf(
     '(', ')', '[', ']', '/', '|',
 )
 
+private val IGDB_GENRE_MAP: Map<String, Int> = mapOf(
+    "point-and-click" to 2,
+    "fighting" to 4,
+    "shooter" to 5,
+    "music" to 7,
+    "platform" to 8,
+    "puzzle" to 9,
+    "racing" to 10,
+    "real time strategy (rts)" to 11,
+    "real-time strategy (rts)" to 11,
+    "role-playing (rpg)" to 12,
+    "simulator" to 13,
+    "sport" to 14,
+    "strategy" to 15,
+    "turn-based strategy (tbs)" to 16,
+    "tactical" to 24,
+    "hack and slash/beat 'em up" to 25,
+    "quiz/trivia" to 26,
+    "pinball" to 30,
+    "adventure" to 31,
+    "indie" to 32,
+    "arcade" to 33,
+    "visual novel" to 34,
+    "card & board game" to 35,
+    "moba" to 36,
+)
+
+private val IGDB_THEME_MAP: Map<String, Int> = mapOf(
+    "action" to 1,
+    "fantasy" to 17,
+    "science fiction" to 18,
+    "horror" to 19,
+    "thriller" to 20,
+    "survival" to 21,
+    "historical" to 22,
+    "stealth" to 23,
+    "comedy" to 27,
+    "business" to 28,
+    "drama" to 31,
+    "non-fiction" to 32,
+    "sandbox" to 33,
+    "educational" to 34,
+    "kids" to 35,
+    "open world" to 38,
+    "warfare" to 39,
+    "party" to 40,
+    "4x" to 41,
+    "4x (explore, expand, exploit, and exterminate)" to 41,
+    "erotic" to 42,
+    "mystery" to 43,
+    "romance" to 44,
+)
+
 /**
  * Поля для деталей игры. Списковые запросы остаются на [QUERY_FIELDS] — список должен
  * оставаться тощим, а details-ответ не должен менять URL-размер обложек списков.
@@ -143,7 +196,7 @@ class SearchRequest(
     val effectiveSort: SearchSortField = if (canonicalQuery == null) sort else SearchSortField.RELEVANCE
 
     val cacheKey: String = buildString {
-        append("search:v2")
+        append("search:v3")
         append("|q=").append(encodePart(canonicalQuery.orEmpty()))
         append("|genres=").append(encodePart(encodeList(genres)))
         append("|platforms=").append(encodePart(encodeList(platforms)))
@@ -161,8 +214,15 @@ class SearchRequest(
         append("where ")
         val whereClauses = buildList {
             add("cover != null")
-            if (genres.isNotEmpty()) {
-                add("genres.name = ${quotedList(genres)}")
+            for (genre in genres) {
+                val normalized = genre.trim().lowercase(java.util.Locale.ROOT)
+                val genreId = IGDB_GENRE_MAP[normalized]
+                val themeId = IGDB_THEME_MAP[normalized]
+                when {
+                    genreId != null -> add("genres = ($genreId)")
+                    themeId != null -> add("themes = ($themeId)")
+                    else -> add("genres.name = \"$genre\"")
+                }
             }
             if (platforms.isNotEmpty()) {
                 add("platforms.name = ${quotedList(platforms)}")

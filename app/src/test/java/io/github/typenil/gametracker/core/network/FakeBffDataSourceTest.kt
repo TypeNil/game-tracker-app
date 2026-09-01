@@ -364,6 +364,37 @@ class FakeBffDataSourceTest {
     }
 
     @Test
+    fun `searchGames multi-genre AND keeps supersets and drops partial matches`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            genres = listOf("Role-playing (RPG)", "Adventure"),
+            limit = 30,
+            offset = 0,
+        )
+        assertTrue(results.isNotEmpty())
+        val names = results.map { it.name }
+        assertTrue(names.any { it.contains("Witcher", ignoreCase = true) })
+        assertTrue(results.all { game ->
+            game.genres.any { it.equals("Role-playing (RPG)", ignoreCase = true) } &&
+                game.genres.any { it.equals("Adventure", ignoreCase = true) }
+        })
+    }
+
+    @Test
+    fun `searchGames multi-platform OR includes games matching any requested platform including PC alias`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            platforms = listOf("PC (Microsoft Windows)", "Nintendo Switch"),
+            limit = 30,
+            offset = 0,
+        )
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { game ->
+            game.platforms.any { it.equals("PC", ignoreCase = true) || it.equals("Nintendo Switch", ignoreCase = true) }
+        })
+    }
+
+    @Test
     fun `searchGames rejects blank query without any filters`() = runTest {
         try {
             fakeDataSource.searchGames(query = "   ", limit = 10, offset = 0)
