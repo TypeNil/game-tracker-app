@@ -381,6 +381,20 @@ class FakeBffDataSourceTest {
     }
 
     @Test
+    fun `searchGames mixed genre and theme follows BFF AND semantics`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            genres = listOf("Role-playing (RPG)", "Action"),
+            limit = 30,
+            offset = 0,
+        )
+
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.any { it.id == 1942L }) // The Witcher 3: RPG + Action theme
+        assertTrue(results.none { it.id == 900011L }) // RPG but no Action theme
+    }
+
+    @Test
     fun `searchGames multi-platform OR includes games matching any requested platform including PC alias`() = runTest {
         val results = fakeDataSource.searchGames(
             query = null,

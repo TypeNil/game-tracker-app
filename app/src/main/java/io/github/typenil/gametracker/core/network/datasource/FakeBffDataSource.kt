@@ -51,6 +51,9 @@ class FakeBffDataSource @Inject constructor(
             throw IllegalStateException("Failed to parse fixtures/v1/game-details.json fixture: ${e.message}", e)
         }
     }
+    private val mockDetailsById: Map<Long, GameDetailsDto> by lazy {
+        mockDetails.associateBy(GameDetailsDto::id)
+    }
     private val trendingIds: List<Long> by lazy {
         readIds("fixtures/v1/trending.json")
     }
@@ -125,9 +128,13 @@ class FakeBffDataSource @Inject constructor(
             val matchesQuery = trimmedQuery == null ||
                 game.name.contains(trimmedQuery, ignoreCase = true) ||
                 game.genres.any { it.contains(trimmedQuery, ignoreCase = true) }
+            val details = mockDetailsById[game.id]
+            val gameGenres = details?.genres ?: game.genres
+            val gameThemes = details?.themes.orEmpty()
             val matchesGenres = genres.isEmpty() ||
-                genres.all { requestedGenre ->
-                    game.genres.any { it.equals(requestedGenre, ignoreCase = true) }
+                genres.all { requestedTag ->
+                    gameGenres.any { it.equals(requestedTag, ignoreCase = true) } ||
+                        gameThemes.any { it.equals(requestedTag, ignoreCase = true) }
                 }
             val matchesPlatforms = platforms.isEmpty() ||
                 platforms.any { requestedPlatform ->
