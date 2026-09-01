@@ -23,6 +23,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
@@ -74,44 +77,46 @@ fun SearchFilterSheet(
         sheetState = sheetState,
         modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
+        CompositionLocalProvider(
+            LocalMinimumInteractiveComponentSize provides Dp.Unspecified,
         ) {
-            // Header: Title & Reset Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = GtDimens.Gutter, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.search_filters_title),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                TextButton(
-                    onClick = { draftFilters = SearchFilters.Empty },
-                    enabled = draftFilters != SearchFilters.Empty,
-                ) {
-                    Text(text = stringResource(R.string.search_filter_reset_all))
-                }
-            }
-
-            HorizontalDivider()
-
-            // Scrollable Content
             Column(
                 modifier = Modifier
-                    .weight(1f, fill = false)
-                    .verticalScroll(scrollState)
-                    .padding(GtDimens.Gutter),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
             ) {
-                val chipColors = searchChipColors()
+                // Header: Title & Reset Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = GtDimens.Gutter, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.search_filters_title),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    TextButton(
+                        onClick = { draftFilters = SearchFilters.Empty },
+                        enabled = draftFilters != SearchFilters.Empty,
+                    ) {
+                        Text(text = stringResource(R.string.search_filter_reset_all))
+                    }
+                }
 
+                HorizontalDivider()
+
+                // Scrollable Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(scrollState)
+                        .padding(GtDimens.Gutter),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    val chipColors = searchChipColors()
                 // Section 1: Sort By
                 FilterSection(title = stringResource(R.string.search_filter_section_sort)) {
                     FlowRow(
@@ -338,6 +343,7 @@ fun SearchFilterSheet(
         }
     }
 }
+}
 
 @Composable
 private fun FilterSection(
@@ -347,7 +353,7 @@ private fun FilterSection(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
             text = title,
