@@ -23,12 +23,14 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
@@ -103,13 +106,16 @@ fun SearchFilterSheet(
                 HorizontalDivider()
 
                 // Scrollable Content
-                Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(scrollState)
-                        .padding(GtDimens.Gutter),
-                    verticalArrangement = Arrangement.spacedBy(22.dp),
+                CompositionLocalProvider(
+                    LocalMinimumInteractiveComponentSize provides Dp.Unspecified,
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(scrollState)
+                            .padding(GtDimens.Gutter),
+                        verticalArrangement = Arrangement.spacedBy(22.dp),
+                    ) {
                     val chipColors = searchChipColors()
                 // Section 1: Sort By
                 FilterSection(title = stringResource(R.string.search_filter_section_sort)) {
@@ -306,9 +312,9 @@ fun SearchFilterSheet(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
-
             HorizontalDivider()
 
             // Sticky Bottom Footer: Apply Button
