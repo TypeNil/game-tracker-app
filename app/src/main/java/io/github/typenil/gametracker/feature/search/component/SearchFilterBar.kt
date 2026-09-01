@@ -314,10 +314,7 @@ fun SearchFilterBar(
             colors = chipColors,
             border = searchChipBorder(selected = isRating80Selected),
             label = {
-                Text(
-                    text = rating80Label,
-                    style = MaterialTheme.typography.labelMedium,
-                )
+                RatingFilterLabel(MinRatingFilter.R80)
             },
             trailingIcon = if (isRating80Selected) {
                 {
@@ -340,10 +337,7 @@ fun SearchFilterBar(
                 colors = inputColors,
                 border = searchInputChipBorder(selected = true),
                 label = {
-                    Text(
-                        text = customRatingLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                    RatingFilterLabel(filters.minRating)
                 },
                 trailingIcon = {
                     Icon(

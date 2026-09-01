@@ -25,7 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 private val TagChipShape = RoundedCornerShape(8.dp)
-private val TagChipPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+private val TagChipPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
 
 /**
  * Shared surface primitives ensuring [TagChip] and [OverflowTagChip] share

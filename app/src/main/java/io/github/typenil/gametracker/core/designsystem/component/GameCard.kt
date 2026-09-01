@@ -142,7 +142,7 @@ fun GameCard(
                     val platformFamilies = remember(game.platforms) {
                         resolvePlatformFamilies(game.platforms)
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (genreTags.isNotEmpty()) {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
