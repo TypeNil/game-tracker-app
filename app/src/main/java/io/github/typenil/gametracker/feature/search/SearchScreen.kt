@@ -135,7 +135,7 @@ fun SearchScreen(
     onSelectRecentQuery: (String) -> Unit = {},
     onRemoveRecentQuery: (String) -> Unit = {},
     onClearAllRecentQueries: () -> Unit = {},
-    onQuickPresetSelected: (String?, PlatformFamily?) -> Unit = { _, _ -> },
+    onQuickPresetSelected: (QuickSearchPreset) -> Unit = {},
     onLibraryAction: (Game) -> Unit = {},
     onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
@@ -313,7 +313,7 @@ private fun SearchIdleState(
     onSelectRecentQuery: (String) -> Unit,
     onRemoveRecentQuery: (String) -> Unit,
     onClearAllRecentQueries: () -> Unit,
-    onQuickPresetSelected: (String?, PlatformFamily?) -> Unit,
+    onQuickPresetSelected: (QuickSearchPreset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -323,6 +323,25 @@ private fun SearchIdleState(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(vertical = 16.dp),
     ) {
+        // 0. Guidance Header
+        item(key = "guidance_header") {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.search_idle_title),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.search_idle_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
         // 1. Quick Presets Section
         item(key = "presets_section") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -335,23 +354,32 @@ private fun SearchIdleState(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    val presets = listOf(
-                        "Role-playing (RPG)" to null,
-                        "Action" to null,
-                        "Adventure" to null,
-                        "Shooter" to null,
-                        "Indie" to null,
-                        null to PlatformFamily.PC,
-                        null to PlatformFamily.PLAYSTATION,
-                        null to PlatformFamily.XBOX,
-                        null to PlatformFamily.NINTENDO,
+                    val presets = listOf<Pair<QuickSearchPreset, @Composable () -> Unit>>(
+                        QuickSearchPreset.Genre("Role-playing (RPG)") to { Text(formatGenreTag("Role-playing (RPG)")) },
+                        QuickSearchPreset.Genre("Action") to { Text(formatGenreTag("Action")) },
+                        QuickSearchPreset.Genre("Adventure") to { Text(formatGenreTag("Adventure")) },
+                        QuickSearchPreset.Genre("Shooter") to { Text(formatGenreTag("Shooter")) },
+                        QuickSearchPreset.Genre("Indie") to { Text(formatGenreTag("Indie")) },
+                        QuickSearchPreset.Platform(PlatformFamily.PC) to {
+                            Text(stringResource(PlatformFamily.PC.labelRes))
+                        },
+                        QuickSearchPreset.Platform(PlatformFamily.PLAYSTATION) to {
+                            Text(stringResource(PlatformFamily.PLAYSTATION.labelRes))
+                        },
+                        QuickSearchPreset.Platform(PlatformFamily.XBOX) to {
+                            Text(stringResource(PlatformFamily.XBOX.labelRes))
+                        },
+                        QuickSearchPreset.Platform(PlatformFamily.NINTENDO) to {
+                            Text(stringResource(PlatformFamily.NINTENDO.labelRes))
+                        },
+                        QuickSearchPreset.Rating80 to { Text(stringResource(R.string.search_filter_rating_80)) },
                     )
-                    for ((genre, platform) in presets) {
-                        val label = if (genre != null) formatGenreTag(genre) else stringResource(platform!!.labelRes)
+                    for ((preset, labelComposable) in presets) {
+                        val platform = (preset as? QuickSearchPreset.Platform)?.family
                         FilterChip(
                             selected = false,
-                            onClick = { onQuickPresetSelected(genre, platform) },
-                            label = { Text(label) },
+                            onClick = { onQuickPresetSelected(preset) },
+                            label = labelComposable,
                             leadingIcon = if (platform != null) {
                                 {
                                     Icon(

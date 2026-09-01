@@ -324,7 +324,9 @@ class SearchScreenTest {
                 onGameClick = {},
                 onBackClick = {},
                 onSelectRecentQuery = { selectedQuery = it },
-                onQuickPresetSelected = { genre, _ -> quickPresetGenre = genre },
+                onQuickPresetSelected = { preset ->
+                    if (preset is QuickSearchPreset.Genre) quickPresetGenre = preset.name
+                },
             )
         }
 

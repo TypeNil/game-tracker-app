@@ -45,24 +45,12 @@ class SearchViewModel @Inject constructor(
 ) : ViewModel() {
 
     val rawQuery: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
+    val filterSnapshot: StateFlow<SearchFiltersSnapshot> =
+        savedStateHandle.getStateFlow(KEY_FILTERS, SearchFiltersSnapshot())
 
-    val filters: StateFlow<SearchFilters> = combine(
-        savedStateHandle.getStateFlow<List<String>>(KEY_GENRES, emptyList()),
-        savedStateHandle.getStateFlow<List<String>>(KEY_PLATFORMS, emptyList()),
-        savedStateHandle.getStateFlow(KEY_YEAR, ReleaseYearFilter.ALL.name),
-        savedStateHandle.getStateFlow(KEY_RATING, MinRatingFilter.ANY.name),
-        savedStateHandle.getStateFlow(KEY_SORT, SearchSortOption.RELEVANCE.name),
-    ) { genres, platforms, year, rating, sort ->
-        SearchFilters(
-            genres = genres.toSet(),
-            platforms = platforms.mapNotNull { name ->
-                runCatching { PlatformFamily.valueOf(name) }.getOrNull()
-            }.toSet(),
-            releaseYear = runCatching { ReleaseYearFilter.valueOf(year) }.getOrDefault(ReleaseYearFilter.ALL),
-            minRating = runCatching { MinRatingFilter.valueOf(rating) }.getOrDefault(MinRatingFilter.ANY),
-            sort = runCatching { SearchSortOption.valueOf(sort) }.getOrDefault(SearchSortOption.RELEVANCE),
-        )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, SearchFilters())
+    val filters: StateFlow<SearchFilters> = filterSnapshot
+        .map { it.toDomainFilters() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchFilters())
 
     val recentQueries: StateFlow<List<String>> = gameRepository
         .getRecentSearchQueriesFlow(MAX_RECENT_QUERIES)
@@ -75,73 +63,67 @@ class SearchViewModel @Inject constructor(
     private var libraryMutationJob: Job? = null
     private val userMessageRes = MutableStateFlow<Int?>(null)
 
-    private val queryRequests: Flow<SearchTrigger> = rawQuery
+    private val queryChanges = rawQuery
         .map(String::trim)
         .distinctUntilChanged()
-        .map { query ->
-            val currentFilters = filters.value
-            SearchTrigger(
-                domainQuery = currentFilters.toDomainQuery(query),
-                sortOption = currentFilters.sort,
-                shouldDebounce = query.isNotBlank(),
-            )
-        }
 
-    private val filterRequests: Flow<SearchTrigger> = filters
-        .map { currentFilters ->
-            val currentQuery = rawQuery.value.trim()
-            SearchTrigger(
-                domainQuery = currentFilters.toDomainQuery(currentQuery),
-                sortOption = currentFilters.sort,
-                shouldDebounce = false,
-            )
-        }
+    private val automaticCommands: Flow<SearchCommand> = combine(
+        queryChanges,
+        filters,
+    ) { query, currentFilters ->
+        SearchCommand(
+            domainQuery = currentFilters.toDomainQuery(query),
+            shouldDebounce = query.isNotBlank(),
+            forceRefresh = false,
+        )
+    }.distinctUntilChanged { old, new ->
+        old.domainQuery == new.domainQuery
+    }
 
-    private val retryTriggerFlow: Flow<SearchTrigger> = retryEvents.map {
-        val currentQuery = rawQuery.value.trim()
+    private val retryCommands: Flow<SearchCommand> = retryEvents.map {
+        val query = rawQuery.value.trim()
         val currentFilters = filters.value
-        SearchTrigger(
-            domainQuery = currentFilters.toDomainQuery(currentQuery),
-            sortOption = currentFilters.sort,
+        SearchCommand(
+            domainQuery = currentFilters.toDomainQuery(query),
             shouldDebounce = false,
+            forceRefresh = true,
         )
     }
 
-    private val searchTriggerFlow: Flow<SearchTrigger> = merge(queryRequests, filterRequests, retryTriggerFlow)
+    private val searchCommands: Flow<SearchCommand> = merge(automaticCommands, retryCommands)
 
-    private val searchResults: Flow<SearchExecutionResult> = searchTriggerFlow
-        .distinctUntilChanged()
-        .flatMapLatest { trigger ->
-            if (!trigger.domainQuery.shouldSearch) {
+    private val searchResults: Flow<SearchExecutionResult> = searchCommands
+        .flatMapLatest { command ->
+            if (!command.domainQuery.shouldSearch) {
                 flowOf(SearchExecutionResult.Idle)
             } else {
                 flow<SearchExecutionResult> {
-                    if (trigger.shouldDebounce) {
+                    if (command.shouldDebounce) {
                         delay(SEARCH_DEBOUNCE_MILLIS)
                     }
-                    val localFlow = gameRepository.getSearchResultsFlow(trigger.domainQuery)
+                    val localFlow = gameRepository.getSearchResultsFlow(command.domainQuery)
                     val refreshFlow = flow<RefreshStatus> {
                         emit(RefreshStatus.Loading)
-                        val result = gameRepository.searchGames(query = trigger.domainQuery, limit = SEARCH_LIMIT)
+                        val result = gameRepository.searchGames(query = command.domainQuery, limit = SEARCH_LIMIT)
                         emit(RefreshStatus.Completed(result))
                     }
                     emitAll(
-                        combine(localFlow, refreshFlow) { games, status ->
+                        combine(localFlow, refreshFlow, filters) { games, status, currentFilters ->
                             val sortedGames = games.applyDisplaySort(
-                                sort = trigger.sortOption,
-                                qPresent = trigger.domainQuery.query.isNotBlank(),
+                                sort = currentFilters.sort,
+                                qPresent = command.domainQuery.query.isNotBlank(),
                             )
                             when {
                                 sortedGames.isNotEmpty() -> SearchExecutionResult.Success(
-                                    domainQuery = trigger.domainQuery,
+                                    domainQuery = command.domainQuery,
                                     games = sortedGames,
                                 )
-                                status is RefreshStatus.Loading -> SearchExecutionResult.Loading(trigger.domainQuery)
+                                status is RefreshStatus.Loading -> SearchExecutionResult.Loading(command.domainQuery)
                                 status is RefreshStatus.Completed && status.result is AppResult.Error ->
-                                    SearchExecutionResult.Error(domainQuery = trigger.domainQuery, error = status.result.error)
+                                    SearchExecutionResult.Error(domainQuery = command.domainQuery, error = status.result.error)
                                 else -> SearchExecutionResult.Empty(
-                                    domainQuery = trigger.domainQuery,
-                                    hasConstraints = trigger.domainQuery.hasConstraints,
+                                    domainQuery = command.domainQuery,
+                                    hasConstraints = command.domainQuery.hasConstraints,
                                 )
                             }
                         }
@@ -264,64 +246,72 @@ class SearchViewModel @Inject constructor(
 
     fun onRemoveRecentQuery(query: String) {
         viewModelScope.launch {
-            gameRepository.deleteSearchQuery(query)
+            when (gameRepository.deleteSearchQuery(query)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_history_delete_failed
+            }
         }
     }
 
     fun onClearAllRecentQueries() {
         viewModelScope.launch {
-            gameRepository.clearSearchHistory()
+            when (gameRepository.clearSearchHistory()) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_history_delete_failed
+            }
         }
     }
 
     fun onSortSelected(sort: SearchSortOption) {
-        savedStateHandle[KEY_SORT] = sort.name
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(sort = sort).toSnapshot()
     }
 
     fun onGenreToggled(genre: String) {
-        val current = filters.value.genres
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        val current = currentFilters.genres
         val updated = if (current.contains(genre)) current - genre else current + genre
-        savedStateHandle[KEY_GENRES] = updated.toList()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(genres = updated).toSnapshot()
     }
 
     fun onPlatformToggled(platform: PlatformFamily) {
-        val current = filters.value.platforms
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        val current = currentFilters.platforms
         val updated = if (current.contains(platform)) current - platform else current + platform
-        savedStateHandle[KEY_PLATFORMS] = updated.map { it.name }
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(platforms = updated).toSnapshot()
     }
 
     fun onReleaseYearSelected(year: ReleaseYearFilter) {
-        savedStateHandle[KEY_YEAR] = year.name
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(releaseYear = year).toSnapshot()
     }
 
     fun onMinRatingSelected(rating: MinRatingFilter) {
-        savedStateHandle[KEY_RATING] = rating.name
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(minRating = rating).toSnapshot()
     }
-
     fun onApplyFilters(newFilters: SearchFilters) {
-        savedStateHandle[KEY_GENRES] = newFilters.genres.toList()
-        savedStateHandle[KEY_PLATFORMS] = newFilters.platforms.map { it.name }
-        savedStateHandle[KEY_YEAR] = newFilters.releaseYear.name
-        savedStateHandle[KEY_RATING] = newFilters.minRating.name
-        savedStateHandle[KEY_SORT] = newFilters.sort.name
+        savedStateHandle[KEY_FILTERS] = newFilters.toSnapshot()
     }
 
     fun onResetFilters() {
-        savedStateHandle[KEY_GENRES] = emptyList<String>()
-        savedStateHandle[KEY_PLATFORMS] = emptyList<String>()
-        savedStateHandle[KEY_YEAR] = ReleaseYearFilter.ALL.name
-        savedStateHandle[KEY_RATING] = MinRatingFilter.ANY.name
-        savedStateHandle[KEY_SORT] = SearchSortOption.RELEVANCE.name
+        savedStateHandle[KEY_FILTERS] = SearchFilters.Empty.toSnapshot()
     }
 
-    fun onQuickPresetSelected(genre: String? = null, platform: PlatformFamily? = null) {
-        if (genre != null) {
-            savedStateHandle[KEY_GENRES] = listOf(genre)
-        }
-        if (platform != null) {
-            savedStateHandle[KEY_PLATFORMS] = listOf(platform.name)
+    fun onQuickPresetSelected(preset: QuickSearchPreset) {
+        when (preset) {
+            is QuickSearchPreset.Genre -> {
+                savedStateHandle[KEY_FILTERS] = SearchFilters(genres = setOf(preset.name)).toSnapshot()
+            }
+            is QuickSearchPreset.Platform -> {
+                savedStateHandle[KEY_FILTERS] = SearchFilters(platforms = setOf(preset.family)).toSnapshot()
+            }
+            QuickSearchPreset.Rating80 -> {
+                savedStateHandle[KEY_FILTERS] = SearchFilters(minRating = MinRatingFilter.R80).toSnapshot()
+            }
         }
     }
+
 
     fun retry() {
         retryEvents.tryEmit(Unit)
@@ -411,11 +401,12 @@ class SearchViewModel @Inject constructor(
         val isSubmitting: Boolean,
     )
 
-    private data class SearchTrigger(
+    private data class SearchCommand(
         val domainQuery: GameSearchQuery,
-        val sortOption: SearchSortOption,
         val shouldDebounce: Boolean,
+        val forceRefresh: Boolean = false,
     )
+
 
     private sealed interface RefreshStatus {
         data object Loading : RefreshStatus
@@ -432,11 +423,7 @@ class SearchViewModel @Inject constructor(
 
     companion object {
         const val KEY_QUERY = "search_query"
-        const val KEY_GENRES = "search_genres"
-        const val KEY_PLATFORMS = "search_platforms"
-        const val KEY_YEAR = "search_year"
-        const val KEY_RATING = "search_rating"
-        const val KEY_SORT = "search_sort"
+        const val KEY_FILTERS = "search_filters"
 
         const val SEARCH_DEBOUNCE_MILLIS = 300L
         const val SEARCH_LIMIT = 30

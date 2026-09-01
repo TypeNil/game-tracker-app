@@ -29,7 +29,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +59,7 @@ fun SearchFilterSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
-    var draftFilters by remember(initialFilters) { mutableStateOf(initialFilters) }
+    var draftFilters by rememberSaveable(stateSaver = SearchFilters.Saver) { mutableStateOf(initialFilters) }
     val scrollState = rememberScrollState()
 
     ModalBottomSheet(
@@ -231,7 +231,7 @@ fun SearchFilterSheet(
                     val activeCount = draftFilters.activeConstraintsCount()
                     Text(
                         text = if (activeCount > 0) {
-                            stringResource(R.string.search_filter_apply) + " ($activeCount)"
+                            stringResource(R.string.search_filter_apply_count, activeCount)
                         } else {
                             stringResource(R.string.search_filter_apply)
                         },

@@ -316,7 +316,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `display sort re-orders search hits locally when text query is present`() = runTest(testDispatcher) {
+    fun `display sort re-orders search hits locally when text query is present without extra network call`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow(sampleGames) // [Witcher 3 (95.0), Witcher 2 (88.0)]
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
         coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } returns AppResult.Success(Unit)
@@ -335,22 +335,148 @@ class SearchViewModelTest {
             val gamesRelevance = (defaultContent.result as SearchResultUiState.Content).games
             assertEquals(1L, gamesRelevance[0].id) // Witcher 3 first
 
-            // Switch sort to NAME_ASC
+            // Switch sort to NAME_ASC: re-sorts instantly in memory without invoking searchGames again
             viewModel.onSortSelected(SearchSortOption.NAME_ASC)
             testScheduler.runCurrent()
-            val loadingState = awaitItem()
-            assertEquals(SearchResultUiState.Loading, loadingState.result)
-
             advanceUntilIdle()
-            val sortedContent = awaitItem()
+
+            // Consume state updates (filter update followed by re-sorted content emission)
+            val item1 = awaitItem()
+            val sortedContent = if ((item1.result as? SearchResultUiState.Content)?.games?.get(0)?.id == 2L) {
+                item1
+            } else {
+                awaitItem()
+            }
             val sortedGames = (sortedContent.result as SearchResultUiState.Content).games
             assertEquals(2L, sortedGames[0].id) // "The Witcher 2..." comes before "The Witcher 3..." alphabetically
             assertEquals(1L, sortedGames[1].id)
 
+            // Verify searchGames was only called once for the text query, NOT a second time for client sort
+            coVerify(exactly = 1) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) }
             cancelAndIgnoreRemainingEvents()
         }
     }
 
+    @Test
+    fun `retry after filter-only error executes second repository search`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) } returnsMany listOf(
+            AppResult.Error(io.github.typenil.gametracker.core.model.AppError.NetworkError),
+            AppResult.Success(Unit),
+        )
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Idle
+
+            viewModel.onGenreToggled("Role-playing (RPG)")
+            testScheduler.runCurrent()
+            val loading = awaitItem()
+            assertEquals(SearchResultUiState.Loading, loading.result)
+
+            advanceUntilIdle()
+            val errorState = awaitItem()
+            assertTrue(errorState.result is SearchResultUiState.Error)
+
+            // Retry should trigger second network call even with identical filter query
+            searchFlow.value = sampleGames
+            viewModel.retry()
+            testScheduler.runCurrent()
+
+            advanceUntilIdle()
+            val successState = awaitItem()
+            assertTrue(successState.result is SearchResultUiState.Content)
+            assertEquals(2, (successState.result as SearchResultUiState.Content).games.size)
+            coVerify(exactly = 2) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `two consecutive errors are both retried and reach repository`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) } returns
+            AppResult.Error(io.github.typenil.gametracker.core.model.AppError.NetworkError)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Idle
+
+            viewModel.onQueryChanged("witcher")
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            awaitItem() // Error 1
+
+            viewModel.retry()
+            testScheduler.runCurrent()
+            advanceUntilIdle()
+            awaitItem() // Error 2
+
+            viewModel.retry()
+            testScheduler.runCurrent()
+            advanceUntilIdle()
+            awaitItem() // Error 3
+            coVerify(exactly = 3) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `onApplyFilters updates all filters in single atomic step`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow(sampleGames)
+        every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any()) } returns AppResult.Success(Unit)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Idle
+
+            viewModel.onApplyFilters(
+                SearchFilters(
+                    genres = setOf("Role-playing (RPG)", "Action"),
+                    platforms = setOf(PlatformFamily.PC),
+                    releaseYear = ReleaseYearFilter.THIS_YEAR,
+                    minRating = MinRatingFilter.R80,
+                    sort = SearchSortOption.RATING_DESC,
+                )
+            )
+            testScheduler.runCurrent()
+            advanceUntilIdle()
+            awaitItem() // Loading / Content
+
+            val filters = viewModel.filters.value
+            assertEquals(setOf("Role-playing (RPG)", "Action"), filters.genres)
+            assertEquals(setOf(PlatformFamily.PC), filters.platforms)
+            assertEquals(ReleaseYearFilter.THIS_YEAR, filters.releaseYear)
+            assertEquals(MinRatingFilter.R80, filters.minRating)
+            assertEquals(SearchSortOption.RATING_DESC, filters.sort)
+
+            // Exactly one search query dispatched
+            coVerify(exactly = 1) {
+                repository.searchGames(
+                    match<GameSearchQuery> { query ->
+                        query.genres == listOf("Role-playing (RPG)", "Action") &&
+                            query.minRating == 80 &&
+                            query.sort == "rating"
+                    },
+                    any<Int>(),
+                    any<Int>(),
+                )
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `release year last 3 years covers exactly 3 calendar years`() {
+        val (minYear, maxYear) = ReleaseYearFilter.LAST_3_YEARS.toYearRange(clockYear = 2026)
+        assertEquals(2024, minYear)
+        assertEquals(2026, maxYear)
+    }
     @Test
     fun `recent searches flow is exposed and actions invoke repository`() = runTest(testDispatcher) {
         recentQueriesFlow.value = listOf("Elden Ring", "Cyberpunk 2077")
@@ -389,26 +515,31 @@ class SearchViewModelTest {
         viewModel.onReleaseYearSelected(ReleaseYearFilter.THIS_YEAR)
         viewModel.onSortSelected(SearchSortOption.RATING_DESC)
         testScheduler.runCurrent()
+        advanceUntilIdle()
 
         assertTrue(viewModel.filters.value.hasConstraints)
 
         viewModel.onResetFilters()
         testScheduler.runCurrent()
+        advanceUntilIdle()
 
         assertEquals(SearchFilters.Empty, viewModel.filters.value)
     }
-
     @Test
-    fun `quick preset sets genre or platform filter`() = runTest(testDispatcher) {
+    fun `quick preset sets genre, platform, or rating filter`() = runTest(testDispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.onQuickPresetSelected(genre = "Role-playing (RPG)")
+        viewModel.onQuickPresetSelected(QuickSearchPreset.Genre("Role-playing (RPG)"))
         testScheduler.runCurrent()
         assertEquals(setOf("Role-playing (RPG)"), viewModel.filters.value.genres)
 
-        viewModel.onQuickPresetSelected(platform = PlatformFamily.PLAYSTATION)
+        viewModel.onQuickPresetSelected(QuickSearchPreset.Platform(PlatformFamily.PLAYSTATION))
         testScheduler.runCurrent()
         assertEquals(setOf(PlatformFamily.PLAYSTATION), viewModel.filters.value.platforms)
+
+        viewModel.onQuickPresetSelected(QuickSearchPreset.Rating80)
+        testScheduler.runCurrent()
+        assertEquals(MinRatingFilter.R80, viewModel.filters.value.minRating)
     }
 
     @Test

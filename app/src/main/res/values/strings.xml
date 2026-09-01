@@ -62,6 +62,7 @@
     <string name="search_filter_reset">Reset</string>
     <string name="search_filter_reset_all">Reset all filters</string>
     <string name="search_filter_apply">Apply</string>
+    <string name="search_filter_apply_count">Apply (%1$d filters)</string>
     <string name="search_filter_section_sort">Sort By</string>
     <string name="search_filter_section_genres">Genres</string>
     <string name="search_filter_section_platforms">Platforms</string>
@@ -73,6 +74,7 @@
     <string name="search_recent_title">Recent Searches</string>
     <string name="search_recent_clear_all">Clear all</string>
     <string name="search_recent_remove_desc">Remove %1$s from recent searches</string>
+    <string name="error_history_delete_failed">Failed to delete search history</string>
     <string name="search_presets_title">Quick Presets</string>
     <string name="search_empty_filters_title">No games match selected filters</string>
     <string name="search_empty_filters_subtitle">Try clearing some filters or changing your criteria</string>

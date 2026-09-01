@@ -102,8 +102,8 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
                     "Searching games (queryLength={}, hasFilters={}, limit={}, offset={})",
                     request.canonicalQuery?.length ?: 0,
                     request.hasFilters,
-                    limit,
-                    offset,
+                    request.limit,
+                    request.offset,
                 )
                 val policy = if (request.canonicalQuery != null) CachePolicy.SEARCH else CachePolicy.POPULAR
                 val games = cache.getOrPut(request.cacheKey, policy) {

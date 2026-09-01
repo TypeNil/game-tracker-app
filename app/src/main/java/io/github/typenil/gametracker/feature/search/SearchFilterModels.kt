@@ -2,17 +2,17 @@ package io.github.typenil.gametracker.feature.search
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameSearchQuery
+import java.io.Serializable
 import java.time.Clock
 import java.time.Year
 import java.util.Locale
 
-/**
- * Supported sorting options for search results.
- */
 enum class SearchSortOption(
     val wireSort: String?,
     @param:StringRes val labelRes: Int
@@ -40,10 +40,11 @@ enum class ReleaseYearFilter(@param:StringRes val labelRes: Int) {
             ALL -> null to null
             THIS_YEAR -> clockYear to clockYear
             LAST_YEAR -> (clockYear - 1) to (clockYear - 1)
-            LAST_3_YEARS -> (clockYear - 3) to clockYear
+            LAST_3_YEARS -> (clockYear - 2) to clockYear
             Y2010_2019 -> YEAR_2010 to YEAR_2019
             RETRO -> YEAR_RETRO_MIN to YEAR_RETRO_MAX
         }
+
 
     companion object {
         private const val YEAR_2010 = 2010
@@ -144,6 +145,7 @@ data class SearchFilters(
 
     fun toDomainQuery(text: String): GameSearchQuery {
         val (minY, maxY) = releaseYear.toYearRange()
+        val wireSort = if (text.isNotBlank()) null else sort.wireSort
         return GameSearchQuery(
             query = text,
             genres = genres.toList(),
@@ -151,14 +153,86 @@ data class SearchFilters(
             minRating = minRating.minRating,
             minYear = minY,
             maxYear = maxY,
-            sort = sort.wireSort,
+            sort = wireSort,
         )
     }
 
     companion object {
         val Empty = SearchFilters()
+
+        val Saver: Saver<SearchFilters, *> = listSaver(
+            save = { filters ->
+                listOf(
+                    filters.genres.toList(),
+                    filters.platforms.map { it.name },
+                    filters.releaseYear.name,
+                    filters.minRating.name,
+                    filters.sort.name,
+                )
+            },
+            restore = { list ->
+                @Suppress("UNCHECKED_CAST")
+                val genres = (list[0] as? List<String>)?.toSet().orEmpty()
+                @Suppress("UNCHECKED_CAST")
+                val platformNames = (list[1] as? List<String>).orEmpty()
+                val platforms = platformNames.mapNotNull { name ->
+                    PlatformFamily.entries.firstOrNull { it.name == name }
+                }.toSet()
+                val yearName = list[2] as? String
+                val year = ReleaseYearFilter.entries.firstOrNull { it.name == yearName } ?: ReleaseYearFilter.ALL
+                val ratingName = list[3] as? String
+                val rating = MinRatingFilter.entries.firstOrNull { it.name == ratingName } ?: MinRatingFilter.ANY
+                val sortName = list[4] as? String
+                val sort = SearchSortOption.entries.firstOrNull { it.name == sortName } ?: SearchSortOption.RELEVANCE
+                SearchFilters(genres, platforms, year, rating, sort)
+            }
+        )
     }
 }
+
+/**
+ * Quick search preset for 1-tap filtering from Idle state.
+ */
+sealed interface QuickSearchPreset {
+    data class Genre(val name: String) : QuickSearchPreset
+    data class Platform(val family: PlatformFamily) : QuickSearchPreset
+    data object Rating80 : QuickSearchPreset
+}
+
+/**
+ * Serializable snapshot of search filters for atomic SavedStateHandle persistence.
+ */
+data class SearchFiltersSnapshot(
+    val genres: List<String> = emptyList(),
+    val platforms: List<String> = emptyList(),
+    val year: String = ReleaseYearFilter.ALL.name,
+    val rating: String = MinRatingFilter.ANY.name,
+    val sort: String = SearchSortOption.RELEVANCE.name,
+) : Serializable {
+    fun toDomainFilters(): SearchFilters {
+        val platformSet = platforms.mapNotNull { name ->
+            PlatformFamily.entries.firstOrNull { it.name == name }
+        }.toSet()
+        val yearFilter = ReleaseYearFilter.entries.firstOrNull { it.name == year } ?: ReleaseYearFilter.ALL
+        val ratingFilter = MinRatingFilter.entries.firstOrNull { it.name == rating } ?: MinRatingFilter.ANY
+        val sortOption = SearchSortOption.entries.firstOrNull { it.name == sort } ?: SearchSortOption.RELEVANCE
+        return SearchFilters(
+            genres = genres.toSet(),
+            platforms = platformSet,
+            releaseYear = yearFilter,
+            minRating = ratingFilter,
+            sort = sortOption,
+        )
+    }
+}
+
+fun SearchFilters.toSnapshot(): SearchFiltersSnapshot = SearchFiltersSnapshot(
+    genres = genres.toList(),
+    platforms = platforms.map { it.name },
+    year = releaseYear.name,
+    rating = minRating.name,
+    sort = sort.name,
+)
 
 /**
  * Client-side re-sorting of search hits when IGDB text search engine omits sorting.

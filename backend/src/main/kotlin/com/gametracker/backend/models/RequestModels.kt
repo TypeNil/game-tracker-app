@@ -140,6 +140,8 @@ class SearchRequest(
         }
     }
 
+    val effectiveSort: SearchSortField = if (canonicalQuery == null) sort else SearchSortField.RELEVANCE
+
     val cacheKey: String = buildString {
         append("search_")
         append(canonicalQuery.orEmpty())
@@ -154,7 +156,7 @@ class SearchRequest(
         append('|')
         append(maxYear ?: "")
         append('|')
-        append(sort.name)
+        append(effectiveSort.name)
         append('|')
         append(limit)
         append('|')
