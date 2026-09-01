@@ -30,6 +30,7 @@ private const val DETAILS_FIELDS =
         "release_dates.date, release_dates.y, release_dates.platform.name, release_dates.platform.abbreviation, " +
         "involved_companies.company.name, involved_companies.developer, involved_companies.publisher, " +
         "screenshots.image_id, videos.video_id, videos.name, " +
+        "artworks.image_id, " +
         "similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.rating, " +
         "similar_games.genres.name, similar_games.platforms.name, similar_games.platforms.abbreviation;\n"
 

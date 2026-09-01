@@ -148,6 +148,7 @@ class RequestModelsTest {
         assertTrue(query.contains("involved_companies.company.name, involved_companies.developer, involved_companies.publisher"))
         assertTrue(query.contains("screenshots.image_id"))
         assertTrue(query.contains("videos.video_id, videos.name"))
+        assertTrue(query.contains("artworks.image_id"))
         assertTrue(
             query.contains(
                 "similar_games.id, similar_games.name, similar_games.cover.image_id, " +

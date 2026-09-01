@@ -2,30 +2,45 @@ package io.github.typenil.gametracker.feature.details
 
 import android.content.ActivityNotFoundException
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -35,28 +50,34 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -71,13 +92,23 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -88,16 +119,25 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
+import io.github.typenil.gametracker.core.designsystem.component.TagChip
+import io.github.typenil.gametracker.core.designsystem.component.OverflowTagChip
+import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
+import io.github.typenil.gametracker.core.designsystem.component.formatPlatformDisplayName
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
-import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+import io.github.typenil.gametracker.feature.details.component.GameModesBottomSheet
+import io.github.typenil.gametracker.feature.details.component.GameVideoCard
+import io.github.typenil.gametracker.feature.details.component.PlatformsBottomSheet
+import io.github.typenil.gametracker.feature.details.component.TagsBottomSheet
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.IntrinsicSize
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -107,15 +147,34 @@ import kotlinx.coroutines.launch
 /** Standard horizontal gutter for details sections. */
 private val DETAILS_GUTTER = GtDimens.Gutter
 
-/** Fixed portrait cover width in the details header. */
-private val HEADER_COVER_WIDTH = 120.dp
+/** Enlarged portrait cover width in the details header. */
+private val HEADER_COVER_WIDTH = 124.dp
 
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
 private val SCREENSHOT_ASPECT_RATIO = 16f / 9f
 
+private const val ARTWORK_ALPHA = 0.72f
+private const val ARTWORK_SCRIM_ALPHA = 0.15f
+private const val TITLE_DOCK_SCALE_MIN = 0.92f
+private const val TITLE_DOCK_SCALE_DELTA = 0.08f
+private const val APP_BAR_SCRIM_MAX_ALPHA = 0.45f
+private const val TRANSFORM_ORIGIN_CENTER_Y = 0.5f
+private const val TITLE_A11Y_MIN_ALPHA = 0.05f
+private const val TITLE_A11Y_MAX_ALPHA = 0.95f
+private val TITLE_DOCK_TRANSLATION_RANGE = 12.dp
+private val APP_BAR_BG_SCROLL_THRESHOLD = 120.dp
+private val TITLE_HANDOFF_START_OFFSET = 90.dp
+
+private val TITLE_HANDOFF_END_OFFSET = 150.dp
+
+/** Collapsed About summary line count before the arrow toggle reveals the rest. */
+private const val ABOUT_COLLAPSED_LINES = 2
+
+/** Videos visible before the "Show all" toggle (BFF caps the list at five). */
+private const val VIDEOS_COLLAPSED_COUNT = 2
+
 /** Reference CTA fill for Add to Library. */
 private val LibraryCta = Color(0xFF4E3DCA)
-
 /**
  * Host composable wiring the [GameDetailsViewModel] into the stateless screen.
  * The gameId arrives via SavedStateHandle from the type-safe route argument,
@@ -143,12 +202,13 @@ fun GameDetailsRoute(
         modifier = modifier
     )
 }
+private enum class DetailsOverflowSheet {
+    None,
+    Platforms,
+    Tags,
+    GameModes,
+}
 
-/**
- * Stateless Game Details screen: cover/title/summary, genres/themes/modes,
- * platforms/release dates, ratings, companies, screenshots, videos (external
- * intent), similar games and share.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameDetailsScreen(
@@ -170,6 +230,7 @@ fun GameDetailsScreen(
     onRemoveFromLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var overflowSheet by rememberSaveable { mutableStateOf(DetailsOverflowSheet.None) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -185,69 +246,76 @@ fun GameDetailsScreen(
     }
 
     val game = uiState.game
-    val onShareClick: () -> Unit = {
-        game?.let { current ->
+    val onShareClick = remember(context, game, shareError) {
+        {
+            game?.let { current ->
+                try {
+                    context.startActivity(DetailsIntents.shareIntent(current.name, current.url))
+                } catch (_: ActivityNotFoundException) {
+                    scope.launch { snackbarHostState.showSnackbar(shareError) }
+                }
+            }
+            Unit
+        }
+    }
+    val onVideoClick = remember(context, videoError) {
+        { video: GameVideo ->
             try {
-                context.startActivity(DetailsIntents.shareIntent(current.name, current.url))
+                context.startActivity(DetailsIntents.videoIntent(video.videoId))
             } catch (_: ActivityNotFoundException) {
-                scope.launch { snackbarHostState.showSnackbar(shareError) }
+                scope.launch { snackbarHostState.showSnackbar(videoError) }
+            }
+            Unit
+        }
+    }
+    val lazyListState = rememberLazyListState()
+    val density = LocalDensity.current
+    val bgScrollThresholdPx = with(density) { APP_BAR_BG_SCROLL_THRESHOLD.toPx() }
+    val titleTranslationRangePx = with(density) { TITLE_DOCK_TRANSLATION_RANGE.toPx() }
+    val handoffStartPx = with(density) { TITLE_HANDOFF_START_OFFSET.toPx() }
+    val handoffEndPx = with(density) { TITLE_HANDOFF_END_OFFSET.toPx() }
+
+    val appBarBgAlpha = remember(lazyListState, bgScrollThresholdPx) {
+        {
+            if (lazyListState.firstVisibleItemIndex > 0) {
+                1f
+            } else {
+                (lazyListState.firstVisibleItemScrollOffset / bgScrollThresholdPx).coerceIn(0f, 1f)
             }
         }
     }
-    val onVideoClick: (GameVideo) -> Unit = { video ->
-        try {
-            context.startActivity(DetailsIntents.videoIntent(video.videoId))
-        } catch (_: ActivityNotFoundException) {
-            scope.launch { snackbarHostState.showSnackbar(videoError) }
+
+    val titleHandoffProgress = remember(lazyListState, handoffStartPx, handoffEndPx) {
+        {
+            if (lazyListState.firstVisibleItemIndex > 0) {
+                1f
+            } else {
+                val offset = lazyListState.firstVisibleItemScrollOffset.toFloat()
+                ((offset - handoffStartPx) / (handoffEndPx - handoffStartPx)).coerceIn(0f, 1f)
+            }
         }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.navigationBars),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = game?.name ?: stringResource(R.string.details_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back_action_desc)
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onShareClick,
-                        enabled = game != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Share,
-                            contentDescription = stringResource(R.string.details_share_desc)
-                        )
-                    }
-                }
+            DetailsTopAppBar(
+                gameName = game?.name,
+                onBackClick = onBackClick,
+                onShareClick = onShareClick,
+                titleHandoffProgress = titleHandoffProgress,
+                appBarBgAlpha = appBarBgAlpha,
+                titleTranslationRangePx = titleTranslationRangePx,
             )
         }
     ) { innerPadding ->
         when {
-            uiState.isInitialLoading -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-
-            uiState.error != null && game == null -> GameDetailsErrorState(
+            // Full-screen skeleton renders inside the same LazyColumn as content
+            // (single list state), so the first hydrated frame replaces
+            // placeholders without a spinner swap or scroll-state conflict.
+            uiState.error != null && game == null && !uiState.isLoading -> GameDetailsErrorState(
                 error = uiState.error,
                 onRetry = onRetry,
                 modifier = Modifier.padding(innerPadding)
@@ -261,10 +329,46 @@ fun GameDetailsScreen(
                 onGameClick = onGameClick,
                 onVideoClick = onVideoClick,
                 onEditLibraryClicked = onEditLibraryClicked,
-                modifier = Modifier.padding(innerPadding)
+                onPlatformsClick = { overflowSheet = DetailsOverflowSheet.Platforms },
+                onTagsOverflowClick = { overflowSheet = DetailsOverflowSheet.Tags },
+                onGameModesClick = { overflowSheet = DetailsOverflowSheet.GameModes },
+                contentTopPadding = innerPadding.calculateTopPadding(),
+                lazyListState = lazyListState,
+                titleHandoffProgress = titleHandoffProgress,
+                titleTranslationRangePx = titleTranslationRangePx,
+                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
             )
         }
 
+        when (overflowSheet) {
+            DetailsOverflowSheet.None -> Unit
+            DetailsOverflowSheet.Platforms -> {
+                game?.let { currentGame ->
+                    PlatformsBottomSheet(
+                        platforms = currentGame.platforms,
+                        releaseDates = currentGame.releaseDates,
+                        onDismiss = { overflowSheet = DetailsOverflowSheet.None },
+                    )
+                }
+            }
+            DetailsOverflowSheet.Tags -> {
+                game?.let { currentGame ->
+                    TagsBottomSheet(
+                        genres = currentGame.genres,
+                        themes = currentGame.themes,
+                        onDismiss = { overflowSheet = DetailsOverflowSheet.None },
+                    )
+                }
+            }
+            DetailsOverflowSheet.GameModes -> {
+                game?.let { currentGame ->
+                    GameModesBottomSheet(
+                        gameModes = currentGame.gameModes,
+                        onDismiss = { overflowSheet = DetailsOverflowSheet.None },
+                    )
+                }
+            }
+        }
         if (uiState.isEditingLibrary) {
             EditLibrarySheet(
                 initialEntry = uiState.libraryEntry,
@@ -276,6 +380,84 @@ fun GameDetailsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DetailsTopAppBar(
+    gameName: String?,
+    onBackClick: () -> Unit,
+    onShareClick: () -> Unit,
+    titleHandoffProgress: () -> Float,
+    appBarBgAlpha: () -> Float,
+    titleTranslationRangePx: Float,
+) {
+    val bgAlpha = appBarBgAlpha()
+    TopAppBar(
+        title = {
+            val progress = titleHandoffProgress()
+            Text(
+                text = gameName ?: stringResource(R.string.details_title),
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .graphicsLayer {
+                        alpha = progress
+                        translationY = titleTranslationRangePx * (1f - progress)
+                        scaleX = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
+                        scaleY = TITLE_DOCK_SCALE_MIN + TITLE_DOCK_SCALE_DELTA * progress
+                        transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
+                    }
+                    .semantics {
+                        if (progress < TITLE_A11Y_MIN_ALPHA) {
+                            hideFromAccessibility()
+                        }
+                    },
+            )
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.background(
+                    color = MaterialTheme.colorScheme.surface.copy(
+                        alpha = (1f - bgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
+                    ),
+                    shape = CircleShape,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back_action_desc),
+                )
+            }
+        },
+        actions = {
+            IconButton(
+                onClick = onShareClick,
+                enabled = gameName != null,
+                modifier = Modifier.background(
+                    color = MaterialTheme.colorScheme.surface.copy(
+                        alpha = (1f - bgAlpha) * APP_BAR_SCRIM_MAX_ALPHA,
+                    ),
+                    shape = CircleShape,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Share,
+                    contentDescription = stringResource(R.string.details_share_desc),
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = bgAlpha,
+            ),
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+                alpha = bgAlpha,
+            ),
+        ),
+    )
+}
+
 @Composable
 private fun GameDetailsContent(
     game: GameDetails?,
@@ -285,11 +467,15 @@ private fun GameDetailsContent(
     onGameClick: (Long) -> Unit,
     onVideoClick: (GameVideo) -> Unit,
     onEditLibraryClicked: () -> Unit,
-    modifier: Modifier = Modifier
+    onPlatformsClick: () -> Unit,
+    onTagsOverflowClick: () -> Unit,
+    onGameModesClick: () -> Unit,
+    contentTopPadding: Dp,
+    modifier: Modifier = Modifier,
+    lazyListState: LazyListState = rememberLazyListState(),
+    titleHandoffProgress: () -> Float = { 0f },
+    titleTranslationRangePx: Float = 0f,
 ) {
-    // Empty sections stay hidden so a catalog skeleton renders as a lean but
-    // complete page rather than a wall of empty headers.
-    if (game == null) return
     val pullToRefreshState = rememberPullToRefreshState()
     var selectedScreenshotIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
@@ -300,179 +486,123 @@ private fun GameDetailsContent(
         modifier = modifier.fillMaxSize()
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(vertical = DETAILS_GUTTER),
+            state = lazyListState,
+            contentPadding = PaddingValues(top = 0.dp, bottom = DETAILS_GUTTER),
             verticalArrangement = Arrangement.spacedBy(DETAILS_GUTTER),
             modifier = Modifier.fillMaxSize()
         ) {
             item(key = "header") {
-                GameDetailsHeader(
-                    game = game,
-                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                )
+                if (game == null) {
+                    DetailsHeaderSkeleton(
+                        contentTopPadding = contentTopPadding,
+                        titleTranslationRangePx = titleTranslationRangePx,
+                    )
+                } else {
+                    GameDetailsHeader(
+                        game = game,
+                        contentTopPadding = contentTopPadding,
+                        onTagsOverflowClick = onTagsOverflowClick,
+                        titleHandoffProgress = titleHandoffProgress,
+                        titleTranslationRangePx = titleTranslationRangePx,
+                    )
+                }
             }
-
-            item(key = "library-status") {
-                LibraryStatusCard(
-                    libraryEntry = libraryEntry,
-                    platform = game.platforms.firstOrNull(),
-                    onEditClicked = onEditLibraryClicked,
-                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                )
-            }
-
-            if (!game.summary.isNullOrBlank()) {
-                item(key = "about") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_about),
+            // Empty sections stay hidden so a catalog skeleton renders as a lean
+            // but complete page rather than a wall of empty headers.
+            if (game != null) {
+                item(key = "library-status") {
+                    LibraryStatusCard(
+                        libraryEntry = libraryEntry,
+                        onEditClicked = onEditLibraryClicked,
                         modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        Text(
-                            text = game.summary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (!game.summary.isNullOrBlank()) {
+                    item(key = "about") {
+                        AboutCard(
+                            summary = game.summary,
+                            modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                         )
                     }
                 }
-            }
 
-            item(key = "tags") {
-                Column(
-                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    TagSection(
-                        title = stringResource(R.string.details_section_genres),
-                        tags = game.genres
-                    )
-                    TagSection(
-                        title = stringResource(R.string.details_section_themes),
-                        tags = game.themes
-                    )
-                    TagSection(
-                        title = stringResource(R.string.details_section_modes),
-                        tags = game.gameModes
-                    )
-                }
-            }
-
-            item(key = "platforms") {
-                TagSection(
-                    title = stringResource(R.string.details_section_platforms),
-                    tags = game.platforms,
-                    modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                )
-            }
-
-            if (game.releaseDates.isNotEmpty()) {
-                item(key = "release-dates") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_release_dates),
-                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        val unknownDate = stringResource(R.string.details_date_unknown)
-                        game.releaseDates.forEach { releaseDate ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = releaseDate.platform,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    text = releaseDate.displayDate(unknownDate),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
+                val hasFacts = game.releaseDates.isNotEmpty() ||
+                    game.releaseDateEpochSeconds != null ||
+                    game.gameModes.isNotEmpty() ||
+                    game.platforms.isNotEmpty() ||
+                    game.timeToBeatMainSeconds != null
+                if (hasFacts) {
+                    item(key = "facts") {
+                        GameDetailsFactsRow(
+                            game = game,
+                            onPlatformsClick = onPlatformsClick,
+                            onGameModesClick = onGameModesClick,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
-            }
-
-            if (game.screenshots.isNotEmpty()) {
-                item(key = "screenshots") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_screenshots),
-                        modifier = Modifier.fillMaxWidth(),
-                        titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        LazyRow(
+                if (game.screenshots.isNotEmpty()) {
+                    item(key = "screenshots") {
+                        DetailsSection(
+                            title = stringResource(R.string.details_section_screenshots),
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                         ) {
-                            itemsIndexed(items = game.screenshots, key = { _, url -> url }) { index, screenshot ->
-                                AsyncImage(
-                                    model = screenshot,
-                                    contentDescription = stringResource(R.string.details_screenshot_desc),
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .width(260.dp)
-                                        .aspectRatio(SCREENSHOT_ASPECT_RATIO)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                        .clickable { selectedScreenshotIndex = index }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (game.videos.isNotEmpty()) {
-                item(key = "videos") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_videos),
-                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        game.videos.forEach { video ->
-                            OutlinedButton(
-                                onClick = { onVideoClick(video) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp)
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.PlayArrow,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = video.name ?: stringResource(R.string.details_watch_trailer)
-                                )
+                                itemsIndexed(
+                                    items = game.screenshots,
+                                    key = { _, url -> url }
+                                ) { index, screenshot ->
+                                    AsyncImage(
+                                        model = screenshot,
+                                        contentDescription = stringResource(R.string.details_screenshot_desc),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .width(260.dp)
+                                            .aspectRatio(SCREENSHOT_ASPECT_RATIO)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                            .clickable { selectedScreenshotIndex = index }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (game.similarGames.isNotEmpty()) {
-                item(key = "similar") {
-                    DetailsSection(
-                        title = stringResource(R.string.details_section_similar),
-                        modifier = Modifier.fillMaxWidth(),
-                        titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    ) {
-                        LazyRow(
+                if (game.videos.isNotEmpty()) {
+                    item(key = "videos") {
+                        VideosSection(
+                            videos = game.videos,
+                            onVideoClick = onVideoClick,
+                            modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
+                        )
+                    }
+                }
+
+                if (game.similarGames.isNotEmpty()) {
+                    item(key = "similar") {
+                        DetailsSection(
+                            title = stringResource(R.string.details_section_similar),
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            titleModifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                         ) {
-                            items(items = game.similarGames, key = { it.id }) { similar ->
-                                GamePosterCard(
-                                    game = similar,
-                                    onClick = { onGameClick(similar.id) },
-                                )
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = DETAILS_GUTTER),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(items = game.similarGames, key = { it.id }) { similar ->
+                                    GamePosterCard(
+                                        game = similar,
+                                        onClick = { onGameClick(similar.id) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -481,12 +611,14 @@ private fun GameDetailsContent(
         }
 
         selectedScreenshotIndex?.let { initialIndex ->
-            ScreenshotViewerDialog(
-                screenshots = game.screenshots,
-                initialIndex = initialIndex,
-                onDismissRequest = { selectedScreenshotIndex = null },
-                onPageChanged = { selectedScreenshotIndex = it }
-            )
+            game?.let { currentGame ->
+                ScreenshotViewerDialog(
+                    screenshots = currentGame.screenshots,
+                    initialIndex = initialIndex,
+                    onDismissRequest = { selectedScreenshotIndex = null },
+                    onPageChanged = { selectedScreenshotIndex = it }
+                )
+            }
         }
     }
 }
@@ -494,69 +626,156 @@ private fun GameDetailsContent(
 @Composable
 private fun GameDetailsHeader(
     game: GameDetails,
-    modifier: Modifier = Modifier
+    contentTopPadding: Dp,
+    onTagsOverflowClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    titleHandoffProgress: () -> Float = { 0f },
+    titleTranslationRangePx: Float = 0f,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(HEADER_COVER_WIDTH)
-                .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            contentAlignment = Alignment.Center
-        ) {
-            if (!game.coverUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = game.coverUrl,
-                    contentDescription = game.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = game.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+    Box(modifier = modifier.fillMaxWidth()) {
+        if (!game.artworkUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = game.artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = ARTWORK_ALPHA,
+                modifier = Modifier.matchParentSize(),
             )
-
-            // Aggregate rating with vote count; falls back to the critic rating the
-            // catalog already carries while the details row is still hydrating.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RatingBadge(rating = game.totalRating ?: game.rating)
-                if (game.totalRatingCount != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.details_votes_count_format, game.totalRatingCount),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background.copy(alpha = ARTWORK_SCRIM_ALPHA),
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
                     )
+            )
+        }
+        Column(
+            modifier = Modifier.padding(
+                top = contentTopPadding,
+                start = DETAILS_GUTTER,
+                end = DETAILS_GUTTER,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(HEADER_COVER_WIDTH)
+                        .aspectRatio(GAME_COVER_ASPECT_RATIO)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Image,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(48.dp),
+                    )
+                    if (!game.coverUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = game.coverUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
-            }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = game.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val progress = titleHandoffProgress()
+                                alpha = (1f - progress).coerceIn(0f, 1f)
+                                translationY = -titleTranslationRangePx * progress
+                                scaleX = 1f - TITLE_DOCK_SCALE_DELTA * progress
+                                scaleY = 1f - TITLE_DOCK_SCALE_DELTA * progress
+                                transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
+                            }
+                            .semantics {
+                                if (titleHandoffProgress() > TITLE_A11Y_MAX_ALPHA) {
+                                    hideFromAccessibility()
+                                }
+                            },
+                    )
+                    // Aggregate rating with vote count; falls back to the critic rating the
+                    // catalog already carries while the details row is still hydrating.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RatingBadge(rating = game.totalRating ?: game.rating)
+                        if (game.totalRatingCount != null) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(
+                                    R.string.details_votes_count_format,
+                                    game.totalRatingCount,
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                        }
+                    }
 
-            game.companiesLine()?.let { line ->
-                Text(
-                    text = line,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                    game.companiesLine()?.let { line ->
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+
+                    val tagPreview = remember(game.genres, game.themes) {
+                        formatHeaderTagPreview(game.genres, game.themes)
+                    }
+                    if (tagPreview.previewTags.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            tagPreview.previewTags.forEach { tag ->
+                                TagChip(
+                                    text = tag,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
+                            }
+                            if (tagPreview.overflowCount > 0) {
+                                val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
+                                val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
+                                OverflowTagChip(
+                                    text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
+                                    onClick = onTagsOverflowClick,
+                                    contentDescription = overflowDesc,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
-
 @Composable
 private fun DetailsSection(
     title: String,
@@ -575,39 +794,386 @@ private fun DetailsSection(
     }
 }
 
-/** Non-interactive chips (Surface + Text): never clickable, list display only. */
+/** Two-column summary cards; a lone leftover card spans the full row. */
 @Composable
-private fun TagSection(
-    title: String,
-    tags: List<String>,
+private fun GameDetailsFactsRow(
+    game: GameDetails,
+    onPlatformsClick: () -> Unit,
+    onGameModesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (tags.isEmpty()) return
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+    val unknownDate = stringResource(R.string.details_date_unknown)
+    val firstRelease = game.releaseDates.firstOrNull()
+    val datedRelease = firstRelease?.takeIf {
+        it.dateEpochSeconds != null || it.year != null
+    }
+    val releaseText = datedRelease?.displayDate(unknownDate)
+        ?: game.releaseDateEpochSeconds?.let { epoch ->
+            GameReleaseDate(
+                platform = "",
+                dateEpochSeconds = epoch,
+            ).displayDate(unknownDate)
+        }
+        ?: unknownDate.takeIf { firstRelease != null }
+    val mainHours = game.timeToBeatMainSeconds?.toDisplayHours()
+    val topology = remember(releaseText, game.gameModes, game.platforms, mainHours) {
+        resolveFactsTopology(
+            hasRelease = releaseText != null,
+            hasModes = game.gameModes.isNotEmpty(),
+            hasPlatforms = game.platforms.isNotEmpty(),
+            hasTime = mainHours != null,
         )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            tags.forEach { tag ->
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val cards = buildList {
+        if (releaseText != null) {
+            add(
+                FactCardData(
+                    testTag = "release",
+                    icon = Icons.Filled.Event,
+                    title = stringResource(R.string.details_card_release),
+                    value = releaseText,
+                    sub = firstRelease
+                        ?.platform
+                        ?.let(::formatPlatformDisplayName)
+                        ?.takeIf(String::isNotBlank),
+                )
+            )
+        }
+        if (game.gameModes.isNotEmpty()) {
+            val modesPreview = formatGameModesPreview(game.gameModes)
+            val isClickable = game.gameModes.size > 1
+            val subText = if (modesPreview.overflowCount > 0) {
+                stringResource(R.string.details_more_count, modesPreview.overflowCount)
+            } else {
+                null
+            }
+            val a11yDesc = if (isClickable) {
+                stringResource(R.string.details_modes_more_desc, game.gameModes.size)
+            } else {
+                null
+            }
+            add(
+                FactCardData(
+                    testTag = "modes",
+                    icon = Icons.Filled.VideogameAsset,
+                    title = stringResource(R.string.details_section_modes),
+                    value = modesPreview.previewText,
+                    sub = subText,
+                    isClickable = isClickable,
+                    onClick = if (isClickable) onGameModesClick else null,
+                    contentDescription = a11yDesc,
+                )
+            )
+        }
+        if (game.platforms.isNotEmpty()) {
+            val platformsLimit = if (topology.platformsFullWidth) {
+                PLATFORMS_PREVIEW_LIMIT_FULL
+            } else {
+                PLATFORMS_PREVIEW_LIMIT_HALF
+            }
+            val platformsPreview = formatPlatformsPreview(
+                platforms = game.platforms,
+                limit = platformsLimit,
+            )
+            val isClickable = game.platforms.size > 1 || game.releaseDates.size > 1
+            val subText = if (platformsPreview.overflowCount > 0) {
+                stringResource(R.string.details_more_count, platformsPreview.overflowCount)
+            } else {
+                null
+            }
+            val a11yDesc = if (isClickable) {
+                stringResource(R.string.details_platforms_more_desc, game.platforms.size)
+            } else {
+                null
+            }
+            add(
+                FactCardData(
+                    testTag = "platforms",
+                    icon = Icons.Filled.Devices,
+                    title = stringResource(R.string.details_section_platforms),
+                    value = platformsPreview.previewText,
+                    sub = subText,
+                    isClickable = isClickable,
+                    onClick = if (isClickable) onPlatformsClick else null,
+                    contentDescription = a11yDesc,
+                    valueMaxLines = if (topology.platformsFullWidth) 2 else 1,
+                )
+            )
+        }
+        if (mainHours != null) {
+            add(
+                FactCardData(
+                    testTag = "time",
+                    icon = Icons.Filled.Schedule,
+                    title = stringResource(R.string.details_card_time_to_beat),
+                    value = stringResource(R.string.details_time_hours_format, mainHours),
+                    sub = game.timeToBeatCompleteSeconds?.let { complete ->
+                        stringResource(
+                            R.string.details_time_complete_format,
+                            complete.toDisplayHours()
+                        )
+                    },
+                )
+            )
+        }
+    }
+
+    Column(
+        modifier = modifier.padding(horizontal = DETAILS_GUTTER),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        cards.chunked(2).forEach { row ->
+            if (row.size == 1) {
+                // A lone leftover card spans the row so the grid never shows a
+                // visually empty half (e.g. [Release][Modes] / [Platforms....]).
+                val card = row.first()
+                FactCard(
+                    icon = card.icon,
+                    title = card.title,
+                    value = card.value,
+                    sub = card.sub,
+                    isClickable = card.isClickable,
+                    onClick = card.onClick,
+                    contentDescription = card.contentDescription,
+                    valueMaxLines = card.valueMaxLines,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("details-fact-card-${card.testTag}"),
+                )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
-                        text = tag,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                    row.forEach { card ->
+                        FactCard(
+                            icon = card.icon,
+                            title = card.title,
+                            value = card.value,
+                            sub = card.sub,
+                            isClickable = card.isClickable,
+                            onClick = card.onClick,
+                            contentDescription = card.contentDescription,
+                            valueMaxLines = card.valueMaxLines,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .testTag("details-fact-card-${card.testTag}"),
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private data class FactCardData(
+    val testTag: String,
+    val icon: ImageVector,
+    val title: String,
+    val value: String,
+    val sub: String? = null,
+    val isClickable: Boolean = false,
+    val onClick: (() -> Unit)? = null,
+    val contentDescription: String? = null,
+    val valueMaxLines: Int = 1,
+)
+
+/** Seconds in half an hour and in an hour, for rounding beats to whole hours. */
+private const val HALF_HOUR_SECONDS = 1_800L
+private const val HOUR_SECONDS = 3_600L
+
+/** Rounds epoch seconds to whole display hours. */
+private fun Long.toDisplayHours(): Long = (this + HALF_HOUR_SECONDS) / HOUR_SECONDS
+
+@Composable
+private fun FactCard(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    sub: String? = null,
+    modifier: Modifier = Modifier,
+    isClickable: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    contentDescription: String? = null,
+    valueMaxLines: Int = 1,
+) {
+    val clickModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick, role = Role.Button)
+    } else {
+        modifier
+    }
+    val surfaceModifier = if (contentDescription != null) {
+        clickModifier.semantics { this.contentDescription = contentDescription }
+    } else {
+        clickModifier
+    }
+    Surface(
+        modifier = surfaceModifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (isClickable) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = valueMaxLines,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (sub != null) {
+                Text(
+                    text = sub,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (isClickable) FontWeight.Medium else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/** Collapsed About card: 2-line summary with an in-card header and arrow toggle. */
+@Composable
+private fun AboutCard(
+    summary: String,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable(summary) { mutableStateOf(false) }
+    var hasVisualOverflow by remember(summary) { mutableStateOf(false) }
+    val showMoreDesc = stringResource(R.string.details_about_show_more)
+    val showLessDesc = stringResource(R.string.details_about_show_less)
+    val actionDescription = if (expanded) showLessDesc else showMoreDesc
+    val headerInteractionSource = remember { MutableInteractionSource() }
+
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "aboutArrowRotation",
+    )
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .sizeIn(minHeight = 48.dp)
+                    .then(
+                        if (hasVisualOverflow || expanded) {
+                            Modifier
+                                .clickable(
+                                    interactionSource = headerInteractionSource,
+                                    indication = null,
+                                    role = Role.Button,
+                                    onClick = { expanded = !expanded },
+                                )
+                                .semantics(mergeDescendants = true) {
+                                    contentDescription = actionDescription
+                                }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.details_section_about),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    modifier = Modifier.size(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (hasVisualOverflow || expanded) {
+                        Icon(
+                            imageVector = Icons.Filled.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer { rotationZ = arrowRotation },
+                        )
+                    }
+                }
+            }
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (expanded) Int.MAX_VALUE else ABOUT_COLLAPSED_LINES,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 12.dp),
+                onTextLayout = { layoutResult ->
+                    if (!expanded) {
+                        hasVisualOverflow = layoutResult.hasVisualOverflow ||
+                            layoutResult.lineCount > ABOUT_COLLAPSED_LINES
+                    }
+                },
+            )
+        }
+    }
+}
+
 
 @Composable
 private fun GameDetailsErrorState(
@@ -763,7 +1329,6 @@ private fun LibraryStatusCard(
     libraryEntry: LibraryEntry?,
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
-    platform: String? = null,
 ) {
     AnimatedContent(
         targetState = libraryEntry,
@@ -776,7 +1341,6 @@ private fun LibraryStatusCard(
         } else {
             InLibraryCard(
                 status = stringResource(entry.status.displayNameRes()),
-                platform = platform,
                 onClick = onEditClicked,
             )
         }
@@ -829,7 +1393,6 @@ private fun AddToLibraryButton(
 @Composable
 private fun InLibraryCard(
     status: String,
-    platform: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -878,11 +1441,9 @@ private fun InLibraryCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = if (platform.isNullOrBlank()) {
-                        status
-                    } else {
-                        stringResource(R.string.library_in_library_meta, status, platform)
-                    },
+                    // Status only: no platform is auto-picked from the catalog list,
+                    // since the user does not choose one at add time.
+                    text = status,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -893,6 +1454,151 @@ private fun InLibraryCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
+        }
+    }
+}
+
+/**
+ * Header placeholder shown while no Room row exists yet (cold navigation to an
+ * unseen game). Renders inside the shared LazyColumn so hydrated content
+ * replaces it without a spinner swap or a scroll-state conflict.
+ */
+@Composable
+private fun DetailsHeaderSkeleton(
+    contentTopPadding: Dp,
+    titleTranslationRangePx: Float,
+    modifier: Modifier = Modifier,
+) {
+    val shimmerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("details-skeleton")
+            .padding(top = contentTopPadding, start = DETAILS_GUTTER, end = DETAILS_GUTTER),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SkeletonBlock(
+                modifier = Modifier
+                    .width(HEADER_COVER_WIDTH)
+                    .aspectRatio(GAME_COVER_ASPECT_RATIO)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(shimmerColor)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(SKELETON_TITLE_FRACTION)
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerColor)
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(SKELETON_SUBTITLE_FRACTION)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonBlock(modifier: Modifier = Modifier) {
+    Box(modifier = modifier)
+}
+
+/** Placeholder bar proportions for the details header skeleton. */
+private const val SKELETON_TITLE_FRACTION = 0.7f
+private const val SKELETON_SUBTITLE_FRACTION = 0.4f
+private const val ARROW_EXPANDED_ROTATION = 180f
+private const val ARROW_COLLAPSED_ROTATION = 0f
+
+/**
+ * Videos list: at least [VIDEOS_COLLAPSED_COUNT] (when available); a toggle
+ * reveals the rest because the BFF caps the payload at five videos.
+ */
+@Composable
+private fun VideosSection(
+    videos: List<GameVideo>,
+    onVideoClick: (GameVideo) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable(videos.map(GameVideo::videoId)) { mutableStateOf(false) }
+    val hasToggle = videos.size > VIDEOS_COLLAPSED_COUNT
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "videosArrowRotation",
+    )
+
+    DetailsSection(
+        title = stringResource(R.string.details_section_videos),
+        modifier = modifier,
+    ) {
+        Column {
+            videos.forEachIndexed { index, video ->
+                if (!hasToggle || index < VIDEOS_COLLAPSED_COUNT) {
+                    GameVideoCard(
+                        video = video,
+                        onClick = { onVideoClick(video) },
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                } else {
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        ) + fadeIn(),
+                        exit = shrinkVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        ) + fadeOut(),
+                    ) {
+                        GameVideoCard(
+                            video = video,
+                            onClick = { onVideoClick(video) },
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                }
+            }
+            if (hasToggle) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(
+                        text = if (expanded) {
+                            stringResource(R.string.details_videos_show_less)
+                        } else {
+                            stringResource(R.string.details_videos_show_all, videos.size)
+                        },
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { rotationZ = arrowRotation },
+                    )
+                }
+            }
         }
     }
 }

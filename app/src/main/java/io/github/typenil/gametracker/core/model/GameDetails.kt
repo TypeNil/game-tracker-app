@@ -30,7 +30,10 @@ data class GameDetails(
     val screenshots: List<String> = emptyList(),
     val videos: List<GameVideo> = emptyList(),
     val similarGames: List<GameSummary> = emptyList(),
-    val url: String? = null
+    val url: String? = null,
+    val artworkUrl: String? = null,
+    val timeToBeatMainSeconds: Long? = null,
+    val timeToBeatCompleteSeconds: Long? = null
 )
 
 data class GameReleaseDate(

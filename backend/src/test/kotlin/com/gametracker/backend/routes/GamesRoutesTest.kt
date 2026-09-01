@@ -65,10 +65,18 @@ class GamesRoutesTest {
         ]
     """.trimIndent()
 
-    private fun createMockService(jsonResponse: String = sampleIgdbJson): IgdbService {
-        val engine = MockEngine {
+    private fun createMockService(
+        jsonResponse: String = sampleIgdbJson,
+        timeToBeatJson: String = "[]",
+    ): IgdbService {
+        val engine = MockEngine { request ->
+            val content = if (request.url.encodedPath.endsWith("/v4/game_time_to_beats")) {
+                timeToBeatJson
+            } else {
+                jsonResponse
+            }
             respond(
-                content = jsonResponse,
+                content = content,
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
@@ -322,6 +330,7 @@ class GamesRoutesTest {
                         {"id": 4, "company": {"id": 777}}
                     ],
                     "screenshots": [$screenshots],
+                    "artworks": [{"id": 2}, {"id": 1, "image_id": "art1"}],
                     "videos": [$videos],
                     "similar_games": [$similarGames]
                 }
@@ -332,7 +341,10 @@ class GamesRoutesTest {
     @Test
     fun `game details returns enriched GameDetailsDto with trims, dedup and skipped incomplete rows`() =
         testApplication {
-            val service = createMockService(jsonResponse = detailsIgdbJson())
+            val service = createMockService(
+                jsonResponse = detailsIgdbJson(),
+                timeToBeatJson = """[{"id":7,"hastily":183600,"completely":622800}]""",
+            )
             val cache = BffCache()
 
             application {
@@ -393,9 +405,57 @@ class GamesRoutesTest {
             assertEquals(listOf("PC"), game.similarGames[0].platforms)
             // Fallback totalRating ?: rating
             assertEquals(85.0, game.similarGames[1].totalRating!!, 0.01)
+            // Artwork без image_id пропускается; времена прохождения приходят отдельным endpoint.
+            assertEquals("https://images.igdb.com/igdb/image/upload/t_720p/art1.jpg", game.artworkUrl)
+            assertEquals(183600L, game.timeToBeatMainSeconds)
+            assertEquals(622800L, game.timeToBeatCompleteSeconds)
             cache.close()
         }
+    @Test
+    fun `game details returns 200 with null time to beat when optional endpoint fails`() = testApplication {
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath.endsWith("/v4/game_time_to_beats")) {
+                respond(
+                    content = """{"message": "Rate limited"}""",
+                    status = HttpStatusCode.TooManyRequests,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json"), HttpHeaders.RetryAfter to listOf("5"))
+                )
+            } else {
+                respond(
+                    content = sampleIgdbJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
+        val client = HttpClient(engine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+        val service = IgdbService(client, mockTokenManager, mockConfig)
+        val cache = BffCache()
 
+        application {
+            testModule(service, cache)
+        }
+
+        val testClient = createClient {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        val response = testClient.get("/v1/games/1020")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val game = response.body<GameDetailsDto>()
+        assertEquals(1020L, game.id)
+        assertEquals("The Witcher 3: Wild Hunt", game.name)
+        assertNull(game.timeToBeatMainSeconds)
+        assertNull(game.timeToBeatCompleteSeconds)
+        cache.close()
+    }
     /**
      * Реальная форма sparse-ответа IGDB (live id 87388 PapiHop): отсутствующие
      * сущности IGDB опускает целиком — ни cover, ни списков, ни null-литералов.
@@ -434,6 +494,8 @@ class GamesRoutesTest {
             assertEquals(emptyList<String>(), game.screenshots)
             assertTrue(game.videos.isEmpty())
             assertTrue(game.similarGames.isEmpty())
+            assertNull(game.timeToBeatMainSeconds)
+            assertNull(game.timeToBeatCompleteSeconds)
             cache.close()
         }
 

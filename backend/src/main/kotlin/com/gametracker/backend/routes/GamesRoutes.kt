@@ -2,6 +2,7 @@ package com.gametracker.backend.routes
 
 import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.cache.CachePolicy
+import com.gametracker.backend.error.UpstreamException
 import com.gametracker.backend.igdb.IgdbService
 import com.gametracker.backend.models.GameDetailsDto
 import com.gametracker.backend.models.GameDetailsRequest
@@ -23,6 +24,9 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("GamesRoutes")
@@ -95,9 +99,26 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
                 val request = GameDetailsRequest(id)
                 logger.info("Fetching game details (id={})", id)
                 val game = cache.getOrPut(request.cacheKey, CachePolicy.GAME_DETAILS) {
-                    val results = igdbService.queryGames(request.toApicalypseQuery())
-                    results.firstOrNull()?.toDetailsDto()
-                        ?: throw NoSuchElementException("Game with id $id not found")
+                    coroutineScope {
+                        val details = async { igdbService.queryGames(request.toApicalypseQuery()) }
+                        val ttb = async {
+                            try {
+                                igdbService.queryGameTimeToBeats(id).firstOrNull()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: UpstreamException) {
+                                logger.warn(
+                                    "Time-to-beat unavailable for game id={} ({})",
+                                    id,
+                                    e::class.simpleName,
+                                )
+                                null
+                            }
+                        }
+                        val results = details.await().firstOrNull()
+                            ?: throw NoSuchElementException("Game with id $id not found")
+                        results.toDetailsDto(ttb.await())
+                    }
                 }
                 call.respond<GameDetailsDto>(game)
             }

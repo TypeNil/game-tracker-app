@@ -18,6 +18,37 @@ class GameCardTagsTest {
     }
 
     @Test
+    fun `selectGenreTags formats Role-playing RPG to RPG`() {
+        val tags = selectGenreTags(listOf("Role-playing (RPG)", "Adventure"))
+        assertEquals(listOf("RPG", "Adventure"), tags)
+    }
+
+    @Test
+    fun `formatGenreTag converts verbose IGDB genres to compact labels`() {
+        assertEquals("RPG", formatGenreTag("Role-playing (RPG)"))
+        assertEquals("Hack & Slash / Beat 'em up", formatGenreTag("Hack and slash/Beat 'em up"))
+        assertEquals("TBS", formatGenreTag("Turn-based strategy (TBS)"))
+        assertEquals("RTS", formatGenreTag("Real-time strategy (RTS)"))
+        assertEquals("MMO", formatGenreTag("Massively Multiplayer Online (MMO)"))
+        assertEquals("Card & Board", formatGenreTag("Card & Board Game"))
+        assertEquals("Visual Novel", formatGenreTag("Visual Novel"))
+        assertEquals("Point & Click", formatGenreTag("Point-and-click"))
+        assertEquals("Trivia", formatGenreTag("Quiz/Trivia"))
+        assertEquals("Action", formatGenreTag("Action"))
+    }
+
+    @Test
+    fun `formatGenreTag_preservesCombinedGenreMeaning`() {
+        assertEquals("Hack & Slash / Beat 'em up", formatGenreTag("Hack and slash/Beat 'em up"))
+        assertEquals("Card & Board", formatGenreTag("Card & Board Game"))
+    }
+
+    @Test
+    fun `selectGenreTags formats Hack and slash correctly`() {
+        val tags = selectGenreTags(listOf("RPG", "Hack and slash/Beat 'em up"))
+        assertEquals(listOf("RPG", "Hack & Slash / Beat 'em up"), tags)
+    }
+    @Test
     fun `selectGenreTags returns empty when input is empty`() {
         assertEquals(emptyList<String>(), selectGenreTags(emptyList()))
     }

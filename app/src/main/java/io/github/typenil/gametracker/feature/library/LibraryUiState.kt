@@ -2,7 +2,7 @@ package io.github.typenil.gametracker.feature.library
 
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
-
+import java.util.Locale
 data class LibraryUiState(
     val allGames: List<LibraryGame> = emptyList(),
     val filteredGames: List<LibraryGame> = emptyList(),
@@ -26,7 +26,7 @@ data class LibraryUiState(
         get() = !isLoading && filteredGames.isEmpty()
 
     fun gamesFor(tab: LibraryTab): List<LibraryGame> {
-        return filterLibraryGames(allGames, tab, filterFavoritesOnly, searchQuery, sortOption)
+        return filterLibraryGames(allGames, tab, filterFavoritesOnly, searchQuery)
     }
 }
 
@@ -37,12 +37,40 @@ sealed interface HoursSaveState {
     data class Failed(val gameId: Long) : HoursSaveState
 }
 
+fun sortLibraryGames(
+    games: List<LibraryGame>,
+    sortOption: LibrarySortOption,
+): List<LibraryGame> = when (sortOption) {
+    LibrarySortOption.UPDATED_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.updatedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
+    LibrarySortOption.USER_RATING_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.userRating ?: -1 }
+                .thenByDescending { it.entry.updatedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
+    LibrarySortOption.TITLE_ASC ->
+        games.sortedWith(
+            compareBy<LibraryGame> { it.game.name.lowercase(Locale.ROOT) }
+                .thenBy { it.game.id }
+        )
+    LibrarySortOption.HOURS_PLAYED_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.hoursPlayed }
+                .thenByDescending { it.entry.updatedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
+}
+
 internal fun filterLibraryGames(
     allGames: List<LibraryGame>,
     selectedTab: LibraryTab,
     favoritesOnly: Boolean,
     query: String,
-    sortOption: LibrarySortOption,
+    sortOption: LibrarySortOption? = null,
 ): List<LibraryGame> {
     val tabFiltered = when (selectedTab) {
         LibraryTab.ALL -> allGames.filter { it.entry.status != LibraryStatus.NOT_INTERESTED }
@@ -63,21 +91,10 @@ internal fun filterLibraryGames(
     } else {
         favFiltered
     }
-    return when (sortOption) {
-        LibrarySortOption.UPDATED_DESC ->
-            searchFiltered.sortedByDescending { it.entry.updatedAtEpochSeconds }
-        LibrarySortOption.USER_RATING_DESC ->
-            searchFiltered.sortedWith(
-                compareByDescending<LibraryGame> { it.entry.userRating ?: -1 }
-                    .thenByDescending { it.entry.updatedAtEpochSeconds }
-            )
-        LibrarySortOption.TITLE_ASC ->
-            searchFiltered.sortedBy { it.game.name.lowercase() }
-        LibrarySortOption.HOURS_PLAYED_DESC ->
-            searchFiltered.sortedWith(
-                compareByDescending<LibraryGame> { it.entry.hoursPlayed }
-                    .thenByDescending { it.entry.updatedAtEpochSeconds }
-            )
+    return if (sortOption != null) {
+        sortLibraryGames(searchFiltered, sortOption)
+    } else {
+        searchFiltered
     }
 }
 

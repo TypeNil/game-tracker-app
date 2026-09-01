@@ -97,7 +97,10 @@ fun GameDetails.toEntity(
                 platforms = it.platforms,
             )
         },
-        cachedAtEpochSeconds = cachedAtEpochSeconds
+        cachedAtEpochSeconds = cachedAtEpochSeconds,
+        artworkUrl = this.artworkUrl,
+        timeToBeatMainSeconds = this.timeToBeatMainSeconds,
+        timeToBeatCompleteSeconds = this.timeToBeatCompleteSeconds
     )
 }
 
@@ -136,7 +139,10 @@ fun GameDetailsEntity.toDomain(): GameDetails {
                 platforms = it.platforms,
             )
         },
-        url = this.url
+        url = this.url,
+        artworkUrl = this.artworkUrl,
+        timeToBeatMainSeconds = this.timeToBeatMainSeconds,
+        timeToBeatCompleteSeconds = this.timeToBeatCompleteSeconds
     )
 }
 

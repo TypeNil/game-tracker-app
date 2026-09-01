@@ -87,13 +87,11 @@ class FakeBffDataSourceTest {
 
         // Will throw SerializationException if contract deviates (e.g. unknown keys, nulls in non-nullable)
         val parsed: List<GameDto> = strictJson.decodeFromString(jsonString)
-
-        // Assert exactly 10 records
-        assertEquals(10, parsed.size)
+        // Assert exactly 22 records
+        assertEquals(22, parsed.size)
         
         // Assert invariants across all records
-        assertTrue(parsed.all { it.coverUrl?.startsWith("file:///android_asset/covers/") == true })
-        assertTrue(parsed.all { it.releaseDateEpochSeconds != null })
+        assertTrue(parsed.all { it.coverUrl == null || it.coverUrl.startsWith("file:///android_asset/covers/") })
         assertTrue(parsed.all { it.genres.isNotEmpty() })
         assertTrue(parsed.all { it.platforms.isNotEmpty() })
         assertEquals(parsed.size, parsed.map(GameDto::id).distinct().size)
@@ -104,6 +102,18 @@ class FakeBffDataSourceTest {
         assertEquals(1431993600L, witcher.releaseDateEpochSeconds)
         assertTrue(witcher.coverUrl?.startsWith("file:///android_asset/covers/") == true)
         assertTrue(witcher.genres.contains("Adventure"))
+
+        // Edge case fixtures assertions
+        val gta = parsed.first { it.id == 900003L }
+        assertEquals("Grand Theft Auto VI", gta.name)
+        org.junit.Assert.assertNull(gta.rating)
+        org.junit.Assert.assertNull(gta.releaseDateEpochSeconds)
+
+        val silk = parsed.first { it.id == 900002L }
+        org.junit.Assert.assertNull(silk.summary)
+
+        val noMedia = parsed.first { it.id == 900009L }
+        org.junit.Assert.assertNull(noMedia.coverUrl)
     }
 
     @Test
@@ -161,17 +171,33 @@ class FakeBffDataSourceTest {
             isLenient = false
         }
 
+        validateDetailsStructure(strictJson.parseToJsonElement(detailsString).jsonArray)
+
+        val details: List<GameDetailsDto> = strictJson.decodeFromString(detailsString)
+        val listGames: List<GameDto> = strictJson.decodeFromString(gamesString)
+        assertEquals(22, details.size)
+        assertEquals(details.size, details.map(GameDetailsDto::id).distinct().size)
+        assertEquals(listGames.map(GameDto::id).toSet(), details.map(GameDetailsDto::id).toSet())
+        val detailIds = details.map(GameDetailsDto::id).toSet()
+        assertTrue(details.all { game -> game.similarGames.all { it.id in detailIds && it.id != game.id } })
+        validateSharedFields(listGames, details)
+        validateRailIds(assetsDir, strictJson, detailIds)
+        validateWitcherDetails(details)
+        validateMediaAndEdgeCases(details)
+    }
+
+    private fun validateDetailsStructure(elements: kotlinx.serialization.json.JsonArray) {
         val expectedKeys = setOf(
             "id", "name", "coverUrl", "rating", "releaseDateEpochSeconds", "summary", "genres", "platforms",
             "url", "totalRating", "totalRatingCount", "themes", "gameModes", "releaseDates",
-            "companies", "screenshots", "videos", "similarGames"
+            "companies", "screenshots", "videos", "similarGames",
+            "artworkUrl", "timeToBeatMainSeconds", "timeToBeatCompleteSeconds"
         )
         val releaseDateKeys = setOf("platform", "dateEpochSeconds", "year")
         val companyKeys = setOf("name", "isDeveloper", "isPublisher")
         val videoKeys = setOf("videoId", "name")
         val similarKeys = setOf("id", "name", "coverUrl", "totalRating", "genres", "platforms")
 
-        val elements = strictJson.parseToJsonElement(detailsString).jsonArray
         elements.forEachIndexed { index, element ->
             val obj = element.jsonObject
             assertEquals("Unexpected contract keys in details item $index", expectedKeys, obj.keys)
@@ -180,31 +206,68 @@ class FakeBffDataSourceTest {
             obj["videos"]!!.jsonArray.forEach { assertEquals(videoKeys, it.jsonObject.keys) }
             obj["similarGames"]!!.jsonArray.forEach { assertEquals(similarKeys, it.jsonObject.keys) }
         }
+    }
 
-        val details: List<GameDetailsDto> = strictJson.decodeFromString(detailsString)
-        val listGames: List<GameDto> = strictJson.decodeFromString(gamesString)
-        assertEquals(10, details.size)
-        assertEquals(details.size, details.map(GameDetailsDto::id).distinct().size)
+    private fun validateSharedFields(listGames: List<GameDto>, details: List<GameDetailsDto>) {
+        listGames.forEach { listGame ->
+            val detail = details.first { it.id == listGame.id }
+            assertEquals(listGame.name, detail.name)
+            assertEquals(listGame.coverUrl, detail.coverUrl)
+            assertEquals(listGame.rating, detail.rating)
+            assertEquals(listGame.releaseDateEpochSeconds, detail.releaseDateEpochSeconds)
+            assertEquals(listGame.summary, detail.summary)
+            assertEquals(listGame.genres, detail.genres)
+            assertEquals(listGame.platforms, detail.platforms)
+        }
+    }
 
-        // Offline navigation closure: same id set as the list fixture and every
-        // similarGames reference resolvable without network.
-        assertEquals(listGames.map(GameDto::id).toSet(), details.map(GameDetailsDto::id).toSet())
-        val detailIds = details.map(GameDetailsDto::id).toSet()
-        assertTrue(details.all { game -> game.similarGames.all { it.id in detailIds } })
+    private fun validateRailIds(assetsDir: String, strictJson: Json, detailIds: Set<Long>) {
+        listOf("trending", "popular-playing", "popular-wanted", "popular-twitch", "popular-upcoming").forEach { railName ->
+            val railFile = File(assetsDir, "fixtures/v1/$railName.json")
+            val railIds = strictJson.decodeFromString<List<Long>>(railFile.readText())
+            assertTrue("Rail $railName contains IDs not in games.json", railIds.all { it in detailIds })
+        }
+    }
 
-        assertTrue(details.all { it.coverUrl?.startsWith("file:///android_asset/covers/") == true })
-        assertTrue(details.all { it.screenshots.all { shot -> shot.startsWith("file:///android_asset/screenshots/") } })
-        assertTrue(details.all { it.genres.isNotEmpty() && it.platforms.isNotEmpty() })
-        assertTrue(details.all { it.videos.all { video -> video.videoId.isNotBlank() } })
-        assertTrue(details.all { it.similarGames.isNotEmpty() && it.similarGames.all { s -> !s.name.isNullOrBlank() } })
-
-        // Representative non-default assertions against live-verified IGDB data
+    private fun validateWitcherDetails(details: List<GameDetailsDto>) {
         val witcher = details.first { it.id == 1942L }
         assertEquals("The Witcher 3: Wild Hunt", witcher.name)
         assertEquals("https://www.igdb.com/games/the-witcher-3-wild-hunt", witcher.url)
-        assertEquals(5451L, witcher.totalRatingCount)
+        assertEquals(WITCHER_TOTAL_RATING_COUNT, witcher.totalRatingCount)
         assertTrue(witcher.themes.contains("Fantasy"))
         assertTrue(witcher.companies.any { it.name == "CD Projekt RED" && it.isDeveloper })
+    }
+
+    private fun validateMediaAndEdgeCases(details: List<GameDetailsDto>) {
+        assertTrue(details.all { it.coverUrl == null || it.coverUrl.startsWith("file:///android_asset/covers/") })
+        assertTrue(details.all { it.screenshots.all { shot -> shot.startsWith("file:///android_asset/screenshots/") } })
+        assertTrue(details.all { it.artworkUrl == null || it.artworkUrl.startsWith("file:///android_asset/screenshots/") })
+        assertTrue(details.all { it.genres.isNotEmpty() && it.platforms.isNotEmpty() })
+        assertTrue(details.all { it.videos.all { video -> video.videoId.isNotBlank() } })
+        assertTrue(details.all { it.similarGames.all { s -> !s.name.isNullOrBlank() } })
+
+        val retro = details.first { it.id == 900004L }
+        assertTrue(retro.similarGames.isEmpty())
+        assertTrue(retro.screenshots.isEmpty())
+        assertTrue(retro.videos.isEmpty())
+        org.junit.Assert.assertNull(retro.timeToBeatMainSeconds)
+        org.junit.Assert.assertNull(retro.timeToBeatCompleteSeconds)
+
+        val arena = details.first { it.id == 900012L }
+        assertEquals(ARENA_RATING, arena.rating)
+        org.junit.Assert.assertNull(arena.timeToBeatMainSeconds)
+        assertEquals(ARENA_COMPLETE_SECONDS, arena.timeToBeatCompleteSeconds)
+
+        val gtaDetails = details.first { it.id == 900003L }
+        assertEquals(2, gtaDetails.releaseDates.size)
+        assertTrue(gtaDetails.releaseDates.all { it.year == GTA_YEAR && it.dateEpochSeconds == null })
+    }
+
+    private companion object {
+        const val WITCHER_TOTAL_RATING_COUNT = 5451L
+        const val ARENA_RATING = 42.0
+        const val ARENA_COMPLETE_SECONDS = 720000L
+        const val GTA_YEAR = 2026
     }
 
     @Test

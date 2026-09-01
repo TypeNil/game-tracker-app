@@ -74,14 +74,14 @@ class LibraryViewModel @Inject constructor(
         _filterFavoritesOnly,
         _searchQuery,
         _isSearchActive,
-        _sortOption
+        _sortOption,
     ) { selectedTab, favoritesOnly, query, isSearchActive, sortOption ->
         FilterState(
             selectedTab = selectedTab,
             favoritesOnly = favoritesOnly,
             query = query,
             isSearchActive = isSearchActive,
-            sortOption = sortOption
+            sortOption = sortOption,
         )
     }
 
@@ -92,15 +92,15 @@ class LibraryViewModel @Inject constructor(
         _hoursSaveState,
     ) { allGames, filterState, userMessageRes, hoursSaveState ->
         val counts = computeTabCounts(allGames)
+        val orderedAllGames = sortLibraryGames(allGames, filterState.sortOption)
         val filtered = filterLibraryGames(
-            allGames = allGames,
+            allGames = orderedAllGames,
             selectedTab = filterState.selectedTab,
             favoritesOnly = filterState.favoritesOnly,
             query = filterState.query,
-            sortOption = filterState.sortOption,
         )
         LibraryUiState(
-            allGames = allGames,
+            allGames = orderedAllGames,
             filteredGames = filtered,
             selectedTab = filterState.selectedTab,
             tabCounts = counts,
@@ -117,7 +117,6 @@ class LibraryViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = LibraryUiState(isLoading = true)
     )
-
     fun onTabSelected(tab: LibraryTab) {
         _selectedTab.value = tab
     }
@@ -216,6 +215,6 @@ class LibraryViewModel @Inject constructor(
         val favoritesOnly: Boolean,
         val query: String,
         val isSearchActive: Boolean,
-        val sortOption: LibrarySortOption
+        val sortOption: LibrarySortOption,
     )
 }

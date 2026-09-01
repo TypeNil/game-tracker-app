@@ -196,8 +196,9 @@ class DeepLinkNavigationTest {
 
             composeTestRule.onNodeWithText(libraryNavLabel).performClick()
             waitForText(libraryTitle)
-            waitForText(WITCHER_TITLE)
 
+            composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
+                .performScrollToNode(hasText(WITCHER_TITLE))
             composeTestRule.onAllNodesWithText(WITCHER_TITLE).onFirst().performClick()
             waitForText(WITCHER_TITLE)
             composeTestRule.onNodeWithText(libraryTitle).assertDoesNotExist()

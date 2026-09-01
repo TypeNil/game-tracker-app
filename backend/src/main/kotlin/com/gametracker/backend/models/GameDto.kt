@@ -1,8 +1,10 @@
+@file:Suppress("TooManyFunctions")
 package com.gametracker.backend.models
 
+import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
 @Serializable
 data class IgdbNamedItem(
     val id: Long? = null,
@@ -36,6 +38,23 @@ data class IgdbScreenshot(
     val id: Long? = null,
     @SerialName("image_id")
     val imageId: String? = null
+)
+
+@Serializable
+data class IgdbArtwork(
+    val id: Long? = null,
+    @SerialName("image_id")
+    val imageId: String? = null
+)
+
+/** IGDB game_time_to_beats: средние времена прохождения в секундах. */
+@Serializable
+data class IgdbGameTimeToBeats(
+    val id: Long? = null,
+    /** Main story, seconds. */
+    val hastily: Long? = null,
+    /** 100% completion, seconds. */
+    val completely: Long? = null
 )
 
 @Serializable
@@ -113,7 +132,8 @@ data class IgdbGame(
     val screenshots: List<IgdbScreenshot>? = null,
     val videos: List<IgdbVideo>? = null,
     @SerialName("similar_games")
-    val similarGames: List<IgdbSimilarGame>? = null
+    val similarGames: List<IgdbSimilarGame>? = null,
+    val artworks: List<IgdbArtwork>? = null
 )
 
 @Serializable
@@ -183,7 +203,10 @@ data class GameDetailsDto(
     val companies: List<GameCompanyDto> = emptyList(),
     val screenshots: List<String> = emptyList(),
     val videos: List<GameVideoDto> = emptyList(),
-    val similarGames: List<SimilarGameDto> = emptyList()
+    val similarGames: List<SimilarGameDto> = emptyList(),
+    val artworkUrl: String? = null,
+    val timeToBeatMainSeconds: Long? = null,
+    val timeToBeatCompleteSeconds: Long? = null
 )
 
 // Apicalypse не умеет лимитить sub-запросы: IGDB отдаёт все связанные сущности,
@@ -204,7 +227,14 @@ internal fun igdbImageUrl(imageId: String?, rawUrl: String?, size: String): Stri
 internal fun List<IgdbNamedExpansion>?.toNameList(): List<String> =
     orEmpty().mapNotNull { item -> item.name?.trim()?.takeIf(String::isNotEmpty) }
 
-
+private fun GameReleaseDateDto.releaseSortKey(): Long =
+    dateEpochSeconds
+        ?: year?.let {
+            LocalDate.of(it, 1, 1)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toEpochSecond()
+        }
+        ?: Long.MAX_VALUE
 
 private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto> =
     orEmpty()
@@ -222,9 +252,8 @@ private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto>
         // Записи с точной датой выигрывают дедупликацию по (platform, year)
         .sortedByDescending { it.dateEpochSeconds != null }
         .distinctBy { it.platform to it.year }
+        .sortedBy { it.releaseSortKey() }
         .take(MAX_RELEASE_DATES)
-        .sortedBy { it.dateEpochSeconds ?: it.year?.toLong() ?: Long.MAX_VALUE }
-
 private fun List<IgdbInvolvedCompany>?.toCompanyList(): List<GameCompanyDto> =
     orEmpty().mapNotNull { involved ->
         val name = involved.company?.name?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
@@ -282,7 +311,7 @@ fun IgdbGame.toDto(): GameDto = GameDto(
 fun IgdbGame.toGameDto(): GameDto = toDto()
 
 
-fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
+fun IgdbGame.toDetailsDto(ttb: IgdbGameTimeToBeats?): GameDetailsDto = GameDetailsDto(
     id = this.id,
     name = this.name,
     coverUrl = igdbImageUrl(this.cover?.imageId, this.cover?.url, IMAGE_SIZE_COVER_BIG),
@@ -300,5 +329,10 @@ fun IgdbGame.toDetailsDto(): GameDetailsDto = GameDetailsDto(
     companies = this.involvedCompanies.toCompanyList(),
     screenshots = this.screenshots.toScreenshotUrlList(),
     videos = this.videos.toVideoList(),
-    similarGames = this.similarGames.toSimilarGameList()
+    similarGames = this.similarGames.toSimilarGameList(),
+    artworkUrl = this.artworks.orEmpty()
+        .firstOrNull { !it.imageId.isNullOrBlank() }
+        ?.let { igdbImageUrl(it.imageId, rawUrl = null, IMAGE_SIZE_720P) },
+    timeToBeatMainSeconds = ttb?.hastily,
+    timeToBeatCompleteSeconds = ttb?.completely
 )

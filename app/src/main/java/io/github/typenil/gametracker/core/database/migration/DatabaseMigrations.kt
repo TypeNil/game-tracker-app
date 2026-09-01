@@ -97,4 +97,14 @@ object DatabaseMigrations {
             )
         }
     }
+
+    /** Adds optional details artwork and time-to-beat metadata. */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `game_details` ADD COLUMN `artworkUrl` TEXT")
+            db.execSQL("ALTER TABLE `game_details` ADD COLUMN `timeToBeatMainSeconds` INTEGER")
+            db.execSQL("ALTER TABLE `game_details` ADD COLUMN `timeToBeatCompleteSeconds` INTEGER")
+            db.execSQL("UPDATE `game_details` SET `cachedAtEpochSeconds` = 0")
+        }
+    }
 }

@@ -1,11 +1,15 @@
 package com.gametracker.backend.igdb
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.gametracker.backend.application.IgdbConfig
 import com.gametracker.backend.auth.IgdbTokenManager
 import com.gametracker.backend.error.UpstreamBadGatewayException
 import com.gametracker.backend.error.UpstreamRateLimitException
 import com.gametracker.backend.error.UpstreamServiceUnavailableException
 import io.ktor.client.HttpClient
+import org.slf4j.LoggerFactory
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
@@ -106,6 +110,29 @@ class IgdbServiceTest {
         val rows = service.queryPopularityPrimitives("fields game_id,value;")
         assertEquals(1, rows.size)
         assertEquals(72L, rows[0].gameId)
+    }
+
+    @Test
+    fun `queryGameTimeToBeats posts filtered query and parses seconds`() = runTest {
+        var queryBody = ""
+        val engine = MockEngine { request ->
+            assertTrue(request.url.encodedPath.endsWith("/v4/game_time_to_beats"))
+            queryBody = String(request.body.toByteArray())
+            respond(
+                content = """[{"id":7,"hastily":183600,"completely":622800}]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val rows = service.queryGameTimeToBeats(1020L)
+
+        assertTrue(queryBody.contains("where game_id = 1020"))
+        assertTrue(queryBody.contains("hastily"))
+        assertTrue(queryBody.contains("completely"))
+        assertEquals(1, rows.size)
+        assertEquals(183600L, rows[0].hastily)
+        assertEquals(622800L, rows[0].completely)
     }
 
     @Test
@@ -224,5 +251,57 @@ class IgdbServiceTest {
         val result = runCatching { service.queryGames("fields name;") }
         assertTrue(result.exceptionOrNull() is UpstreamServiceUnavailableException)
         assertEquals(3, attempts)
+    }
+
+    @Test
+    fun `queryGames does not log non-success upstream body`() = runTest {
+        val sensitiveBody = "sensitive-internal-upstream-error-details"
+        val logger = LoggerFactory.getLogger("IgdbService") as Logger
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+
+        try {
+            val engine = MockEngine {
+                respond(
+                    content = sensitiveBody,
+                    status = HttpStatusCode.InternalServerError,
+                    headers = headersOf(HttpHeaders.ContentType, "text/plain"),
+                )
+            }
+            val service = IgdbService(
+                createClient(engine),
+                TestTokenManager(),
+                mockConfig,
+            )
+
+            runCatching { service.queryGames("fields name;") }
+
+            assertTrue(
+                appender.list.none {
+                    it.formattedMessage.contains(sensitiveBody)
+                }
+            )
+        } finally {
+            logger.detachAppender(appender)
+            appender.stop()
+        }
+    }
+
+    @Test
+    fun `queryGames on non-success status does not expose upstream body in exception message`() = runTest {
+        val sensitiveBody = "sensitive-internal-upstream-error-details"
+        val engine = MockEngine {
+            respond(
+                content = sensitiveBody,
+                status = HttpStatusCode.InternalServerError,
+                headers = headersOf(HttpHeaders.ContentType, "text/plain")
+            )
+        }
+
+        val service = IgdbService(createClient(engine), TestTokenManager(), mockConfig)
+        val result = runCatching { service.queryGames("fields name;") }
+        val ex = result.exceptionOrNull()
+        assertTrue(ex is UpstreamBadGatewayException)
+        assertFalse(ex!!.message!!.contains(sensitiveBody))
     }
 }

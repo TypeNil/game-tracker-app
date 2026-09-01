@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -67,7 +65,6 @@ internal fun formatReleaseYear(
  * Compact catalog row: cover, title, tags, optional library action.
  * Trailing [onLibraryAction] is a sibling of the row click target.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameCard(
     game: Game,
@@ -147,32 +144,15 @@ fun GameCard(
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (genreTags.isNotEmpty()) {
-                            FlowRow(
+                            Row(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                                maxItemsInEachRow = MAX_CARD_TAGS_PER_ROW,
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 genreTags.forEach { tag ->
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        border = BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outlineVariant,
-                                        ),
-                                    ) {
-                                        Text(
-                                            text = tag,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.padding(
-                                                horizontal = 10.dp,
-                                                vertical = 4.dp,
-                                            ),
-                                        )
-                                    }
+                                    TagChip(
+                                        text = tag,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                    )
                                 }
                             }
                         }

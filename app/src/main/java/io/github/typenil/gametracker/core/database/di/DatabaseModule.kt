@@ -39,7 +39,12 @@ abstract class DatabaseModule {
                 GameTrackerDatabase::class.java,
                 GameTrackerDatabase.DATABASE_NAME
             )
-                .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4)
+                .addMigrations(
+                    DatabaseMigrations.MIGRATION_1_2,
+                    DatabaseMigrations.MIGRATION_2_3,
+                    DatabaseMigrations.MIGRATION_3_4,
+                    DatabaseMigrations.MIGRATION_4_5,
+                )
                 .build()
         }
 

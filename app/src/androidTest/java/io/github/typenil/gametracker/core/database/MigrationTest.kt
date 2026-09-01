@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_1_2
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_2_3
+import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_4_5
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_3_4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -251,6 +252,55 @@ class MigrationTest {
         assertEquals(1000L, eventCursor.getLong(4))
         eventCursor.close()
 
+        db.close()
+    }
+
+    @Test
+    fun migration4To5_addsOptionalDetailsMetadataColumns() {
+        var db = helper.createDatabase(testDbName, 4)
+        db.execSQL(
+            """
+            INSERT INTO game_details (
+                gameId, name, coverUrl, rating, totalRating, totalRatingCount,
+                releaseDateEpochSeconds, summary, url, genres, themes, gameModes,
+                platforms, releaseDates, companies, screenshots, videos, similarGames,
+                cachedAtEpochSeconds
+            ) VALUES (
+                1, 'The Witcher 3', NULL, 95.0, 94.0, 100,
+                1430000000, 'Geralt of Rivia', NULL, '["RPG"]', '["Fantasy"]',
+                '["Single player"]', '["PC"]', '[]', '[]', '[]', '[]', '[]', 1000
+            )
+            """.trimIndent()
+        )
+        db.close()
+
+        db = helper.runMigrationsAndValidate(testDbName, 5, true, MIGRATION_4_5)
+
+        val emptyCursor = db.query(
+            "SELECT artworkUrl, timeToBeatMainSeconds, timeToBeatCompleteSeconds, cachedAtEpochSeconds " +
+                "FROM game_details WHERE gameId = 1"
+        )
+        assertTrue(emptyCursor.moveToFirst())
+        assertTrue(emptyCursor.isNull(0))
+        assertTrue(emptyCursor.isNull(1))
+        assertTrue(emptyCursor.isNull(2))
+        assertEquals(0L, emptyCursor.getLong(3))
+        emptyCursor.close()
+
+        db.execSQL(
+            "UPDATE game_details SET artworkUrl = 'art.jpg', " +
+                "timeToBeatMainSeconds = 183600, timeToBeatCompleteSeconds = 622800 " +
+                "WHERE gameId = 1"
+        )
+        val metadataCursor = db.query(
+            "SELECT artworkUrl, timeToBeatMainSeconds, timeToBeatCompleteSeconds " +
+                "FROM game_details WHERE gameId = 1"
+        )
+        assertTrue(metadataCursor.moveToFirst())
+        assertEquals("art.jpg", metadataCursor.getString(0))
+        assertEquals(183600L, metadataCursor.getLong(1))
+        assertEquals(622800L, metadataCursor.getLong(2))
+        metadataCursor.close()
         db.close()
     }
 }
