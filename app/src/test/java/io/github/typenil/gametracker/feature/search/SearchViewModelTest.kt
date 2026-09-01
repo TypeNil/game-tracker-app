@@ -771,6 +771,21 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `restored invalid query starts Idle and is never dispatched`() = runTest(testDispatcher) {
+        val savedStateHandle = SavedStateHandle(
+            mapOf(SearchViewModel.KEY_QUERY to "\nDOOM"),
+        )
+        val viewModel = createViewModel(savedStateHandle = savedStateHandle)
+
+        assertEquals(SearchResultUiState.Idle, viewModel.uiState.value.result)
+        assertEquals(
+            SearchInputValidation.Invalid(SearchInputViolation.CONTROL_CHAR),
+            viewModel.uiState.value.inputValidation,
+        )
+        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any()) }
+    }
+
+    @Test
     fun `remove recent query error exposes error message`() = runTest(testDispatcher) {
         coEvery { repository.deleteSearchQuery("Elden Ring") } returns AppResult.Error(AppError.UnknownError(RuntimeException("DB error")))
         val viewModel = createViewModel()

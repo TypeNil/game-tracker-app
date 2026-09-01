@@ -235,12 +235,18 @@ class SearchViewModel @Inject constructor(
             val restoredQuery = savedStateHandle.get<String>(KEY_QUERY).orEmpty()
             val restoredFilters = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
                 ?: SearchFilters.Empty
-            val restoredShouldSearch = restoredFilters.toDomainQuery(restoredQuery, clockYear()).shouldSearch
+            val restoredValidation = SearchInputPolicy.validate(restoredQuery)
+            // The restored result state must agree with the validation verdict the interactive
+            // path uses: an invalid persisted query cannot start as Loading (the screen would
+            // render the inline error and the skeleton simultaneously).
+            val restoredShouldSearch =
+                restoredValidation is SearchInputValidation.Valid &&
+                    restoredFilters.toDomainQuery(restoredQuery, clockYear()).shouldSearch
             SearchUiState(
                 query = restoredQuery,
                 filters = restoredFilters,
                 result = if (restoredShouldSearch) SearchResultUiState.Loading else SearchResultUiState.Idle,
-                inputValidation = SearchInputPolicy.validate(restoredQuery),
+                inputValidation = restoredValidation,
             )
         }
     )
