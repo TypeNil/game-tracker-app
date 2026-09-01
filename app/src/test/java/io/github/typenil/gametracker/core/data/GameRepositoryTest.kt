@@ -326,7 +326,7 @@ class GameRepositoryTest {
     fun `getSearchResultsFlow observes searchDao with prefixed key`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
-        every { searchDao.getSearchResultsFlow("q:witcher") } returns flowOf(listOf(sampleGameEntity))
+        every { searchDao.getSearchResultsFlow(GameQueryKey.search("Witcher")) } returns flowOf(listOf(sampleGameEntity))
 
         repository.getSearchResultsFlow("  Witcher  ").test {
             val games = awaitItem()
@@ -388,30 +388,31 @@ class GameRepositoryTest {
         assertTrue(result is AppResult.Success)
         val querySlot = slot<SearchQueryEntity>()
         coVerify(exactly = 1) { searchDao.upsertSearchQuery(capture(querySlot)) }
-        assertEquals("q:discover:top-rated", querySlot.captured.query)
+        assertEquals(GameQueryKey.search("discover:top-rated"), querySlot.captured.query)
 
         val resultsSlot = slot<List<SearchResultCrossRef>>()
         coVerify(exactly = 1) { searchDao.insertSearchResults(capture(resultsSlot)) }
-        assertEquals("q:discover:top-rated", resultsSlot.captured[0].query)
+        assertEquals(GameQueryKey.search("discover:top-rated"), resultsSlot.captured[0].query)
         assertEquals(101L, resultsSlot.captured[0].gameId)
         assertEquals(0, resultsSlot.captured[0].position)
 
         val remoteKeySlot = slot<RemoteKeyEntity>()
         coVerify(exactly = 1) { remoteKeyDao.upsert(capture(remoteKeySlot)) }
-        assertEquals("q:discover:top-rated", remoteKeySlot.captured.queryKey)
+        assertEquals(GameQueryKey.search("discover:top-rated"), remoteKeySlot.captured.queryKey)
     }
 
     @Test
     fun `searchGames preserves existing query createdAt timestamp on repeated search`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)
+        val expectedKey = GameQueryKey.search("witcher")
         val existingQueryEntity = SearchQueryEntity(
-            query = "q:witcher",
+            query = expectedKey,
             createdAtEpochSeconds = 1500000000L,
             lastQueriedAtEpochSeconds = 1500000000L,
             resultCount = 1
         )
-        coEvery { searchDao.getSearchQuery("q:witcher") } returns existingQueryEntity
+        coEvery { searchDao.getSearchQuery(expectedKey) } returns existingQueryEntity
         coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)
         val result = repository.searchGames("witcher", 20, 0)
 

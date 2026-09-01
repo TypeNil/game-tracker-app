@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -67,21 +68,33 @@ class SearchViewModel @Inject constructor(
     private var libraryMutationJob: Job? = null
     private val userMessageRes = MutableStateFlow<Int?>(null)
 
-    private val queryChanges = rawQuery
+    private val textCommands: Flow<SearchCommand> = rawQuery
         .map(String::trim)
         .distinctUntilChanged()
+        .map { query ->
+            SearchCommand(
+                domainQuery = filterSnapshot.value
+                    .toDomainFilters()
+                    .toDomainQuery(query),
+                shouldDebounce = query.isNotBlank(),
+            )
+        }
 
-    private val automaticCommands: Flow<SearchCommand> = combine(
-        queryChanges,
-        filters,
-    ) { query, currentFilters ->
-        SearchCommand(
-            domainQuery = currentFilters.toDomainQuery(query),
-            shouldDebounce = query.isNotBlank(),
-        )
-    }.distinctUntilChanged { old, new ->
-        old.domainQuery == new.domainQuery
-    }
+    private val filterCommands: Flow<SearchCommand> = filterSnapshot
+        .drop(1)
+        .map { snapshot ->
+            SearchCommand(
+                domainQuery = snapshot
+                    .toDomainFilters()
+                    .toDomainQuery(rawQuery.value.trim()),
+                shouldDebounce = false,
+            )
+        }
+
+    private val automaticCommands: Flow<SearchCommand> = merge(textCommands, filterCommands)
+        .distinctUntilChanged { old, new ->
+            old.domainQuery == new.domainQuery
+        }
 
     private val retryCommands: Flow<SearchCommand> = retryEvents.map {
         val query = rawQuery.value.trim()
@@ -111,10 +124,14 @@ class SearchViewModel @Inject constructor(
                     }
                     emitAll(
                         combine(localFlow, refreshFlow) { games, status ->
+                            val refreshError = (status as? RefreshStatus.Completed)?.result?.let {
+                                (it as? AppResult.Error)?.error
+                            }
                             when {
                                 games.isNotEmpty() -> SearchExecutionResult.Success(
                                     domainQuery = command.domainQuery,
                                     games = games,
+                                    refreshError = refreshError,
                                 )
                                 status is RefreshStatus.Loading -> SearchExecutionResult.Loading(command.domainQuery)
                                 status is RefreshStatus.Completed && status.result is AppResult.Error ->
@@ -171,6 +188,7 @@ class SearchViewModel @Inject constructor(
                                 sort = searchBundle.filters.sort,
                                 qPresent = currentDomainQuery.query.isNotBlank(),
                             ),
+                            refreshError = res.refreshError,
                         )
                     } else {
                         SearchResultUiState.Loading
@@ -421,7 +439,11 @@ class SearchViewModel @Inject constructor(
     private sealed interface SearchExecutionResult {
         data object Idle : SearchExecutionResult
         data class Loading(val domainQuery: GameSearchQuery) : SearchExecutionResult
-        data class Success(val domainQuery: GameSearchQuery, val games: List<Game>) : SearchExecutionResult
+        data class Success(
+            val domainQuery: GameSearchQuery,
+            val games: List<Game>,
+            val refreshError: AppError? = null,
+        ) : SearchExecutionResult
         data class Empty(val domainQuery: GameSearchQuery, val hasConstraints: Boolean) : SearchExecutionResult
         data class Error(val domainQuery: GameSearchQuery, val error: AppError) : SearchExecutionResult
     }

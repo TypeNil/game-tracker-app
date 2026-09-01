@@ -143,24 +143,16 @@ class SearchRequest(
     val effectiveSort: SearchSortField = if (canonicalQuery == null) sort else SearchSortField.RELEVANCE
 
     val cacheKey: String = buildString {
-        append("search_")
-        append(canonicalQuery.orEmpty())
-        append('|')
-        append(genres.sorted().joinToString(","))
-        append('|')
-        append(platforms.sorted().joinToString(","))
-        append('|')
-        append(minRating ?: "")
-        append('|')
-        append(minYear ?: "")
-        append('|')
-        append(maxYear ?: "")
-        append('|')
-        append(effectiveSort.name)
-        append('|')
-        append(limit)
-        append('|')
-        append(offset)
+        append("search:v2")
+        append("|q=").append(encodePart(canonicalQuery.orEmpty()))
+        append("|genres=").append(encodePart(encodeList(genres)))
+        append("|platforms=").append(encodePart(encodeList(platforms)))
+        append("|minRating=").append(minRating ?: "")
+        append("|minYear=").append(minYear ?: "")
+        append("|maxYear=").append(maxYear ?: "")
+        append("|sort=").append(effectiveSort.name)
+        append("|limit=").append(limit)
+        append("|offset=").append(offset)
     }
 
     fun toApicalypseQuery(): String = buildString {
@@ -207,7 +199,7 @@ class SearchRequest(
         const val DEFAULT_LIMIT = 20
         const val MAX_LIMIT = 30
         const val MAX_OFFSET = 1000
-        const val MAX_GENRES = 10
+        const val MAX_GENRES = 25
         const val MAX_PLATFORMS = 25
         const val MIN_YEAR = 1970
         const val MAX_YEAR = 2100
@@ -224,6 +216,11 @@ class SearchRequest(
             }
             return tags
         }
+
+        private fun encodePart(value: String): String = "${value.length}:$value"
+
+        private fun encodeList(values: List<String>): String =
+            values.sorted().joinToString(separator = "") { encodePart(it) }
 
         private fun quotedList(values: List<String>): String =
             values.joinToString(prefix = "(", postfix = ")") { "\"$it\"" }

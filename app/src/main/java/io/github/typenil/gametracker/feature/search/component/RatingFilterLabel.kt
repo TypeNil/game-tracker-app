@@ -16,6 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import io.github.typenil.gametracker.core.designsystem.theme.HighRatingBg
 import io.github.typenil.gametracker.core.designsystem.theme.HighRatingFg
 import io.github.typenil.gametracker.core.designsystem.theme.MediumRatingBg
@@ -54,7 +57,9 @@ fun RatingFilterLabel(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier,
+        modifier = modifier.clearAndSetSemantics {
+            text = AnnotatedString(fullText)
+        },
     ) {
         Box(
             modifier = Modifier

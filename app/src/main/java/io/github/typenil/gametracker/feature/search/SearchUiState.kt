@@ -29,7 +29,10 @@ data class SearchUiState(
 sealed interface SearchResultUiState {
     data object Idle : SearchResultUiState
     data object Loading : SearchResultUiState
-    data class Content(val games: List<Game>) : SearchResultUiState
+    data class Content(
+        val games: List<Game>,
+        val refreshError: AppError? = null,
+    ) : SearchResultUiState
     data class Empty(val query: String, val hasConstraints: Boolean = false) : SearchResultUiState
     data class Error(val error: AppError) : SearchResultUiState
 }

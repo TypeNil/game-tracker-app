@@ -16,8 +16,7 @@ class RequestModelsTest {
         assertEquals("the witcher 3: wild hunt!", request.canonicalQuery)
         assertEquals(15, request.limit)
         assertEquals(10, request.offset)
-        assertTrue(request.cacheKey.startsWith("search_the witcher 3: wild hunt!"))
-
+        assertTrue(request.cacheKey.startsWith("search:v2|q=25:the witcher 3: wild hunt!"))
         val apicalypse = request.toApicalypseQuery()
         assertTrue(apicalypse.contains("search \"the witcher 3: wild hunt!\";"))
         assertTrue(apicalypse.contains("cover.image_id"))
@@ -169,6 +168,36 @@ class RequestModelsTest {
         val requestLarge = SearchRequest("Zelda", limitParam = 500, offsetParam = 2000)
         assertEquals(30, requestLarge.limit)
         assertEquals(1000, requestLarge.offset)
+    }
+
+    @Test
+    fun `search cache key cannot collide across tag fields`() {
+        val embeddedDelimiter = SearchRequest(
+            rawQuery = null,
+            genresParam = "RPG|PC",
+        )
+        val separateFields = SearchRequest(
+            rawQuery = null,
+            genresParam = "RPG",
+            platformsParam = "PC",
+        )
+
+        assertNotEquals(embeddedDelimiter.cacheKey, separateFields.cacheKey)
+    }
+
+    @Test
+    fun `SearchRequest supports full catalog of 22 genres without error`() {
+        val all22Genres = listOf(
+            "Role-playing (RPG)", "Action", "Adventure", "Shooter", "Strategy",
+            "Turn-based strategy (TBS)", "Real-time strategy (RTS)", "Platform",
+            "Puzzle", "Indie", "Simulator", "Sport", "Racing", "Fighting",
+            "Hack and slash/Beat 'em up", "Music", "Arcade", "Visual Novel",
+            "Point-and-click", "Tactical", "MOBA", "Card & Board Game"
+        ).joinToString(",")
+
+        val request = SearchRequest(rawQuery = null, genresParam = all22Genres)
+        assertEquals(22, request.genres.size)
+        assertTrue(request.cacheKey.startsWith("search:v2|q=0:"))
     }
 
     @Test

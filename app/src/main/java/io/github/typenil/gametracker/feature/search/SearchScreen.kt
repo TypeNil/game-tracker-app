@@ -254,9 +254,11 @@ fun SearchScreen(
                     is SearchResultUiState.Content -> {
                         SearchContentState(
                             games = result.games,
+                            refreshError = result.refreshError,
                             librarySnapshot = uiState.librarySnapshot,
                             onGameClick = onGameClick,
                             onLibraryAction = onLibraryAction,
+                            onRetry = onRetry,
                         )
                     }
                     is SearchResultUiState.Empty -> {
@@ -408,9 +410,11 @@ private fun SearchLoadingState(modifier: Modifier = Modifier) {
 @Composable
 private fun SearchContentState(
     games: List<Game>,
+    refreshError: AppError?,
     librarySnapshot: LibrarySnapshot,
     onGameClick: (Long) -> Unit,
     onLibraryAction: (Game) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val ready = librarySnapshot as? LibrarySnapshot.Ready
@@ -419,6 +423,42 @@ private fun SearchContentState(
         contentPadding = PaddingValues(GtDimens.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (refreshError != null) {
+            item(key = "refresh_error_banner") {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.error_refresh_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = onRetry,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.retry_button),
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         item(key = "results_count_header") {
             Text(
                 text = if (games.size == 1) {

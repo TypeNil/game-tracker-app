@@ -28,32 +28,17 @@ sealed interface GameQueryKey {
         val sort: String? = null,
     ) : GameQueryKey {
         override val key: String = buildString {
-            append(KEY_PREFIX_SEARCH)
-            append(normalize(query))
-            if (genres.isNotEmpty()) {
-                append("|genres=")
-                append(genres.map(::normalize).sorted().joinToString(","))
-            }
-            if (platforms.isNotEmpty()) {
-                append("|platforms=")
-                append(platforms.map(::normalize).sorted().joinToString(","))
-            }
-            if (minRating != null) {
-                append("|minRating=")
-                append(minRating)
-            }
-            if (minYear != null) {
-                append("|minYear=")
-                append(minYear)
-            }
-            if (maxYear != null) {
-                append("|maxYear=")
-                append(maxYear)
-            }
-            if (query.isBlank() && !sort.isNullOrBlank()) {
-                append("|sort=")
-                append(sort.trim().lowercase(Locale.ROOT))
-            }
+            append("search:v2")
+            append("|q=").append(encodePart(normalize(query)))
+            append("|genres=").append(encodePart(encodeList(genres.map(::normalize))))
+            append("|platforms=").append(encodePart(encodeList(platforms.map(::normalize))))
+            append("|minRating=").append(minRating ?: "")
+            append("|minYear=").append(minYear ?: "")
+            append("|maxYear=").append(maxYear ?: "")
+            val effectiveSort = if (query.isBlank() && !sort.isNullOrBlank()) {
+                sort.trim().lowercase(Locale.ROOT)
+            } else ""
+            append("|sort=").append(effectiveSort)
         }
     }
 
@@ -95,5 +80,10 @@ sealed interface GameQueryKey {
             maxYear = domainQuery.maxYear,
             sort = domainQuery.sort,
         )
+
+        private fun encodePart(value: String): String = "${value.length}:$value"
+
+        private fun encodeList(values: List<String>): String =
+            values.sorted().joinToString(separator = "") { encodePart(it) }
     }
 }

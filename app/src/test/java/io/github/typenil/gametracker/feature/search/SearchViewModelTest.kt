@@ -421,6 +421,63 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `filter change with active text query starts refresh immediately without 300 ms delay`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any()) } returns AppResult.Success(Unit)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Idle
+
+            viewModel.onQueryChanged("witcher")
+            advanceTimeBy(350L) // Wait for text debounce
+            runCurrent()
+            awaitItem() // Intermediate state
+
+            // Now with text query active, toggle a filter
+            viewModel.onGenreToggled("Role-playing (RPG)")
+            runCurrent() // Immediate execution without advanceTimeBy(300L)
+
+            coVerify(exactly = 1) {
+                repository.searchGames(
+                    match<GameSearchQuery> { it.query == "witcher" && it.genres.contains("Role-playing (RPG)") },
+                    30,
+                    any(),
+                )
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `cached results plus refresh failure exposes stale content state with refreshError`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow(sampleGames)
+        every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } returns
+            AppResult.Error(AppError.NetworkError)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem() // Idle
+
+            viewModel.onQueryChanged("witcher")
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+
+            val contentState = expectMostRecentItem()
+            assertTrue(contentState.result is SearchResultUiState.Content)
+            val content = contentState.result as SearchResultUiState.Content
+            assertEquals(sampleGames, content.games)
+            assertEquals(AppError.NetworkError, content.refreshError)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `onApplyFilters updates all filters in single atomic step`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow(sampleGames)
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
