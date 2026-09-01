@@ -14,6 +14,19 @@ private fun isForbiddenFormatCodePoint(codePoint: Int): Boolean =
     Character.getType(codePoint) == Character.FORMAT.toInt() && codePoint != ZERO_WIDTH_JOINER
 
 /**
+ * Variation selectors (U+FE00..U+FE0F, U+E0100..U+E01EF) are combining marks: they are
+ * meaningful only when attached to visible content. A canonical form consisting of them alone
+ * is an invisible query, so it is rejected instead of producing blank/meaningless lookups.
+ */
+private val VARIATION_SELECTOR_RANGES = listOf(0xFE00..0xFE0F, 0xE0100..0xE01EF)
+
+private fun isVariationSelector(codePoint: Int): Boolean =
+    VARIATION_SELECTOR_RANGES.any { codePoint in it }
+
+private fun containsOnlyVariationSelectors(value: String): Boolean =
+    value.codePoints().allMatch(::isVariationSelector)
+
+/**
  * Escapes a string literal for an Apicalypse query. Double quotes and backslashes are the only
  * characters able to terminate or escape inside a quoted literal; the validator already rejects
  * both, so this is defense-in-depth for every interpolated literal.
@@ -141,6 +154,9 @@ object SearchQueryValidator {
                 throw IllegalArgumentException("Search query contains invisible or bidi control characters")
             }
             throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
+        }
+        if (containsOnlyVariationSelectors(canonical)) {
+            throw IllegalArgumentException("Search query contains invisible or bidi control characters")
         }
 
         val codePointCount = canonical.codePointCount(0, canonical.length)

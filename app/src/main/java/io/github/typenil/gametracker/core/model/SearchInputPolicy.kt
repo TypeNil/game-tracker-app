@@ -80,6 +80,9 @@ object SearchInputPolicy {
         ) {
             return SearchInputValidation.Invalid(SearchInputViolation.INVISIBLE_FORMAT)
         }
+        if (canonical != null && containsOnlyVariationSelectors(canonical)) {
+            return SearchInputValidation.Invalid(SearchInputViolation.INVISIBLE_FORMAT)
+        }
         if (canonical != null && canonical.codePointCount(0, canonical.length) > MAX_LENGTH) {
             return SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG)
         }
@@ -129,6 +132,17 @@ object SearchInputPolicy {
      */
     private fun isForbiddenFormatCodePoint(codePoint: Int): Boolean =
         Character.getType(codePoint) == Character.FORMAT.toInt() && codePoint != ZERO_WIDTH_JOINER
+
+    /**
+     * Variation selectors (U+FE00..U+FE0F, U+E0100..U+E01EF) are combining marks: they are
+     * meaningful only when attached to visible content. A canonical form consisting of them alone
+     * is an invisible query, so it is rejected instead of producing blank history entries.
+     */
+    private fun isVariationSelector(codePoint: Int): Boolean =
+        codePoint in 0xFE00..0xFE0F || codePoint in 0xE0100..0xE01EF
+
+    private fun containsOnlyVariationSelectors(value: String): Boolean =
+        value.codePoints().allMatch(::isVariationSelector)
 
     private const val ZERO_WIDTH_JOINER = 0x200D
 }

@@ -34,6 +34,11 @@
       "id": "zwj-stripped",
       "input": "DOOM\u200d",
       "expected": "doom"
+    },
+    {
+      "id": "vs-attached-survives",
+      "input": "Zelda \u2694\ufe0f",
+      "expected": "zelda \u2694\ufe0f"
     }
   ],
   "accepted": [
@@ -134,6 +139,14 @@
     {
       "id": "standalone-zwj",
       "input": "\u200d"
+    },
+    {
+      "id": "standalone-variation-selector",
+      "input": "\ufe0f"
+    },
+    {
+      "id": "standalone-supplementary-selector",
+      "input": "\udb40\udd00"
     }
   ],
   "pagination": [
