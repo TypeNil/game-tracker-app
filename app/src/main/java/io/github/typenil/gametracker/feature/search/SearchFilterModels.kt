@@ -6,12 +6,10 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
-import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameSearchQuery
 import java.io.Serializable
 import java.time.Clock
 import java.time.Year
-import java.util.Locale
 
 enum class SearchSortOption(
     val wireSort: String?,
@@ -49,7 +47,7 @@ enum class ReleaseYearFilter(@param:StringRes val labelRes: Int) {
     companion object {
         private const val YEAR_2010 = 2010
         private const val YEAR_2019 = 2019
-        private const val YEAR_RETRO_MIN = 1970
+        private const val YEAR_RETRO_MIN = 1950
         private const val YEAR_RETRO_MAX = 2009
     }
 }
@@ -59,12 +57,13 @@ enum class ReleaseYearFilter(@param:StringRes val labelRes: Int) {
  */
 enum class MinRatingFilter(
     val minRating: Int?,
-    @param:StringRes val labelRes: Int
+    @param:StringRes val labelRes: Int,
+    @param:StringRes val suffixRes: Int? = null,
 ) {
     ANY(null, R.string.search_filter_rating_any),
-    R70(70, R.string.search_filter_rating_70),
-    R80(80, R.string.search_filter_rating_80),
-    R90(90, R.string.search_filter_rating_90);
+    R70(70, R.string.search_filter_rating_70, R.string.search_filter_rating_70_suffix),
+    R80(80, R.string.search_filter_rating_80, R.string.search_filter_rating_80_suffix),
+    R90(90, R.string.search_filter_rating_90, R.string.search_filter_rating_90_suffix);
 }
 
 /**
@@ -143,8 +142,11 @@ data class SearchFilters(
         return count
     }
 
-    fun toDomainQuery(text: String): GameSearchQuery {
-        val (minY, maxY) = releaseYear.toYearRange()
+    fun toDomainQuery(
+        text: String,
+        clockYear: Int = Year.now(Clock.systemDefaultZone()).value,
+    ): GameSearchQuery {
+        val (minY, maxY) = releaseYear.toYearRange(clockYear)
         val wireSort = if (text.isNotBlank()) null else sort.wireSort
         return GameSearchQuery(
             query = text,
@@ -172,7 +174,9 @@ data class SearchFilters(
             },
             restore = { list ->
                 @Suppress("UNCHECKED_CAST")
-                val genres = (list.getOrNull(0) as? List<String>)?.toSet().orEmpty()
+                val genres = (list.getOrNull(0) as? List<String>)?.toSet()
+                    ?.intersect(SearchGenreCatalog.wireNames.toSet())
+                    .orEmpty()
                 @Suppress("UNCHECKED_CAST")
                 val platformNames = (list.getOrNull(1) as? List<String>).orEmpty()
                 val platforms = platformNames.mapNotNull { name ->
@@ -217,7 +221,7 @@ data class SearchFiltersSnapshot(
         val ratingFilter = MinRatingFilter.entries.firstOrNull { it.name == rating } ?: MinRatingFilter.ANY
         val sortOption = SearchSortOption.entries.firstOrNull { it.name == sort } ?: SearchSortOption.RELEVANCE
         return SearchFilters(
-            genres = genres.toSet(),
+            genres = genres.toSet().intersect(SearchGenreCatalog.wireNames.toSet()),
             platforms = platformSet,
             releaseYear = yearFilter,
             minRating = ratingFilter,
@@ -233,23 +237,3 @@ fun SearchFilters.toSnapshot(): SearchFiltersSnapshot = SearchFiltersSnapshot(
     rating = minRating.name,
     sort = sort.name,
 )
-
-/**
- * Client-side re-sorting of search hits when IGDB text search engine omits sorting.
- */
-fun List<Game>.applyDisplaySort(sort: SearchSortOption, qPresent: Boolean): List<Game> {
-    if (!qPresent || sort == SearchSortOption.RELEVANCE) return this
-    return when (sort) {
-        SearchSortOption.RATING_DESC -> sortedWith(
-            compareByDescending<Game> { it.rating ?: -1.0 }.thenBy { it.name }
-        )
-        SearchSortOption.RELEASE_DATE_DESC -> sortedWith(
-            compareByDescending<Game> { it.releaseDateEpochSeconds ?: Long.MIN_VALUE }.thenBy { it.name }
-        )
-        SearchSortOption.RELEASE_DATE_ASC -> sortedWith(
-            compareBy<Game> { it.releaseDateEpochSeconds ?: Long.MAX_VALUE }.thenBy { it.name }
-        )
-        SearchSortOption.NAME_ASC -> sortedBy { it.name.lowercase(Locale.ROOT) }
-        SearchSortOption.RELEVANCE -> this
-    }
-}

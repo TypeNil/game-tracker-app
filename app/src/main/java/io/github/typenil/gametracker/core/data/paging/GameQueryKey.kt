@@ -1,6 +1,6 @@
 package io.github.typenil.gametracker.core.data.paging
 
-import java.text.Normalizer
+import io.github.typenil.gametracker.core.model.SearchInputPolicy
 import java.util.Locale
 
 /**
@@ -58,9 +58,7 @@ sealed interface GameQueryKey {
          * Normalizes raw user input with trim, Unicode NFC, and lowercase.
          */
         fun normalize(rawQuery: String): String {
-            val trimmed = rawQuery.trim()
-            val nfc = Normalizer.normalize(trimmed, Normalizer.Form.NFC)
-            return nfc.lowercase(Locale.ROOT)
+            return SearchInputPolicy.canonicalize(rawQuery).orEmpty()
         }
 
         /**

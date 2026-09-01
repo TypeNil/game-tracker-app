@@ -372,6 +372,7 @@ class SearchScreenTest {
             gameRepository = fakeRepository,
             savedStateHandle = savedStateHandle,
             libraryRepository = FakeLibraryRepository(),
+            clock = java.time.Clock.fixed(java.time.Instant.parse("2026-01-15T12:00:00Z"), java.time.ZoneOffset.UTC),
         )
 
         composeTestRule.setContent {
@@ -452,7 +453,9 @@ class SearchScreenTest {
             return flowOf(PagingData.empty())
         }
 
-        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int, offset: Int): AppResult<Unit> {
+        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int, offset: Int,
+            force: Boolean,
+        ): AppResult<Unit> {
             capturedQuery = query.query
             capturedLimit = limit
             capturedOffset = offset

@@ -167,9 +167,60 @@ class RequestModelsTest {
     }
 
     @Test
-    fun `SearchRequest rejects unpermitted characters like emoji`() {
+    fun `SearchRequest accepts common punctuation, emoji and unicode product names`() {
+        val cases = listOf(
+            "DOOM (2016)" to "doom (2016)",
+            "Pokémon Sword/Shield" to "pokémon sword/shield",
+            "NieR™" to "nier™",
+            "Game [Demo]" to "game [demo]",
+            "Zelda ⚔️" to "zelda ⚔️",
+            "Metal Gear | Solid" to "metal gear | solid",
+            "Family 👨‍👩‍👧" to "family 👨‍👩‍👧",
+        )
+        for ((input, expected) in cases) {
+            val request = SearchRequest(input)
+            assertEquals(expected, request.canonicalQuery)
+            assertTrue(request.toApicalypseQuery().contains("search \"${expected}\";"))
+        }
+    }
+
+    @Test
+    fun `SearchRequest normalizes NBSP to a regular space`() {
+        val request = SearchRequest("Grand\u00A0Theft Auto")
+        assertEquals("grand theft auto", request.canonicalQuery)
+        assertTrue(request.toApicalypseQuery().contains("search \"grand theft auto\";"))
+    }
+
+    @Test
+    fun `SearchRequest rejects invisible and bidi format characters`() {
+        val invisible = listOf(
+            "zero\u200Bwidth",
+            "non\u200Cjoiner",
+            "lrm\u200Emark",
+            "rlm\u200Fmark",
+            "bidi\u202Eembed",
+            "isolate\u2066char",
+            "bom\uFEFFinside",
+        )
+        for (input in invisible) {
+            assertThrows("Expected rejection for '$input'", IllegalArgumentException::class.java) {
+                SearchRequest(input)
+            }
+        }
+    }
+
+    @Test
+    fun `SearchRequest allows ZWJ and variation selectors for compound emoji`() {
+        val request = SearchRequest("Woman 👩\u200D💻 Coding")
+        assertEquals("woman 👩‍💻 coding", request.canonicalQuery)
+    }
+
+    @Test
+    fun `SearchRequest accepts retro range starting at 1950`() {
+        val request = SearchRequest(rawQuery = null, minYearParam = 1950)
+        assertEquals(1950, request.minYear)
         assertThrows(IllegalArgumentException::class.java) {
-            SearchRequest("Zelda ⚔️")
+            SearchRequest(rawQuery = null, minYearParam = 1949)
         }
     }
 

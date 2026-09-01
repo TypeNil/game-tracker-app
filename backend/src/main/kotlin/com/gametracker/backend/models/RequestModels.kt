@@ -2,7 +2,24 @@ package com.gametracker.backend.models
 
 import java.text.Normalizer
 
-private val SAFE_PUNCTUATION = setOf('-', '_', ':', '\'', '!', '?', '.', ',', '&', '+')
+/**
+ * Invisible/format code points that cannot be part of a meaningful search query:
+ * zero width space & non-joiner, LRM/RLM, bidi embedding/override and isolate controls, BOM.
+ * ZWJ (U+200D) and variation selectors (U+FE00..U+FE0F) stay allowed: compound emoji must remain searchable.
+ */
+private val FORBIDDEN_FORMAT_CODE_POINTS = setOf(
+    0x200B, 0x200C, 0x200E, 0x200F,
+).plus(0x202A..0x202E)
+    .plus(0x2066..0x2069)
+    .plus(0xFEFF)
+
+/**
+ * Escapes a string literal for an Apicalypse query. Double quotes and backslashes are the only
+ * characters able to terminate or escape inside a quoted literal; the validator already rejects
+ * both, so this is defense-in-depth for every interpolated literal.
+ */
+private fun escapeApicalypseLiteral(value: String): String =
+    value.replace("\\", "\\\\").replace("\"", "\\\"")
 private const val QUERY_FIELDS =
     "fields name, rating, cover.url, cover.image_id, first_release_date, summary, " +
         "genres.name, platforms.name, platforms.abbreviation;\n"
@@ -99,37 +116,42 @@ object SearchQueryValidator {
             throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
         }
 
-        val trimmed = rawQuery.trim()
-        val normalized = Normalizer.normalize(trimmed, Normalizer.Form.NFC)
-        val codePointCount = normalized.codePointCount(0, normalized.length)
+        // NBSP-like spaces collapse to regular spaces so visually identical queries share one canonical form.
+        val trimmed = normalizeSpaceCharacters(Normalizer.normalize(rawQuery, Normalizer.Form.NFC)).trim()
+        if (trimmed.isEmpty()) {
+            throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
+        }
 
+        val codePointCount = trimmed.codePointCount(0, trimmed.length)
         if (codePointCount < MIN_LENGTH || codePointCount > MAX_LENGTH) {
             throw IllegalArgumentException("Search query must be between $MIN_LENGTH and $MAX_LENGTH characters")
         }
 
         var i = 0
-        while (i < normalized.length) {
-            val cp = normalized.codePointAt(i)
+        while (i < trimmed.length) {
+            val cp = trimmed.codePointAt(i)
 
-            // Запрет управляющих символов, кавычек и обратных слэшей
+            // Единственные запреты: ISO control, кавычки и бэкслеши (Apicalypse literal), invisible format chars.
             if (Character.isISOControl(cp) || cp == '"'.code || cp == '\\'.code) {
                 throw IllegalArgumentException("Search query contains illegal control characters or quotes")
             }
-
-            // Строгий Unicode allowlist
-            val isAllowed = Character.isLetterOrDigit(cp) ||
-                Character.isSpaceChar(cp) ||
-                (cp < 65536 && cp.toChar() in SAFE_PUNCTUATION)
-
-            if (!isAllowed) {
-                val symbol = String(Character.toChars(cp))
-                throw IllegalArgumentException("Search query contains unpermitted character '$symbol'")
+            if (cp in FORBIDDEN_FORMAT_CODE_POINTS) {
+                throw IllegalArgumentException("Search query contains invisible or bidi control characters")
             }
 
             i += Character.charCount(cp)
         }
 
-        return normalized.lowercase()
+        return trimmed.lowercase()
+    }
+
+    /**
+     * Replaces NBSP-like whitespace with a regular space; every other character is preserved.
+     */
+    private fun normalizeSpaceCharacters(value: String): String = buildString(value.length) {
+        value.codePoints().forEach { cp ->
+            append(if (Character.isSpaceChar(cp) && cp != ' '.code) ' ' else String(Character.toChars(cp)))
+        }
     }
 }
 
@@ -210,7 +232,7 @@ class SearchRequest(
 
     fun toApicalypseQuery(): String = buildString {
         append(QUERY_FIELDS)
-        canonicalQuery?.let { append("search \"$it\";\n") }
+        canonicalQuery?.let { append("search \"${escapeApicalypseLiteral(it)}\";\n") }
         append("where ")
         val whereClauses = buildList {
             add("cover != null")
@@ -221,7 +243,7 @@ class SearchRequest(
                 when {
                     genreId != null -> add("genres = ($genreId)")
                     themeId != null -> add("themes = ($themeId)")
-                    else -> add("genres.name = \"$genre\"")
+                    else -> add("genres.name = \"${escapeApicalypseLiteral(genre)}\"")
                 }
             }
             if (platforms.isNotEmpty()) {
@@ -261,7 +283,7 @@ class SearchRequest(
         const val MAX_OFFSET = 1000
         const val MAX_GENRES = 25
         const val MAX_PLATFORMS = 25
-        const val MIN_YEAR = 1970
+        const val MIN_YEAR = 1950
         const val MAX_YEAR = 2100
 
         private fun parseTags(raw: String?, label: String, max: Int): List<String> {
@@ -283,7 +305,7 @@ class SearchRequest(
             values.sorted().joinToString(separator = "") { encodePart(it) }
 
         private fun quotedList(values: List<String>): String =
-            values.joinToString(prefix = "(", postfix = ")") { "\"$it\"" }
+            values.joinToString(prefix = "(", postfix = ")") { "\"${escapeApicalypseLiteral(it)}\"" }
     }
 }
 

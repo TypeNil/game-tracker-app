@@ -634,6 +634,59 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `searchGames skips remote fetch when a structurally intact cache is fresh`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val key = GameQueryKey.search("witcher")
+        val freshAt = TEST_NOW_SECONDS - 60
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = freshAt,
+            lastQueriedAtEpochSeconds = freshAt,
+            resultCount = 1,
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 1
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = 30,
+            lastUpdatedEpochSeconds = freshAt,
+        )
+
+        val result = repository.searchGames("witcher", 20, 0)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `searchGames force refresh bypasses the TTL gate`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val key = GameQueryKey.search("witcher")
+        val freshAt = TEST_NOW_SECONDS - 60
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = freshAt,
+            lastQueriedAtEpochSeconds = freshAt,
+            resultCount = 1,
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 1
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = 30,
+            lastUpdatedEpochSeconds = freshAt,
+        )
+        coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)
+
+        val result = repository.searchGames("witcher", 20, 0, force = true)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { remoteDataSource.searchGames(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `getRecentSearchQueriesFlow observes searchHistoryDao`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)

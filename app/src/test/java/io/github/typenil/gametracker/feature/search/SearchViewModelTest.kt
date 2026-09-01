@@ -13,6 +13,7 @@ import io.github.typenil.gametracker.core.model.GameSearchQuery
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.SearchInputValidation
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -33,6 +34,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Clock
 import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -72,7 +74,7 @@ class SearchViewModelTest {
     @Before
     fun setUp() {
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns defaultSearchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) } returns AppResult.Success(Unit)
         every { repository.getRecentSearchQueriesFlow(any()) } returns recentQueriesFlow
         every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow
         coEvery { libraryRepository.addToWishlist(any()) } returns AppResult.Success(Unit)
@@ -92,6 +94,7 @@ class SearchViewModelTest {
             gameRepository = repository,
             savedStateHandle = savedStateHandle,
             libraryRepository = libraryRepository,
+            clock = java.time.Clock.fixed(java.time.Instant.parse("2026-01-15T12:00:00Z"), java.time.ZoneOffset.UTC),
         )
     }
 
@@ -107,14 +110,35 @@ class SearchViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any()) }
+        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `invalid query with quotes is never dispatched and stays idle with inline error`() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(SearchResultUiState.Idle, initial.result)
+
+            viewModel.onQueryChanged("Grand \"Theft\" Auto")
+            runCurrent()
+
+            val state = awaitItem()
+            assertEquals(SearchResultUiState.Idle, state.result)
+            assertTrue(state.inputValidation is SearchInputValidation.Invalid)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) }
     }
 
     @Test
     fun `query does not trigger search before 300 ms debounce`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } coAnswers {
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any(), any()) } coAnswers {
             searchFlow.value = sampleGames
             AppResult.Success(Unit)
         }
@@ -132,7 +156,7 @@ class SearchViewModelTest {
             assertEquals(SearchResultUiState.Loading, intermediateLoading.result)
 
             advanceTimeBy(250L) // Under 300ms debounce
-            coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any()) }
+            coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) }
 
             advanceTimeBy(100L) // Exceeds 300ms debounce
             advanceUntilIdle()
@@ -143,14 +167,14 @@ class SearchViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 1) { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, 30, any()) }
+        coVerify(exactly = 1) { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, 30, any(), any()) }
     }
 
     @Test
     fun `rapid typing calls repository only once with final query`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } coAnswers {
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any(), any()) } coAnswers {
             searchFlow.value = sampleGames
             AppResult.Success(Unit)
         }
@@ -187,10 +211,10 @@ class SearchViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 1) { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, 30, any()) }
-        coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "w" }, any(), any()) }
-        coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "wi" }, any(), any()) }
-        coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "wit" }, any(), any()) }
+        coVerify(exactly = 1) { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, 30, any(), any()) }
+        coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "w" }, any(), any(), any()) }
+        coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "wi" }, any(), any(), any()) }
+        coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "wit" }, any(), any(), any()) }
     }
 
     @Test
@@ -199,14 +223,14 @@ class SearchViewModelTest {
         val secondSearchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "second" }) } returns secondSearchFlow
 
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "first" }, any(), any()) } coAnswers {
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "first" }, any(), any(), any()) } coAnswers {
             try {
                 awaitCancellation()
             } finally {
                 firstQueryCancelled.set(true)
             }
         }
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "second" }, any(), any()) } coAnswers {
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "second" }, any(), any(), any()) } coAnswers {
             secondSearchFlow.value = sampleGames
             AppResult.Success(Unit)
         }
@@ -227,7 +251,7 @@ class SearchViewModelTest {
             runCurrent() // Immediate cancellation before second query debounce passes
 
             assertTrue(firstQueryCancelled.get())
-            coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "second" }, any(), any()) }
+            coVerify(exactly = 0) { repository.searchGames(match<GameSearchQuery> { it.query == "second" }, any(), any(), any()) }
 
             awaitItem() // Loading "second"
 
@@ -239,7 +263,7 @@ class SearchViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 1) { repository.searchGames(match<GameSearchQuery> { it.query == "second" }, 30, any()) }
+        coVerify(exactly = 1) { repository.searchGames(match<GameSearchQuery> { it.query == "second" }, 30, any(), any()) }
     }
 
     @Test
@@ -247,7 +271,7 @@ class SearchViewModelTest {
         val searchFlow = MutableStateFlow(sampleGames)
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
         val searchDeferred = CompletableDeferred<AppResult<Unit>>()
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } coAnswers {
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any(), any()) } coAnswers {
             searchDeferred.await()
         }
         val viewModel = createViewModel()
@@ -278,13 +302,13 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `filter changes trigger search without debounce`() = runTest(testDispatcher) {
+    fun `filter changes trigger search after filter debounce`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every {
             repository.getSearchResultsFlow(match<GameSearchQuery> { it.genres.contains("Role-playing (RPG)") })
         } returns searchFlow
         coEvery {
-            repository.searchGames(match<GameSearchQuery> { it.genres.contains("Role-playing (RPG)") }, any(), any())
+            repository.searchGames(match<GameSearchQuery> { it.genres.contains("Role-playing (RPG)") }, any(), any(), any())
         } coAnswers {
             searchFlow.value = sampleGames
             AppResult.Success(Unit)
@@ -298,6 +322,7 @@ class SearchViewModelTest {
 
             // Select genre filter on blank query
             viewModel.onGenreToggled("Role-playing (RPG)")
+            advanceTimeBy(150L) // Filter debounce window (shorter than the 300ms text debounce)
             testScheduler.runCurrent()
 
             val loadingState = awaitItem()
@@ -306,7 +331,7 @@ class SearchViewModelTest {
 
             // Verify repository is called immediately without waiting for 300ms debounce
             coVerify(exactly = 1) {
-                repository.searchGames(match<GameSearchQuery> { it.genres.contains("Role-playing (RPG)") }, 30, any())
+                repository.searchGames(match<GameSearchQuery> { it.genres.contains("Role-playing (RPG)") }, 30, any(), any())
             }
 
             advanceUntilIdle()
@@ -318,10 +343,12 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `display sort re-orders search hits locally when text query is present without extra network call`() = runTest(testDispatcher) {
+    fun `text query keeps server relevance order and ignores local sort re-application`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow(sampleGames) // [Witcher 3 (95.0), Witcher 2 (88.0)]
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } returns AppResult.Success(Unit)
+        coEvery {
+            repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any(), any())
+        } returns AppResult.Success(Unit)
 
         val viewModel = createViewModel()
 
@@ -335,20 +362,20 @@ class SearchViewModelTest {
 
             val defaultContent = awaitItem()
             val gamesRelevance = (defaultContent.result as SearchResultUiState.Content).games
-            assertEquals(1L, gamesRelevance[0].id) // Witcher 3 first
+            assertEquals(listOf(1L, 2L), gamesRelevance.map { it.id }) // Relevance order preserved
+            assertEquals(SearchResultUiState.Content(sampleGames), defaultContent.result)
 
-            // Switch sort to NAME_ASC: re-sorts instantly in memory without invoking searchGames again
-            viewModel.onSortSelected(SearchSortOption.NAME_ASC)
-            testScheduler.runCurrent()
+            // Switch sort while an active text query is present: the server-side relevance
+            // window is preserved, no local re-sort and no second network call (wire sort is
+            // only applied for blank-query browse searches).
+            viewModel.onSortSelected(SearchSortOption.RATING_DESC)
+            advanceTimeBy(350L)
+            advanceUntilIdle()
 
-            // First emitted item after onSortSelected is already sorted atomically
-            val sortedContent = awaitItem()
-            val sortedGames = (sortedContent.result as SearchResultUiState.Content).games
-            assertEquals(2L, sortedGames[0].id) // "The Witcher 2..." comes before "The Witcher 3..." alphabetically
-            assertEquals(1L, sortedGames[1].id)
+            val afterSort = awaitItem()
+            assertEquals(SearchResultUiState.Content(sampleGames), afterSort.result)
 
-            // Verify searchGames was only called once for the text query, NOT a second time for client sort
-            coVerify(exactly = 1) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) }
+            coVerify(exactly = 1) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>(), any()) }
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -357,7 +384,7 @@ class SearchViewModelTest {
     fun `retry after filter-only error executes second repository search`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) } returnsMany listOf(
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>(), any()) } returnsMany listOf(
             AppResult.Error(io.github.typenil.gametracker.core.model.AppError.NetworkError),
             AppResult.Success(Unit),
         )
@@ -385,7 +412,7 @@ class SearchViewModelTest {
             val successState = awaitItem()
             assertTrue(successState.result is SearchResultUiState.Content)
             assertEquals(2, (successState.result as SearchResultUiState.Content).games.size)
-            coVerify(exactly = 2) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) }
+            coVerify(exactly = 2) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>(), any()) }
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -394,7 +421,7 @@ class SearchViewModelTest {
     fun `two consecutive errors are both retried and reach repository`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) } returns
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>(), any()) } returns
             AppResult.Error(io.github.typenil.gametracker.core.model.AppError.NetworkError)
         val viewModel = createViewModel()
 
@@ -415,16 +442,16 @@ class SearchViewModelTest {
             testScheduler.runCurrent()
             advanceUntilIdle()
             awaitItem() // Error 3
-            coVerify(exactly = 3) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) }
+            coVerify(exactly = 3) { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>(), any()) }
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `filter change with active text query starts refresh immediately without 300 ms delay`() = runTest(testDispatcher) {
+    fun `filter change with active text query starts refresh after filter debounce without 300 ms text delay`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) } returns AppResult.Success(Unit)
 
         val viewModel = createViewModel()
 
@@ -438,12 +465,15 @@ class SearchViewModelTest {
 
             // Now with text query active, toggle a filter
             viewModel.onGenreToggled("Role-playing (RPG)")
-            runCurrent() // Immediate execution without advanceTimeBy(300L)
+            advanceTimeBy(150L) // Filter debounce only, no 300ms text debounce
+            runCurrent()
+            awaitItem() // Loading for combined query
 
             coVerify(exactly = 1) {
                 repository.searchGames(
                     match<GameSearchQuery> { it.query == "witcher" && it.genres.contains("Role-playing (RPG)") },
                     30,
+                    any(),
                     any(),
                 )
             }
@@ -455,7 +485,7 @@ class SearchViewModelTest {
     fun `cached results plus refresh failure exposes stale content state with refreshError`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow(sampleGames)
         every { repository.getSearchResultsFlow(match<GameSearchQuery> { it.query == "witcher" }) } returns searchFlow
-        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any()) } returns
+        coEvery { repository.searchGames(match<GameSearchQuery> { it.query == "witcher" }, any(), any(), any()) } returns
             AppResult.Error(AppError.NetworkError)
 
         val viewModel = createViewModel()
@@ -481,7 +511,7 @@ class SearchViewModelTest {
     fun `onApplyFilters updates all filters in single atomic step`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow(sampleGames)
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) } returns AppResult.Success(Unit)
 
         val viewModel = createViewModel()
 
@@ -510,15 +540,11 @@ class SearchViewModelTest {
 
             // Exactly one search query dispatched
             coVerify(exactly = 1) {
-                repository.searchGames(
-                    match<GameSearchQuery> { query ->
-                        query.genres == listOf("Action", "Role-playing (RPG)") &&
-                            query.minRating == 80 &&
-                            query.sort == "rating"
-                    },
-                    any<Int>(),
-                    any<Int>(),
-                )
+                repository.searchGames(match<GameSearchQuery> { query ->
+                    query.genres == listOf("Action", "Role-playing (RPG)") &&
+                        query.minRating == 80 &&
+                        query.sort == "rating"
+                }, any<Int>(), any<Int>(), any())
             }
             cancelAndIgnoreRemainingEvents()
         }
@@ -599,7 +625,7 @@ class SearchViewModelTest {
     fun `restored state with filter-only parameters initializes uiState in Loading and with restored filters`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) } returns AppResult.Success(Unit)
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>(), any()) } returns AppResult.Success(Unit)
 
         val savedStateHandle = SavedStateHandle(
             mapOf(
@@ -648,7 +674,7 @@ class SearchViewModelTest {
     fun `empty search result distinguishes filter constraints from plain query`() = runTest(testDispatcher) {
         val searchFlow = MutableStateFlow<List<Game>>(emptyList())
         every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
-        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) } returns AppResult.Success(Unit)
 
         val viewModel = createViewModel()
 

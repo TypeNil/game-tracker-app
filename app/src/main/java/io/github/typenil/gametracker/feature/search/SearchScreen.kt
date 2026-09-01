@@ -71,9 +71,16 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.SearchInputValidation
+import io.github.typenil.gametracker.core.model.SearchInputViolation
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.search.component.SearchFilterBar
 import io.github.typenil.gametracker.feature.search.component.SearchFilterSheet
+
+private fun SearchInputViolation.messageRes(): Int = when (this) {
+    SearchInputViolation.QUOTE_OR_BACKSLASH, SearchInputViolation.TOO_LONG -> R.string.search_input_error_unsupported_chars
+    SearchInputViolation.CONTROL_CHAR, SearchInputViolation.INVISIBLE_FORMAT -> R.string.search_input_error_invisible_chars
+}
 
 @Composable
 fun SearchRoute(
@@ -171,6 +178,17 @@ fun SearchScreen(
                             )
                         },
                         singleLine = true,
+                        isError = uiState.inputValidation is SearchInputValidation.Invalid,
+                        supportingText = {
+                            val invalid = uiState.inputValidation as? SearchInputValidation.Invalid
+                            if (invalid != null) {
+                                Text(
+                                    text = stringResource(invalid.violation.messageRes()),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        },
                         shape = RoundedCornerShape(24.dp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -226,6 +244,7 @@ fun SearchScreen(
             SearchFilterBar(
                 filters = uiState.filters,
                 onOpenFilterSheet = { isFilterSheetOpen = true },
+                queryPresent = uiState.query.isNotBlank(),
                 onToggleGenre = onToggleGenre,
                 onTogglePlatform = onTogglePlatform,
                 onRemoveReleaseYear = onRemoveReleaseYear,

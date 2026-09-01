@@ -404,6 +404,7 @@ class GameDetailsViewModelTest {
             query: io.github.typenil.gametracker.core.model.GameSearchQuery,
             limit: Int,
             offset: Int,
+        force: Boolean,
         ): AppResult<Unit> = AppResult.Success(Unit)
         override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> = flowOf(emptyList())
 

@@ -104,6 +104,7 @@ private val QuickPresetPlatforms = listOf(
 fun SearchFilterBar(
     filters: SearchFilters,
     onOpenFilterSheet: () -> Unit,
+    queryPresent: Boolean = false,
     onToggleGenre: (String) -> Unit,
     onTogglePlatform: (PlatformFamily) -> Unit,
     onRemoveReleaseYear: () -> Unit,
@@ -160,7 +161,7 @@ fun SearchFilterBar(
         )
 
         // 3. Active Sort indicator chip (if not RELEVANCE)
-        if (filters.sort != SearchSortOption.RELEVANCE) {
+        if (!queryPresent && filters.sort != SearchSortOption.RELEVANCE) {
             FilterChip(
                 selected = true,
                 onClick = onOpenFilterSheet,

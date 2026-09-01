@@ -53,6 +53,11 @@
     <string name="search_filter_rating_70">70+ Good</string>
     <string name="search_filter_rating_80">80+ Great</string>
     <string name="search_filter_rating_90">90+ Masterpiece</string>
+    <string name="search_filter_rating_70_suffix">Good</string>
+    <string name="search_filter_rating_80_suffix">Great</string>
+    <string name="search_filter_rating_90_suffix">Masterpiece</string>
+    <string name="search_input_error_unsupported_chars">Quotes and backslashes aren\'t supported in search</string>
+    <string name="search_input_error_invisible_chars">Invisible characters aren\'t supported in search</string>
 
     <!-- Search UI & Accessibility -->
     <string name="search_filters_title">Filters</string>
@@ -74,8 +79,8 @@
     <string name="search_filter_section_year">Release Year</string>
     <string name="search_filter_section_rating">Minimum Rating</string>
     <string name="search_remove_filter_desc">Remove %1$s filter</string>
-    <string name="search_results_count_format">Found %1$d games</string>
-    <string name="search_results_count_single">Found 1 game</string>
+    <string name="search_results_count_format">Showing %1$d games</string>
+    <string name="search_results_count_single">Showing 1 game</string>
     <string name="search_recent_title">Recent Searches</string>
     <string name="search_recent_clear_all">Clear all</string>
     <string name="search_recent_remove_desc">Remove %1$s from recent searches</string>

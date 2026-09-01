@@ -4,6 +4,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.model.SearchInputPolicy
 import io.github.typenil.gametracker.core.network.model.RecommendationCandidateDto
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -116,18 +117,19 @@ class FakeBffDataSource @Inject constructor(
         limit: Int,
         offset: Int,
     ): List<GameDto> {
-        val trimmedQuery = query?.trim()?.takeIf { it.isNotEmpty() }
+        val safeQuery = query?.let { SearchInputPolicy.canonicalize(it) }
         val hasFilters = genres.isNotEmpty() || platforms.isNotEmpty() ||
             minRating != null || minYear != null || maxYear != null
-        if (trimmedQuery == null && !hasFilters) {
+        if (safeQuery == null && !hasFilters) {
             throw IllegalArgumentException("Search requires 'q' or at least one filter")
         }
-        validatePagination(limit, offset)
+        val safeLimit = limit.coerceIn(1, MAX_LIMIT)
+        val safeOffset = offset.coerceIn(0, MAX_OFFSET)
 
         var filtered = mockGames.filter { game ->
-            val matchesQuery = trimmedQuery == null ||
-                game.name.contains(trimmedQuery, ignoreCase = true) ||
-                game.genres.any { it.contains(trimmedQuery, ignoreCase = true) }
+            val matchesQuery = safeQuery == null ||
+                SearchInputPolicy.canonicalize(game.name).orEmpty().contains(safeQuery) &&
+                    game.coverUrl != null
             val details = mockDetailsById[game.id]
             val gameGenres = details?.genres ?: game.genres
             val gameThemes = details?.themes.orEmpty()
@@ -149,7 +151,8 @@ class FakeBffDataSource @Inject constructor(
                             canonicalRequested.contains(it, ignoreCase = true)
                     }
                 }
-            val matchesRating = minRating == null || (game.rating ?: 0.0) >= minRating
+            val ratingsMin = minRating?.coerceIn(0, 100)
+            val matchesRating = ratingsMin == null || (game.rating ?: 0.0) >= ratingsMin
             val gameYear = game.releaseDateEpochSeconds?.let {
                 java.time.Instant.ofEpochSecond(it).atOffset(java.time.ZoneOffset.UTC).year
             }
@@ -159,7 +162,7 @@ class FakeBffDataSource @Inject constructor(
             matchesQuery && matchesGenres && matchesPlatforms && matchesRating && matchesMinYear && matchesMaxYear
         }
 
-        if (trimmedQuery == null && sort != null) {
+        if (safeQuery == null && sort != null) {
             filtered = when (sort.lowercase()) {
                 "rating", "rating_desc" -> filtered.sortedByDescending { it.rating ?: -1.0 }
                 "first_release_date", "first_release_date_desc" ->
@@ -170,8 +173,8 @@ class FakeBffDataSource @Inject constructor(
             }
         }
 
-        if (offset >= filtered.size) return emptyList()
-        return filtered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
+        if (safeOffset >= filtered.size) return emptyList()
+        return filtered.drop(safeOffset).take(safeLimit)
     }
     override suspend fun getGameDetails(id: Long): GameDetailsDto {
         if (id <= 0) {
@@ -298,5 +301,6 @@ class FakeBffDataSource @Inject constructor(
 
     companion object {
         private const val MAX_LIMIT = 30
+        private const val MAX_OFFSET = 500
     }
 }

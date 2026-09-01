@@ -3,13 +3,15 @@ package io.github.typenil.gametracker.feature.search
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
-
+import io.github.typenil.gametracker.core.model.SearchInputValidation
 
 /**
  * UI State for the Search screen.
  *
  * @property query The raw text currently in the search input field.
  * @property result The distinct lifecycle result of the active search operation.
+ * @property inputValidation Validates the raw query against the search contract; invalid input is
+ * never dispatched to the backend and is reported inline next to the text field.
  */
 @androidx.compose.runtime.Immutable
 data class SearchUiState(
@@ -17,6 +19,7 @@ data class SearchUiState(
     val filters: SearchFilters = SearchFilters(),
     val recentQueries: List<String> = emptyList(),
     val result: SearchResultUiState = SearchResultUiState.Idle,
+    val inputValidation: SearchInputValidation = SearchInputValidation.Valid(""),
     val librarySnapshot: LibrarySnapshot = LibrarySnapshot.Ready(emptyMap()),
     val editingGameId: Long? = null,
     val isLibrarySubmitting: Boolean = false,

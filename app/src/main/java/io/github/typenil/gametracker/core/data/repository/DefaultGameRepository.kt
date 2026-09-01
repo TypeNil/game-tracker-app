@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+private const val SEARCH_HISTORY_KEEP_ENTRIES = 100
 
 /**
  * Default implementation of [GameRepository] with Room database Single Source of Truth (SSOT).
@@ -381,6 +382,7 @@ class DefaultGameRepository internal constructor(
         query: GameSearchQuery,
         limit: Int,
         offset: Int,
+        force: Boolean,
     ): AppResult<Unit> {
         if (!query.shouldSearch) {
             return AppResult.Success(Unit)
@@ -389,6 +391,26 @@ class DefaultGameRepository internal constructor(
         return withContext(ioDispatcher) {
             runSuspendCatching {
                 val cacheKey = GameQueryKey.fromDomain(query).key
+                val nowSeconds = nowEpochSeconds()
+
+                // Search history records user intent; it must not depend on whether a network
+                // refresh was actually needed. The history trim keeps the table bounded.
+                if (query.query.isNotBlank() && offset == 0) {
+                    searchHistoryDao.upsertSearchHistory(
+                        SearchHistoryEntity(
+                            normalizedQuery = GameQueryKey.normalize(query.query),
+                            displayQuery = query.query.trim(),
+                            lastQueriedAtEpochSeconds = nowSeconds,
+                        )
+                    )
+                    searchHistoryDao.trimSearchHistory(SEARCH_HISTORY_KEEP_ENTRIES)
+                }
+
+                // TTL gate: a structurally intact, recently refreshed cache skips the network.
+                if (!force && isSearchCacheFresh(cacheKey, nowSeconds)) {
+                    return@runSuspendCatching Unit
+                }
+
                 val remoteGames = remoteDataSource.searchGames(
                     query = query.query,
                     genres = query.genres,
@@ -400,7 +422,6 @@ class DefaultGameRepository internal constructor(
                     limit = limit,
                     offset = offset,
                 ).toDomain()
-                val nowSeconds = nowEpochSeconds()
                 val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
                 val nextOffset = if (isEndOfList) null else offset + remoteGames.size
                 val distinctGames = remoteGames.distinctBy { it.id }
@@ -433,16 +454,6 @@ class DefaultGameRepository internal constructor(
                             lastUpdatedEpochSeconds = nowSeconds
                         )
                     )
-
-                    if (query.query.isNotBlank()) {
-                        searchHistoryDao.upsertSearchHistory(
-                            SearchHistoryEntity(
-                                normalizedQuery = GameQueryKey.normalize(query.query),
-                                displayQuery = query.query.trim(),
-                                lastQueriedAtEpochSeconds = nowSeconds,
-                            )
-                        )
-                    }
                 }
 
                 runSuspendCatching {
@@ -453,6 +464,21 @@ class DefaultGameRepository internal constructor(
                 onFailure = { AppResult.Error(it.toAppError()) }
             )
         }
+    }
+
+    /**
+     * A search cache is fresh only when the metadata agrees with the actually stored rows and the
+     * remote key was refreshed within the search TTL. A fresh remote key alone cannot prove that
+     * local results survived cache cleanup, cascade deletes, or crashes.
+     */
+    private suspend fun isSearchCacheFresh(cacheKey: String, nowSeconds: Long): Boolean {
+        val metadata = searchDao.getSearchQuery(cacheKey)
+        val actualCount = searchDao.countSearchResultsForQuery(cacheKey)
+        val remoteKey = remoteKeyDao.getRemoteKey(cacheKey)
+        val structurallyValid = metadata != null && actualCount == metadata.resultCount
+        return structurallyValid &&
+            remoteKey != null &&
+            (nowSeconds - remoteKey.lastUpdatedEpochSeconds) < GameQueryKey.SEARCH_TTL_SECONDS
     }
 
     override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> {

@@ -52,7 +52,7 @@ fun RatingFilterLabel(
 
     val scorePart = "${ratingOption.minRating}+"
     val fullText = stringResource(ratingOption.labelRes)
-    val suffix = fullText.removePrefix(scorePart).trim()
+    val suffix = ratingOption.suffixRes?.let { stringResource(it) }.orEmpty()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
