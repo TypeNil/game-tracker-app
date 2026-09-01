@@ -2,6 +2,7 @@ package com.gametracker.backend.models
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -85,6 +86,28 @@ class RequestModelsTest {
         assertTrue(apicalypse.contains("search \"zelda\";"))
         assertTrue(apicalypse.contains("genres.name = (\"Adventure\")"))
         assertFalse(apicalypse.contains("sort rating"))
+    }
+
+    @Test
+    fun `SearchRequest with text query produces identical cacheKey regardless of sortParam`() {
+        val req1 = SearchRequest(rawQuery = "Zelda", sortParam = "rating")
+        val req2 = SearchRequest(rawQuery = "Zelda", sortParam = "name")
+        val req3 = SearchRequest(rawQuery = "Zelda", sortParam = "first_release_date_asc")
+        val reqDefault = SearchRequest(rawQuery = "Zelda")
+
+        assertEquals(reqDefault.cacheKey, req1.cacheKey)
+        assertEquals(reqDefault.cacheKey, req2.cacheKey)
+        assertEquals(reqDefault.cacheKey, req3.cacheKey)
+    }
+
+    @Test
+    fun `SearchRequest without text query produces distinct cacheKey for different sortParams`() {
+        val reqRating = SearchRequest(rawQuery = null, genresParam = "RPG", sortParam = "rating")
+        val reqDate = SearchRequest(rawQuery = null, genresParam = "RPG", sortParam = "first_release_date_desc")
+
+        assertNotEquals(reqRating.cacheKey, reqDate.cacheKey)
+        assertEquals(SearchSortField.RATING, reqRating.effectiveSort)
+        assertEquals(SearchSortField.FIRST_RELEASE_DATE_DESC, reqDate.effectiveSort)
     }
 
     @Test

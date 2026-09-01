@@ -4,7 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameSearchQuery
@@ -338,15 +340,9 @@ class SearchViewModelTest {
             // Switch sort to NAME_ASC: re-sorts instantly in memory without invoking searchGames again
             viewModel.onSortSelected(SearchSortOption.NAME_ASC)
             testScheduler.runCurrent()
-            advanceUntilIdle()
 
-            // Consume state updates (filter update followed by re-sorted content emission)
-            val item1 = awaitItem()
-            val sortedContent = if ((item1.result as? SearchResultUiState.Content)?.games?.get(0)?.id == 2L) {
-                item1
-            } else {
-                awaitItem()
-            }
+            // First emitted item after onSortSelected is already sorted atomically
+            val sortedContent = awaitItem()
             val sortedGames = (sortedContent.result as SearchResultUiState.Content).games
             assertEquals(2L, sortedGames[0].id) // "The Witcher 2..." comes before "The Witcher 3..." alphabetically
             assertEquals(1L, sortedGames[1].id)
@@ -459,7 +455,7 @@ class SearchViewModelTest {
             coVerify(exactly = 1) {
                 repository.searchGames(
                     match<GameSearchQuery> { query ->
-                        query.genres == listOf("Role-playing (RPG)", "Action") &&
+                        query.genres == listOf("Action", "Role-playing (RPG)") &&
                             query.minRating == 80 &&
                             query.sort == "rating"
                     },
@@ -540,6 +536,55 @@ class SearchViewModelTest {
         viewModel.onQuickPresetSelected(QuickSearchPreset.Rating80)
         testScheduler.runCurrent()
         assertEquals(MinRatingFilter.R80, viewModel.filters.value.minRating)
+    }
+
+    @Test
+    fun `restored state with filter-only parameters initializes uiState in Loading and with restored filters`() = runTest(testDispatcher) {
+        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { repository.getSearchResultsFlow(any<GameSearchQuery>()) } returns searchFlow
+        coEvery { repository.searchGames(any<GameSearchQuery>(), any<Int>(), any<Int>()) } returns AppResult.Success(Unit)
+
+        val savedStateHandle = SavedStateHandle(
+            mapOf(
+                SearchViewModel.KEY_QUERY to "",
+                SearchViewModel.KEY_FILTERS to SearchFilters(minRating = MinRatingFilter.R80).toSnapshot(),
+            )
+        )
+        val viewModel = createViewModel(savedStateHandle = savedStateHandle)
+
+        assertEquals(MinRatingFilter.R80, viewModel.filters.value.minRating)
+        assertEquals(SearchResultUiState.Loading, viewModel.uiState.value.result)
+        assertEquals(MinRatingFilter.R80, viewModel.uiState.value.filters.minRating)
+    }
+
+    @Test
+    fun `remove recent query error exposes error message`() = runTest(testDispatcher) {
+        coEvery { repository.deleteSearchQuery("Elden Ring") } returns AppResult.Error(AppError.UnknownError(RuntimeException("DB error")))
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+            viewModel.onRemoveRecentQuery("Elden Ring")
+            testScheduler.runCurrent()
+            val errorState = awaitItem()
+            assertEquals(R.string.error_history_delete_failed, errorState.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `clear all recent queries error exposes error message`() = runTest(testDispatcher) {
+        coEvery { repository.clearSearchHistory() } returns AppResult.Error(AppError.UnknownError(RuntimeException("DB error")))
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+            viewModel.onClearAllRecentQueries()
+            testScheduler.runCurrent()
+            val errorState = awaitItem()
+            assertEquals(R.string.error_history_delete_failed, errorState.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

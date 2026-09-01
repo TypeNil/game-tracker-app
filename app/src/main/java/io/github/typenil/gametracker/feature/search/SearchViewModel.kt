@@ -50,12 +50,16 @@ class SearchViewModel @Inject constructor(
 
     val filters: StateFlow<SearchFilters> = filterSnapshot
         .map { it.toDomainFilters() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchFilters())
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
+                ?: SearchFilters(),
+        )
 
     val recentQueries: StateFlow<List<String>> = gameRepository
         .getRecentSearchQueriesFlow(MAX_RECENT_QUERIES)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
     private val retryEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private val librarySnapshot = MutableStateFlow<LibrarySnapshot>(LibrarySnapshot.Ready(emptyMap()))
     private val editingGameId = MutableStateFlow<Long?>(null)
@@ -74,7 +78,6 @@ class SearchViewModel @Inject constructor(
         SearchCommand(
             domainQuery = currentFilters.toDomainQuery(query),
             shouldDebounce = query.isNotBlank(),
-            forceRefresh = false,
         )
     }.distinctUntilChanged { old, new ->
         old.domainQuery == new.domainQuery
@@ -82,11 +85,10 @@ class SearchViewModel @Inject constructor(
 
     private val retryCommands: Flow<SearchCommand> = retryEvents.map {
         val query = rawQuery.value.trim()
-        val currentFilters = filters.value
+        val currentFilters = filterSnapshot.value.toDomainFilters()
         SearchCommand(
             domainQuery = currentFilters.toDomainQuery(query),
             shouldDebounce = false,
-            forceRefresh = true,
         )
     }
 
@@ -108,15 +110,11 @@ class SearchViewModel @Inject constructor(
                         emit(RefreshStatus.Completed(result))
                     }
                     emitAll(
-                        combine(localFlow, refreshFlow, filters) { games, status, currentFilters ->
-                            val sortedGames = games.applyDisplaySort(
-                                sort = currentFilters.sort,
-                                qPresent = command.domainQuery.query.isNotBlank(),
-                            )
+                        combine(localFlow, refreshFlow) { games, status ->
                             when {
-                                sortedGames.isNotEmpty() -> SearchExecutionResult.Success(
+                                games.isNotEmpty() -> SearchExecutionResult.Success(
                                     domainQuery = command.domainQuery,
-                                    games = sortedGames,
+                                    games = games,
                                 )
                                 status is RefreshStatus.Loading -> SearchExecutionResult.Loading(command.domainQuery)
                                 status is RefreshStatus.Completed && status.result is AppResult.Error ->
@@ -168,7 +166,12 @@ class SearchViewModel @Inject constructor(
                 is SearchExecutionResult.Loading -> SearchResultUiState.Loading
                 is SearchExecutionResult.Success -> {
                     if (res.domainQuery == currentDomainQuery) {
-                        SearchResultUiState.Content(res.games)
+                        SearchResultUiState.Content(
+                            games = res.games.applyDisplaySort(
+                                sort = searchBundle.filters.sort,
+                                qPresent = currentDomainQuery.query.isNotBlank(),
+                            ),
+                        )
                     } else {
                         SearchResultUiState.Loading
                     }
@@ -205,14 +208,17 @@ class SearchViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = SearchUiState(
-            query = savedStateHandle.get<String>(KEY_QUERY).orEmpty(),
-            result = if (savedStateHandle.get<String>(KEY_QUERY)?.trim()?.isNotBlank() == true) {
-                SearchResultUiState.Loading
-            } else {
-                SearchResultUiState.Idle
-            },
-        ),
+        initialValue = run {
+            val restoredQuery = savedStateHandle.get<String>(KEY_QUERY).orEmpty()
+            val restoredFilters = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
+                ?: SearchFilters.Empty
+            val restoredShouldSearch = restoredFilters.toDomainQuery(restoredQuery.trim()).shouldSearch
+            SearchUiState(
+                query = restoredQuery,
+                filters = restoredFilters,
+                result = if (restoredShouldSearch) SearchResultUiState.Loading else SearchResultUiState.Idle,
+            )
+        }
     )
 
     init {
@@ -404,7 +410,6 @@ class SearchViewModel @Inject constructor(
     private data class SearchCommand(
         val domainQuery: GameSearchQuery,
         val shouldDebounce: Boolean,
-        val forceRefresh: Boolean = false,
     )
 
 

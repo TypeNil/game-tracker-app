@@ -148,8 +148,8 @@ data class SearchFilters(
         val wireSort = if (text.isNotBlank()) null else sort.wireSort
         return GameSearchQuery(
             query = text,
-            genres = genres.toList(),
-            platforms = platforms.flatMap { it.toIgdbNames() },
+            genres = genres.sorted(),
+            platforms = platforms.flatMap { it.toIgdbNames() }.sorted(),
             minRating = minRating.minRating,
             minYear = minY,
             maxYear = maxY,
@@ -172,17 +172,17 @@ data class SearchFilters(
             },
             restore = { list ->
                 @Suppress("UNCHECKED_CAST")
-                val genres = (list[0] as? List<String>)?.toSet().orEmpty()
+                val genres = (list.getOrNull(0) as? List<String>)?.toSet().orEmpty()
                 @Suppress("UNCHECKED_CAST")
-                val platformNames = (list[1] as? List<String>).orEmpty()
+                val platformNames = (list.getOrNull(1) as? List<String>).orEmpty()
                 val platforms = platformNames.mapNotNull { name ->
                     PlatformFamily.entries.firstOrNull { it.name == name }
                 }.toSet()
-                val yearName = list[2] as? String
+                val yearName = list.getOrNull(2) as? String
                 val year = ReleaseYearFilter.entries.firstOrNull { it.name == yearName } ?: ReleaseYearFilter.ALL
-                val ratingName = list[3] as? String
+                val ratingName = list.getOrNull(3) as? String
                 val rating = MinRatingFilter.entries.firstOrNull { it.name == ratingName } ?: MinRatingFilter.ANY
-                val sortName = list[4] as? String
+                val sortName = list.getOrNull(4) as? String
                 val sort = SearchSortOption.entries.firstOrNull { it.name == sortName } ?: SearchSortOption.RELEVANCE
                 SearchFilters(genres, platforms, year, rating, sort)
             }
