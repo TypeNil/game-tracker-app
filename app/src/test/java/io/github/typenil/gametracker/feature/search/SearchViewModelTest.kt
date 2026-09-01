@@ -777,12 +777,21 @@ class SearchViewModelTest {
         )
         val viewModel = createViewModel(savedStateHandle = savedStateHandle)
 
-        assertEquals(SearchResultUiState.Idle, viewModel.uiState.value.result)
-        assertEquals(
-            SearchInputValidation.Invalid(SearchInputViolation.CONTROL_CHAR),
-            viewModel.uiState.value.inputValidation,
-        )
-        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any()) }
+        viewModel.uiState.test {
+            // Collecting starts WhileSubscribed upstream; invalid input must stay Idle and the
+            // search pipeline must never dispatch, even after scheduled work is allowed to run.
+            val initial = awaitItem()
+            assertEquals(SearchResultUiState.Idle, initial.result)
+            assertEquals(
+                SearchInputValidation.Invalid(SearchInputViolation.CONTROL_CHAR),
+                initial.inputValidation,
+            )
+
+            runCurrent()
+            coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any()) }
+
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
