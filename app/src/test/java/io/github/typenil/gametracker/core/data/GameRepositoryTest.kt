@@ -676,7 +676,7 @@ class GameRepositoryTest {
         coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
             queryKey = key,
             prevOffset = null,
-            nextOffset = 30,
+            nextOffset = null, // terminal page: without force the fresh cache would skip
             lastUpdatedEpochSeconds = freshAt,
         )
         coEvery { remoteDataSource.searchGames(query = "witcher", limit = 20, offset = 0) } returns listOf(sampleGameDto)

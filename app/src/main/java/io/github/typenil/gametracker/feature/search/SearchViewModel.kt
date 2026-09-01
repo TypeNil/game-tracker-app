@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.Normalizer
 import java.time.Clock
 import java.time.Year
 import javax.inject.Inject
@@ -455,7 +456,9 @@ class SearchViewModel @Inject constructor(
         if (canonical != null && canonical.codePointCount(0, canonical.length) <= MAX_QUERY_LENGTH) {
             return raw
         }
-        return raw.takeCodePoints(MAX_QUERY_LENGTH + 1)
+        // Truncate the NFC form, never the raw string: cutting a decomposed input mid-combining-mark
+        // would NFC-collapse into a valid, silently shortened search instead of surfacing TOO_LONG.
+        return Normalizer.normalize(raw, Normalizer.Form.NFC).takeCodePoints(MAX_QUERY_LENGTH + 1)
     }
 
 

@@ -140,7 +140,6 @@ class SearchViewModelTest {
     fun `101 code point query is preserved as invalid and never dispatched`() = runTest(testDispatcher) {
         val viewModel = createViewModel()
         val tooLong = "a".repeat(101)
-
         viewModel.uiState.test {
             awaitItem()
 
@@ -148,6 +147,31 @@ class SearchViewModelTest {
             runCurrent()
 
             val state = awaitItem()
+            assertEquals(SearchResultUiState.Idle, state.result)
+            assertEquals(
+                SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG),
+                state.inputValidation,
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        coVerify(exactly = 0) { repository.searchGames(any<GameSearchQuery>(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `101 decomposed characters surface TOO_LONG instead of a truncated search`() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        val decomposed = "e\u0301".repeat(101)
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onQueryChanged(decomposed)
+            runCurrent()
+
+            val state = awaitItem()
+            assertEquals("\u00E9".repeat(101), state.query) // stored as NFC, never mid-mark cut
             assertEquals(SearchResultUiState.Idle, state.result)
             assertEquals(
                 SearchInputValidation.Invalid(SearchInputViolation.TOO_LONG),
