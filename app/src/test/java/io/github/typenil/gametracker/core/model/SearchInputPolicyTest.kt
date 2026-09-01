@@ -68,4 +68,14 @@ class SearchInputPolicyTest {
             )
         }
     }
+
+    @Test
+    fun `variation-selector-only input reports invisible format before too long`() {
+        val input = "️".repeat(101)
+
+        assertEquals(
+            SearchInputValidation.Invalid(SearchInputViolation.INVISIBLE_FORMAT),
+            SearchInputPolicy.validate(input),
+        )
+    }
 }

@@ -458,4 +458,13 @@ class RequestModelsTest {
         assertTrue(query.contains("limit 60;"))
         assertTrue(query.contains("offset 0;"))
     }
- }
+ 
+    @Test
+    fun `SearchRequest rejects variation-selector-only input before length check`() {
+        val input = "️".repeat(101)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(input)
+        }
+        assertEquals("Search query contains invisible or bidi control characters", ex.message)
+    }
+}
