@@ -91,6 +91,54 @@ class SearchRequestContractTest {
         val request = SearchRequest("witcher")
         assertTrue(request.toApicalypseQuery().contains("cover != null"))
     }
+
+    @Test
+    fun `filter-only queries always carry exactly one explicit sort clause`() {
+        // Only the 'id asc' default branch is a total order; the explicit sorts are
+        // single-field and IGDB gives no contractual tie-break for equal-valued rows.
+        val expectations = listOf(
+            null to "sort id asc;",
+            "" to "sort id asc;",
+            "relevance" to "sort id asc;",
+            "rating" to "sort rating desc;",
+            "rating_desc" to "sort rating desc;",
+            "first_release_date" to "sort first_release_date desc;",
+            "first_release_date_desc" to "sort first_release_date desc;",
+            "first_release_date_asc" to "sort first_release_date asc;",
+            "name" to "sort name asc;",
+            "name_asc" to "sort name asc;",
+        )
+        for ((param, clause) in expectations) {
+            val query = SearchRequest(
+                rawQuery = null,
+                genresParam = "Role-Playing (RPG)",
+                sortParam = param,
+                offsetParam = 20,
+            ).toApicalypseQuery()
+            assertEquals(
+                "sortParam=$param must emit exactly one sort clause",
+                1,
+                query.lines().count { it.startsWith("sort ") },
+            )
+            assertTrue(
+                "sortParam=$param must emit '$clause'",
+                query.lines().contains(clause),
+            )
+        }
+    }
+
+    @Test
+    fun `text queries stay relevance-ordered without any sort clause`() {
+        val aliases = listOf(null, "", "relevance", "rating", "rating_desc", "first_release_date", "name_asc")
+        for (param in aliases) {
+            val query = SearchRequest("witcher", sortParam = param).toApicalypseQuery()
+            assertEquals(
+                "sortParam=$param must not sort a text query",
+                0,
+                query.lines().count { it.startsWith("sort ") },
+            )
+        }
+    }
 }
 
 @Serializable

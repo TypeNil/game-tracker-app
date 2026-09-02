@@ -369,7 +369,13 @@ class DefaultGameRepository internal constructor(
             config = PagingConfig(
                 pageSize = safePageSize,
                 prefetchDistance = 5,
-                enablePlaceholders = false,
+                // Placeholders are positionally sound here: the window is dense local ordinals
+                // whose committed COUNT equals metadata resultCount transactionally, and the
+                // window is append-only (previously presented rows never move). They keep the
+                // list space stable across the anchor-centered re-generation that Room
+                // invalidation causes after every mediator append; with placeholders off that
+                // refresh transiently presents only the ~initialLoadSize anchor page.
+                enablePlaceholders = true,
                 initialLoadSize = safePageSize
             ),
             remoteMediator = mediator,

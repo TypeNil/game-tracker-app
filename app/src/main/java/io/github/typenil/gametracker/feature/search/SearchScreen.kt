@@ -68,12 +68,14 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
+import io.github.typenil.gametracker.core.designsystem.component.SkeletonCardRow
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
@@ -87,6 +89,9 @@ import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.search.component.SearchFilterBar
 import io.github.typenil.gametracker.feature.search.component.SearchFilterSheet
 import kotlinx.coroutines.flow.Flow
+
+/** Distinct LazyColumn slot type so a placeholder never rebinds into a loaded card. */
+private const val GAME_ROW_CONTENT_TYPE = "game"
 
 private fun SearchInputViolation.messageRes(): Int = when (this) {
     SearchInputViolation.TOO_LONG -> R.string.search_input_error_too_long
@@ -561,12 +566,18 @@ private fun SearchContentState(
         items(
             count = games.itemCount,
             key = games.itemKey { it.id },
+            contentType = games.itemContentType { GAME_ROW_CONTENT_TYPE },
         ) { index ->
-            // enablePlaceholders = false: a null slot only exists transitively between
-            // invalidation and reload; rendering nothing is correct, access via games[index]
-            // still submits the paging hint.
+            // enablePlaceholders = true: a null slot is an unloaded local position whose count
+            // is authoritative (dense window, committed-count invariant). Rendering a real
+            // fixed-geometry row (minimum cover geometry shared with GameCard) keeps the list
+            // space stable across the anchor re-generation that Room invalidation causes after
+            // each mediator append; skipping nulls would collapse it and re-expose the first
+            // cards. games[index] still submits the hint.
             val game = games[index]
-            if (game != null) {
+            if (game == null) {
+                SkeletonCardRow()
+            } else {
                 GameCard(
                     game = game,
                     onClick = { onGameClick(game.id) },

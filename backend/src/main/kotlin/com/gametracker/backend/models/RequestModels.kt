@@ -302,8 +302,16 @@ class SearchRequest(
         }
         append(whereClauses.joinToString(" & "))
         append(";\n")
-        if (canonicalQuery == null && sort != SearchSortField.RELEVANCE) {
-            append("sort ${sort.igdbField} ${sort.direction};\n")
+        if (canonicalQuery == null) {
+            // Offset paging is only contractual with a deterministic order. For text queries
+            // relevance ordering is kept; filter-only browsing always gets an explicit sort.
+            // The default branch falls back to the unique immutable id (total order); the
+            // explicit single-field sorts keep their equal-value tie risk (no IGDB tie-break).
+            if (sort == SearchSortField.RELEVANCE) {
+                append("sort id asc;\n")
+            } else {
+                append("sort ${sort.igdbField} ${sort.direction};\n")
+            }
         }
         append("limit $limit;\n")
         append("offset $offset;")
