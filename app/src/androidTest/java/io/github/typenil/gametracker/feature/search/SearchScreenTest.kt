@@ -181,18 +181,14 @@ class SearchScreenTest {
         }
 
         // Terminal wording never claims the server-side total: the end can be a short page
-        // or the BFF offset ceiling, and the UI cannot tell them apart. The plural is resolved
-        // by name from the target context because the androidTest resource table assigns the
-        // plurals type a different id than the installed app package exposes.
-        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
-        val targetContext = instrumentation.targetContext
-        val pluralId = targetContext.resources.getIdentifier(
-            "search_results_loaded_count",
-            "plurals",
-            targetContext.packageName,
+        // or the BFF offset ceiling, and the UI cannot tell them apart. Plurals are resolved
+        // through getQuantityString — Resources.getString on a plurals id throws
+        // NotFoundException even though the id is valid.
+        val loadedCount = composeTestRule.activity.resources.getQuantityString(
+            R.plurals.search_results_loaded_count,
+            2,
+            2,
         )
-        assertTrue(pluralId != 0)
-        val loadedCount = targetContext.resources.getQuantityString(pluralId, 2, 2)
         composeTestRule.onNodeWithText(loadedCount).assertIsDisplayed()
     }
 
