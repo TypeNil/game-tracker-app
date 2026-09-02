@@ -309,6 +309,12 @@ class FakeBffDataSourceTest {
             detail.screenshots.forEachIndexed { index, shot ->
                 assertAssetExists(shot, "game-details.json game ${detail.id} screenshot $index")
             }
+            detail.similarGames.forEachIndexed { index, similarGame ->
+                assertAssetExists(
+                    similarGame.coverUrl,
+                    "game-details.json game ${detail.id} similar game $index cover",
+                )
+            }
         }
     }
 

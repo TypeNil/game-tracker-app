@@ -422,6 +422,12 @@ private fun ChartsFeed(
             FeedSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
+        } else if (currentRailState.games.isEmpty() && currentRailState.error != null) {
+            DiscoverErrorState(
+                error = currentRailState.error,
+                onRetry = { onLoadMoreRail(currentRailState.rail) },
+                modifier = Modifier.fillMaxSize(),
+            )
         } else if (currentRailState.games.isEmpty()) {
             Box(
                 modifier = Modifier

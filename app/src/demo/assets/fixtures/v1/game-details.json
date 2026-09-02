@@ -1478,7 +1478,7 @@
       {
         "id": 14593,
         "name": "Hollow Knight",
-        "coverUrl": "file:///android_asset/covers/14593.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_hollow_knight.jpg",
         "totalRating": 91.8,
         "genres": [
           "Platform",
@@ -1542,7 +1542,7 @@
       {
         "id": 14593,
         "name": "Hollow Knight",
-        "coverUrl": "file:///android_asset/covers/14593.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_hollow_knight.jpg",
         "totalRating": 91.8,
         "genres": [
           "Platform",
@@ -1617,7 +1617,7 @@
       {
         "id": 25076,
         "name": "Red Dead Redemption 2",
-        "coverUrl": "file:///android_asset/covers/25076.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
         "totalRating": 96.0,
         "genres": [
           "Shooter",
@@ -1749,7 +1749,7 @@
       {
         "id": 72,
         "name": "Portal 2",
-        "coverUrl": "file:///android_asset/covers/72.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_portal2.jpg",
         "totalRating": 94.6,
         "genres": [
           "Shooter",
@@ -1839,7 +1839,7 @@
       {
         "id": 900005,
         "name": "Doom",
-        "coverUrl": "file:///android_asset/covers/1942.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_cyberpunk.jpg",
         "totalRating": 86.0,
         "genres": [
           "Shooter"
@@ -1998,7 +1998,7 @@
       {
         "id": 119388,
         "name": "The Legend of Zelda: Tears of the Kingdom",
-        "coverUrl": "file:///android_asset/covers/119388.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_zelda_totk.jpg",
         "totalRating": 95.5,
         "genres": [
           "Adventure",
@@ -2137,7 +2137,7 @@
       {
         "id": 112875,
         "name": "God of War Ragnarök",
-        "coverUrl": "file:///android_asset/covers/112875.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
         "totalRating": 93.7,
         "genres": [
           "Hack and slash/Beat 'em up",
@@ -2196,7 +2196,7 @@
       {
         "id": 14593,
         "name": "Hollow Knight",
-        "coverUrl": "file:///android_asset/covers/14593.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_hollow_knight.jpg",
         "totalRating": 91.8,
         "genres": [
           "Indie"
@@ -2292,7 +2292,7 @@
       {
         "id": 204350,
         "name": "The Last of Us Part I",
-        "coverUrl": "file:///android_asset/covers/204350.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_tlou.jpg",
         "totalRating": 92.4,
         "genres": [
           "Shooter",
@@ -2374,7 +2374,7 @@
       {
         "id": 119171,
         "name": "Baldur's Gate 3",
-        "coverUrl": "file:///android_asset/covers/119171.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
         "totalRating": 96.1,
         "genres": [
           "Role-playing (RPG)",
@@ -2444,7 +2444,7 @@
       {
         "id": 72,
         "name": "Portal 2",
-        "coverUrl": "file:///android_asset/covers/72.jpg",
+        "coverUrl": "file:///android_asset/covers/cover_portal2.jpg",
         "totalRating": 94.6,
         "genres": [
           "Shooter",

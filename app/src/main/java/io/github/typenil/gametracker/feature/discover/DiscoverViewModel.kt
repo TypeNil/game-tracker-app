@@ -388,9 +388,9 @@ class DiscoverViewModel @Inject constructor(
     }
     private suspend fun refreshRail(rail: DiscoverRail, append: Boolean) {
         val offset = if (append) railOffsets.getValue(rail) else 0
-        updateRail(rail) { it.copy(isLoading = true) }
+        updateRail(rail) { it.copy(isLoading = true, error = null) }
         try {
-            when (gameRepository.refreshPopular(rail.type, RAIL_PAGE_SIZE, offset, append)) {
+            when (val result = gameRepository.refreshPopular(rail.type, RAIL_PAGE_SIZE, offset, append)) {
                 is AppResult.Success -> {
                     val games = gameRepository.getPopularGamesFlow(rail.type).first()
                     railOffsets[rail] = games.size
@@ -399,17 +399,19 @@ class DiscoverViewModel @Inject constructor(
                             games = games,
                             isLoading = false,
                             endReached = games.size < offset + RAIL_PAGE_SIZE,
+                            error = null,
                         )
                     }
                 }
                 is AppResult.Error -> {
-                    updateRail(rail) { it.copy(isLoading = false) }
+                    updateRail(rail) { it.copy(isLoading = false, error = result.error) }
                     userMessageRes.value = R.string.error_refresh_failed
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            updateRail(rail) { it.copy(isLoading = false) }
-            if (e is CancellationException) throw e
+            updateRail(rail) { it.copy(isLoading = false, error = AppError.UnknownError(e)) }
         }
     }
 

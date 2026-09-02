@@ -447,6 +447,45 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun railLoading_transitionsThroughErrorAndRecoversOnRetry() = runTest {
+        val popularFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+        } returns AppResult.Error(AppError.NetworkError)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val errorState = awaitItemUntil { state ->
+                val rail = state.rails.firstOrNull { it.rail == DiscoverRail.POPULAR_NOW }
+                rail?.error == AppError.NetworkError && !rail.isLoading
+            }
+            val failedRail = errorState.rails.first { it.rail == DiscoverRail.POPULAR_NOW }
+            assertTrue(failedRail.games.isEmpty())
+            assertEquals(AppError.NetworkError, failedRail.error)
+
+            val recoveredGames = listOf(Game(id = 99L, name = "Recovered Popular Game"))
+            coEvery {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            } coAnswers {
+                popularFlow.value = recoveredGames
+                AppResult.Success(Unit)
+            }
+
+            viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+
+            val successState = awaitItemUntil { state ->
+                val rail = state.rails.firstOrNull { it.rail == DiscoverRail.POPULAR_NOW }
+                rail?.games?.isNotEmpty() == true && !rail.isLoading && rail.error == null
+            }
+            val recoveredRail = successState.rails.first { it.rail == DiscoverRail.POPULAR_NOW }
+            assertEquals(listOf(99L), recoveredRail.games.map { it.id })
+            assertEquals(null, recoveredRail.error)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     private fun libraryGame(
         id: Long,

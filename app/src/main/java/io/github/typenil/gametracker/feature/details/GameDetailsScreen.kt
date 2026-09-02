@@ -16,8 +16,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1261,6 +1267,37 @@ private const val MAX_ZOOM = 4f
 private const val DOUBLE_TAP_ZOOM = 2.5f
 private const val ZOOM_EPSILON = 0.01f
 
+private suspend fun PointerInputScope.detectOwnedZoomPanGestures(
+    currentScale: () -> Float,
+    onGesture: (pan: Offset, zoom: Float) -> Unit,
+) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        var ownsGesture = false
+
+        do {
+            val event = awaitPointerEvent()
+            val pressedPointers = event.changes.count { it.pressed }
+
+            if (!ownsGesture) {
+                ownsGesture =
+                    currentScale() > MIN_ZOOM + ZOOM_EPSILON ||
+                    pressedPointers >= 2
+            }
+
+            if (ownsGesture) {
+                onGesture(
+                    event.calculatePan(),
+                    event.calculateZoom(),
+                )
+                event.changes.forEach { change ->
+                    if (change.positionChanged()) change.consume()
+                }
+            }
+        } while (event.changes.any { it.pressed })
+    }
+}
+
 @Composable
 private fun ZoomableScreenshotImage(
     model: String,
@@ -1311,11 +1348,16 @@ private fun ZoomableScreenshotImage(
                         },
                     )
                 }
-                .pointerInput(model) {
-                    detectTransformGestures { _, pan, zoom, _ ->
+                .pointerInput(model, widthPx, heightPx) {
+                    detectOwnedZoomPanGestures(
+                        currentScale = { scale },
+                    ) { pan, zoom ->
                         val newScale = (scale * zoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
-                        val maxOffsetX = (widthPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
-                        val maxOffsetY = (heightPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
+                        val maxOffsetX =
+                            (widthPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
+                        val maxOffsetY =
+                            (heightPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
+
                         scale = newScale
                         offsetX = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
                             (offsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
