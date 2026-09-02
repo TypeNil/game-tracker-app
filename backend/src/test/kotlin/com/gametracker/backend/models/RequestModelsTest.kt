@@ -2,6 +2,7 @@ package com.gametracker.backend.models
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,8 +16,7 @@ class RequestModelsTest {
         assertEquals("the witcher 3: wild hunt!", request.canonicalQuery)
         assertEquals(15, request.limit)
         assertEquals(10, request.offset)
-        assertEquals("search_the witcher 3: wild hunt!_15_10", request.cacheKey)
-
+        assertTrue(request.cacheKey.startsWith("search:v3|q=25:the witcher 3: wild hunt!"))
         val apicalypse = request.toApicalypseQuery()
         assertTrue(apicalypse.contains("search \"the witcher 3: wild hunt!\";"))
         assertTrue(apicalypse.contains("cover.image_id"))
@@ -25,7 +25,7 @@ class RequestModelsTest {
     }
 
     @Test
-    fun `SearchRequest throws on blank query`() {
+    fun `SearchRequest throws on blank query without filters`() {
         val ex = assertThrows(IllegalArgumentException::class.java) {
             SearchRequest("   ")
         }
@@ -33,11 +33,127 @@ class RequestModelsTest {
     }
 
     @Test
-    fun `SearchRequest throws on null query`() {
+    fun `SearchRequest throws on null query without filters`() {
         val ex = assertThrows(IllegalArgumentException::class.java) {
             SearchRequest(null)
         }
-        assertEquals("Search query 'q' parameter cannot be blank", ex.message)
+        assertEquals("Search requires 'q' or at least one filter", ex.message)
+    }
+
+    @Test
+    fun `SearchRequest rejects control-only query even when filters are present`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(
+                rawQuery = "\n",
+                genresParam = "Action",
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(
+                rawQuery = "\t",
+                platformsParam = "PC (Microsoft Windows)",
+            )
+        }
+    }
+
+    @Test
+    fun `SearchRequest collapses whitespace runs before canonicalization`() {
+        val request = SearchRequest("Grand \u00A0\u2009 Theft")
+        assertEquals("grand theft", request.canonicalQuery)
+    }
+
+    @Test
+    fun `SearchRequest accepts filters with null or blank query and applies sort`() {
+        val request = SearchRequest(
+            rawQuery = null,
+            genresParam = "Role-playing (RPG), Adventure",
+            platformsParam = "PC (Microsoft Windows)",
+            minRatingParam = 85,
+            minYearParam = 2023,
+            maxYearParam = 2024,
+            sortParam = "rating_desc",
+            limitParam = 25,
+            offsetParam = 0,
+        )
+
+        assertEquals(null, request.canonicalQuery)
+        assertTrue(request.hasFilters)
+        assertEquals(listOf("Role-playing (RPG)", "Adventure"), request.genres)
+        assertEquals(listOf("PC (Microsoft Windows)"), request.platforms)
+        assertEquals(85, request.minRating)
+        assertEquals(2023, request.minYear)
+        assertEquals(2024, request.maxYear)
+        assertEquals(SearchSortField.RATING, request.sort)
+
+        val apicalypse = request.toApicalypseQuery()
+        assertFalse(apicalypse.contains("search \""))
+        assertTrue(apicalypse.contains("genres = (12) & genres = (31)"))
+        assertFalse(apicalypse.contains("genres.name ="))
+        assertTrue(apicalypse.contains("platforms.name = (\"PC (Microsoft Windows)\")"))
+        assertTrue(apicalypse.contains("rating >= 85"))
+        assertTrue(apicalypse.contains("first_release_date >="))
+        assertTrue(apicalypse.contains("first_release_date <="))
+        assertTrue(apicalypse.contains("sort rating desc;"))
+    }
+
+    @Test
+    fun `SearchRequest with query and filters does not add sort clause to apicalypse`() {
+        val request = SearchRequest(
+            rawQuery = "Zelda",
+            genresParam = "Adventure",
+            sortParam = "rating",
+        )
+
+        val apicalypse = request.toApicalypseQuery()
+        assertTrue(apicalypse.contains("search \"zelda\";"))
+        assertTrue(apicalypse.contains("genres = (31)"))
+        assertFalse(apicalypse.contains("genres.name ="))
+        assertFalse(apicalypse.contains("sort rating"))
+    }
+    @Test
+    fun `SearchRequest with RPG genre and Action theme maps to genre 12 and theme 1`() {
+        val request = SearchRequest(
+            rawQuery = null,
+            genresParam = "Role-playing (RPG), Action",
+            sortParam = "rating_desc",
+        )
+        val apicalypse = request.toApicalypseQuery()
+        assertTrue(apicalypse.contains("genres = (12) & themes = (1)"))
+        assertTrue(apicalypse.contains("sort rating desc;"))
+    }
+
+
+    @Test
+    fun `SearchRequest with text query produces identical cacheKey regardless of sortParam`() {
+        val req1 = SearchRequest(rawQuery = "Zelda", sortParam = "rating")
+        val req2 = SearchRequest(rawQuery = "Zelda", sortParam = "name")
+        val req3 = SearchRequest(rawQuery = "Zelda", sortParam = "first_release_date_asc")
+        val reqDefault = SearchRequest(rawQuery = "Zelda")
+
+        assertEquals(reqDefault.cacheKey, req1.cacheKey)
+        assertEquals(reqDefault.cacheKey, req2.cacheKey)
+        assertEquals(reqDefault.cacheKey, req3.cacheKey)
+    }
+
+    @Test
+    fun `SearchRequest without text query produces distinct cacheKey for different sortParams`() {
+        val reqRating = SearchRequest(rawQuery = null, genresParam = "RPG", sortParam = "rating")
+        val reqDate = SearchRequest(rawQuery = null, genresParam = "RPG", sortParam = "first_release_date_desc")
+
+        assertNotEquals(reqRating.cacheKey, reqDate.cacheKey)
+        assertEquals(SearchSortField.RATING, reqRating.effectiveSort)
+        assertEquals(SearchSortField.FIRST_RELEASE_DATE_DESC, reqDate.effectiveSort)
+    }
+
+    @Test
+    fun `SearchRequest rejects invalid sort parameter`() {
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(
+                rawQuery = "Elden",
+                sortParam = "unsupported_sort",
+            )
+        }
+        assertTrue(ex.message?.contains("unsupported value") == true)
     }
 
     @Test
@@ -73,9 +189,63 @@ class RequestModelsTest {
     }
 
     @Test
-    fun `SearchRequest rejects unpermitted characters like emoji`() {
+    fun `SearchRequest accepts common punctuation, emoji and unicode product names`() {
+        val cases = listOf(
+            "DOOM (2016)" to "doom (2016)",
+            "Pokémon Sword/Shield" to "pokémon sword/shield",
+            "NieR™" to "nier™",
+            "Game [Demo]" to "game [demo]",
+            "Zelda ⚔️" to "zelda ⚔️",
+            "Metal Gear | Solid" to "metal gear | solid",
+            "Family 👨‍👩‍👧" to "family 👨👩👧",
+        )
+        for ((input, expected) in cases) {
+            val request = SearchRequest(input)
+            assertEquals(expected, request.canonicalQuery)
+            assertTrue(request.toApicalypseQuery().contains("search \"${expected}\";"))
+        }
+    }
+
+    @Test
+    fun `SearchRequest normalizes NBSP to a regular space`() {
+        val request = SearchRequest("Grand\u00A0Theft Auto")
+        assertEquals("grand theft auto", request.canonicalQuery)
+        assertTrue(request.toApicalypseQuery().contains("search \"grand theft auto\";"))
+    }
+
+    @Test
+    fun `SearchRequest rejects invisible and bidi format characters`() {
+        val invisible = listOf(
+            "zero\u200Bwidth",
+            "non\u200Cjoiner",
+            "lrm\u200Emark",
+            "rlm\u200Fmark",
+            "bidi\u202Eembed",
+            "isolate\u2066char",
+            "bom\uFEFFinside",
+        )
+        for (input in invisible) {
+            assertThrows("Expected rejection for '$input'", IllegalArgumentException::class.java) {
+                SearchRequest(input)
+            }
+        }
+    }
+
+    @Test
+    fun `SearchRequest accepts ZWJ in input but strips it from the canonical form`() {
+        val request = SearchRequest("Woman 👩\u200D💻 Coding")
+        assertEquals("woman 👩💻 coding", request.canonicalQuery)
+        // Variation selectors (U+FE0F) are combining marks: they survive the canonical form.
+        val withVariation = SearchRequest("Zelda ⚔️")
+        assertEquals("zelda ⚔️", withVariation.canonicalQuery)
+    }
+
+    @Test
+    fun `SearchRequest accepts retro range starting at 1950`() {
+        val request = SearchRequest(rawQuery = null, minYearParam = 1950)
+        assertEquals(1950, request.minYear)
         assertThrows(IllegalArgumentException::class.java) {
-            SearchRequest("Zelda ⚔️")
+            SearchRequest(rawQuery = null, minYearParam = 1949)
         }
     }
 
@@ -88,6 +258,36 @@ class RequestModelsTest {
         val requestLarge = SearchRequest("Zelda", limitParam = 500, offsetParam = 2000)
         assertEquals(30, requestLarge.limit)
         assertEquals(1000, requestLarge.offset)
+    }
+
+    @Test
+    fun `search cache key cannot collide across tag fields`() {
+        val embeddedDelimiter = SearchRequest(
+            rawQuery = null,
+            genresParam = "RPG|PC",
+        )
+        val separateFields = SearchRequest(
+            rawQuery = null,
+            genresParam = "RPG",
+            platformsParam = "PC",
+        )
+
+        assertNotEquals(embeddedDelimiter.cacheKey, separateFields.cacheKey)
+    }
+
+    @Test
+    fun `SearchRequest supports full catalog of 22 genres without error`() {
+        val all22Genres = listOf(
+            "Role-playing (RPG)", "Action", "Adventure", "Shooter", "Strategy",
+            "Turn-based strategy (TBS)", "Real-time strategy (RTS)", "Platform",
+            "Puzzle", "Indie", "Simulator", "Sport", "Racing", "Fighting",
+            "Hack and slash/Beat 'em up", "Music", "Arcade", "Visual Novel",
+            "Point-and-click", "Tactical", "MOBA", "Card & Board Game"
+        ).joinToString(",")
+
+        val request = SearchRequest(rawQuery = null, genresParam = all22Genres)
+        assertEquals(22, request.genres.size)
+        assertTrue(request.cacheKey.startsWith("search:v3|q=0:"))
     }
 
     @Test
@@ -258,4 +458,13 @@ class RequestModelsTest {
         assertTrue(query.contains("limit 60;"))
         assertTrue(query.contains("offset 0;"))
     }
- }
+ 
+    @Test
+    fun `SearchRequest rejects variation-selector-only input before length check`() {
+        val input = "️".repeat(101)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            SearchRequest(input)
+        }
+        assertEquals("Search query contains invisible or bidi control characters", ex.message)
+    }
+}

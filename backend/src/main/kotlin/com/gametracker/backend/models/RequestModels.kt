@@ -1,8 +1,38 @@
 package com.gametracker.backend.models
 
 import java.text.Normalizer
+import java.util.Locale
 
-private val SAFE_PUNCTUATION = setOf('-', '_', ':', '\'', '!', '?', '.', ',', '&', '+')
+/**
+ * Rejects the whole Unicode format category (zero-width, bidi controls, word joiner, ALM, BOM)
+ * instead of an enumerable subset; ZWJ (U+200D) stays allowed so compound emoji remain searchable.
+ * Variation selectors are combining marks, not format characters, so they pass through.
+ */
+private const val ZERO_WIDTH_JOINER = 0x200D
+
+private fun isForbiddenFormatCodePoint(codePoint: Int): Boolean =
+    Character.getType(codePoint) == Character.FORMAT.toInt() && codePoint != ZERO_WIDTH_JOINER
+
+/**
+ * Variation selectors (U+FE00..U+FE0F, U+E0100..U+E01EF) are combining marks: they are
+ * meaningful only when attached to visible content. A canonical form consisting of them alone
+ * is an invisible query, so it is rejected instead of producing blank/meaningless lookups.
+ */
+private val VARIATION_SELECTOR_RANGES = listOf(0xFE00..0xFE0F, 0xE0100..0xE01EF)
+
+private fun isVariationSelector(codePoint: Int): Boolean =
+    VARIATION_SELECTOR_RANGES.any { codePoint in it }
+
+private fun containsOnlyVariationSelectors(value: String): Boolean =
+    value.codePoints().allMatch(::isVariationSelector)
+
+/**
+ * Escapes a string literal for an Apicalypse query. Double quotes and backslashes are the only
+ * characters able to terminate or escape inside a quoted literal; the validator already rejects
+ * both, so this is defense-in-depth for every interpolated literal.
+ */
+private fun escapeApicalypseLiteral(value: String): String =
+    value.replace("\\", "\\\\").replace("\"", "\\\"")
 private const val QUERY_FIELDS =
     "fields name, rating, cover.url, cover.image_id, first_release_date, summary, " +
         "genres.name, platforms.name, platforms.abbreviation;\n"
@@ -15,6 +45,59 @@ private const val CANDIDATE_FIELDS =
 private val TAG_PUNCTUATION = setOf(
     '-', '_', ':', '\'', '!', '?', '.', '&', '+',
     '(', ')', '[', ']', '/', '|',
+)
+
+private val IGDB_GENRE_MAP: Map<String, Int> = mapOf(
+    "point-and-click" to 2,
+    "fighting" to 4,
+    "shooter" to 5,
+    "music" to 7,
+    "platform" to 8,
+    "puzzle" to 9,
+    "racing" to 10,
+    "real time strategy (rts)" to 11,
+    "real-time strategy (rts)" to 11,
+    "role-playing (rpg)" to 12,
+    "simulator" to 13,
+    "sport" to 14,
+    "strategy" to 15,
+    "turn-based strategy (tbs)" to 16,
+    "tactical" to 24,
+    "hack and slash/beat 'em up" to 25,
+    "quiz/trivia" to 26,
+    "pinball" to 30,
+    "adventure" to 31,
+    "indie" to 32,
+    "arcade" to 33,
+    "visual novel" to 34,
+    "card & board game" to 35,
+    "moba" to 36,
+)
+
+private val IGDB_THEME_MAP: Map<String, Int> = mapOf(
+    "action" to 1,
+    "fantasy" to 17,
+    "science fiction" to 18,
+    "horror" to 19,
+    "thriller" to 20,
+    "survival" to 21,
+    "historical" to 22,
+    "stealth" to 23,
+    "comedy" to 27,
+    "business" to 28,
+    "drama" to 31,
+    "non-fiction" to 32,
+    "sandbox" to 33,
+    "educational" to 34,
+    "kids" to 35,
+    "open world" to 38,
+    "warfare" to 39,
+    "party" to 40,
+    "4x" to 41,
+    "4x (explore, expand, exploit, and exterminate)" to 41,
+    "erotic" to 42,
+    "mystery" to 43,
+    "romance" to 44,
 )
 
 /**
@@ -42,65 +125,219 @@ object SearchQueryValidator {
     const val MAX_LENGTH = 100
 
     fun validateAndNormalize(rawQuery: String?): String {
-        if (rawQuery.isNullOrBlank()) {
+        if (rawQuery == null) {
             throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
         }
 
-        val trimmed = rawQuery.trim()
-        val normalized = Normalizer.normalize(trimmed, Normalizer.Form.NFC)
-        val codePointCount = normalized.codePointCount(0, normalized.length)
-
-        if (codePointCount < MIN_LENGTH || codePointCount > MAX_LENGTH) {
-            throw IllegalArgumentException("Search query must be between $MIN_LENGTH and $MAX_LENGTH characters")
-        }
-
+        // Unified order with the client policy: NFC-normalize, then reject forbidden characters
+        // BEFORE trimming so padded control whitespace cannot slip past, then canonicalize and
+        // measure the canonical (trimmed, collapsed) length.
+        val normalized = Normalizer.normalize(rawQuery, Normalizer.Form.NFC)
         var i = 0
         while (i < normalized.length) {
             val cp = normalized.codePointAt(i)
 
-            // Запрет управляющих символов, кавычек и обратных слэшей
+            // Единственные запреты: ISO control, кавычки и бэкслеши (Apicalypse literal), invisible format chars.
             if (Character.isISOControl(cp) || cp == '"'.code || cp == '\\'.code) {
                 throw IllegalArgumentException("Search query contains illegal control characters or quotes")
             }
-
-            // Строгий Unicode allowlist
-            val isAllowed = Character.isLetterOrDigit(cp) ||
-                Character.isSpaceChar(cp) ||
-                (cp < 65536 && cp.toChar() in SAFE_PUNCTUATION)
-
-            if (!isAllowed) {
-                val symbol = String(Character.toChars(cp))
-                throw IllegalArgumentException("Search query contains unpermitted character '$symbol'")
+            if (isForbiddenFormatCodePoint(cp)) {
+                throw IllegalArgumentException("Search query contains invisible or bidi control characters")
             }
 
             i += Character.charCount(cp)
         }
 
-        return normalized.lowercase()
+        val canonical = normalizeSpaceCharacters(normalized).trim().lowercase(Locale.ROOT)
+        if (canonical.isEmpty()) {
+            if (normalized.codePoints().anyMatch { it == ZERO_WIDTH_JOINER }) {
+                throw IllegalArgumentException("Search query contains invisible or bidi control characters")
+            }
+            throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
+        }
+        if (containsOnlyVariationSelectors(canonical)) {
+            throw IllegalArgumentException("Search query contains invisible or bidi control characters")
+        }
+
+        val codePointCount = canonical.codePointCount(0, canonical.length)
+        if (codePointCount < MIN_LENGTH || codePointCount > MAX_LENGTH) {
+            throw IllegalArgumentException("Search query must be between $MIN_LENGTH and $MAX_LENGTH characters")
+        }
+
+        return canonical
+    }
+
+    /**
+     * Collapses every run of whitespace (ASCII spaces and Unicode space separators) into a single
+     * regular space before trimming, so visually equivalent inputs share one canonical form.
+     */
+    private fun normalizeSpaceCharacters(value: String): String = buildString(value.length) {
+        var previousWasSpace = false
+        value.codePoints().forEach { cp ->
+            when {
+                cp == ZERO_WIDTH_JOINER -> Unit
+                cp == ' '.code || Character.isSpaceChar(cp) -> {
+                    if (!previousWasSpace) append(' ')
+                    previousWasSpace = true
+                }
+                else -> {
+                    appendCodePoint(cp)
+                    previousWasSpace = false
+                }
+            }
+        }
     }
 }
 
 /**
- * Каноническая модель запроса поиска игр.
+ * Разрешенные поля сортировки для запросов поиска и фильтрации каталога.
+ */
+enum class SearchSortField(val igdbField: String, val direction: String) {
+    RELEVANCE("", ""),
+    RATING("rating", "desc"),
+    FIRST_RELEASE_DATE_DESC("first_release_date", "desc"),
+    FIRST_RELEASE_DATE_ASC("first_release_date", "asc"),
+    NAME_ASC("name", "asc");
+
+    companion object {
+        fun fromParam(raw: String?): SearchSortField = when (raw?.lowercase()?.trim()) {
+            null, "", "relevance" -> RELEVANCE
+            "rating", "rating_desc" -> RATING
+            "first_release_date", "first_release_date_desc" -> FIRST_RELEASE_DATE_DESC
+            "first_release_date_asc" -> FIRST_RELEASE_DATE_ASC
+            "name", "name_asc" -> NAME_ASC
+            else -> throw IllegalArgumentException("Query parameter 'sort' has an unsupported value '$raw'")
+        }
+    }
+}
+
+/**
+ * Каноническая модель запроса поиска и фильтрации игр.
  */
 class SearchRequest(
     rawQuery: String?,
+    genresParam: String? = null,
+    platformsParam: String? = null,
+    minRatingParam: Int? = null,
+    minYearParam: Int? = null,
+    maxYearParam: Int? = null,
+    sortParam: String? = null,
     limitParam: Int? = null,
-    offsetParam: Int? = null
+    offsetParam: Int? = null,
 ) {
-    val canonicalQuery: String = SearchQueryValidator.validateAndNormalize(rawQuery)
-    val limit: Int = (limitParam ?: 20).coerceIn(1, 30)
-    val offset: Int = (offsetParam ?: 0).coerceIn(0, 1000)
+    val canonicalQuery: String? = rawQuery?.let { SearchQueryValidator.validateAndNormalize(it) }
+    val genres: List<String> = parseTags(genresParam, "genres", MAX_GENRES)
+    val platforms: List<String> = parseTags(platformsParam, "platforms", MAX_PLATFORMS)
+    val minRating: Int? = minRatingParam?.coerceIn(0, 100)
+    val minYear: Int? = minYearParam?.also { require(it in MIN_YEAR..MAX_YEAR) { "minYear must be between $MIN_YEAR and $MAX_YEAR" } }
+    val maxYear: Int? = maxYearParam?.also { require(it in MIN_YEAR..MAX_YEAR) { "maxYear must be between $MIN_YEAR and $MAX_YEAR" } }
+    val sort: SearchSortField = SearchSortField.fromParam(sortParam)
+    val limit: Int = (limitParam ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
+    val offset: Int = (offsetParam ?: 0).coerceIn(0, MAX_OFFSET)
 
-    val cacheKey: String = "search_${canonicalQuery}_${limit}_${offset}"
+    val hasFilters: Boolean = genres.isNotEmpty() || platforms.isNotEmpty() ||
+        minRating != null || minYear != null || maxYear != null
 
-    fun toApicalypseQuery(): String {
-        val builder = StringBuilder(QUERY_FIELDS)
-        builder.append("search \"$canonicalQuery\";\n")
-        builder.append("where cover != null;\n")
-        builder.append("limit $limit;\n")
-        builder.append("offset $offset;")
-        return builder.toString()
+    init {
+        if (minYear != null && maxYear != null) {
+            require(minYear <= maxYear) { "minYear cannot be greater than maxYear" }
+        }
+        require(canonicalQuery != null || hasFilters) {
+            "Search requires 'q' or at least one filter"
+        }
+    }
+
+    val effectiveSort: SearchSortField = if (canonicalQuery == null) sort else SearchSortField.RELEVANCE
+
+    val cacheKey: String = buildString {
+        append("search:v3")
+        append("|q=").append(encodePart(canonicalQuery.orEmpty()))
+        append("|genres=").append(encodePart(encodeList(genres)))
+        append("|platforms=").append(encodePart(encodeList(platforms)))
+        append("|minRating=").append(minRating ?: "")
+        append("|minYear=").append(minYear ?: "")
+        append("|maxYear=").append(maxYear ?: "")
+        append("|sort=").append(effectiveSort.name)
+        append("|limit=").append(limit)
+        append("|offset=").append(offset)
+    }
+
+    fun toApicalypseQuery(): String = buildString {
+        append(QUERY_FIELDS)
+        canonicalQuery?.let { append("search \"${escapeApicalypseLiteral(it)}\";\n") }
+        append("where ")
+        val whereClauses = buildList {
+            add("cover != null")
+            for (genre in genres) {
+                val normalized = genre.trim().lowercase(java.util.Locale.ROOT)
+                val genreId = IGDB_GENRE_MAP[normalized]
+                val themeId = IGDB_THEME_MAP[normalized]
+                when {
+                    genreId != null -> add("genres = ($genreId)")
+                    themeId != null -> add("themes = ($themeId)")
+                    else -> add("genres.name = \"${escapeApicalypseLiteral(genre)}\"")
+                }
+            }
+            if (platforms.isNotEmpty()) {
+                add("platforms.name = ${quotedList(platforms)}")
+            }
+            if (minRating != null) {
+                add("rating >= $minRating")
+            }
+            if (minYear != null) {
+                val startEpoch = java.time.Year.of(minYear)
+                    .atDay(1)
+                    .atStartOfDay(java.time.ZoneOffset.UTC)
+                    .toEpochSecond()
+                add("first_release_date >= $startEpoch")
+            }
+            if (maxYear != null) {
+                val endEpoch = java.time.Year.of(maxYear)
+                    .atMonth(12)
+                    .atEndOfMonth()
+                    .atTime(23, 59, 59)
+                    .toEpochSecond(java.time.ZoneOffset.UTC)
+                add("first_release_date <= $endEpoch")
+            }
+        }
+        append(whereClauses.joinToString(" & "))
+        append(";\n")
+        if (canonicalQuery == null && sort != SearchSortField.RELEVANCE) {
+            append("sort ${sort.igdbField} ${sort.direction};\n")
+        }
+        append("limit $limit;\n")
+        append("offset $offset;")
+    }
+
+    companion object {
+        const val DEFAULT_LIMIT = 20
+        const val MAX_LIMIT = 30
+        const val MAX_OFFSET = 1000
+        const val MAX_GENRES = 25
+        const val MAX_PLATFORMS = 25
+        const val MIN_YEAR = 1950
+        const val MAX_YEAR = 2100
+
+        private fun parseTags(raw: String?, label: String, max: Int): List<String> {
+            if (raw.isNullOrBlank()) return emptyList()
+            val tags = raw.split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map(TagNameValidator::validate)
+                .distinct()
+            if (tags.size > max) {
+                throw IllegalArgumentException("Query parameter '$label' accepts at most $max values")
+            }
+            return tags
+        }
+
+        private fun encodePart(value: String): String = "${value.length}:$value"
+
+        private fun encodeList(values: List<String>): String =
+            values.sorted().joinToString(separator = "") { encodePart(it) }
+
+        private fun quotedList(values: List<String>): String =
+            values.joinToString(prefix = "(", postfix = ")") { "\"${escapeApicalypseLiteral(it)}\"" }
     }
 }
 

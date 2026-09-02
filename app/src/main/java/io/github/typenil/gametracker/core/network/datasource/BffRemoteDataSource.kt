@@ -10,7 +10,17 @@ interface BffRemoteDataSource {
     suspend fun getTopRatedGames(limit: Int = 20, offset: Int = 0): List<GameDto>
     suspend fun getTrendingGames(limit: Int = 20, offset: Int = 0): List<GameDto>
     suspend fun getPopularPage(type: String, limit: Int = 20, offset: Int = 0): GamePageDto = GamePageDto()
-    suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): List<GameDto>
+    suspend fun searchGames(
+        query: String? = null,
+        genres: List<String> = emptyList(),
+        platforms: List<String> = emptyList(),
+        minRating: Int? = null,
+        minYear: Int? = null,
+        maxYear: Int? = null,
+        sort: String? = null,
+        limit: Int = 20,
+        offset: Int = 0,
+    ): List<GameDto>
     suspend fun getGameDetails(id: Long): GameDetailsDto
     suspend fun getRecommendationCandidates(
         genres: List<String> = emptyList(),

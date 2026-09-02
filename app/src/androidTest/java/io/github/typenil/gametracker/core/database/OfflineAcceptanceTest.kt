@@ -48,13 +48,13 @@ class OfflineAcceptanceTest {
     private lateinit var gameDao: GameDao
     private lateinit var gameDetailsDao: GameDetailsDao
     private lateinit var searchDao: SearchDao
+    private lateinit var searchHistoryDao: io.github.typenil.gametracker.core.database.dao.SearchHistoryDao
     private lateinit var remoteKeyDao: RemoteKeyDao
     private lateinit var libraryDao: LibraryDao
     private lateinit var repository: DefaultGameRepository
     private lateinit var testRemoteDataSource: TestRemoteDataSource
 
     private val testNow = 1_700_000_000L
-
     /**
      * Single shared scheduler: the repository's ioDispatcher and each runTest scope
      * must use the same TestCoroutineScheduler, otherwise combine/yield inside the
@@ -111,6 +111,7 @@ class OfflineAcceptanceTest {
         gameDao = database.gameDao()
         gameDetailsDao = database.gameDetailsDao()
         searchDao = database.searchDao()
+        searchHistoryDao = database.searchHistoryDao()
         remoteKeyDao = database.remoteKeyDao()
         libraryDao = database.libraryDao()
 
@@ -122,6 +123,7 @@ class OfflineAcceptanceTest {
             gameDao = gameDao,
             gameDetailsDao = gameDetailsDao,
             searchDao = searchDao,
+            searchHistoryDao = searchHistoryDao,
             remoteKeyDao = remoteKeyDao,
             transactionRunner = RoomTransactionRunner(database),
             ioDispatcher = testDispatcher,
@@ -146,7 +148,7 @@ class OfflineAcceptanceTest {
         assertEquals(20L, discoverGames[1].id)
         assertEquals(30L, discoverGames[2].id)
 
-        val searchResult = repository.searchGames(query = "witcher", limit = 20, offset = 0)
+        val searchResult = repository.searchGames(query = "witcher", limit = 20)
         assertTrue("Search refresh must succeed online", searchResult is AppResult.Success)
 
         val searchGames = repository.getSearchResultsFlow("witcher").first()
@@ -161,9 +163,15 @@ class OfflineAcceptanceTest {
         assertTrue(offlineRefreshDiscover is AppResult.Error)
         assertEquals(AppError.NetworkError, (offlineRefreshDiscover as AppResult.Error).error)
 
-        val offlineSearch = repository.searchGames(query = "witcher", limit = 20, offset = 0)
-        assertTrue(offlineSearch is AppResult.Error)
-        assertEquals(AppError.NetworkError, (offlineSearch as AppResult.Error).error)
+        // The TTL gate skips the network when the cached window is fresh and terminal (end of
+        // list was reported), so an offline search on the cached query still succeeds from Room.
+        val offlineSearch = repository.searchGames(query = "witcher", limit = 20)
+        assertTrue(offlineSearch is AppResult.Success)
+
+        // An uncached query must still hit the network and fail while offline.
+        val offlineUncachedSearch = repository.searchGames(query = "cyberpunk", limit = 20)
+        assertTrue("offline uncached search result: $offlineUncachedSearch", offlineUncachedSearch is AppResult.Error)
+        assertEquals(AppError.NetworkError, (offlineUncachedSearch as AppResult.Error).error)
 
         // Step 3: Re-open cached data offline (SSOT order preserved)
         val cachedDiscover = repository.getTopRatedGamesFlow().first()
@@ -299,7 +307,17 @@ class OfflineAcceptanceTest {
             return topRated
         }
 
-        override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
+        override suspend fun searchGames(
+            query: String?,
+            genres: List<String>,
+            platforms: List<String>,
+            minRating: Int?,
+            minYear: Int?,
+            maxYear: Int?,
+            sort: String?,
+            limit: Int,
+            offset: Int,
+        ): List<GameDto> {
             if (isOffline) throw IOException("Simulated Airplane Mode")
             return search
         }

@@ -158,6 +158,51 @@ class RetrofitBffDataSourceTest {
     }
 
     @Test
+    fun `searchGames with multi-attribute filters forwards all query parameters to BFF`() = runTest {
+        val payload = """
+            [
+                {
+                    "id": 101,
+                    "name": "Filtered Game"
+                }
+            ]
+        """.trimIndent()
+
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody(payload)
+        )
+
+        val games = dataSource.searchGames(
+            query = "Elden",
+            genres = listOf("RPG", "Adventure"),
+            platforms = listOf("PC", "PS5"),
+            minRating = 85,
+            minYear = 2020,
+            maxYear = 2024,
+            sort = "rating_desc",
+            limit = 20,
+            offset = 10,
+        )
+
+        val recordedRequest = mockWebServer.takeRequest()
+        assertEquals("GET", recordedRequest.method)
+        assertEquals("/v1/games/search", recordedRequest.requestUrl?.encodedPath)
+        assertEquals("Elden", recordedRequest.requestUrl?.queryParameter("q"))
+        assertEquals("RPG,Adventure", recordedRequest.requestUrl?.queryParameter("genres"))
+        assertEquals("PC,PS5", recordedRequest.requestUrl?.queryParameter("platforms"))
+        assertEquals("85", recordedRequest.requestUrl?.queryParameter("minRating"))
+        assertEquals("2020", recordedRequest.requestUrl?.queryParameter("minYear"))
+        assertEquals("2024", recordedRequest.requestUrl?.queryParameter("maxYear"))
+        assertEquals("rating_desc", recordedRequest.requestUrl?.queryParameter("sort"))
+        assertEquals("20", recordedRequest.requestUrl?.queryParameter("limit"))
+        assertEquals("10", recordedRequest.requestUrl?.queryParameter("offset"))
+        assertEquals(1, games.size)
+    }
+
+    @Test
     fun `getGameDetails sends GET with path substitution and parses enriched object`() = runTest {
         val payload = """
             {

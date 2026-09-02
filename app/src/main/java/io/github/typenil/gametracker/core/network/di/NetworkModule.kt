@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.core.network.di
 
+import androidx.annotation.VisibleForTesting
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,12 +32,20 @@ object NetworkModule {
         encodeDefaults = true
     }
 
-    @Provides
-    @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    /**
+     * Whole-call budget covering DNS, connection establishment, server processing,
+     * body transfer, redirects and OkHttp's internal route retries. Without it a
+     * flaky network can silently consume connect+read timeouts back to back and
+     * keep Paging in Loading for tens of seconds.
+     */
+    internal const val CALL_TIMEOUT_SECONDS = 20L
+
+    @VisibleForTesting
+    internal fun buildOkHttpClient(callTimeoutSeconds: Long): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .callTimeout(callTimeoutSeconds, TimeUnit.SECONDS)
 
         if (BuildConfig.DEBUG) {
             val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -47,6 +56,10 @@ object NetworkModule {
 
         return builder.build()
     }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(): OkHttpClient = buildOkHttpClient(CALL_TIMEOUT_SECONDS)
 
     @Provides
     @Singleton

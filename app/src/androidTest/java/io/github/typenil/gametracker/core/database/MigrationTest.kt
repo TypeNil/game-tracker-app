@@ -8,6 +8,7 @@ import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_2_3
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_4_5
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_3_4
+import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_5_6
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -301,6 +302,36 @@ class MigrationTest {
         assertEquals(183600L, metadataCursor.getLong(1))
         assertEquals(622800L, metadataCursor.getLong(2))
         metadataCursor.close()
+        db.close()
+    }
+
+    @Test
+    fun migration5To6_createsSearchHistoryTableAndPreservesExistingData() {
+        var db = helper.createDatabase(testDbName, 5)
+        db.execSQL(
+            """
+            INSERT INTO games (id, name, coverUrl, rating, releaseDateEpochSeconds, summary, genres, platforms, cachedAtEpochSeconds)
+            VALUES (1, 'The Witcher 3', NULL, 95.0, 1431993600, 'RPG', '["RPG"]', '["PC"]', 1000)
+            """.trimIndent()
+        )
+        db.close()
+
+        db = helper.runMigrationsAndValidate(testDbName, 6, true, MIGRATION_5_6)
+
+        // Verify search_history table is created and functional
+        db.execSQL(
+            """
+            INSERT INTO search_history (normalizedQuery, displayQuery, lastQueriedAtEpochSeconds)
+            VALUES ('witcher', 'Witcher', 2000)
+            """.trimIndent()
+        )
+
+        val cursor = db.query("SELECT normalizedQuery, displayQuery, lastQueriedAtEpochSeconds FROM search_history WHERE normalizedQuery = 'witcher'")
+        assertTrue(cursor.moveToFirst())
+        assertEquals("witcher", cursor.getString(0))
+        assertEquals("Witcher", cursor.getString(1))
+        assertEquals(2000L, cursor.getLong(2))
+        cursor.close()
         db.close()
     }
 }

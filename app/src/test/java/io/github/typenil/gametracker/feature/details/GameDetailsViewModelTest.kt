@@ -391,13 +391,27 @@ class GameDetailsViewModelTest {
         ) = AppResult.Success(emptyList<io.github.typenil.gametracker.core.model.RecommendationCandidate>())
 
 
-        override fun getSearchResultsFlow(query: String): Flow<List<Game>> = flowOf(emptyList())
+        override fun getSearchResultsFlow(
+            query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+        ): Flow<List<Game>> = flowOf(emptyList())
 
-        override fun getPagedSearchResults(query: String, pageSize: Int) =
-            flowOf(androidx.paging.PagingData.empty<Game>())
+        override fun getPagedSearchResults(
+            query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+            pageSize: Int,
+        ) = flowOf(androidx.paging.PagingData.empty<Game>())
 
-        override suspend fun searchGames(query: String, limit: Int, offset: Int): AppResult<Unit> =
-            AppResult.Success(Unit)
+        override suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit> = AppResult.Success(Unit)
+
+        override suspend fun searchGames(
+            query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+            limit: Int,
+            force: Boolean,
+        ): AppResult<Unit> = AppResult.Success(Unit)
+        override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> = flowOf(emptyList())
+
+        override suspend fun deleteSearchQuery(query: String): AppResult<Unit> = AppResult.Success(Unit)
+
+        override suspend fun clearSearchHistory(): AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun clearStaleCache(staleThresholdSeconds: Long): Int = 0
     }

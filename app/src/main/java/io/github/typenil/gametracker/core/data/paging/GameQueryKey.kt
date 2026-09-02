@@ -1,6 +1,6 @@
 package io.github.typenil.gametracker.core.data.paging
 
-import java.text.Normalizer
+import io.github.typenil.gametracker.core.model.SearchInputPolicy
 import java.util.Locale
 
 /**
@@ -19,21 +19,26 @@ sealed interface GameQueryKey {
 
 
     data class Search(
-        val query: String,
+        val query: String = "",
+        val genres: List<String> = emptyList(),
+        val platforms: List<String> = emptyList(),
+        val minRating: Int? = null,
+        val minYear: Int? = null,
+        val maxYear: Int? = null,
         val sort: String? = null,
-        val platform: Int? = null
     ) : GameQueryKey {
         override val key: String = buildString {
-            append(KEY_PREFIX_SEARCH)
-            append(normalize(query))
-            if (!sort.isNullOrBlank()) {
-                append("|sort=")
-                append(sort.trim().lowercase(Locale.ROOT))
-            }
-            if (platform != null) {
-                append("|platform=")
-                append(platform)
-            }
+            append("search:v3")
+            append("|q=").append(encodePart(normalize(query)))
+            append("|genres=").append(encodePart(encodeList(genres.map(::normalize))))
+            append("|platforms=").append(encodePart(encodeList(platforms.map(::normalize))))
+            append("|minRating=").append(minRating ?: "")
+            append("|minYear=").append(minYear ?: "")
+            append("|maxYear=").append(maxYear ?: "")
+            val effectiveSort = if (query.isBlank() && !sort.isNullOrBlank()) {
+                sort.trim().lowercase(Locale.ROOT)
+            } else ""
+            append("|sort=").append(effectiveSort)
         }
     }
 
@@ -53,14 +58,30 @@ sealed interface GameQueryKey {
          * Normalizes raw user input with trim, Unicode NFC, and lowercase.
          */
         fun normalize(rawQuery: String): String {
-            val trimmed = rawQuery.trim()
-            val nfc = Normalizer.normalize(trimmed, Normalizer.Form.NFC)
-            return nfc.lowercase(Locale.ROOT)
+            return SearchInputPolicy.canonicalize(rawQuery).orEmpty()
         }
 
         /**
          * Returns canonical search query key for raw text input.
          */
         fun search(rawQuery: String): String = Search(rawQuery).key
+
+        /**
+         * Maps domain [io.github.typenil.gametracker.core.model.GameSearchQuery] to canonical [Search] query key.
+         */
+        fun fromDomain(domainQuery: io.github.typenil.gametracker.core.model.GameSearchQuery): Search = Search(
+            query = domainQuery.query,
+            genres = domainQuery.genres,
+            platforms = domainQuery.platforms,
+            minRating = domainQuery.minRating,
+            minYear = domainQuery.minYear,
+            maxYear = domainQuery.maxYear,
+            sort = domainQuery.sort,
+        )
+
+        private fun encodePart(value: String): String = "${value.length}:$value"
+
+        private fun encodeList(values: List<String>): String =
+            values.sorted().joinToString(separator = "") { encodePart(it) }
     }
 }

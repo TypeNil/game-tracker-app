@@ -28,8 +28,28 @@ class RetrofitBffDataSource @Inject constructor(
         return apiService.getPopularPage(type = type, limit = limit, offset = offset)
     }
 
-    override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
-        return apiService.searchGames(query = query, limit = limit, offset = offset)
+    override suspend fun searchGames(
+        query: String?,
+        genres: List<String>,
+        platforms: List<String>,
+        minRating: Int?,
+        minYear: Int?,
+        maxYear: Int?,
+        sort: String?,
+        limit: Int,
+        offset: Int,
+    ): List<GameDto> {
+        return apiService.searchGames(
+            query = query?.takeIf { it.isNotBlank() },
+            genres = genres.csvOrNull(),
+            platforms = platforms.csvOrNull(),
+            minRating = minRating,
+            minYear = minYear,
+            maxYear = maxYear,
+            sort = sort?.takeIf { it.isNotBlank() },
+            limit = limit,
+            offset = offset,
+        )
     }
 
     override suspend fun getGameDetails(id: Long): GameDetailsDto {

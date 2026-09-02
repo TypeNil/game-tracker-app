@@ -9,10 +9,14 @@ import io.github.typenil.gametracker.core.database.dao.SearchDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
+import androidx.paging.PagingSource
+import kotlinx.coroutines.CompletableDeferred
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -160,5 +164,100 @@ class SearchDaoTest {
         )
     }
 
+    @Test
+    fun pagingSource_isInvalidated_andReloadsAppendedRowsInPositionOrder() = runTest(timeout = 30.seconds) {
+        val query = "pagination"
+        val games = (0L until 40L).map { id ->
+            GameEntity(id, "Game $id", null, null, null, null, emptyList(), emptyList(), 100L)
+        }
+        gameDao.upsertGames(games)
+        searchDao.upsertSearchQuery(SearchQueryEntity(query, 100L, 100L, 20))
+        searchDao.insertSearchResults(
+            (0L until 20L).map { SearchResultCrossRef(query = query, gameId = it, position = it.toInt()) }
+        )
+
+        val firstSource: PagingSource<Int, GameEntity> = searchDao.getSearchResultsPagingSource(query)
+        val invalidated = CompletableDeferred<Unit>()
+        firstSource.registerInvalidatedCallback { invalidated.complete(Unit) }
+
+        val initial = firstSource.load(
+            PagingSource.LoadParams.Refresh(key = null, loadSize = 20, placeholdersEnabled = false),
+        )
+        assertTrue(initial is PagingSource.LoadResult.Page)
+        assertEquals((0L until 20L).toList(), (initial as PagingSource.LoadResult.Page).data.map { it.id })
+
+        // The append write the RemoteMediator performs for the next page must trip Room's
+        // invalidation tracker so the paging container reloads instead of freezing at 20 rows.
+        searchDao.insertSearchResults(
+            (20L until 40L).map { SearchResultCrossRef(query = query, gameId = it, position = it.toInt()) }
+        )
+        invalidated.await()
+
+        // The invalidated source is replaced through the factory with a full refresh: rows
+        // from both writes come back in position order, so the frozen 20-row window cannot
+        // survive the append.
+        val reloaded = searchDao.getSearchResultsPagingSource(query)
+            .load(PagingSource.LoadParams.Refresh(key = null, loadSize = 40, placeholdersEnabled = false))
+        assertTrue(reloaded is PagingSource.LoadResult.Page)
+        assertEquals((0L until 40L).toList(), (reloaded as PagingSource.LoadResult.Page).data.map { it.id })
+    }
+
+    @Test
+    fun getSearchResultGameIds_returnsPersistedIds() = runTest {
+        // search_results has RESTRICT foreign keys on both parents: the games and the
+        // query metadata must exist before any cross-reference row is insertable.
+        gameDao.upsertGames(
+            listOf(
+                GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L),
+                GameEntity(7L, "G7", null, null, null, null, emptyList(), emptyList(), 100L)
+            )
+        )
+        searchDao.upsertSearchQuery(SearchQueryEntity("q", 100L, 100L, 1))
+        searchDao.upsertSearchQuery(SearchQueryEntity("other", 100L, 100L, 1))
+
+        searchDao.insertSearchResults(
+            listOf(
+                SearchResultCrossRef(query = "q", gameId = 1L, position = 0)
+            )
+        )
+        searchDao.insertSearchResults(
+            listOf(
+                SearchResultCrossRef(query = "other", gameId = 7L, position = 0)
+            )
+        )
+
+        assertEquals(listOf(1L), searchDao.getSearchResultGameIds("q"))
+        assertEquals(emptyList<Long>(), searchDao.getSearchResultGameIds("missing"))
+    }
+
+    @Test
+    fun hasDenseSearchResultPositions_detectsDenseSparseAndEmptyWindows() = runTest {
+        val games = (1L..30L).map {
+            GameEntity(it, "G$it", null, null, null, null, emptyList(), emptyList(), 100L)
+        }
+        gameDao.upsertGames(games)
+        searchDao.upsertSearchQuery(SearchQueryEntity("dense", 100L, 100L, 3))
+        searchDao.insertSearchResults(
+            listOf(
+                SearchResultCrossRef("dense", 1L, 0),
+                SearchResultCrossRef("dense", 2L, 1),
+                SearchResultCrossRef("dense", 3L, 2)
+            )
+        )
+
+        searchDao.upsertSearchQuery(SearchQueryEntity("empty", 100L, 100L, 0))
+
+        // Legacy shape: rows at 0..9 and 20..39 with a hole at 10..19.
+        searchDao.upsertSearchQuery(SearchQueryEntity("sparse", 100L, 100L, 30))
+        searchDao.insertSearchResults(
+            (0 until 10).map { SearchResultCrossRef("sparse", it + 1L, it) } +
+                (0 until 20).map { SearchResultCrossRef("sparse", it + 11L, it + 20) }
+        )
+
+        assertTrue(searchDao.hasDenseSearchResultPositions("dense"))
+        assertTrue(searchDao.hasDenseSearchResultPositions("empty"))
+        assertTrue(searchDao.hasDenseSearchResultPositions("missing"))
+        assertFalse(searchDao.hasDenseSearchResultPositions("sparse"))
+    }
 }
 

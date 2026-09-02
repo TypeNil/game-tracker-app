@@ -107,4 +107,26 @@ object DatabaseMigrations {
             db.execSQL("UPDATE `game_details` SET `cachedAtEpochSeconds` = 0")
         }
     }
+
+    /**
+     * Migration from Room schema version 5 to 6: adds the `search_history` table for persistent user search history.
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `search_history` (
+                `normalizedQuery` TEXT NOT NULL,
+                `displayQuery` TEXT NOT NULL,
+                `lastQueriedAtEpochSeconds` INTEGER NOT NULL,
+                PRIMARY KEY (`normalizedQuery`)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_search_history_lastQueriedAtEpochSeconds` " +
+                    "ON `search_history` (`lastQueriedAtEpochSeconds`)"
+            )
+        }
+    }
 }

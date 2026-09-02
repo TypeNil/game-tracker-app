@@ -152,6 +152,21 @@ class FakeBffDataSourceTest {
     }
 
     @Test
+    fun `searchGames rejects control-only query even when filters are present`() = runTest {
+        try {
+            fakeDataSource.searchGames(
+                query = "\n",
+                genres = listOf("Role-playing (RPG)"),
+                limit = 10,
+                offset = 0,
+            )
+            fail("Expected IllegalArgumentException for control-only query")
+        } catch (_: IllegalArgumentException) {
+            // Expected
+        }
+    }
+
+    @Test
     fun `searchGames finds games case-insensitively`() = runTest {
         val results = fakeDataSource.searchGames(query = "witcher", limit = 10, offset = 0)
 
@@ -332,5 +347,88 @@ class FakeBffDataSourceTest {
         assertEquals(listOf(119133L, 1942L), page.items.map { it.id })
         assertEquals(2, page.nextOffset)
         assertTrue(!page.endReached)
+    }
+
+    @Test
+    fun `searchGames filters mock games by query text`() = runTest {
+        val results = fakeDataSource.searchGames(query = "Witcher", limit = 10, offset = 0)
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { game ->
+            game.name.contains("Witcher", ignoreCase = true)
+        })
+    }
+
+    @Test
+    fun `searchGames with filters only applies genre and rating filters and sort`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            genres = listOf("Role-playing (RPG)"),
+            minRating = 90,
+            sort = "rating_desc",
+            limit = 10,
+            offset = 0,
+        )
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { (it.rating ?: 0.0) >= 90.0 })
+        assertTrue(results.all { it.genres.contains("Role-playing (RPG)") })
+        // Verify sorted by rating desc
+        for (i in 0 until results.size - 1) {
+            assertTrue((results[i].rating ?: 0.0) >= (results[i + 1].rating ?: 0.0))
+        }
+    }
+
+    @Test
+    fun `searchGames multi-genre AND keeps supersets and drops partial matches`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            genres = listOf("Role-playing (RPG)", "Adventure"),
+            limit = 30,
+            offset = 0,
+        )
+        assertTrue(results.isNotEmpty())
+        val names = results.map { it.name }
+        assertTrue(names.any { it.contains("Witcher", ignoreCase = true) })
+        assertTrue(results.all { game ->
+            game.genres.any { it.equals("Role-playing (RPG)", ignoreCase = true) } &&
+                game.genres.any { it.equals("Adventure", ignoreCase = true) }
+        })
+    }
+
+    @Test
+    fun `searchGames mixed genre and theme follows BFF AND semantics`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            genres = listOf("Role-playing (RPG)", "Action"),
+            limit = 30,
+            offset = 0,
+        )
+
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.any { it.id == 1942L }) // The Witcher 3: RPG + Action theme
+        assertTrue(results.none { it.id == 900011L }) // RPG but no Action theme
+    }
+
+    @Test
+    fun `searchGames multi-platform OR includes games matching any requested platform including PC alias`() = runTest {
+        val results = fakeDataSource.searchGames(
+            query = null,
+            platforms = listOf("PC (Microsoft Windows)", "Nintendo Switch"),
+            limit = 30,
+            offset = 0,
+        )
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.all { game ->
+            game.platforms.any { it.equals("PC", ignoreCase = true) || it.equals("Nintendo Switch", ignoreCase = true) }
+        })
+    }
+
+    @Test
+    fun `searchGames rejects blank query without any filters`() = runTest {
+        try {
+            fakeDataSource.searchGames(query = "   ", limit = 10, offset = 0)
+            fail("Expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+            // Expected
+        }
     }
 }

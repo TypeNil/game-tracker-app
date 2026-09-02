@@ -3,28 +3,38 @@ package io.github.typenil.gametracker.feature.search
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.GameSearchQuery
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
-
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.SearchInputPolicy
+import io.github.typenil.gametracker.core.model.SearchInputValidation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -33,111 +43,156 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.Normalizer
+import java.time.Clock
+import java.time.Year
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val savedStateHandle: SavedStateHandle,
     private val libraryRepository: LibraryRepository,
+    private val clock: Clock,
+    networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
-    val rawQuery: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
+    /**
+     * Identity passthrough of the device connectivity state: presentation derives the
+     * reconnect edge locally; the ViewModel never mirrors LoadState or network data.
+     */
+    val networkStatus: StateFlow<NetworkStatus> = networkMonitor.status
 
-    private val retryEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val rawQuery: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
+    val filterSnapshot: StateFlow<SearchFiltersSnapshot> =
+        savedStateHandle.getStateFlow(KEY_FILTERS, SearchFiltersSnapshot())
+
+    val filters: StateFlow<SearchFilters> = filterSnapshot
+        .map { it.toDomainFilters() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
+                ?: SearchFilters(),
+        )
+
+    val recentQueries: StateFlow<List<String>> = gameRepository
+        .getRecentSearchQueriesFlow(MAX_RECENT_QUERIES)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val librarySnapshot = MutableStateFlow<LibrarySnapshot>(LibrarySnapshot.Ready(emptyMap()))
     private val editingGameId = MutableStateFlow<Long?>(null)
     private val isLibrarySubmitting = MutableStateFlow(false)
     private var libraryMutationJob: Job? = null
     private val userMessageRes = MutableStateFlow<Int?>(null)
 
-    private val queryRequests: Flow<SearchRequest> = rawQuery
-        .map(String::trim)
-        .distinctUntilChanged()
-        .map { query ->
-            SearchRequest(
-                query = query,
-                shouldDebounce = true,
+    private val textCommands: Flow<SearchCommand> = rawQuery
+        .map { raw ->
+            SearchCommand(
+                domainQuery = filterSnapshot.value
+                    .toDomainFilters()
+                    .toDomainQuery(raw, clockYear()),
+                shouldDebounce = raw.isNotBlank(),
             )
         }
 
-    private val retryRequests: Flow<SearchRequest> = retryEvents.map {
-        SearchRequest(
-            query = rawQuery.value.trim(),
-            shouldDebounce = false,
+    private val filterCommands: Flow<SearchCommand> = filterSnapshot
+        .drop(1)
+        .debounce(FILTER_DEBOUNCE_MILLIS)
+        .map { snapshot ->
+            SearchCommand(
+                domainQuery = snapshot
+                    .toDomainFilters()
+                    .toDomainQuery(rawQuery.value, clockYear()),
+                shouldDebounce = false,
+            )
+        }
+
+    private val automaticCommands: Flow<SearchCommand> = merge(textCommands, filterCommands)
+        .distinctUntilChanged { old, new ->
+            old.domainQuery == new.domainQuery
+        }
+
+    private val pendingSearchLoadStates = LoadStates(
+        refresh = LoadState.Loading,
+        prepend = LoadState.NotLoading(endOfPaginationReached = true),
+        append = LoadState.NotLoading(endOfPaginationReached = false),
+    )
+
+    val searchResults: Flow<PagingData<Game>> = automaticCommands
+        .flatMapLatest { command ->
+            val validation = SearchInputPolicy.validate(command.domainQuery.query)
+            when {
+                validation !is SearchInputValidation.Valid -> flowOf(PagingData.empty())
+                !command.domainQuery.shouldSearch -> flowOf(PagingData.empty())
+                else -> flow {
+                    // The explicit loading generation is emitted before the debounce so the UI
+                    // can never present the previous query's cached PagingData (or an idle empty
+                    // initial state) under the new query text: the pending generation replaces
+                    // cachedIn's replay immediately on every committed command.
+                    emit(PagingData.empty(sourceLoadStates = pendingSearchLoadStates))
+                    if (command.shouldDebounce) {
+                        delay(SEARCH_DEBOUNCE_MILLIS)
+                    }
+                    // History is optional and must never gate results — not even through a
+                    // slow or locked storage write: it runs as a sibling child of the paging
+                    // collection. A new committed query cancels both through flatMapLatest,
+                    // so structured concurrency still owns the history task.
+                    coroutineScope {
+                        launch {
+                            when (gameRepository.recordSearchHistory(command.domainQuery.query)) {
+                                is AppResult.Success -> Unit
+                                is AppResult.Error -> userMessageRes.value = R.string.error_history_save_failed
+                            }
+                        }
+                        emitAll(
+                            gameRepository.getPagedSearchResults(
+                                query = command.domainQuery,
+                                pageSize = PAGE_SIZE,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+        .cachedIn(viewModelScope)
+
+    private val searchStateBundle: Flow<SearchStateBundle> = combine(
+        rawQuery,
+        filters,
+        recentQueries,
+    ) { currentRawQuery, currentFilters, recent ->
+        val validation = SearchInputPolicy.validate(currentRawQuery)
+        SearchStateBundle(
+            query = currentRawQuery,
+            filters = currentFilters,
+            recentQueries = recent,
+            searchActive = validation is SearchInputValidation.Valid &&
+                currentFilters.toDomainQuery(currentRawQuery, clockYear()).shouldSearch,
+            queryValidation = validation,
         )
     }
 
-    private val searchResults: Flow<SearchResult> = merge(queryRequests, retryRequests)
-        .flatMapLatest { request ->
-            if (request.query.isBlank()) {
-                flowOf<SearchResult>(SearchResult.Idle)
-            } else {
-                flow {
-                    if (request.shouldDebounce) {
-                        delay(SEARCH_DEBOUNCE_MILLIS)
-                    }
-                    val localFlow = gameRepository.getSearchResultsFlow(request.query)
-                    val refreshFlow = flow {
-                        emit(RefreshStatus.Loading)
-                        val result = gameRepository.searchGames(query = request.query, limit = SEARCH_LIMIT)
-                        emit(RefreshStatus.Completed(result))
-                    }
-                    emitAll(
-                        combine(localFlow, refreshFlow) { games, status ->
-                            when {
-                                games.isNotEmpty() -> SearchResult.Success(query = request.query, games = games)
-                                status is RefreshStatus.Loading -> SearchResult.Loading(request.query)
-                                status is RefreshStatus.Completed && status.result is AppResult.Error ->
-                                    SearchResult.Error(query = request.query, error = status.result.error)
-                                else -> SearchResult.Empty(query = request.query)
-                            }
-                        },
-                    )
-                }
-            }
-        }
+    private val libraryUiFlow: Flow<LibraryUi> = combine(
+        librarySnapshot,
+        editingGameId,
+        isLibrarySubmitting,
+    ) { snapshot, editingId, isSubmitting ->
+        LibraryUi(snapshot = snapshot, editingGameId = editingId, isSubmitting = isSubmitting)
+    }
 
     val uiState: StateFlow<SearchUiState> = combine(
-        rawQuery,
-        searchResults,
-        combine(librarySnapshot, editingGameId, isLibrarySubmitting, ::LibraryUi),
+        searchStateBundle,
+        libraryUiFlow,
         userMessageRes,
-    ) { currentRawQuery, result, library, message ->
-        val trimmedCurrent = currentRawQuery.trim()
-        val resultState = if (trimmedCurrent.isBlank()) {
-            SearchResultUiState.Idle
-        } else {
-            when (result) {
-                is SearchResult.Idle -> SearchResultUiState.Loading
-                is SearchResult.Loading -> SearchResultUiState.Loading
-                is SearchResult.Success -> {
-                    if (result.query == trimmedCurrent) {
-                        SearchResultUiState.Content(result.games)
-                    } else {
-                        SearchResultUiState.Loading
-                    }
-                }
-                is SearchResult.Empty -> {
-                    if (result.query == trimmedCurrent) {
-                        SearchResultUiState.Empty(result.query)
-                    } else {
-                        SearchResultUiState.Loading
-                    }
-                }
-                is SearchResult.Error -> {
-                    if (result.query == trimmedCurrent) {
-                        SearchResultUiState.Error(result.error)
-                    } else {
-                        SearchResultUiState.Loading
-                    }
-                }
-            }
-        }
+    ) { searchBundle, library, message ->
         SearchUiState(
-            query = currentRawQuery,
-            result = resultState,
+            query = searchBundle.query,
+            filters = searchBundle.filters,
+            recentQueries = searchBundle.recentQueries,
+            searchActive = searchBundle.searchActive,
+            inputValidation = searchBundle.queryValidation,
             librarySnapshot = library.snapshot,
             editingGameId = library.editingGameId,
             isLibrarySubmitting = library.isSubmitting,
@@ -145,15 +200,24 @@ class SearchViewModel @Inject constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
-        initialValue = SearchUiState(
-            query = savedStateHandle.get<String>(KEY_QUERY).orEmpty(),
-            result = if (savedStateHandle.get<String>(KEY_QUERY)?.trim()?.isNotBlank() == true) {
-                SearchResultUiState.Loading
-            } else {
-                SearchResultUiState.Idle
-            },
-        ),
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = run {
+            val restoredQuery = savedStateHandle.get<String>(KEY_QUERY).orEmpty()
+            val restoredFilters = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
+                ?: SearchFilters.Empty
+            val restoredValidation = SearchInputPolicy.validate(restoredQuery)
+            // The restored state must agree with the validation verdict the interactive path
+            // uses: an invalid persisted query never activates the paged result container.
+            val restoredSearchActive =
+                restoredValidation is SearchInputValidation.Valid &&
+                    restoredFilters.toDomainQuery(restoredQuery, clockYear()).shouldSearch
+            SearchUiState(
+                query = restoredQuery,
+                filters = restoredFilters,
+                searchActive = restoredSearchActive,
+                inputValidation = restoredValidation,
+            )
+        }
     )
 
     init {
@@ -174,18 +238,85 @@ class SearchViewModel @Inject constructor(
     }
 
     fun onQueryChanged(newQuery: String) {
-        savedStateHandle[KEY_QUERY] = newQuery.takeCodePoints(MAX_QUERY_LENGTH)
+        savedStateHandle[KEY_QUERY] = boundedQuery(newQuery)
     }
 
     fun onClearQuery() {
         savedStateHandle[KEY_QUERY] = ""
     }
 
-    fun retry() {
-        if (rawQuery.value.trim().isNotBlank()) {
-            retryEvents.tryEmit(Unit)
+    fun onSelectRecentQuery(query: String) {
+        savedStateHandle[KEY_QUERY] = boundedQuery(query)
+    }
+
+    fun onRemoveRecentQuery(query: String) {
+        viewModelScope.launch {
+            when (gameRepository.deleteSearchQuery(query)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_history_delete_failed
+            }
         }
     }
+
+    fun onClearAllRecentQueries() {
+        viewModelScope.launch {
+            when (gameRepository.clearSearchHistory()) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> userMessageRes.value = R.string.error_history_delete_failed
+            }
+        }
+    }
+
+    fun onSortSelected(sort: SearchSortOption) {
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(sort = sort).toSnapshot()
+    }
+
+    fun onGenreToggled(genre: String) {
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        val current = currentFilters.genres
+        val updated = if (current.contains(genre)) current - genre else current + genre
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(genres = updated).toSnapshot()
+    }
+
+    fun onPlatformToggled(platform: PlatformFamily) {
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        val current = currentFilters.platforms
+        val updated = if (current.contains(platform)) current - platform else current + platform
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(platforms = updated).toSnapshot()
+    }
+
+    fun onReleaseYearSelected(year: ReleaseYearFilter) {
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(releaseYear = year).toSnapshot()
+    }
+
+    fun onMinRatingSelected(rating: MinRatingFilter) {
+        val currentFilters = filterSnapshot.value.toDomainFilters()
+        savedStateHandle[KEY_FILTERS] = currentFilters.copy(minRating = rating).toSnapshot()
+    }
+    fun onApplyFilters(newFilters: SearchFilters) {
+        savedStateHandle[KEY_FILTERS] = newFilters.toSnapshot()
+    }
+
+    fun onResetFilters() {
+        savedStateHandle[KEY_FILTERS] = SearchFilters.Empty.toSnapshot()
+    }
+
+    fun onQuickPresetSelected(preset: QuickSearchPreset) {
+        when (preset) {
+            is QuickSearchPreset.Genre -> {
+                savedStateHandle[KEY_FILTERS] = SearchFilters(genres = setOf(preset.name)).toSnapshot()
+            }
+            is QuickSearchPreset.Platform -> {
+                savedStateHandle[KEY_FILTERS] = SearchFilters(platforms = setOf(preset.family)).toSnapshot()
+            }
+            QuickSearchPreset.Rating80 -> {
+                savedStateHandle[KEY_FILTERS] = SearchFilters(minRating = MinRatingFilter.R80).toSnapshot()
+            }
+        }
+    }
+
 
     fun onUserMessageShown() {
         userMessageRes.value = null
@@ -258,36 +389,56 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+
+    private data class SearchStateBundle(
+        val query: String,
+        val filters: SearchFilters,
+        val recentQueries: List<String>,
+        val searchActive: Boolean,
+        val queryValidation: SearchInputValidation,
+    )
     private data class LibraryUi(
         val snapshot: LibrarySnapshot,
         val editingGameId: Long?,
         val isSubmitting: Boolean,
     )
 
-    private data class SearchRequest(
-        val query: String,
+    private data class SearchCommand(
+        val domainQuery: GameSearchQuery,
         val shouldDebounce: Boolean,
     )
 
+    private fun clockYear(): Int = Year.now(clock).value
 
-    private sealed interface RefreshStatus {
-        data object Loading : RefreshStatus
-        data class Completed(val result: AppResult<Unit>) : RefreshStatus
+    /**
+     * Bounds the raw query stored in [SavedStateHandle] without changing the searched title.
+     * Truncating before validation would silently search for a shortened title: instead a raw
+     * input is truncated only when its canonical form is provably over the limit (one code point
+     * beyond it, so validation surfaces TOO_LONG). A decomposed-but-contract-valid title (e.g.
+     * 100 composed characters spelled with combining marks) is stored intact, exactly as the
+     * user typed it, and the BFF canonicalizes it.
+     */
+    private fun boundedQuery(raw: String): String {
+        if (raw.codePointCount(0, raw.length) <= MAX_QUERY_LENGTH) return raw
+        val canonical = SearchInputPolicy.canonicalize(raw)
+        if (canonical != null && canonical.codePointCount(0, canonical.length) <= MAX_QUERY_LENGTH) {
+            return raw
+        }
+        // Truncate the NFC form, never the raw string: cutting a decomposed input mid-combining-mark
+        // would NFC-collapse into a valid, silently shortened search instead of surfacing TOO_LONG.
+        return Normalizer.normalize(raw, Normalizer.Form.NFC).takeCodePoints(MAX_QUERY_LENGTH + 1)
     }
 
-    private sealed interface SearchResult {
-        data object Idle : SearchResult
-        data class Loading(val query: String) : SearchResult
-        data class Success(val query: String, val games: List<Game>) : SearchResult
-        data class Empty(val query: String) : SearchResult
-        data class Error(val query: String, val error: AppError) : SearchResult
-    }
 
     companion object {
         const val KEY_QUERY = "search_query"
+        const val KEY_FILTERS = "search_filters"
+
         const val SEARCH_DEBOUNCE_MILLIS = 300L
-        const val SEARCH_LIMIT = 30
+        const val FILTER_DEBOUNCE_MILLIS = 150L
+        const val PAGE_SIZE = 20
         const val MAX_QUERY_LENGTH = 100
+        const val MAX_RECENT_QUERIES = 10
 
         private fun String.takeCodePoints(maxCodePoints: Int): String {
             if (codePointCount(0, length) <= maxCodePoints) return this

@@ -4,6 +4,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.model.SearchInputPolicy
 import io.github.typenil.gametracker.core.network.model.RecommendationCandidateDto
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -50,6 +51,9 @@ class FakeBffDataSource @Inject constructor(
         } catch (e: kotlinx.serialization.SerializationException) {
             throw IllegalStateException("Failed to parse fixtures/v1/game-details.json fixture: ${e.message}", e)
         }
+    }
+    private val mockDetailsById: Map<Long, GameDetailsDto> by lazy {
+        mockDetails.associateBy(GameDetailsDto::id)
     }
     private val trendingIds: List<Long> by lazy {
         readIds("fixtures/v1/trending.json")
@@ -102,21 +106,80 @@ class FakeBffDataSource @Inject constructor(
     }
 
 
-    override suspend fun searchGames(query: String, limit: Int, offset: Int): List<GameDto> {
-        if (query.isBlank()) {
-            throw IllegalArgumentException("Search query 'q' parameter cannot be blank")
+    override suspend fun searchGames(
+        query: String?,
+        genres: List<String>,
+        platforms: List<String>,
+        minRating: Int?,
+        minYear: Int?,
+        maxYear: Int?,
+        sort: String?,
+        limit: Int,
+        offset: Int,
+    ): List<GameDto> {
+        // The live BFF rejects forbidden characters with HTTP 400; the fake must throw instead of
+        // silently canonicalizing them, so demo-flavor contract tests cannot pass inputs that
+        // would fail in production. Any value actually supplied is validated (control-only text
+        // included); omitting blank text is a transport concern handled by the repository.
+        val safeQuery = query?.let(SearchInputPolicy::validateOrThrow)
+        val hasFilters = genres.isNotEmpty() || platforms.isNotEmpty() ||
+            minRating != null || minYear != null || maxYear != null
+        if (safeQuery == null && !hasFilters) {
+            throw IllegalArgumentException("Search requires 'q' or at least one filter")
         }
-        validatePagination(limit, offset)
+        val safeLimit = normalizeLimit(limit)
+        val safeOffset = normalizeOffset(offset)
 
-        val trimmed = query.trim()
-        val filtered = mockGames.filter {
-            it.name.contains(trimmed, ignoreCase = true) ||
-                it.genres.any { genre -> genre.contains(trimmed, ignoreCase = true) }
+        var filtered = mockGames.filter { game ->
+            val matchesQuery = safeQuery == null ||
+                SearchInputPolicy.canonicalize(game.name).orEmpty().contains(safeQuery)
+            val details = mockDetailsById[game.id]
+            val gameGenres = details?.genres ?: game.genres
+            val gameThemes = details?.themes.orEmpty()
+            val matchesGenres = genres.isEmpty() ||
+                genres.all { requestedTag ->
+                    gameGenres.any { it.equals(requestedTag, ignoreCase = true) } ||
+                        gameThemes.any { it.equals(requestedTag, ignoreCase = true) }
+                }
+            val matchesPlatforms = platforms.isEmpty() ||
+                platforms.any { requestedPlatform ->
+                    val canonicalRequested = if (requestedPlatform.equals("PC (Microsoft Windows)", ignoreCase = true)) {
+                        "PC"
+                    } else {
+                        requestedPlatform
+                    }
+                    game.platforms.any {
+                        it.equals(canonicalRequested, ignoreCase = true) ||
+                            it.contains(canonicalRequested, ignoreCase = true) ||
+                            canonicalRequested.contains(it, ignoreCase = true)
+                    }
+                }
+            val ratingsMin = minRating?.coerceIn(0, 100)
+            val matchesRating = ratingsMin == null || (game.rating ?: 0.0) >= ratingsMin
+            val gameYear = game.releaseDateEpochSeconds?.let {
+                java.time.Instant.ofEpochSecond(it).atOffset(java.time.ZoneOffset.UTC).year
+            }
+            val matchesMinYear = minYear == null || (gameYear != null && gameYear >= minYear)
+            val matchesMaxYear = maxYear == null || (gameYear != null && gameYear <= maxYear)
+
+            game.coverUrl != null && matchesQuery && matchesGenres && matchesPlatforms && matchesRating &&
+                matchesMinYear && matchesMaxYear
         }
-        if (offset >= filtered.size) return emptyList()
-        return filtered.drop(offset).take(limit.coerceIn(1, MAX_LIMIT))
+
+        if (safeQuery == null && sort != null) {
+            filtered = when (sort.lowercase()) {
+                "rating", "rating_desc" -> filtered.sortedByDescending { it.rating ?: -1.0 }
+                "first_release_date", "first_release_date_desc" ->
+                    filtered.sortedByDescending { it.releaseDateEpochSeconds ?: Long.MIN_VALUE }
+                "first_release_date_asc" -> filtered.sortedBy { it.releaseDateEpochSeconds ?: Long.MAX_VALUE }
+                "name", "name_asc" -> filtered.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
+                else -> filtered
+            }
+        }
+
+        if (safeOffset >= filtered.size) return emptyList()
+        return filtered.drop(safeOffset).take(safeLimit)
     }
-
     override suspend fun getGameDetails(id: Long): GameDetailsDto {
         if (id <= 0) {
             throw IllegalArgumentException("Game ID must be a positive integer")
@@ -242,5 +305,10 @@ class FakeBffDataSource @Inject constructor(
 
     companion object {
         private const val MAX_LIMIT = 30
+        private const val MAX_OFFSET = 1_000
+
+        internal fun normalizeLimit(raw: Int): Int = raw.coerceIn(1, MAX_LIMIT)
+
+        internal fun normalizeOffset(raw: Int): Int = raw.coerceIn(0, MAX_OFFSET)
     }
 }

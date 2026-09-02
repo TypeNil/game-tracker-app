@@ -47,9 +47,30 @@ interface GameRepository {
     ): AppResult<RecommendationCandidatePage> = AppResult.Success(
         RecommendationCandidatePage(emptyList(), null, true),
     )
-    fun getSearchResultsFlow(query: String): Flow<List<Game>>
-    fun getPagedSearchResults(query: String, pageSize: Int = 20): Flow<PagingData<Game>>
-    suspend fun searchGames(query: String, limit: Int = 20, offset: Int = 0): AppResult<Unit>
+    fun getSearchResultsFlow(query: io.github.typenil.gametracker.core.model.GameSearchQuery): Flow<List<Game>>
+    fun getSearchResultsFlow(query: String): Flow<List<Game>> =
+        getSearchResultsFlow(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query))
+    fun getPagedSearchResults(
+        query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+        pageSize: Int = 20,
+    ): Flow<PagingData<Game>>
+    fun getPagedSearchResults(query: String, pageSize: Int = 20): Flow<PagingData<Game>> =
+        getPagedSearchResults(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), pageSize)
+    /**
+     * Records a user-issued search in the recent-queries history (normalized, trimmed to a bound).
+     * Blank queries are user intent without a searchable term and are never recorded.
+     */
+    suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit>
+    suspend fun searchGames(
+        query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+        limit: Int = 20,
+        force: Boolean = false,
+    ): AppResult<Unit>
+    suspend fun searchGames(query: String, limit: Int = 20, force: Boolean = false): AppResult<Unit> =
+        searchGames(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), limit, force)
+    fun getRecentSearchQueriesFlow(limit: Int = 10): Flow<List<String>>
+    suspend fun deleteSearchQuery(query: String): AppResult<Unit>
+    suspend fun clearSearchHistory(): AppResult<Unit>
     fun getGameDetailsFlow(id: Long): Flow<GameDetails?>
     fun isGameDetailsHydratedFlow(id: Long): Flow<Boolean>
     suspend fun refreshGameDetails(id: Long, force: Boolean = false): AppResult<Unit>

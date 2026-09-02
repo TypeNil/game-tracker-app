@@ -52,6 +52,27 @@ interface SearchDao {
     @Query(DELETE_SEARCH_RESULTS_FROM_POSITION)
     suspend fun deleteSearchResultsFromPosition(query: String, fromPosition: Int): Int
 
+    @Query("SELECT gameId FROM search_results WHERE query = :query")
+    suspend fun getSearchResultGameIds(query: String): List<Long>
+
+    /**
+     * Dense = positions are exactly 0..COUNT-1 with no holes. Legacy caches written while
+     * positions were taken from the server offset (with intra-page distinctBy compaction)
+     * can be sparse; appending dense ordinals onto them would violate the unique
+     * (query, position) index, so a dense window is a precondition for cache reuse.
+     */
+    @Query(
+        """
+        SELECT CASE
+            WHEN COUNT(*) = 0 THEN 1
+            WHEN MIN(position) = 0 AND MAX(position) = COUNT(*) - 1 THEN 1
+            ELSE 0
+        END
+        FROM search_results WHERE query = :query
+        """
+    )
+    suspend fun hasDenseSearchResultPositions(query: String): Boolean
+
     @Query("SELECT COUNT(*) FROM search_results WHERE query = :query")
     suspend fun countSearchResultsForQuery(query: String): Int
 

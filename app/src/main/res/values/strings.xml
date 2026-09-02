@@ -25,14 +25,78 @@
     <string name="error_generic">An error occurred while communicating with the server.</string>
     <string name="error_serialization">Failed to process data from the server.</string>
     <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+    <string name="error_load_more_failed">Could not load more results.</string>
+    <string name="error_history_save_failed">Could not save recent searches.</string>
     <string name="error_refresh_failed">Could not refresh catalog. Showing cached data.</string>
     <string name="search_hint">Search games by title…</string>
     <string name="search_clear_desc">Clear search query</string>
     <string name="search_idle_title">Search Video Games</string>
-    <string name="search_idle_subtitle">Type a title above to search through the IGDB catalog</string>
+    <string name="search_idle_subtitle">Type a title above or browse with filters below</string>
     <string name="search_empty_results_format">No games found for \"%1$s\"</string>
     <string name="search_empty_action">Clear search</string>
     <string name="search_loading_games">Searching games…</string>
+
+    <!-- Search Sorting -->
+    <string name="search_sort_relevance">Relevance</string>
+    <string name="search_sort_rating_desc">Highest Rated</string>
+    <string name="search_sort_date_desc">Newest First</string>
+    <string name="search_sort_date_asc">Oldest First</string>
+    <string name="search_sort_name_asc">Title (A–Z)</string>
+
+    <!-- Search Filter Options -->
+    <string name="search_filter_year_all">All Time</string>
+    <string name="search_filter_year_this_year">This Year</string>
+    <string name="search_filter_year_last_year">Last Year</string>
+    <string name="search_filter_year_last_3">Last 3 Years</string>
+    <string name="search_filter_year_2010s">2010s</string>
+    <string name="search_filter_year_retro">Retro (&lt;2010)</string>
+
+    <string name="search_filter_rating_any">Any Rating</string>
+    <string name="search_filter_rating_70">70+ Good</string>
+    <string name="search_filter_rating_80">80+ Great</string>
+    <string name="search_filter_rating_90">90+ Masterpiece</string>
+    <string name="search_filter_rating_70_suffix">Good</string>
+    <string name="search_filter_rating_80_suffix">Great</string>
+    <string name="search_filter_rating_90_suffix">Masterpiece</string>
+    <string name="search_input_error_unsupported_chars">Quotes and backslashes aren\'t supported in search</string>
+    <string name="search_input_error_invisible_chars">Invisible characters aren\'t supported in search</string>
+    <string name="search_input_error_too_long">Search is limited to 100 characters</string>
+
+    <!-- Search UI & Accessibility -->
+    <string name="search_filters_title">Filters</string>
+    <string name="search_filters_count_format">Filters (%1$d)</string>
+    <string name="search_filters_button_desc">Open search filters</string>
+    <string name="search_sort_button_desc">Change sorting, current: %1$s</string>
+    <string name="search_filter_reset">Reset</string>
+    <string name="search_filter_reset_all">Reset all filters</string>
+    <string name="search_filter_apply">Apply</string>
+    <plurals name="search_filter_apply_count">
+        <item quantity="one">Apply (%d filter)</item>
+        <item quantity="other">Apply (%d filters)</item>
+    </plurals>
+    <string name="search_filter_section_sort">Sort By</string>
+    <string name="search_filter_section_genres">Genres</string>
+    <string name="search_filter_genres_show_all">Show all (%1$d)</string>
+    <string name="search_filter_genres_show_less">Show less</string>
+    <string name="search_filter_section_platforms">Platforms</string>
+    <string name="search_filter_section_year">Release Year</string>
+    <string name="search_filter_section_rating">Minimum Rating</string>
+    <string name="search_remove_filter_desc">Remove %1$s filter</string>
+    <!-- Terminal counts must stay neutral: endOfPaginationReached cannot distinguish a
+         truly exhausted result set from the BFF offset ceiling. -->
+    <plurals name="search_results_loaded_count">
+        <item quantity="one">Showing %1$d loaded result</item>
+        <item quantity="other">Showing %1$d loaded results</item>
+    </plurals>
+    <string name="search_results_count_partial_format">Showing first %1$d results</string>
+    <string name="search_recent_title">Recent Searches</string>
+    <string name="search_recent_clear_all">Clear all</string>
+    <string name="search_recent_remove_desc">Remove %1$s from recent searches</string>
+    <string name="error_history_delete_failed">Failed to delete search history</string>
+    <string name="search_presets_title">Quick Presets</string>
+    <string name="search_empty_filters_title">No games match selected filters</string>
+    <string name="search_empty_filters_subtitle">Try clearing some filters or changing your criteria</string>
+    <string name="search_empty_filters_action">Reset filters</string>
     <string name="details_title">Game Details</string>
     <string name="details_date_unknown">TBA</string>
     <string name="error_not_found">Game not found.</string>

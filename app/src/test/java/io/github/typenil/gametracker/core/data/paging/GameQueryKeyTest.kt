@@ -19,24 +19,57 @@ class GameQueryKeyTest {
         val keyComposed = GameQueryKey.search(composed)
         val keyDecomposed = GameQueryKey.search(decomposed)
 
-        assertEquals("q:é", keyComposed)
-        assertEquals("q:é", keyDecomposed)
+        org.junit.Assert.assertTrue(keyComposed.startsWith("search:v3|q=1:é"))
+        org.junit.Assert.assertTrue(keyDecomposed.startsWith("search:v3|q=1:é"))
         assertEquals(keyComposed, keyDecomposed)
     }
 
     @Test
-    fun `Search produces clean key without pipes when sort and platform are omitted`() {
+    fun `Search produces clean versioned key`() {
         val key = GameQueryKey.search("  Cyberpunk 2077  ")
-        assertEquals("q:cyberpunk 2077", key)
+        org.junit.Assert.assertTrue(key.startsWith("search:v3|q=14:cyberpunk 2077"))
     }
 
     @Test
-    fun `Search includes sort and platform when provided`() {
-        val search = GameQueryKey.Search(
+    fun `Search includes filters in canonical key and ignores sort when query is present`() {
+        val searchWithQuery = GameQueryKey.Search(
             query = "Witcher",
-            sort = "RATING_DESC",
-            platform = 48
+            genres = listOf("Role-playing (RPG)", "Adventure"),
+            platforms = listOf("PC (Microsoft Windows)"),
+            minRating = 80,
+            minYear = 2020,
+            maxYear = 2024,
+            sort = "rating",
         )
-        assertEquals("q:witcher|sort=rating_desc|platform=48", search.key)
+        val expectedKey = "search:v3|q=7:witcher|genres=32:9:adventure18:role-playing (rpg)" +
+            "|platforms=25:22:pc (microsoft windows)|minRating=80|minYear=2020|maxYear=2024|sort="
+        assertEquals(expectedKey, searchWithQuery.key)
+    }
+
+    @Test
+    fun `Search includes sort in canonical key when query is blank`() {
+        val catalogSearch = GameQueryKey.Search(
+            query = "",
+            genres = listOf("RPG"),
+            sort = "rating",
+        )
+        assertEquals(
+            "search:v3|q=0:|genres=5:3:rpg|platforms=0:|minRating=|minYear=|maxYear=|sort=rating",
+            catalogSearch.key,
+        )
+    }
+
+    @Test
+    fun `Search cannot collide across embedded delimiters and query text`() {
+        val rawQueryWithInjectedGenre = GameQueryKey.Search(
+            query = "Witcher|genres=rpg",
+            genres = emptyList(),
+        )
+        val searchWithSeparateGenre = GameQueryKey.Search(
+            query = "Witcher",
+            genres = listOf("rpg"),
+        )
+
+        org.junit.Assert.assertNotEquals(rawQueryWithInjectedGenre.key, searchWithSeparateGenre.key)
     }
 }

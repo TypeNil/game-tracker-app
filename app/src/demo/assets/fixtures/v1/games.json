@@ -26,7 +26,7 @@
     "summary": "Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring. A vast world where open fields with a variety of situations and huge dungeons with complex and three-dimensional designs are seamlessly connected. Travel the Lands Between on foot or atop your spectral steed, overcome colossal bosses whose shadows stretch across golden erdtrees, and forge your own legend amid demigods warring over shattered shards of the Elden Ring. Master dual-wielding, magic, and stealth in a punishing but fair combat system that rewards every hard-won lesson.",
     "genres": [
       "Role-playing (RPG)",
-      "Action"
+      "Adventure"
     ],
     "platforms": [
       "PC",
@@ -61,7 +61,6 @@
     "releaseDateEpochSeconds": 1667952000,
     "summary": "Kratos and Atreus must journey to each of the Nine Realms in search of answers.",
     "genres": [
-      "Action",
       "Adventure",
       "Hack and slash/Beat 'em up"
     ],
@@ -80,8 +79,7 @@
     "summary": "Cyberpunk 2077 is an open-world, action-adventure RPG set in Night City.",
     "genres": [
       "Role-playing (RPG)",
-      "Shooter",
-      "Action"
+      "Shooter"
     ],
     "platforms": [
       "PC",
@@ -98,7 +96,6 @@
     "summary": "An epic adventure across the land and skies of Hyrule awaits in Tears of the Kingdom.",
     "genres": [
       "Adventure",
-      "Action",
       "Puzzle"
     ],
     "platforms": [
@@ -133,8 +130,7 @@
     "summary": "Joel is hired to smuggle 14-year-old Ellie out of a military quarantine zone.",
     "genres": [
       "Shooter",
-      "Adventure",
-      "Action"
+      "Adventure"
     ],
     "platforms": [
       "PlayStation 5",

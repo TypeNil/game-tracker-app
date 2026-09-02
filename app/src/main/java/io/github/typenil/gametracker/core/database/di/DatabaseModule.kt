@@ -15,6 +15,7 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.dao.NotificationEventDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
+import io.github.typenil.gametracker.core.database.dao.SearchHistoryDao
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations
 import io.github.typenil.gametracker.core.database.transaction.RoomTransactionRunner
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
@@ -44,6 +45,7 @@ abstract class DatabaseModule {
                     DatabaseMigrations.MIGRATION_2_3,
                     DatabaseMigrations.MIGRATION_3_4,
                     DatabaseMigrations.MIGRATION_4_5,
+                    DatabaseMigrations.MIGRATION_5_6,
                 )
                 .build()
         }
@@ -61,6 +63,11 @@ abstract class DatabaseModule {
         @Provides
         fun provideSearchDao(database: GameTrackerDatabase): SearchDao {
             return database.searchDao()
+        }
+
+        @Provides
+        fun provideSearchHistoryDao(database: GameTrackerDatabase): SearchHistoryDao {
+            return database.searchHistoryDao()
         }
 
         @Provides

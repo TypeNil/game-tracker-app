@@ -1,0 +1,203 @@
+{
+  "normalization": [
+    {
+      "id": "trim-and-case",
+      "input": "  pOK\u00e9Mon  ",
+      "expected": "pok\u00e9mon"
+    },
+    {
+      "id": "nbsp-collapse",
+      "input": "Grand\u00a0Theft",
+      "expected": "grand theft"
+    },
+    {
+      "id": "nfc-composed",
+      "input": "Ragnar\u00f6k",
+      "expected": "ragnar\u00f6k"
+    },
+    {
+      "id": "nfc-decomposed",
+      "input": "Ragnaro\u0308k",
+      "expected": "ragnar\u00f6k"
+    },
+    {
+      "id": "mixed-space-run-collapse",
+      "input": "Grand \u00a0\u2009 Theft",
+      "expected": "grand theft"
+    },
+    {
+      "id": "double-ascii-space",
+      "input": "Grand  Theft",
+      "expected": "grand theft"
+    },
+    {
+      "id": "zwj-stripped",
+      "input": "DOOM\u200d",
+      "expected": "doom"
+    },
+    {
+      "id": "vs-attached-survives",
+      "input": "Zelda \u2694\ufe0f",
+      "expected": "zelda \u2694\ufe0f"
+    }
+  ],
+  "accepted": [
+    {
+      "id": "parenthesized-title",
+      "input": "DOOM (2016)"
+    },
+    {
+      "id": "slash-title",
+      "input": "Pok\u00e9mon Sword/Shield"
+    },
+    {
+      "id": "trademark",
+      "input": "NieR\u2122"
+    },
+    {
+      "id": "brackets",
+      "input": "Game [Demo]"
+    },
+    {
+      "id": "emoji",
+      "input": "Zelda \u2694\ufe0f"
+    },
+    {
+      "id": "pipe",
+      "input": "Metal Gear | Solid"
+    },
+    {
+      "id": "compound-emoji",
+      "input": "Family \ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67"
+    },
+    {
+      "id": "padded-101-canon",
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
+    },
+    {
+      "id": "decomposed-100-e",
+      "input": "e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301e\u0301"
+    },
+    {
+      "id": "zwj-letter-adjacent",
+      "input": "DOOM\u200d"
+    }
+  ],
+  "rejected": [
+    {
+      "id": "control-newline",
+      "input": "Witcher\n3"
+    },
+    {
+      "id": "control-tab",
+      "input": "Cyberpunk\t2077"
+    },
+    {
+      "id": "leading-control-newline",
+      "input": "\nDOOM"
+    },
+    {
+      "id": "trailing-control-tab",
+      "input": "DOOM\t"
+    },
+    {
+      "id": "quote",
+      "input": "Grand \"Theft\" Auto"
+    },
+    {
+      "id": "backslash",
+      "input": "Witcher\\"
+    },
+    {
+      "id": "zwsp",
+      "input": "zero\u200bwidth"
+    },
+    {
+      "id": "zwnj",
+      "input": "non\u200cjoiner"
+    },
+    {
+      "id": "bidi-override",
+      "input": "bidi\u202eembed"
+    },
+    {
+      "id": "bom-inside",
+      "input": "bom\ufeffinside"
+    },
+    {
+      "id": "too-long",
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "id": "word-joiner",
+      "input": "DOOM\u2060"
+    },
+    {
+      "id": "arabic-letter-mark",
+      "input": "\u061cDOOM"
+    },
+    {
+      "id": "standalone-zwj",
+      "input": "\u200d"
+    },
+    {
+      "id": "standalone-variation-selector",
+      "input": "\ufe0f"
+    },
+    {
+      "id": "standalone-supplementary-selector",
+      "input": "\udb40\udd00"
+    }
+  ],
+  "pagination": [
+    {
+      "id": "zero-limit-negative-offset",
+      "limit": 0,
+      "offset": -5,
+      "expectedLimit": 1,
+      "expectedOffset": 0
+    },
+    {
+      "id": "over-limit",
+      "limit": 500,
+      "offset": 2000,
+      "expectedLimit": 30,
+      "expectedOffset": 1000
+    },
+    {
+      "id": "mid-range",
+      "limit": 25,
+      "offset": 50,
+      "expectedLimit": 25,
+      "expectedOffset": 50
+    }
+  ],
+  "minRating": [
+    {
+      "id": "over-100",
+      "value": 900,
+      "expected": 100
+    },
+    {
+      "id": "negative",
+      "value": -10,
+      "expected": 0
+    },
+    {
+      "id": "mid",
+      "value": 85,
+      "expected": 85
+    }
+  ],
+  "semantics": {
+    "genresAnd": [
+      "Role-playing (RPG)",
+      "Action"
+    ],
+    "platformsOr": [
+      "PC (Microsoft Windows)",
+      "Nintendo Switch"
+    ],
+    "coverPolicy": "textSearchExcludesCoverless"
+  }
+}
