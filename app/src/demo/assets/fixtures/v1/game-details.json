@@ -1867,30 +1867,24 @@
   },
   {
     "id": 900007,
-    "name": "Minecraft",
-    "coverUrl": "file:///android_asset/covers/cover_minecraft.jpg",
-    "rating": 88.0,
-    "releaseDateEpochSeconds": 1321574400,
-    "summary": "Minecraft focuses on allowing the player to explore, interact with, and modify a dynamically generated map made of one-cubic-meter-sized blocks. Explore infinite worlds and build everything from simple homes to grand castles.",
+    "name": "Phantom Blade 0",
+    "coverUrl": "file:///android_asset/covers/cover_phantom_blade.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Framed for the death of his master and left with a ruined heart, Soul has sixty-six days to live. Alone and hunted by former allies, he embarks on a relentless quest for truth in this dark martial arts RPG.",
     "genres": [
-      "Adventure",
-      "Simulator",
-      "Indie"
+      "Role-playing (RPG)",
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 4",
-      "Xbox One",
-      "Nintendo Switch",
-      "Android",
-      "iOS"
+      "PlayStation 5"
     ],
-    "url": "https://www.igdb.com/games/minecraft-java-edition",
+    "url": "https://www.igdb.com/games/phantom-blade-0",
     "totalRating": 89.0,
     "totalRatingCount": 500,
     "themes": [
-      "Sandbox",
-      "Survival",
+      "Action",
       "Open world"
     ],
     "gameModes": [
@@ -1900,145 +1894,75 @@
     ],
     "releaseDates": [
       {
+        "year": 2026,
         "platform": "PC",
-        "dateEpochSeconds": 1321574400,
-        "year": 2011
+        "dateEpochSeconds": null
       },
       {
+        "year": 2026,
         "platform": "PlayStation 5",
-        "dateEpochSeconds": 1605139200,
-        "year": 2020
-      },
-      {
-        "platform": "PlayStation 4",
-        "dateEpochSeconds": 1409788800,
-        "year": 2014
-      },
-      {
-        "platform": "PlayStation 3",
-        "dateEpochSeconds": 1387238400,
-        "year": 2013
-      },
-      {
-        "platform": "Xbox Series X|S",
-        "dateEpochSeconds": 1604966400,
-        "year": 2020
-      },
-      {
-        "platform": "Xbox One",
-        "dateEpochSeconds": 1409875200,
-        "year": 2014
-      },
-      {
-        "platform": "Xbox 360",
-        "dateEpochSeconds": 1336521600,
-        "year": 2012
-      },
-      {
-        "platform": "Nintendo Switch",
-        "dateEpochSeconds": 1494460800,
-        "year": 2017
-      },
-      {
-        "platform": "Wii U",
-        "dateEpochSeconds": 1450310400,
-        "year": 2015
-      },
-      {
-        "platform": "Nintendo 3DS",
-        "dateEpochSeconds": 1505260800,
-        "year": 2017
-      },
-      {
-        "platform": "PlayStation Vita",
-        "dateEpochSeconds": 1413244800,
-        "year": 2014
-      },
-      {
-        "platform": "macOS",
-        "dateEpochSeconds": 1321574400,
-        "year": 2011
-      },
-      {
-        "platform": "Linux",
-        "dateEpochSeconds": 1321574400,
-        "year": 2011
-      },
-      {
-        "platform": "Android",
-        "dateEpochSeconds": 1318723200,
-        "year": 2011
-      },
-      {
-        "platform": "iOS",
-        "dateEpochSeconds": 1321574400,
-        "year": 2011
-      },
-      {
-        "platform": "Meta Quest 3",
-        "dateEpochSeconds": 1321574400,
-        "year": 2011
+        "dateEpochSeconds": null
       }
     ],
     "companies": [
       {
-        "name": "Mojang Studios",
+        "name": "S-Game",
         "isDeveloper": true,
         "isPublisher": true
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/shot_minecraft_1.jpg",
-      "file:///android_asset/screenshots/shot_minecraft_2.jpg"
+      "file:///android_asset/screenshots/shot_phantom_blade_1.jpg"
     ],
     "videos": [
       {
-        "videoId": "MmB9b5njVbA",
-        "name": "Official Trailer"
+        "videoId": "pueXBkFMK7Q",
+        "name": "Announcement Trailer"
       }
     ],
     "similarGames": [
       {
-        "id": 119388,
-        "name": "The Legend of Zelda: Tears of the Kingdom",
-        "coverUrl": "file:///android_asset/covers/cover_zelda_totk.jpg",
-        "totalRating": 95.5,
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": 95.18,
         "genres": [
-          "Adventure",
-          "Role-playing (RPG)"
+          "Role-playing (RPG)",
+          "Adventure"
         ],
         "platforms": [
-          "Nintendo Switch"
+          "PC",
+          "PlayStation 5",
+          "Xbox Series X|S"
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/art_minecraft.jpg",
-    "timeToBeatMainSeconds": 144000,
-    "timeToBeatCompleteSeconds": 360000
+    "artworkUrl": "file:///android_asset/screenshots/art_phantom_blade.jpg",
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": null
   },
   {
     "id": 900008,
-    "name": "Call of Duty: Warzone",
-    "coverUrl": "file:///android_asset/covers/cover_cod_warzone.jpg",
-    "rating": 79.0,
-    "releaseDateEpochSeconds": 1636070400,
-    "summary": "Call of Duty: Warzone is a free-to-play battle royale video game. Join forces with your friends and drop into a massive combat arena with multiple game modes and action-packed gunplay.",
+    "name": "The Elder Scrolls VI",
+    "coverUrl": "file:///android_asset/covers/cover_tes6.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "The Elder Scrolls VI is an upcoming single-player fantasy action RPG from Bethesda Game Studios, serving as the next major entry in the legendary Elder Scrolls franchise.",
     "genres": [
-      "Shooter"
+      "Role-playing (RPG)",
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 4",
-      "PlayStation 5",
-      "Xbox One",
       "Xbox Series X|S"
     ],
-    "url": "https://www.igdb.com/games/call-of-duty-warzone--2",
+    "url": "https://www.igdb.com/games/the-elder-scrolls-vi",
     "totalRating": 75.0,
     "totalRatingCount": 3400,
     "themes": [
+      "Fantasy",
       "Action",
-      "Warfare"
+      "Open world"
     ],
     "gameModes": [
       "Single player",
@@ -2050,67 +1974,57 @@
     ],
     "releaseDates": [
       {
+        "year": 2027,
         "platform": "PC",
-        "dateEpochSeconds": 1636070400,
-        "year": 2021
+        "dateEpochSeconds": null
       },
       {
-        "platform": "PlayStation 5",
-        "dateEpochSeconds": 1636070400,
-        "year": 2021
-      },
-      {
+        "year": 2027,
         "platform": "Xbox Series X|S",
-        "dateEpochSeconds": 1636070400,
-        "year": 2021
+        "dateEpochSeconds": null
       }
     ],
     "companies": [
       {
-        "name": "Infinity Ward",
+        "name": "Bethesda Game Studios",
         "isDeveloper": true,
         "isPublisher": false
       },
       {
-        "name": "Raven Software",
-        "isDeveloper": true,
-        "isPublisher": false
-      },
-      {
-        "name": "Activision",
+        "name": "Bethesda Softworks",
         "isDeveloper": false,
         "isPublisher": true
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/shot_cod_warzone_1.jpg",
-      "file:///android_asset/screenshots/shot_cod_warzone_2.jpg"
+      "file:///android_asset/screenshots/shot_tes6_1.jpg"
     ],
     "videos": [
       {
-        "videoId": "2NTAi7uP3LM",
-        "name": "Official Trailer"
+        "videoId": "OkFdqqyI8y4",
+        "name": "Announcement Trailer"
       }
     ],
     "similarGames": [
       {
-        "id": 112875,
-        "name": "God of War Ragnarök",
-        "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
-        "totalRating": 93.7,
+        "id": 119133,
+        "name": "Elden Ring",
+        "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
+        "totalRating": 95.18,
         "genres": [
-          "Hack and slash/Beat 'em up",
+          "Role-playing (RPG)",
           "Adventure"
         ],
         "platforms": [
+          "PC",
           "PlayStation 5",
-          "PlayStation 4"
+          "Xbox Series X|S"
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/art_cod_warzone.jpg",
-    "timeToBeatMainSeconds": 54000,
-    "timeToBeatCompleteSeconds": 180000
+    "artworkUrl": "file:///android_asset/screenshots/art_tes6.jpg",
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": null
   },
   {
     "id": 900009,
@@ -2172,31 +2086,25 @@
   },
   {
     "id": 900010,
-    "name": "No Man's Sky",
-    "coverUrl": "file:///android_asset/covers/cover_nomanssky.jpg",
-    "rating": 84.0,
-    "releaseDateEpochSeconds": 1672531200,
-    "summary": "No Man's Sky is an action-adventure survival game set in an infinite procedurally generated universe. Explore uncharted planets, discover strange alien lifeforms, trade, fight, and survive across the stars.",
+    "name": "Marvel's Wolverine",
+    "coverUrl": "file:///android_asset/covers/cover_wolverine.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Marvel's Wolverine is an upcoming single-player action-adventure game developed by Insomniac Games in collaboration with Marvel Games and PlayStation Studios.",
     "genres": [
       "Action",
-      "Adventure",
-      "Simulator"
+      "Adventure"
     ],
     "platforms": [
-      "PC",
-      "PlayStation 4",
-      "PlayStation 5",
-      "Xbox One",
-      "Xbox Series X|S",
-      "Nintendo Switch"
+      "PlayStation 5"
     ],
-    "url": "https://www.igdb.com/games/no-man-s-sky",
+    "url": "https://www.igdb.com/games/marvel-s-wolverine",
     "totalRating": 83.0,
     "totalRatingCount": 88,
     "themes": [
+      "Action",
       "Science fiction",
-      "Survival",
-      "Open world"
+      "Superheroes"
     ],
     "gameModes": [
       "Single player",
@@ -2204,79 +2112,73 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC",
-        "dateEpochSeconds": 1672531200,
-        "year": 2023
-      },
-      {
+        "year": 2026,
         "platform": "PlayStation 5",
-        "dateEpochSeconds": 1672531200,
-        "year": 2023
-      },
-      {
-        "platform": "Xbox Series X|S",
-        "dateEpochSeconds": 1672531200,
-        "year": 2023
+        "dateEpochSeconds": null
       }
     ],
     "companies": [
       {
-        "name": "Hello Games",
+        "name": "Insomniac Games",
         "isDeveloper": true,
+        "isPublisher": false
+      },
+      {
+        "name": "Sony Interactive Entertainment",
+        "isDeveloper": false,
         "isPublisher": true
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/shot_nomanssky_1.jpg",
-      "file:///android_asset/screenshots/shot_nomanssky_2.jpg"
+      "file:///android_asset/screenshots/shot_wolverine_1.jpg"
     ],
     "videos": [
       {
-        "videoId": "D71cTM7hI_Y",
-        "name": "Official Trailer"
+        "videoId": "rJrqHyojaa4",
+        "name": "Announcement Trailer"
       }
     ],
     "similarGames": [
       {
-        "id": 204350,
-        "name": "The Last of Us Part I",
-        "coverUrl": "file:///android_asset/covers/cover_tlou.jpg",
-        "totalRating": 92.4,
+        "id": 112875,
+        "name": "God of War Ragnarök",
+        "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
+        "totalRating": 94.0,
         "genres": [
-          "Shooter",
+          "Action",
           "Adventure"
         ],
         "platforms": [
-          "PlayStation 5",
-          "PC"
+          "PlayStation 4",
+          "PlayStation 5"
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/art_nomanssky.jpg",
-    "timeToBeatMainSeconds": 72000,
-    "timeToBeatCompleteSeconds": 144000
+    "artworkUrl": "file:///android_asset/screenshots/art_wolverine.jpg",
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": null
   },
   {
     "id": 900011,
-    "name": "Dragon Age: Inquisition",
-    "coverUrl": "file:///android_asset/covers/cover_dragonage.jpg",
-    "rating": 91.0,
-    "releaseDateEpochSeconds": 1690848000,
-    "summary": "A cataclysmic event plunges the land of Thedas into turmoil. Dragons darken the sky, casting a shadow over a realm on the brink of chaos. Lead the Inquisition and hunt down the agents of darkness.",
+    "name": "Fable",
+    "coverUrl": "file:///android_asset/covers/cover_fable.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Become the Hero you want to be in an immersive open-world action RPG where each choice shapes your journey, reputation, and the fate of Albion. A fresh beginning for the legendary franchise.",
     "genres": [
       "Role-playing (RPG)",
       "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 4",
-      "Xbox One"
+      "Xbox Series X|S"
     ],
-    "url": "https://www.igdb.com/games/dragon-age-inquisition",
+    "url": "https://www.igdb.com/games/fable--1",
     "totalRating": 90.5,
     "totalRatingCount": 650,
     "themes": [
-      "Fantasy"
+      "Fantasy",
+      "Open world"
     ],
     "gameModes": [
       "Single player",
@@ -2284,41 +2186,35 @@
     ],
     "releaseDates": [
       {
-        "platform": "PC",
-        "dateEpochSeconds": 1690848000,
-        "year": 2023
-      },
-      {
-        "platform": "PlayStation 5",
-        "dateEpochSeconds": 1690848000,
-        "year": 2023
-      },
-      {
+        "year": 2026,
         "platform": "Xbox Series X|S",
-        "dateEpochSeconds": 1690848000,
-        "year": 2023
+        "dateEpochSeconds": null
+      },
+      {
+        "year": 2026,
+        "platform": "PC",
+        "dateEpochSeconds": null
       }
     ],
     "companies": [
       {
-        "name": "BioWare",
+        "name": "Playground Games",
         "isDeveloper": true,
         "isPublisher": false
       },
       {
-        "name": "Electronic Arts",
+        "name": "Xbox Game Studios",
         "isDeveloper": false,
         "isPublisher": true
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/shot_dragonage_1.jpg",
-      "file:///android_asset/screenshots/shot_dragonage_2.jpg"
+      "file:///android_asset/screenshots/shot_fable_1.jpg"
     ],
     "videos": [
       {
-        "videoId": "KUVwqbhEEGE",
-        "name": "Official Trailer"
+        "videoId": "oVkSZXPklQ4",
+        "name": "Announcement Trailer"
       }
     ],
     "similarGames": [
@@ -2326,11 +2222,10 @@
         "id": 119171,
         "name": "Baldur's Gate 3",
         "coverUrl": "file:///android_asset/covers/cover_bg3.jpg",
-        "totalRating": 96.1,
+        "totalRating": 96.0,
         "genres": [
           "Role-playing (RPG)",
-          "Strategy",
-          "Adventure"
+          "Strategy"
         ],
         "platforms": [
           "PC",
@@ -2339,9 +2234,9 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/art_dragonage.jpg",
-    "timeToBeatMainSeconds": 288000,
-    "timeToBeatCompleteSeconds": 540000
+    "artworkUrl": "file:///android_asset/screenshots/art_fable.jpg",
+    "timeToBeatMainSeconds": null,
+    "timeToBeatCompleteSeconds": null
   },
   {
     "id": 900012,

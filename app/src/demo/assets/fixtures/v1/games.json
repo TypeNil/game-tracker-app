@@ -275,40 +275,33 @@
   },
   {
     "id": 900007,
-    "name": "Minecraft",
-    "coverUrl": "file:///android_asset/covers/cover_minecraft.jpg",
-    "rating": 88.0,
-    "releaseDateEpochSeconds": 1321574400,
-    "summary": "Minecraft focuses on allowing the player to explore, interact with, and modify a dynamically generated map made of one-cubic-meter-sized blocks. Explore infinite worlds and build everything from simple homes to grand castles.",
+    "name": "Phantom Blade 0",
+    "coverUrl": "file:///android_asset/covers/cover_phantom_blade.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Framed for the death of his master and left with a ruined heart, Soul has sixty-six days to live. Alone and hunted by former allies, he embarks on a relentless quest for truth in this dark martial arts RPG.",
     "genres": [
-      "Adventure",
-      "Simulator",
-      "Indie"
+      "Role-playing (RPG)",
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 4",
-      "Xbox One",
-      "Nintendo Switch",
-      "Android",
-      "iOS"
+      "PlayStation 5"
     ]
   },
   {
     "id": 900008,
-    "name": "Call of Duty: Warzone",
-    "coverUrl": "file:///android_asset/covers/cover_cod_warzone.jpg",
-    "rating": 79.0,
-    "releaseDateEpochSeconds": 1636070400,
-    "summary": "Call of Duty: Warzone is a free-to-play battle royale video game. Join forces with your friends and drop into a massive combat arena with multiple game modes and action-packed gunplay.",
+    "name": "The Elder Scrolls VI",
+    "coverUrl": "file:///android_asset/covers/cover_tes6.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "The Elder Scrolls VI is an upcoming single-player fantasy action RPG from Bethesda Game Studios, serving as the next major entry in the legendary Elder Scrolls franchise.",
     "genres": [
-      "Shooter"
+      "Role-playing (RPG)",
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 4",
-      "PlayStation 5",
-      "Xbox One",
       "Xbox Series X|S"
     ]
   },
@@ -329,40 +322,33 @@
   },
   {
     "id": 900010,
-    "name": "No Man's Sky",
-    "coverUrl": "file:///android_asset/covers/cover_nomanssky.jpg",
-    "rating": 84.0,
-    "releaseDateEpochSeconds": 1672531200,
-    "summary": "No Man's Sky is an action-adventure survival game set in an infinite procedurally generated universe. Explore uncharted planets, discover strange alien lifeforms, trade, fight, and survive across the stars.",
+    "name": "Marvel's Wolverine",
+    "coverUrl": "file:///android_asset/covers/cover_wolverine.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Marvel's Wolverine is an upcoming single-player action-adventure game developed by Insomniac Games in collaboration with Marvel Games and PlayStation Studios.",
     "genres": [
       "Action",
-      "Adventure",
-      "Simulator"
+      "Adventure"
     ],
     "platforms": [
-      "PC",
-      "PlayStation 4",
-      "PlayStation 5",
-      "Xbox One",
-      "Xbox Series X|S",
-      "Nintendo Switch"
+      "PlayStation 5"
     ]
   },
   {
     "id": 900011,
-    "name": "Dragon Age: Inquisition",
-    "coverUrl": "file:///android_asset/covers/cover_dragonage.jpg",
-    "rating": 91.0,
-    "releaseDateEpochSeconds": 1690848000,
-    "summary": "A cataclysmic event plunges the land of Thedas into turmoil. Dragons darken the sky, casting a shadow over a realm on the brink of chaos. Lead the Inquisition and hunt down the agents of darkness.",
+    "name": "Fable",
+    "coverUrl": "file:///android_asset/covers/cover_fable.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Become the Hero you want to be in an immersive open-world action RPG where each choice shapes your journey, reputation, and the fate of Albion. A fresh beginning for the legendary franchise.",
     "genres": [
       "Role-playing (RPG)",
       "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 4",
-      "Xbox One"
+      "Xbox Series X|S"
     ]
   },
   {
