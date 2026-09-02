@@ -65,7 +65,7 @@ class LibraryViewModel @Inject constructor(
     private val _filterFavoritesOnly = MutableStateFlow(false)
     private val _searchQuery = MutableStateFlow("")
     private val _isSearchActive = MutableStateFlow(false)
-    private val _sortOption = MutableStateFlow(LibrarySortOption.UPDATED_DESC)
+    private val _sortOption = MutableStateFlow(LibrarySortOption.ADDED_DESC)
     private val _userMessageRes = MutableStateFlow<Int?>(null)
     private val _hoursSaveState = MutableStateFlow<HoursSaveState>(HoursSaveState.Idle)
 

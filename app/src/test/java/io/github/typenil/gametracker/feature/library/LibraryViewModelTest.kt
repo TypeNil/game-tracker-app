@@ -228,7 +228,7 @@ class LibraryViewModelTest {
             viewModel.onToggleFavoritesOnly()
             val favState = awaitItem()
             assertTrue(favState.filterFavoritesOnly)
-            assertEquals(listOf(hades, eldenRing), favState.filteredGames)
+            assertEquals(listOf(eldenRing, hades), favState.filteredGames)
 
             viewModel.onToggleFavoritesOnly()
             val allState = awaitItem()
@@ -265,10 +265,14 @@ class LibraryViewModelTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
-            // Initial sort is UPDATED_DESC: hades (500), eldenRing (400), hollowKnight (300)
+            // Initial sort is ADDED_DESC: hollowKnight (300), eldenRing (200), hades (100)
             val initial = awaitItem()
-            assertEquals(listOf(hades, eldenRing, hollowKnight), initial.filteredGames)
+            assertEquals(listOf(hollowKnight, eldenRing, hades), initial.filteredGames)
 
+            // UPDATED_DESC: hades (500), eldenRing (400), hollowKnight (300)
+            viewModel.onSortOptionSelected(LibrarySortOption.UPDATED_DESC)
+            val updatedState = awaitItem()
+            assertEquals(listOf(hades, eldenRing, hollowKnight), updatedState.filteredGames)
             // USER_RATING_DESC: hades (10), eldenRing (9), hollowKnight (null)
             viewModel.onSortOptionSelected(LibrarySortOption.USER_RATING_DESC)
             val ratingState = awaitItem()
@@ -416,6 +420,10 @@ class LibraryViewModelTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
+            // Consume initial state with default ADDED_DESC sort
+            awaitItem()
+
+            viewModel.onSortOptionSelected(LibrarySortOption.UPDATED_DESC)
             assertEquals(listOf(hades, eldenRing), awaitItem().filteredGames)
 
             // Elden Ring is 2nd (updatedAt=400L). Update its status with newest updatedAt (900L).
@@ -431,6 +439,52 @@ class LibraryViewModelTest {
 
             // Reorders immediately to put newest updated at top
             assertEquals(listOf(updatedEldenRing, hades), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `default added sort preserves item position when status or hours change`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(eldenRing, hades)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            // Default sort is ADDED_DESC: eldenRing (addedAt=200L), hades (addedAt=100L)
+            assertEquals(listOf(eldenRing, hades), awaitItem().filteredGames)
+
+            // Hades is 2nd. Update status and hours which update updatedAtEpochSeconds to 900L.
+            val updatedHades = hades.copy(
+                entry = hades.entry.copy(
+                    status = LibraryStatus.COMPLETED,
+                    updatedAtEpochSeconds = 900L,
+                    hoursPlayed = 120,
+                ),
+            )
+            viewModel.onStatusSelected(hades.game.id, LibraryStatus.COMPLETED)
+            testScheduler.advanceUntilIdle()
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(eldenRing, updatedHades)
+
+            // Position is preserved: eldenRing remains 1st, hades remains 2nd
+            assertEquals(listOf(eldenRing, updatedHades), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `default added sort places newly added game at top`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(eldenRing, hades)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(eldenRing, hades), awaitItem().filteredGames)
+
+            // New game added with newer addedAt = 400L
+            val newlyAddedGame = hollowKnight.copy(
+                entry = hollowKnight.entry.copy(addedAtEpochSeconds = 400L),
+            )
+            fakeLibraryRepository.libraryGamesFlow.value = listOf(newlyAddedGame, eldenRing, hades)
+
+            assertEquals(listOf(newlyAddedGame, eldenRing, hades), awaitItem().filteredGames)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -477,9 +531,9 @@ class LibraryViewModelTest {
 
     @Test
     fun `details hydration preserves deterministic order when sort keys are tied`() = runTest {
-        // Both games have same updatedAtEpochSeconds (500L), ordered deterministically by ID (1L < 2L)
-        val game1 = hades.copy(entry = hades.entry.copy(updatedAtEpochSeconds = 500L))
-        val game2 = eldenRing.copy(entry = eldenRing.entry.copy(updatedAtEpochSeconds = 500L))
+        // Both games have same addedAtEpochSeconds (500L), ordered deterministically by ID (1L < 2L)
+        val game1 = hades.copy(entry = hades.entry.copy(addedAtEpochSeconds = 500L))
+        val game2 = eldenRing.copy(entry = eldenRing.entry.copy(addedAtEpochSeconds = 500L))
         fakeLibraryRepository.libraryGamesFlow.value = listOf(game1, game2)
         val viewModel = createViewModel()
 
@@ -504,7 +558,7 @@ class LibraryViewModelTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
-            // Default sort is UPDATED_DESC
+            // Default sort is ADDED_DESC
             awaitItem()
 
             viewModel.onSortOptionSelected(LibrarySortOption.USER_RATING_DESC)
@@ -517,11 +571,11 @@ class LibraryViewModelTest {
     fun `same title games are both preserved and search matches both`() = runTest {
         val doom1993 = hades.copy(
             game = hades.game.copy(id = 900005L, name = "Doom"),
-            entry = hades.entry.copy(gameId = 900005L)
+            entry = hades.entry.copy(gameId = 900005L, addedAtEpochSeconds = 200L),
         )
         val doom2016 = eldenRing.copy(
             game = eldenRing.game.copy(id = 900006L, name = "Doom"),
-            entry = eldenRing.entry.copy(gameId = 900006L)
+            entry = eldenRing.entry.copy(gameId = 900006L, addedAtEpochSeconds = 100L),
         )
 
         fakeLibraryRepository.libraryGamesFlow.value = listOf(doom1993, doom2016)
