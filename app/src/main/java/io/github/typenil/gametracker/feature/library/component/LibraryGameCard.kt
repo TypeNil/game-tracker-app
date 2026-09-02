@@ -353,33 +353,33 @@ fun LibraryGameCard(
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        LibraryStatusControl(
-                            status = entry.status,
-                            onStatusSelected = onStatusSelected,
-                        )
-                        Row(
+                        Box(
                             modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically,
+                            contentAlignment = Alignment.CenterStart,
                         ) {
-                            AnimatedVisibility(
-                                visible = entry.showsHours(),
-                                enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
-                                    expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
-                                exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
-                                    shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    LibraryHoursControl(
-                                        hoursPlayed = entry.hoursPlayed,
-                                        onClick = onHoursClick,
-                                    )
-                                }
-                            }
+                            LibraryStatusControl(
+                                status = entry.status,
+                                onStatusSelected = onStatusSelected,
+                            )
                         }
-                        LibraryAddedDate(addedDate = addedDate)
+                        AnimatedVisibility(
+                            visible = entry.showsHours(),
+                            enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
+                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                            exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
+                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                        ) {
+                            LibraryHoursControl(
+                                hoursPlayed = entry.hoursPlayed,
+                                onClick = onHoursClick,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            LibraryAddedDate(addedDate = addedDate)
+                        }
                     }
                 }
         }
