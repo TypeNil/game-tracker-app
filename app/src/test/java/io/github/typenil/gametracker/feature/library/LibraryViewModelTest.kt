@@ -444,7 +444,7 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun `default added sort preserves item position when status or hours change`() = runTest {
+    fun `default added sort preserves item position when non-sort fields are updated`() = runTest {
         fakeLibraryRepository.libraryGamesFlow.value = listOf(eldenRing, hades)
         val viewModel = createViewModel()
 
