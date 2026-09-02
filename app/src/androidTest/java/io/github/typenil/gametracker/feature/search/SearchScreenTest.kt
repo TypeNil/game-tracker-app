@@ -53,7 +53,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.delay
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -799,14 +798,18 @@ class SearchScreenTest {
 
     /**
      * Count-aware source (itemsBefore/itemsAfter) mimicking Room's LimitOffsetPagingSource
-     * with enablePlaceholders = true; non-first pages are delayed so the placeholder padding
-     * is observable in the composition.
+     * with enablePlaceholders = true; non-first pages wait on [appendGate] until the test has
+     * observed the placeholder padding. A wall-clock delay would race slow CI emulators into
+     * finishing the appends before the skeleton assertion runs.
      */
-    private class PaddedPagingSource(private val games: List<Game>) : PagingSource<Int, Game>() {
+    private class PaddedPagingSource(
+        private val games: List<Game>,
+        private val appendGate: CompletableDeferred<Unit>,
+    ) : PagingSource<Int, Game>() {
         override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Game> {
             val offset = params.key ?: 0
             val size = minOf(params.loadSize, games.size - offset)
-            if (offset > 0) delay(1_000)
+            if (offset > 0) appendGate.await()
             val page = games.subList(offset, offset + size)
             return LoadResult.Page(
                 data = page,
@@ -832,6 +835,7 @@ class SearchScreenTest {
                 name = "Placeholder Game $index",
             )
         }
+        val appendGate = CompletableDeferred<Unit>()
         val results = Pager(
             config = PagingConfig(
                 pageSize = 2,
@@ -839,7 +843,7 @@ class SearchScreenTest {
                 prefetchDistance = 2,
                 enablePlaceholders = true,
             ),
-            pagingSourceFactory = { PaddedPagingSource(games) },
+            pagingSourceFactory = { PaddedPagingSource(games, appendGate) },
         ).flow
 
         composeTestRule.setContent {
@@ -866,7 +870,9 @@ class SearchScreenTest {
             composeTestRule.onAllNodesWithTag(FEED_SKELETON_ROW_TEST_TAG)
                 .fetchSemanticsNodes().size >= 2,
         )
-        // Once the delayed appends finish every authoritative position becomes a real item.
+        // Release the held appends; every authoritative position then converges to a card.
+        appendGate.complete(Unit)
+        // Once the released appends finish every authoritative position becomes a real item.
         // The last row sits at the fold, so poll with a scroll-to-index (index 6 = count
         // header plus the sixth game row) until the final page inserts.
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
