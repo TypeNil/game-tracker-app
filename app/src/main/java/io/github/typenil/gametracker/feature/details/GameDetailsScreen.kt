@@ -1356,6 +1356,7 @@ private fun ZoomableScreenshotImage(
                 }
             },
             modifier = Modifier
+                .fillMaxSize()
                 .pointerInput(model) {
                     detectTapGestures(
                         onDoubleTap = {
@@ -1372,7 +1373,7 @@ private fun ZoomableScreenshotImage(
                         },
                     )
                 }
-                .pointerInput(model, widthPx, heightPx, contentAspectRatio) {
+                .pointerInput(model, widthPx, heightPx) {
                     detectOwnedZoomPanGestures(
                         currentScale = { scale },
                     ) { pan, zoom ->

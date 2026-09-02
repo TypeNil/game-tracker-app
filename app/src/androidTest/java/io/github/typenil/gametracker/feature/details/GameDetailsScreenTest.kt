@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -445,6 +446,26 @@ class GameDetailsScreenTest {
 
         composeTestRule.onNodeWithContentDescription(page1Text).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription(page2Text).assertDoesNotExist()
+    }
+
+    @Test
+    fun screenshotViewer_imageFillsDialogViewport() {
+        val screenshotsDetails = compactDetails.copy(
+            screenshots = listOf("https://example.com/shot1.jpg"),
+        )
+        setContent(GameDetailsUiState(game = screenshotsDetails, isHydrated = true))
+
+        val screenshotDesc = composeTestRule.activity.getString(R.string.details_screenshot_desc)
+        composeTestRule.onAllNodesWithContentDescription(screenshotDesc)[0].performClick()
+
+        val page1Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 1, 1)
+        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
+        val imageBounds = composeTestRule
+            .onNodeWithContentDescription(page1Text)
+            .getUnclippedBoundsInRoot()
+
+        assertEquals(rootBounds.right - rootBounds.left, imageBounds.right - imageBounds.left)
+        assertEquals(rootBounds.bottom - rootBounds.top, imageBounds.bottom - imageBounds.top)
     }
 
     @Test
