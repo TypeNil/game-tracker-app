@@ -92,6 +92,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -1270,12 +1271,13 @@ internal fun calculateScreenshotPanBounds(
     containerWidthPx: Float,
     containerHeightPx: Float,
     scale: Float,
+    contentAspectRatio: Float = SCREENSHOT_ASPECT_RATIO,
 ): Offset {
     val fittedWidthPx = minOf(
         containerWidthPx,
-        containerHeightPx * SCREENSHOT_ASPECT_RATIO,
+        containerHeightPx * contentAspectRatio,
     )
-    val fittedHeightPx = fittedWidthPx / SCREENSHOT_ASPECT_RATIO
+    val fittedHeightPx = fittedWidthPx / contentAspectRatio
 
     return Offset(
         x = ((fittedWidthPx * scale - containerWidthPx) / 2f).coerceAtLeast(0f),
@@ -1323,10 +1325,10 @@ private fun ZoomableScreenshotImage(
     onScaleChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var scale by rememberSaveable(model) { mutableStateOf(1f) }
-    var offsetX by rememberSaveable(model) { mutableStateOf(0f) }
-    var offsetY by rememberSaveable(model) { mutableStateOf(0f) }
-
+    var scale by rememberSaveable(model) { mutableFloatStateOf(1f) }
+    var offsetX by rememberSaveable(model) { mutableFloatStateOf(0f) }
+    var offsetY by rememberSaveable(model) { mutableFloatStateOf(0f) }
+    var contentAspectRatio by rememberSaveable(model) { mutableFloatStateOf(SCREENSHOT_ASPECT_RATIO) }
     LaunchedEffect(isCurrentPage) {
         if (!isCurrentPage) {
             scale = 1f
@@ -1347,8 +1349,13 @@ private fun ZoomableScreenshotImage(
             model = model,
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
+            onSuccess = { state ->
+                val size = state.painter.intrinsicSize
+                if (size.width > 0f && size.height > 0f) {
+                    contentAspectRatio = size.width / size.height
+                }
+            },
             modifier = Modifier
-                .fillMaxSize()
                 .pointerInput(model) {
                     detectTapGestures(
                         onDoubleTap = {
@@ -1365,7 +1372,7 @@ private fun ZoomableScreenshotImage(
                         },
                     )
                 }
-                .pointerInput(model, widthPx, heightPx) {
+                .pointerInput(model, widthPx, heightPx, contentAspectRatio) {
                     detectOwnedZoomPanGestures(
                         currentScale = { scale },
                     ) { pan, zoom ->
@@ -1374,6 +1381,7 @@ private fun ZoomableScreenshotImage(
                             containerWidthPx = widthPx,
                             containerHeightPx = heightPx,
                             scale = newScale,
+                            contentAspectRatio = contentAspectRatio,
                         )
 
                         scale = newScale

@@ -238,4 +238,26 @@ class DiscoverScreenTest {
         composeTestRule.onNodeWithText(retryText).assertIsDisplayed().performClick()
         assertEquals(DiscoverRail.POPULAR_NOW, requestedRail)
     }
+
+    @Test
+    fun nonEmptyRail_appendError_doesNotAutoLoadMoreOnComposition() {
+        var loadMoreCalls = 0
+        setContent(
+            uiState = DiscoverUiState(
+                selectedTab = DiscoverTab.CHARTS,
+                rails = listOf(
+                    DiscoverRailState(
+                        rail = DiscoverRail.POPULAR_NOW,
+                        games = listOf(Game(id = 42L, name = "Elden Ring")),
+                        error = AppError.NetworkError,
+                    ),
+                ),
+            ),
+            onLoadMoreRail = { loadMoreCalls++ },
+        )
+
+        composeTestRule.waitForIdle()
+
+        assertEquals(0, loadMoreCalls)
+    }
 }
