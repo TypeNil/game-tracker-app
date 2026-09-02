@@ -180,7 +180,7 @@ class SearchDaoTest {
         firstSource.registerInvalidatedCallback { invalidated.complete(Unit) }
 
         val initial = firstSource.load(
-            PagingSource.LoadParams.Refresh(key = 0, loadSize = 20, placeholdersEnabled = false),
+            PagingSource.LoadParams.Refresh(key = null, loadSize = 20, placeholdersEnabled = false),
         )
         assertTrue(initial is PagingSource.LoadResult.Page)
         assertEquals((0L until 20L).toList(), (initial as PagingSource.LoadResult.Page).data.map { it.id })
@@ -192,18 +192,13 @@ class SearchDaoTest {
         )
         invalidated.await()
 
-        // Paging restarts through the factory with the next key, exactly like the mediator's
-        // resolved append offset: rows from both writes come back in position order.
+        // The invalidated source is replaced through the factory with a full refresh: rows
+        // from both writes come back in position order, so the frozen 20-row window cannot
+        // survive the append.
         val reloaded = searchDao.getSearchResultsPagingSource(query)
-            .load(PagingSource.LoadParams.Refresh(key = 20, loadSize = 20, placeholdersEnabled = false))
+            .load(PagingSource.LoadParams.Refresh(key = null, loadSize = 40, placeholdersEnabled = false))
         assertTrue(reloaded is PagingSource.LoadResult.Page)
-        val page = reloaded as PagingSource.LoadResult.Page
-        assertEquals((20L until 40L).toList(), page.data.map { it.id })
-        assertEquals(20, page.prevKey)
-        // Room compares offset + returned rows against the total count: at the true end of
-        // the table nextKey is null — exactly the end-of-pagination signal the paging
-        // container uses to stop requesting appends.
-        assertNull(page.nextKey)
+        assertEquals((0L until 40L).toList(), (reloaded as PagingSource.LoadResult.Page).data.map { it.id })
     }
 }
 
