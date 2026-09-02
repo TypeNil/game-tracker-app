@@ -160,6 +160,7 @@
     <string name="library_search_empty_subtitle">Try adjusting your search query or filter</string>
 
     <!-- Library Sort -->
+    <string name="library_sort_added_desc">Recently Added</string>
     <string name="library_sort_updated_desc">Recently Updated</string>
     <string name="library_sort_rating_desc">Highest Rated</string>
     <string name="library_sort_title_asc">Title (A–Z)</string>

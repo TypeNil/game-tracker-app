@@ -383,6 +383,7 @@ fun LibraryScreen(
                                         onHoursClick = {
                                             editingHoursGameId = item.game.id
                                         },
+                                        modifier = Modifier.animateItem(),
                                     )
                                 }
                             }

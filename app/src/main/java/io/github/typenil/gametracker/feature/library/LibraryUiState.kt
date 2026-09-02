@@ -11,7 +11,7 @@ data class LibraryUiState(
     val filterFavoritesOnly: Boolean = false,
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
-    val sortOption: LibrarySortOption = LibrarySortOption.UPDATED_DESC,
+    val sortOption: LibrarySortOption = LibrarySortOption.ADDED_DESC,
     val isLoading: Boolean = false,
     val userMessageRes: Int? = null,
     val hoursSaveState: HoursSaveState = HoursSaveState.Idle,
@@ -41,6 +41,11 @@ fun sortLibraryGames(
     games: List<LibraryGame>,
     sortOption: LibrarySortOption,
 ): List<LibraryGame> = when (sortOption) {
+    LibrarySortOption.ADDED_DESC ->
+        games.sortedWith(
+            compareByDescending<LibraryGame> { it.entry.addedAtEpochSeconds }
+                .thenBy { it.game.id }
+        )
     LibrarySortOption.UPDATED_DESC ->
         games.sortedWith(
             compareByDescending<LibraryGame> { it.entry.updatedAtEpochSeconds }
