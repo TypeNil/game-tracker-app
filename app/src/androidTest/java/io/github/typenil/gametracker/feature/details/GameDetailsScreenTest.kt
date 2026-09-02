@@ -18,7 +18,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -459,13 +460,15 @@ class GameDetailsScreenTest {
         composeTestRule.onAllNodesWithContentDescription(screenshotDesc)[0].performClick()
 
         val page1Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 1, 1)
-        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
+        // Two semantics roots exist while the Dialog is open (activity + dialog);
+        // onRoot() expects exactly one and throws. The dialog root is registered last.
+        val dialogRootBounds = composeTestRule.onAllNodes(isRoot()).onLast().getUnclippedBoundsInRoot()
         val imageBounds = composeTestRule
             .onNodeWithContentDescription(page1Text)
             .getUnclippedBoundsInRoot()
 
-        assertEquals(rootBounds.right - rootBounds.left, imageBounds.right - imageBounds.left)
-        assertEquals(rootBounds.bottom - rootBounds.top, imageBounds.bottom - imageBounds.top)
+        assertEquals(dialogRootBounds.right - dialogRootBounds.left, imageBounds.right - imageBounds.left)
+        assertEquals(dialogRootBounds.bottom - dialogRootBounds.top, imageBounds.bottom - imageBounds.top)
     }
 
     @Test
