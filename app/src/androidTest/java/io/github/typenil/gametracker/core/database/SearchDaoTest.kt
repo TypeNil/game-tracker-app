@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -199,6 +200,53 @@ class SearchDaoTest {
             .load(PagingSource.LoadParams.Refresh(key = null, loadSize = 40, placeholdersEnabled = false))
         assertTrue(reloaded is PagingSource.LoadResult.Page)
         assertEquals((0L until 40L).toList(), (reloaded as PagingSource.LoadResult.Page).data.map { it.id })
+    }
+
+    @Test
+    fun getSearchResultGameIds_returnsPersistedIds() = runTest {
+        searchDao.insertSearchResults(
+            listOf(
+                SearchResultCrossRef(query = "q", gameId = 1L, position = 0)
+            )
+        )
+        searchDao.insertSearchResults(
+            listOf(
+                SearchResultCrossRef(query = "other", gameId = 7L, position = 0)
+            )
+        )
+
+        assertEquals(listOf(1L), searchDao.getSearchResultGameIds("q"))
+        assertEquals(emptyList<Long>(), searchDao.getSearchResultGameIds("missing"))
+    }
+
+    @Test
+    fun hasDenseSearchResultPositions_detectsDenseSparseAndEmptyWindows() = runTest {
+        val games = (1L..30L).map {
+            GameEntity(it, "G$it", null, null, null, null, emptyList(), emptyList(), 100L)
+        }
+        gameDao.upsertGames(games)
+        searchDao.upsertSearchQuery(SearchQueryEntity("dense", 100L, 100L, 3))
+        searchDao.insertSearchResults(
+            listOf(
+                SearchResultCrossRef("dense", 1L, 0),
+                SearchResultCrossRef("dense", 2L, 1),
+                SearchResultCrossRef("dense", 3L, 2)
+            )
+        )
+
+        searchDao.upsertSearchQuery(SearchQueryEntity("empty", 100L, 100L, 0))
+
+        // Legacy shape: rows at 0..9 and 20..39 with a hole at 10..19.
+        searchDao.upsertSearchQuery(SearchQueryEntity("sparse", 100L, 100L, 30))
+        searchDao.insertSearchResults(
+            (0 until 10).map { SearchResultCrossRef("sparse", it + 1L, it) } +
+                (0 until 20).map { SearchResultCrossRef("sparse", it + 11L, it + 20) }
+        )
+
+        assertTrue(searchDao.hasDenseSearchResultPositions("dense"))
+        assertTrue(searchDao.hasDenseSearchResultPositions("empty"))
+        assertTrue(searchDao.hasDenseSearchResultPositions("missing"))
+        assertFalse(searchDao.hasDenseSearchResultPositions("sparse"))
     }
 }
 

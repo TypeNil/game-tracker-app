@@ -63,12 +63,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.CombinedLoadStates
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
@@ -108,9 +110,11 @@ fun SearchRoute(
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val networkStatus by viewModel.networkStatus.collectAsStateWithLifecycle()
 
     SearchScreen(
         uiState = uiState,
+        networkStatus = networkStatus,
         searchResults = viewModel.searchResults,
         onQueryChange = viewModel::onQueryChanged,
         onClearQuery = viewModel::onClearQuery,
@@ -163,12 +167,27 @@ fun SearchScreen(
     onRemoveFromLibrary: (Long) -> Unit = {},
     onDismissEditLibrary: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
+    networkStatus: NetworkStatus = NetworkStatus.Unknown,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     var isFilterSheetOpen by rememberSaveable { mutableStateOf(false) }
     val lazyItems = searchResults.collectAsLazyPagingItems()
+
+    // Device-network recovery is an event, not data: only a genuine Unavailable ->
+    // Available transition observed while this composition is active may retry a
+    // currently failed Paging load. The first composition (Unknown baseline) is never
+    // treated as recovery, and collection upstream is lifecycle-suspended when stopped.
+    var previousNetworkStatus by remember { mutableStateOf(NetworkStatus.Unknown) }
+    LaunchedEffect(networkStatus) {
+        val recovered = previousNetworkStatus == NetworkStatus.Unavailable &&
+            networkStatus == NetworkStatus.Available
+        previousNetworkStatus = networkStatus
+        if (recovered && shouldRetryOnReconnect(lazyItems.loadState)) {
+            lazyItems.retry()
+        }
+    }
 
     val userMessage = uiState.userMessageRes?.let { stringResource(it) }
     LaunchedEffect(userMessage) {
@@ -686,3 +705,10 @@ private fun SearchErrorState(
         }
     }
 }
+
+/**
+ * Pure reconnect decision: a network-recovery edge must only retry the failed Paging
+ * load. Idle, Loading and NotLoading are never re-triggered by connectivity events.
+ */
+internal fun shouldRetryOnReconnect(loadStates: CombinedLoadStates): Boolean =
+    loadStates.refresh is LoadState.Error || loadStates.append is LoadState.Error

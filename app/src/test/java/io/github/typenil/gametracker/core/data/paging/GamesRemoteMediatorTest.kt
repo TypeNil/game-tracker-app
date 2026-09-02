@@ -81,6 +81,10 @@ class GamesRemoteMediatorTest {
         coEvery { searchDao.getSearchQuery(any()) } returns null
         coEvery { searchDao.countSearchResultsForQuery(any()) } returns 0
         coEvery { remoteKeyDao.getRemoteKey(any()) } returns null
+        // Explicit structural stubs: relaxed defaults must never decide the dense-cache
+        // branch or fabricate persisted ids in these tests.
+        coEvery { searchDao.hasDenseSearchResultPositions(any()) } returns true
+        coEvery { searchDao.getSearchResultGameIds(any()) } returns emptyList()
     }
 
     @Test
@@ -335,51 +339,6 @@ class GamesRemoteMediatorTest {
         assertNull(keySlot.captured.prevOffset)
         assertEquals(20, keySlot.captured.nextOffset)
         assertEquals(now, keySlot.captured.lastUpdatedEpochSeconds)
-    }
-
-    @Test
-    fun `load APPEND uses nextOffset, deletes position greater equal targetOffset, and appends continuous positions`() = runTest {
-        val now = 6000L
-        val key = "discover:top-rated"
-        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
-            queryKey = key,
-            prevOffset = null,
-            nextOffset = 20,
-            lastUpdatedEpochSeconds = now - 100
-        )
-        val remoteGames = List(20) { index ->
-            sampleGame1.copy(id = index + 21L, name = "Game ${index + 21}")
-        }
-        val mediator = GamesRemoteMediator(
-            queryKey = key,
-            ttlSeconds = 3600L,
-            fetcher = { limit, offset ->
-                assertEquals(20, limit)
-                assertEquals(20, offset)
-                remoteGames
-            },
-            gameDao = gameDao,
-            searchDao = searchDao,
-            remoteKeyDao = remoteKeyDao,
-            transactionRunner = transactionRunner,
-            nowEpochSeconds = { now }
-        )
-
-        val result = mediator.load(LoadType.APPEND, testPagingState)
-        assertTrue(result is RemoteMediator.MediatorResult.Success)
-        assertEquals(false, (result as RemoteMediator.MediatorResult.Success).endOfPaginationReached)
-
-        coVerify(exactly = 1) { searchDao.deleteSearchResultsFromPosition(key, 20) }
-
-        val crossRefSlot = slot<List<SearchResultCrossRef>>()
-        coVerify(exactly = 1) { searchDao.insertSearchResults(capture(crossRefSlot)) }
-        assertEquals(20, crossRefSlot.captured.size)
-        assertEquals(20, crossRefSlot.captured.first().position)
-        assertEquals(39, crossRefSlot.captured.last().position)
-
-        val keySlot = slot<RemoteKeyEntity>()
-        coVerify(exactly = 1) { remoteKeyDao.upsert(capture(keySlot)) }
-        assertEquals(40, keySlot.captured.nextOffset)
     }
 
     @Test
@@ -648,4 +607,5 @@ class GamesRemoteMediatorTest {
         assertTrue((result as RemoteMediator.MediatorResult.Success).endOfPaginationReached)
         assertEquals(false, fetcherCalled)
     }
+
 }

@@ -1,6 +1,9 @@
 package io.github.typenil.gametracker.feature.search
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.mutableStateOf
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -484,6 +487,7 @@ class SearchScreenTest {
             savedStateHandle = savedStateHandle,
             libraryRepository = FakeLibraryRepository(),
             clock = java.time.Clock.fixed(java.time.Instant.parse("2026-01-15T12:00:00Z"), java.time.ZoneOffset.UTC),
+            networkMonitor = NetworkMonitor(composeTestRule.activity.applicationContext),
         )
 
         composeTestRule.setContent {
@@ -533,6 +537,7 @@ class SearchScreenTest {
             savedStateHandle = SavedStateHandle(),
             libraryRepository = FakeLibraryRepository(),
             clock = java.time.Clock.fixed(java.time.Instant.parse("2026-01-15T12:00:00Z"), java.time.ZoneOffset.UTC),
+            networkMonitor = NetworkMonitor(composeTestRule.activity.applicationContext),
         )
 
         composeTestRule.setContent {
@@ -580,6 +585,125 @@ class SearchScreenTest {
         }
         composeTestRule.onNodeWithText("Beta Game").assertIsDisplayed()
         composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").assertDoesNotExist()
+    }
+
+    private class RecoveringPagingSource(
+        private val firstPage: List<Game>,
+        private val secondPage: List<Game>,
+        private val failRefresh: Boolean,
+        private val failAppend: Boolean,
+    ) : PagingSource<Int, Game>() {
+        var refreshAttempts = 0
+        var appendAttempts = 0
+
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Game> {
+            val key = params.key ?: 0
+            return if (key == 0) {
+                refreshAttempts++
+                if (failRefresh && refreshAttempts == 1) {
+                    LoadResult.Error(IOException("device offline"))
+                } else {
+                    LoadResult.Page(
+                        data = firstPage,
+                        prevKey = null,
+                        nextKey = if (secondPage.isEmpty()) null else firstPage.size,
+                    )
+                }
+            } else {
+                appendAttempts++
+                if (failAppend && appendAttempts == 1) {
+                    LoadResult.Error(IOException("device offline"))
+                } else {
+                    LoadResult.Page(data = secondPage, prevKey = null, nextKey = null)
+                }
+            }
+        }
+
+        override fun getRefreshKey(state: PagingState<Int, Game>): Int? = null
+    }
+
+    @Test
+    fun validatedNetworkReconnect_retriesFailedRefresh_clearsErrorWithoutUserTap() {
+        val source = RecoveringPagingSource(sampleGames, emptyList(), failRefresh = true, failAppend = false)
+        val results = Pager(
+            config = PagingConfig(pageSize = 20, initialLoadSize = 20),
+            pagingSourceFactory = { source },
+        ).flow
+        val networkState = mutableStateOf(NetworkStatus.Unknown)
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = results,
+                networkStatus = networkState.value,
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+                onBackClick = {},
+            )
+        }
+
+        val context = composeTestRule.activity
+        // The failed generation is terminal until an event arrives: no connectivity edge yet.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(context.getString(R.string.error_network))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(1, source.refreshAttempts)
+
+        // Drive a real Unavailable -> Available transition through the screen's input
+        // surface, forcing recomposition between the two writes so each LaunchedEffect
+        // pass observes one state step.
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Unavailable }
+        composeTestRule.waitForIdle()
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Available }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(2, source.refreshAttempts)
+        composeTestRule.onNodeWithText(context.getString(R.string.error_network)).assertDoesNotExist()
+    }
+
+    @Test
+    fun validatedNetworkReconnect_retriesFailedAppend_loadsNextPageWithoutUserTap() {
+        val secondPage = listOf(
+            sampleGames[0].copy(id = 501L, name = "Append First"),
+            sampleGames[1].copy(id = 502L, name = "Append Second"),
+        )
+        val source = RecoveringPagingSource(sampleGames, secondPage, failRefresh = false, failAppend = true)
+        val results = Pager(
+            config = PagingConfig(pageSize = 2, initialLoadSize = 2, prefetchDistance = 2),
+            pagingSourceFactory = { source },
+        ).flow
+        val networkState = mutableStateOf(NetworkStatus.Unknown)
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = results,
+                networkStatus = networkState.value,
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+                onBackClick = {},
+            )
+        }
+
+        // First page renders; the prefetch append fails and stays un-retried.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { source.appendAttempts == 1 }
+        composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Append First").assertDoesNotExist()
+
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Unavailable }
+        composeTestRule.waitForIdle()
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Available }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("Append First").fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(2, source.appendAttempts)
     }
 
     @Suppress("TooManyFunctions")

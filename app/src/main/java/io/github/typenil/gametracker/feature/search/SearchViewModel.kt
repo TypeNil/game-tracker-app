@@ -9,6 +9,8 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
@@ -54,7 +56,14 @@ class SearchViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val libraryRepository: LibraryRepository,
     private val clock: Clock,
+    networkMonitor: NetworkMonitor,
 ) : ViewModel() {
+
+    /**
+     * Identity passthrough of the device connectivity state: presentation derives the
+     * reconnect edge locally; the ViewModel never mirrors LoadState or network data.
+     */
+    val networkStatus: StateFlow<NetworkStatus> = networkMonitor.status
 
     val rawQuery: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
     val filterSnapshot: StateFlow<SearchFiltersSnapshot> =

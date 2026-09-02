@@ -5,6 +5,8 @@ import androidx.paging.PagingData
 import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.model.AppError
@@ -39,6 +41,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -108,6 +111,11 @@ class SearchViewModelTest {
         every { repository.getPagedSearchResults(match<GameSearchQuery> { matches(it) }, any()) } returns flow
     }
 
+    private val networkStatus = MutableStateFlow(NetworkStatus.Unknown)
+    private val networkMonitor: NetworkMonitor = mockk {
+        every { status } returns networkStatus
+    }
+
     private fun createViewModel(
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
     ): SearchViewModel {
@@ -116,7 +124,14 @@ class SearchViewModelTest {
             savedStateHandle = savedStateHandle,
             libraryRepository = libraryRepository,
             clock = java.time.Clock.fixed(java.time.Instant.parse("2026-01-15T12:00:00Z"), java.time.ZoneOffset.UTC),
+            networkMonitor = networkMonitor,
         )
+    }
+
+    @Test
+    fun `networkStatus is an identity passthrough of the monitor state flow`() {
+        val viewModel = createViewModel()
+        assertSame(networkStatus, viewModel.networkStatus)
     }
 
     @Test
