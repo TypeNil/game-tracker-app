@@ -8,6 +8,8 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -365,9 +367,23 @@ fun LibraryGameCard(
                         AnimatedVisibility(
                             visible = entry.showsHours(),
                             enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
-                                expandHorizontally(animationSpec = tween(ANIM_EXPAND_ENTER_MS)),
+                                slideInVertically(
+                                    animationSpec = tween(ANIM_EXPAND_ENTER_MS),
+                                    initialOffsetY = { fullHeight -> fullHeight },
+                                ) +
+                                expandHorizontally(
+                                    animationSpec = tween(ANIM_EXPAND_ENTER_MS),
+                                    expandFrom = Alignment.CenterHorizontally,
+                                ),
                             exit = fadeOut(animationSpec = tween(ANIM_SHRINK_EXIT_MS)) +
-                                shrinkHorizontally(animationSpec = tween(ANIM_SHRINK_EXIT_MS)),
+                                slideOutVertically(
+                                    animationSpec = tween(ANIM_SHRINK_EXIT_MS),
+                                    targetOffsetY = { fullHeight -> fullHeight },
+                                ) +
+                                shrinkHorizontally(
+                                    animationSpec = tween(ANIM_SHRINK_EXIT_MS),
+                                    shrinkTowards = Alignment.CenterHorizontally,
+                                ),
                         ) {
                             LibraryHoursControl(
                                 hoursPlayed = entry.hoursPlayed,
@@ -411,8 +427,10 @@ private fun LibraryHoursControl(
         AnimatedContent(
             targetState = hoursPlayed,
             transitionSpec = {
-                fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
-                    fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                (slideInVertically(tween(ANIM_TEXT_FADE_IN_MS)) { fullHeight -> fullHeight } +
+                    fadeIn(tween(ANIM_TEXT_FADE_IN_MS))) togetherWith
+                    (slideOutVertically(tween(ANIM_TEXT_FADE_OUT_MS)) { fullHeight -> -fullHeight } +
+                        fadeOut(tween(ANIM_TEXT_FADE_OUT_MS)))
             },
             label = "hoursTextTransition",
         ) { hours ->
@@ -489,8 +507,10 @@ private fun LibraryStatusControl(
             AnimatedContent(
                 targetState = status,
                 transitionSpec = {
-                    fadeIn(tween(ANIM_TEXT_FADE_IN_MS)) togetherWith
-                        fadeOut(tween(ANIM_TEXT_FADE_OUT_MS))
+                    (slideInVertically(tween(ANIM_TEXT_FADE_IN_MS)) { fullHeight -> fullHeight } +
+                        fadeIn(tween(ANIM_TEXT_FADE_IN_MS))) togetherWith
+                        (slideOutVertically(tween(ANIM_TEXT_FADE_OUT_MS)) { fullHeight -> -fullHeight } +
+                            fadeOut(tween(ANIM_TEXT_FADE_OUT_MS)))
                 },
                 label = "statusContentTransition",
             ) { currentStatus ->
