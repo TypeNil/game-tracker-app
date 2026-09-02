@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
@@ -23,6 +24,7 @@ class SettingsScreenTest {
     private fun setContent(
         hasNotificationPermission: Boolean = false,
         onOpenIgdb: () -> Unit = {},
+        onOpenGitHub: () -> Unit = {},
         onManageNotifications: () -> Unit = {},
     ) {
         composeTestRule.setContent {
@@ -32,7 +34,8 @@ class SettingsScreenTest {
                     onRequestPermission = {},
                     onManageNotifications = onManageNotifications,
                     onBackClick = {},
-                    onOpenIgdb = onOpenIgdb
+                    onOpenIgdb = onOpenIgdb,
+                    onOpenGitHub = onOpenGitHub,
                 )
             }
         }
@@ -64,5 +67,21 @@ class SettingsScreenTest {
         composeTestRule.onAllNodesWithText(
             composeTestRule.activity.getString(R.string.settings_title),
         ).assertCountEquals(1)
+    }
+
+    @Test
+    fun appInfoCard_andGitHubLink_areDisplayedAndClickable() {
+        var githubClicked = false
+        setContent(onOpenGitHub = { githubClicked = true })
+
+        val appInfoTitle = composeTestRule.activity.getString(R.string.settings_app_info_title)
+        val appName = composeTestRule.activity.getString(R.string.settings_app_name)
+        val githubLabel = composeTestRule.activity.getString(R.string.settings_github_link)
+
+        composeTestRule.onNodeWithText(appInfoTitle).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(appName).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(githubLabel).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle { assertTrue(githubClicked) }
     }
 }

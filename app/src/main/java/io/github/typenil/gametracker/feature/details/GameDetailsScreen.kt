@@ -16,9 +16,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -100,6 +103,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -1252,45 +1256,138 @@ internal fun GameReleaseDate.displayDate(
     else -> unknown
 }
 
+private const val MIN_ZOOM = 1f
+private const val MAX_ZOOM = 4f
+private const val DOUBLE_TAP_ZOOM = 2.5f
+private const val ZOOM_EPSILON = 0.01f
+
+@Composable
+private fun ZoomableScreenshotImage(
+    model: String,
+    contentDescription: String,
+    isCurrentPage: Boolean,
+    onScaleChanged: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var scale by rememberSaveable(model) { mutableStateOf(1f) }
+    var offsetX by rememberSaveable(model) { mutableStateOf(0f) }
+    var offsetY by rememberSaveable(model) { mutableStateOf(0f) }
+
+    LaunchedEffect(isCurrentPage) {
+        if (!isCurrentPage) {
+            scale = 1f
+            offsetX = 0f
+            offsetY = 0f
+            onScaleChanged(1f)
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val heightPx = constraints.maxHeight.toFloat()
+
+        AsyncImage(
+            model = model,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(model) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            if (scale > MIN_ZOOM + ZOOM_EPSILON) {
+                                scale = 1f
+                                offsetX = 0f
+                                offsetY = 0f
+                            } else {
+                                scale = DOUBLE_TAP_ZOOM
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                            onScaleChanged(scale)
+                        },
+                    )
+                }
+                .pointerInput(model) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val newScale = (scale * zoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
+                        val maxOffsetX = (widthPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
+                        val maxOffsetY = (heightPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
+                        scale = newScale
+                        offsetX = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
+                            (offsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                        } else {
+                            0f
+                        }
+                        offsetY = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
+                            (offsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+                        } else {
+                            0f
+                        }
+                        onScaleChanged(newScale)
+                    }
+                }
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offsetX
+                    translationY = offsetY
+                },
+        )
+    }
+}
+
 @Composable
 private fun ScreenshotViewerDialog(
     screenshots: List<String>,
     initialIndex: Int,
     onDismissRequest: () -> Unit,
-    onPageChanged: (Int) -> Unit
+    onPageChanged: (Int) -> Unit,
 ) {
     if (screenshots.isEmpty()) return
     val pagerState = rememberPagerState(
         initialPage = initialIndex.coerceIn(0, screenshots.lastIndex),
-        pageCount = { screenshots.size }
+        pageCount = { screenshots.size },
     )
+    var activeScale by remember { mutableStateOf(1f) }
 
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }.collect { onPageChanged(it) }
+        snapshotFlow { pagerState.currentPage }.collect {
+            activeScale = 1f
+            onPageChanged(it)
+        }
     }
 
     Dialog(
         onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Color.Black),
         ) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize()
+                userScrollEnabled = activeScale <= MIN_ZOOM + ZOOM_EPSILON,
+                modifier = Modifier.fillMaxSize(),
             ) { page ->
-                AsyncImage(
+                ZoomableScreenshotImage(
                     model = screenshots[page],
                     contentDescription = stringResource(
                         R.string.details_viewer_page_format,
                         page + 1,
-                        screenshots.size
+                        screenshots.size,
                     ),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
+                    isCurrentPage = pagerState.currentPage == page,
+                    onScaleChanged = { newScale ->
+                        if (pagerState.currentPage == page) {
+                            activeScale = newScale
+                        }
+                    },
                 )
             }
 
@@ -1508,6 +1605,42 @@ private fun DetailsHeaderSkeleton(
                         .background(shimmerColor)
                 )
             }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        SkeletonBlock(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(shimmerColor)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        SkeletonBlock(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(shimmerColor)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SkeletonBlock(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(shimmerColor)
+            )
+            SkeletonBlock(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(shimmerColor)
+            )
         }
     }
 }

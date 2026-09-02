@@ -21,13 +21,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,6 +98,9 @@ fun GameCard(
                     .clickable(onClick = onClick),
                 verticalAlignment = Alignment.Top,
             ) {
+                val imageModel = game.coverUrl?.takeIf(String::isNotBlank)
+                var imageLoadFailed by remember(imageModel) { mutableStateOf(false) }
+
                 Box(
                     modifier = Modifier
                         .width(COVER_WIDTH_DP.dp)
@@ -101,12 +108,24 @@ fun GameCard(
                         .defaultMinSize(minHeight = (COVER_WIDTH_DP / GAME_COVER_ASPECT_RATIO).dp)
                         .clip(CoverShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    if (!game.coverUrl.isNullOrBlank()) {
+                    if (imageModel == null || imageLoadFailed) {
+                        Icon(
+                            imageVector = Icons.Outlined.Image,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                            modifier = Modifier.size(36.dp),
+                        )
+                    }
+
+                    if (imageModel != null) {
                         AsyncImage(
-                            model = game.coverUrl,
+                            model = imageModel,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
+                            onSuccess = { imageLoadFailed = false },
+                            onError = { imageLoadFailed = true },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

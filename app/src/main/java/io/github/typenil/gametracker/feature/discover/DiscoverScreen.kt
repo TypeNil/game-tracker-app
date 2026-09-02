@@ -422,6 +422,20 @@ private fun ChartsFeed(
             FeedSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
+        } else if (currentRailState.games.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(GtDimens.Empty),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.discover_rail_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
         } else {
             LazyColumn(
                 state = listState,

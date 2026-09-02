@@ -17,4 +17,12 @@ class SettingsIntentsTest {
         assertEquals(Intent.ACTION_VIEW, intent.action)
         assertEquals(Uri.parse("https://www.igdb.com"), intent.data)
     }
+
+    @Test
+    fun gitHubIntent_opensGitHubRepo() {
+        val intent = SettingsIntents.gitHubIntent()
+
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals(Uri.parse("https://github.com/TypeNil/game-tracker-app"), intent.data)
+    }
 }

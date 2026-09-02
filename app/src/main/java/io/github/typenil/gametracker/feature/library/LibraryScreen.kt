@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -65,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
@@ -330,12 +331,10 @@ fun LibraryScreen(
 
             when {
                 uiState.isLoading -> {
-                    Box(
+                    FeedSkeleton(
+                        label = stringResource(R.string.library_loading),
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    )
                 }
 
                 uiState.isCatalogEmpty -> {
@@ -356,7 +355,15 @@ fun LibraryScreen(
                         val pageGames = uiState.gamesFor(tab)
                         if (pageGames.isEmpty()) {
                             if (uiState.isSearchOrFilterActive) {
-                                LibrarySearchEmptyState(modifier = Modifier.fillMaxSize())
+                                LibrarySearchEmptyState(
+                                    onResetSearchAndFilters = {
+                                        onClearSearch()
+                                        if (uiState.filterFavoritesOnly) {
+                                            onToggleFavoritesOnly()
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
                             } else {
                                 LibraryTabEmptyState(
                                     onNavigateToDiscover = onNavigateToDiscover,
@@ -456,34 +463,39 @@ private fun LibraryEmptyState(
 
 @Composable
 private fun LibrarySearchEmptyState(
-    modifier: Modifier = Modifier
+    onResetSearchAndFilters: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier.padding(GtDimens.Empty),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.SearchOff,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier.size(56.dp),
             )
             Text(
                 text = stringResource(R.string.library_search_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
             Text(
                 text = stringResource(R.string.library_search_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(onClick = onResetSearchAndFilters) {
+                Text(stringResource(R.string.library_search_clear_action))
+            }
         }
     }
 }

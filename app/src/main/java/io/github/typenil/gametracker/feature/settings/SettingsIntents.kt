@@ -10,9 +10,14 @@ import android.net.Uri
 object SettingsIntents {
 
     const val IGDB_URL = "https://www.igdb.com"
+    const val GITHUB_URL = "https://github.com/TypeNil/game-tracker-app"
 
     fun igdbAttributionIntent(): Intent {
         return Intent(Intent.ACTION_VIEW, Uri.parse(IGDB_URL))
+    }
+
+    fun gitHubIntent(): Intent {
+        return Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL))
     }
 }
 

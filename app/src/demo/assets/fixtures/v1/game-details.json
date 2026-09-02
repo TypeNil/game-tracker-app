@@ -1411,7 +1411,7 @@
   {
     "id": 900001,
     "name": "Cthulhu Saves the World: Super Hyper Enhanced Championship Edition Alpha",
-    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_hollow_knight.jpg",
     "rating": 82.0,
     "releaseDateEpochSeconds": 1293753600,
     "summary": "The lord of insanity, Cthulhu, is all set to plunge the world into despair and destruction when his powers are sealed away by a mysterious sorcerer.",
@@ -1466,7 +1466,7 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/1942_1.jpg"
+      "file:///android_asset/screenshots/shot_hollow_knight_1.jpg"
     ],
     "videos": [
       {
@@ -1491,14 +1491,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/1942_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_hollow_knight_1.jpg",
     "timeToBeatMainSeconds": 25200,
     "timeToBeatCompleteSeconds": 54000
   },
   {
     "id": 900002,
     "name": "Silk",
-    "coverUrl": "file:///android_asset/covers/14593.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_zelda_totk.jpg",
     "rating": 74.0,
     "releaseDateEpochSeconds": 1568246400,
     "summary": null,
@@ -1530,7 +1530,7 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/14593_1.jpg"
+      "file:///android_asset/screenshots/shot_zelda_totk_1.jpg"
     ],
     "videos": [
       {
@@ -1555,14 +1555,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/14593_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_zelda_totk_1.jpg",
     "timeToBeatMainSeconds": 18000,
     "timeToBeatCompleteSeconds": 36000
   },
   {
     "id": 900003,
     "name": "Grand Theft Auto VI",
-    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_rdr2.jpg",
     "rating": null,
     "releaseDateEpochSeconds": null,
     "summary": "Grand Theft Auto VI heads to the state of Leonida, home to the neon-soaked streets of Vice City and beyond in the biggest, most immersive evolution of the Grand Theft Auto series yet.",
@@ -1605,7 +1605,7 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/1877_1.jpg"
+      "file:///android_asset/screenshots/shot_rdr2_1.jpg"
     ],
     "videos": [
       {
@@ -1630,14 +1630,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/1877_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_rdr2_1.jpg",
     "timeToBeatMainSeconds": null,
     "timeToBeatCompleteSeconds": null
   },
   {
     "id": 900004,
     "name": "Retro Space Invaders 1978",
-    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_portal2.jpg",
     "rating": null,
     "releaseDateEpochSeconds": 268185600,
     "summary": "A classic 1978 arcade game where the player defeats waves of descending aliens with a horizontally moving laser cannon to earn points.",
@@ -1682,7 +1682,7 @@
   {
     "id": 900005,
     "name": "Doom",
-    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_cyberpunk.jpg",
     "rating": 85.0,
     "releaseDateEpochSeconds": 755481600,
     "summary": "The classic 1993 first-person shooter developed by id Software. In the role of a space marine, the player fights through hordes of invading demons on Mars.",
@@ -1737,7 +1737,7 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/1942_1.jpg"
+      "file:///android_asset/screenshots/shot_cyberpunk_1.jpg"
     ],
     "videos": [
       {
@@ -1760,14 +1760,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/1942_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_cyberpunk_1.jpg",
     "timeToBeatMainSeconds": 18000,
     "timeToBeatCompleteSeconds": 36000
   },
   {
     "id": 900006,
     "name": "Doom",
-    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_gow_ragnarok.jpg",
     "rating": 86.0,
     "releaseDateEpochSeconds": 1463097600,
     "summary": "The 2016 modern reboot of the legendary Doom franchise by id Software and Bethesda Softworks.",
@@ -1827,7 +1827,7 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/1877_1.jpg"
+      "file:///android_asset/screenshots/shot_gow_ragnarok_1.jpg"
     ],
     "videos": [
       {
@@ -1849,14 +1849,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/1877_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_gow_ragnarok_1.jpg",
     "timeToBeatMainSeconds": 43200,
     "timeToBeatCompleteSeconds": 97200
   },
   {
     "id": 900007,
     "name": "Multiplatform Sandbox Quest",
-    "coverUrl": "file:///android_asset/covers/119388.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_zelda_totk.jpg",
     "rating": 88.0,
     "releaseDateEpochSeconds": 1321574400,
     "summary": "An expansive sandbox quest released and maintained on sixteen different gaming platforms across three console generations.",
@@ -1985,8 +1985,8 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/119388_1.jpg",
-      "file:///android_asset/screenshots/119388_2.jpg"
+      "file:///android_asset/screenshots/shot_zelda_totk_1.jpg",
+      "file:///android_asset/screenshots/shot_zelda_totk_2.jpg"
     ],
     "videos": [
       {
@@ -2009,14 +2009,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/119388_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_zelda_totk_1.jpg",
     "timeToBeatMainSeconds": 144000,
     "timeToBeatCompleteSeconds": 360000
   },
   {
     "id": 900008,
     "name": "Mega Studio Blockbuster Online",
-    "coverUrl": "file:///android_asset/covers/112875.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_tlou.jpg",
     "rating": 79.0,
     "releaseDateEpochSeconds": 1636070400,
     "summary": "A large-scale multiplayer production with twelve credited development and publishing entities worldwide.",
@@ -2124,8 +2124,8 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/112875_1.jpg",
-      "file:///android_asset/screenshots/112875_2.jpg"
+      "file:///android_asset/screenshots/shot_tlou_1.jpg",
+      "file:///android_asset/screenshots/shot_tlou_2.jpg"
     ],
     "videos": [
       {
@@ -2149,7 +2149,7 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/112875_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_tlou_1.jpg",
     "timeToBeatMainSeconds": 54000,
     "timeToBeatCompleteSeconds": 180000
   },
@@ -2214,7 +2214,7 @@
   {
     "id": 900010,
     "name": "Tag Overload: Unlimited Edition",
-    "coverUrl": "file:///android_asset/covers/204350.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_witcher3.jpg",
     "rating": 84.0,
     "releaseDateEpochSeconds": 1672531200,
     "summary": "A genre-blending masterpiece incorporating elements of almost every game mechanic and atmospheric theme known in gaming history.",
@@ -2279,8 +2279,8 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/204350_1.jpg",
-      "file:///android_asset/screenshots/204350_2.jpg"
+      "file:///android_asset/screenshots/shot_witcher3_1.jpg",
+      "file:///android_asset/screenshots/shot_witcher3_2.jpg"
     ],
     "videos": [
       {
@@ -2304,14 +2304,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/204350_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_witcher3_1.jpg",
     "timeToBeatMainSeconds": 72000,
     "timeToBeatCompleteSeconds": 144000
   },
   {
     "id": 900011,
     "name": "Endless Lore Chronicles: The Ancient Prophecy of Forgotten Realms",
-    "coverUrl": "file:///android_asset/covers/119171.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_eldenring.jpg",
     "rating": 91.0,
     "releaseDateEpochSeconds": 1690848000,
     "summary": "In the primordial age of the world before the stars were counted, three elder dragons fashioned the world from stardust and sacred fire. For millennia, the kingdoms of man, elf, and dwarf prospered under the benevolent gaze of the Celestial Guardians.\n\nYet when the Shadow of the Abyssal Veil crept across the northern mountains, the ancient pact was shattered. Brother turned upon brother, and the great spires of Eldoria crumbled into ash and sorrow. A chosen hero must now arise from the desolate wastes of the Outer Rim, bearing the Mark of the Sunweaver and wielding the Blade of Eternal Dawns.\n\nJourney across vast continents spanning frozen tundras, sun-scorched deserts, and subterranean dwarven citadels. Meet over three hundred fully voiced companions, each with their own branching storylines, moral dilemmas, and hidden loyalties. Engage in tactical turn-based combat where every positioning choice, elemental synergy, and environmental hazard can turn the tide of battle.\n\nCraft legendary armaments using forgotten alchemical recipes, tame mythical beasts to traverse uncharted mountain ranges, and make world-altering political decisions that determine the fate of entire empires. The prophecy awaits its fulfillment, but whether in triumph or cataclysm remains entirely in your hands.",
@@ -2361,8 +2361,8 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/119171_1.jpg",
-      "file:///android_asset/screenshots/119171_2.jpg"
+      "file:///android_asset/screenshots/shot_eldenring_1.jpg",
+      "file:///android_asset/screenshots/shot_eldenring_2.jpg"
     ],
     "videos": [
       {
@@ -2388,14 +2388,14 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/119171_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_eldenring_1.jpg",
     "timeToBeatMainSeconds": 288000,
     "timeToBeatCompleteSeconds": 540000
   },
   {
     "id": 900012,
     "name": "Competitive Arena Pro",
-    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_portal2.jpg",
     "rating": 42.0,
     "releaseDateEpochSeconds": 1640995200,
     "summary": "A purely multiplayer competitive arena shooter with no campaign or story mode.",
@@ -2431,8 +2431,8 @@
       }
     ],
     "screenshots": [
-      "file:///android_asset/screenshots/72_1.jpg",
-      "file:///android_asset/screenshots/72_2.jpg"
+      "file:///android_asset/screenshots/shot_portal2_1.jpg",
+      "file:///android_asset/screenshots/shot_portal2_2.jpg"
     ],
     "videos": [
       {
@@ -2455,7 +2455,7 @@
         ]
       }
     ],
-    "artworkUrl": "file:///android_asset/screenshots/72_1.jpg",
+    "artworkUrl": "file:///android_asset/screenshots/shot_portal2_1.jpg",
     "timeToBeatMainSeconds": null,
     "timeToBeatCompleteSeconds": 720000
   }

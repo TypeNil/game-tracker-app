@@ -284,6 +284,33 @@ class FakeBffDataSourceTest {
         const val ARENA_COMPLETE_SECONDS = 720000L
         const val GTA_YEAR = 2026
     }
+    @Test
+    fun `all fixture media URIs resolve to packaged demo assets`() {
+        val assetsDir = File(System.getProperty("demoAssetsDir")!!)
+        val strictJson = Json { ignoreUnknownKeys = true }
+        val games: List<GameDto> = strictJson.decodeFromString(File(assetsDir, "fixtures/v1/games.json").readText())
+        val details: List<GameDetailsDto> = strictJson.decodeFromString(File(assetsDir, "fixtures/v1/game-details.json").readText())
+
+        fun assertAssetExists(uri: String?, context: String) {
+            if (uri == null) return
+            assertTrue("Expected asset URI in $context but got: $uri", uri.startsWith("file:///android_asset/"))
+            val relativePath = uri.removePrefix("file:///android_asset/")
+            val targetFile = File(assetsDir, relativePath)
+            assertTrue("Referenced asset does not exist on disk for $context: $relativePath", targetFile.isFile)
+        }
+
+        games.forEach { game ->
+            assertAssetExists(game.coverUrl, "games.json game ${game.id} cover")
+        }
+
+        details.forEach { detail ->
+            assertAssetExists(detail.coverUrl, "game-details.json game ${detail.id} cover")
+            assertAssetExists(detail.artworkUrl, "game-details.json game ${detail.id} artwork")
+            detail.screenshots.forEachIndexed { index, shot ->
+                assertAssetExists(shot, "game-details.json game ${detail.id} screenshot $index")
+            }
+        }
+    }
 
     @Test
     fun `getGameDetails returns enriched game by ID or throws when not found`() = runTest {
