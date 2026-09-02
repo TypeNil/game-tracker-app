@@ -219,4 +219,33 @@ class GameDetailsFormattersTest {
         assertEquals("Nintendo Switch", merged[2].platform)
         assertEquals("TBA", merged[2].displayDate)
     }
+    @Test
+    fun calculateScreenshotPanBounds_portraitViewport_doesNotAllowBlankVerticalPan() {
+        val containerWidth = 1080f
+        val containerHeight = 2400f
+        val scale = 2.5f
+
+        val bounds = calculateScreenshotPanBounds(
+            containerWidthPx = containerWidth,
+            containerHeightPx = containerHeight,
+            scale = scale,
+        )
+
+        // At 2.5x zoom on a 16:9 image in a 1080x2400 screen:
+        // fittedWidth = 1080, scaledWidth = 2700 -> horizontal pan = (2700 - 1080) / 2 = 810
+        // fittedHeight = 607.5, scaledHeight = 1518.75 < 2400 -> vertical pan must be strictly 0
+        assertEquals(810f, bounds.x, 0.01f)
+        assertEquals(0f, bounds.y, 0.01f)
+    }
+
+    @Test
+    fun calculateScreenshotPanBounds_atOneX_hasZeroBounds() {
+        val bounds = calculateScreenshotPanBounds(
+            containerWidthPx = 1080f,
+            containerHeightPx = 2400f,
+            scale = 1f,
+        )
+        assertEquals(0f, bounds.x, 0.01f)
+        assertEquals(0f, bounds.y, 0.01f)
+    }
 }

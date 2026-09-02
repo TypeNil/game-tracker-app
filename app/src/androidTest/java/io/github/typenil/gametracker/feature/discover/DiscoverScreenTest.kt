@@ -28,7 +28,10 @@ class DiscoverScreenTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
-    private fun setContent(uiState: DiscoverUiState) {
+    private fun setContent(
+        uiState: DiscoverUiState,
+        onLoadMoreRail: (DiscoverRail) -> Unit = {},
+    ) {
         composeTestRule.setContent {
             GameTrackerTheme {
                 DiscoverScreen(
@@ -40,6 +43,7 @@ class DiscoverScreenTest {
                     onRetry = {},
                     onUserMessageShown = {},
                     onLoadMoreTrending = {},
+                    onLoadMoreRail = onLoadMoreRail,
                 )
             }
         }
@@ -210,5 +214,28 @@ class DiscoverScreenTest {
         )
         val emptyMessage = composeTestRule.activity.getString(R.string.discover_rail_empty)
         composeTestRule.onNodeWithText(emptyMessage).assertIsDisplayed()
+    }
+
+    @Test
+    fun nonEmptyRail_appendError_showsRetryButton_andClickInvokesOnLoadMoreRail() {
+        var requestedRail: DiscoverRail? = null
+        val game = Game(id = 42L, name = "Elden Ring")
+        setContent(
+            uiState = DiscoverUiState(
+                selectedTab = DiscoverTab.CHARTS,
+                rails = listOf(
+                    DiscoverRailState(
+                        rail = DiscoverRail.POPULAR_NOW,
+                        games = listOf(game),
+                        error = AppError.NetworkError,
+                    ),
+                ),
+            ),
+            onLoadMoreRail = { requestedRail = it },
+        )
+
+        val retryText = composeTestRule.activity.getString(R.string.retry_button)
+        composeTestRule.onNodeWithText(retryText).assertIsDisplayed().performClick()
+        assertEquals(DiscoverRail.POPULAR_NOW, requestedRail)
     }
 }

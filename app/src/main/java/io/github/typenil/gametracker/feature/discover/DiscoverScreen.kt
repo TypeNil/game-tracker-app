@@ -389,14 +389,16 @@ private fun ChartsFeed(
         }
     }
 
-    LaunchedEffect(uiState.selectedRail) {
-        if (currentRailState.games.isEmpty() && !currentRailState.isLoading && !currentRailState.endReached) {
+    val canLoadRail = !currentRailState.isLoading && !currentRailState.endReached && currentRailState.error == null
+
+    LaunchedEffect(uiState.selectedRail, canLoadRail) {
+        if (currentRailState.games.isEmpty() && canLoadRail) {
             onLoadMoreRail(uiState.selectedRail)
         }
     }
 
-    LaunchedEffect(shouldLoadMore, currentRailState.isLoading, currentRailState.endReached) {
-        if (shouldLoadMore && !currentRailState.isLoading && !currentRailState.endReached) {
+    LaunchedEffect(shouldLoadMore, canLoadRail) {
+        if (shouldLoadMore && canLoadRail) {
             onLoadMoreRail(uiState.selectedRail)
         }
     }
@@ -462,15 +464,41 @@ private fun ChartsFeed(
                         },
                     )
                 }
-                if (currentRailState.isLoading) {
-                    item(key = "loading-append:${currentRailState.rail.type}") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator()
+                when {
+                    currentRailState.error != null -> {
+                        item(key = "append-error:${currentRailState.rail.type}") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = currentRailState.error.errorMessage(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        onLoadMoreRail(currentRailState.rail)
+                                    },
+                                ) {
+                                    Text(stringResource(R.string.retry_button))
+                                }
+                            }
+                        }
+                    }
+                    currentRailState.isLoading -> {
+                        item(key = "loading-append:${currentRailState.rail.type}") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
                 }

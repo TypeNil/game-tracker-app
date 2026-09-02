@@ -486,6 +486,65 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun appendFailure_doesNotRetryUntilExplicitRetry() = runTest {
+        val initialGames = List(20) { Game(id = it.toLong(), name = "Game $it") }
+        val popularFlow = MutableStateFlow(initialGames)
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+        } returns AppResult.Success(Unit)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val loadedState = awaitItemUntil { state ->
+                val rail = state.rails.firstOrNull { it.rail == DiscoverRail.POPULAR_NOW }
+                rail?.games?.size == 20 && !rail.isLoading
+            }
+            assertEquals(20, loadedState.rails.first { it.rail == DiscoverRail.POPULAR_NOW }.games.size)
+
+            coVerify(exactly = 1) {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            }
+
+            coEvery {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            } returns AppResult.Error(AppError.NetworkError)
+
+            viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+
+            val errorState = awaitItemUntil { state ->
+                val rail = state.rails.firstOrNull { it.rail == DiscoverRail.POPULAR_NOW }
+                rail?.error == AppError.NetworkError && !rail.isLoading
+            }
+            val failedRail = errorState.rails.first { it.rail == DiscoverRail.POPULAR_NOW }
+            assertEquals(20, failedRail.games.size)
+            assertEquals(AppError.NetworkError, failedRail.error)
+
+            coVerify(exactly = 2) {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            }
+
+            advanceUntilIdle()
+            coVerify(exactly = 2) {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            }
+
+            coEvery {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            } returns AppResult.Success(Unit)
+
+            viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+            advanceUntilIdle()
+
+            coVerify(exactly = 3) {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     private fun libraryGame(
         id: Long,

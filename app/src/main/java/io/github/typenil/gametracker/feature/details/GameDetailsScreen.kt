@@ -161,7 +161,7 @@ private val DETAILS_GUTTER = GtDimens.Gutter
 private val HEADER_COVER_WIDTH = 124.dp
 
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
-private val SCREENSHOT_ASPECT_RATIO = 16f / 9f
+internal const val SCREENSHOT_ASPECT_RATIO = 16f / 9f
 
 private const val ARTWORK_ALPHA = 0.72f
 private const val ARTWORK_SCRIM_ALPHA = 0.15f
@@ -1266,6 +1266,23 @@ private const val MIN_ZOOM = 1f
 private const val MAX_ZOOM = 4f
 private const val DOUBLE_TAP_ZOOM = 2.5f
 private const val ZOOM_EPSILON = 0.01f
+internal fun calculateScreenshotPanBounds(
+    containerWidthPx: Float,
+    containerHeightPx: Float,
+    scale: Float,
+): Offset {
+    val fittedWidthPx = minOf(
+        containerWidthPx,
+        containerHeightPx * SCREENSHOT_ASPECT_RATIO,
+    )
+    val fittedHeightPx = fittedWidthPx / SCREENSHOT_ASPECT_RATIO
+
+    return Offset(
+        x = ((fittedWidthPx * scale - containerWidthPx) / 2f).coerceAtLeast(0f),
+        y = ((fittedHeightPx * scale - containerHeightPx) / 2f).coerceAtLeast(0f),
+    )
+}
+
 
 private suspend fun PointerInputScope.detectOwnedZoomPanGestures(
     currentScale: () -> Float,
@@ -1353,19 +1370,20 @@ private fun ZoomableScreenshotImage(
                         currentScale = { scale },
                     ) { pan, zoom ->
                         val newScale = (scale * zoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
-                        val maxOffsetX =
-                            (widthPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
-                        val maxOffsetY =
-                            (heightPx * (newScale - 1f) / 2f).coerceAtLeast(0f)
+                        val bounds = calculateScreenshotPanBounds(
+                            containerWidthPx = widthPx,
+                            containerHeightPx = heightPx,
+                            scale = newScale,
+                        )
 
                         scale = newScale
                         offsetX = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
-                            (offsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                            (offsetX + pan.x).coerceIn(-bounds.x, bounds.x)
                         } else {
                             0f
                         }
                         offsetY = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
-                            (offsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+                            (offsetY + pan.y).coerceIn(-bounds.y, bounds.y)
                         } else {
                             0f
                         }
