@@ -47,7 +47,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.flowOf
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -62,6 +64,13 @@ class SearchScreenTest {
     // Outlives activity recreation, standing in for the ViewModelScope that caches the
     // production paging generation.
     private val testScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    @After
+    fun tearDown() {
+        // Release the shared cachedIn generation so it cannot retain test objects for
+        // the rest of the instrumented process.
+        testScope.cancel()
+    }
 
     private val sampleGames = listOf(
         Game(
@@ -724,13 +733,14 @@ class SearchScreenTest {
         // The composition records the Unavailable baseline...
         composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Unavailable }
         composeTestRule.waitForIdle()
-        // ...connectivity then flips to Available while the host is being recreated:
-        // the fresh composition starts with networkStatus = Available and must replay
-        // the saved Unavailable -> Available edge to retry the failed cachedIn
-        // generation without a user tap; a plain remember baseline would start from
-        // Unknown and suppress the edge forever.
-        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Available }
+        // ...then the only active composition is destroyed by the recreation. The
+        // Available flip is published strictly AFTER recreate() returned and BEFORE the
+        // replacement composition attaches, so no live composition can consume the edge
+        // first: only the restored rememberSaveable baseline can replay it. A plain
+        // remember baseline would restore Unknown and suppress the edge forever.
         scenario.recreate()
+        assertEquals(1, source.refreshAttempts)
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Available }
         attach()
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
             runCatching {
