@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.feature.search
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
 import io.github.typenil.gametracker.core.connectivity.NetworkStatus
@@ -23,6 +24,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
+import androidx.paging.cachedIn
 import androidx.paging.PagingState
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
@@ -40,6 +42,9 @@ import java.util.concurrent.ConcurrentHashMap
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -53,6 +58,10 @@ class SearchScreenTest {
 
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+
+    // Outlives activity recreation, standing in for the ViewModelScope that caches the
+    // production paging generation.
+    private val testScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val sampleGames = listOf(
         Game(
@@ -593,6 +602,12 @@ class SearchScreenTest {
         private val failRefresh: Boolean,
         private val failAppend: Boolean,
     ) : PagingSource<Int, Game>() {
+        // The production GamesRemoteMediator maps transport failures to a classified
+        // AppErrorException before Paging reaches presentation; the scripted source must
+        // emit the same boundary contract, not a raw IOException.
+        private fun offlinePagingError(): AppErrorException =
+            AppErrorException(AppError.NetworkError, IOException("device offline"))
+
         var refreshAttempts = 0
         var appendAttempts = 0
 
@@ -601,7 +616,7 @@ class SearchScreenTest {
             return if (key == 0) {
                 refreshAttempts++
                 if (failRefresh && refreshAttempts == 1) {
-                    LoadResult.Error(IOException("device offline"))
+                    LoadResult.Error(offlinePagingError())
                 } else {
                     LoadResult.Page(
                         data = firstPage,
@@ -612,7 +627,7 @@ class SearchScreenTest {
             } else {
                 appendAttempts++
                 if (failAppend && appendAttempts == 1) {
-                    LoadResult.Error(IOException("device offline"))
+                    LoadResult.Error(offlinePagingError())
                 } else {
                     LoadResult.Page(data = secondPage, prevKey = null, nextKey = null)
                 }
@@ -661,6 +676,67 @@ class SearchScreenTest {
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt")
                 .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(2, source.refreshAttempts)
+        composeTestRule.onNodeWithText(context.getString(R.string.error_network)).assertDoesNotExist()
+    }
+
+    @Test
+    fun validatedNetworkReconnectDuringActivityRecreation_retriesFailedRefresh() {
+        val source = RecoveringPagingSource(sampleGames, emptyList(), failRefresh = true, failAppend = false)
+        // cachedIn mirrors production: the ViewModel-scope generation survives the
+        // recreation, so the restored composition re-attaches to a still-failed load
+        // instead of starting a new refresh.
+        val results = Pager(
+            config = PagingConfig(pageSize = 20, initialLoadSize = 20),
+            pagingSourceFactory = { source },
+        ).flow.cachedIn(testScope)
+        val networkState = mutableStateOf(NetworkStatus.Unknown)
+        val scenario = composeTestRule.activityRule.scenario
+        // The rule's own setContent does not survive a manual scenario.recreate(); the
+        // content must be attached per activity instance, exactly like the production
+        // host does. The new instance restores the rememberSaveable baseline from the
+        // recreation Bundle.
+        fun attach() {
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    SearchScreen(
+                        uiState = SearchUiState(query = "witcher", searchActive = true),
+                        searchResults = results,
+                        networkStatus = networkState.value,
+                        onQueryChange = {},
+                        onClearQuery = {},
+                        onGameClick = {},
+                        onBackClick = {},
+                    )
+                }
+            }
+        }
+        attach()
+
+        val context = composeTestRule.activity
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(context.getString(R.string.error_network))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(1, source.refreshAttempts)
+
+        // The composition records the Unavailable baseline...
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Unavailable }
+        composeTestRule.waitForIdle()
+        // ...connectivity then flips to Available while the host is being recreated:
+        // the fresh composition starts with networkStatus = Available and must replay
+        // the saved Unavailable -> Available edge to retry the failed cachedIn
+        // generation without a user tap; a plain remember baseline would start from
+        // Unknown and suppress the edge forever.
+        composeTestRule.runOnUiThread { networkState.value = NetworkStatus.Available }
+        scenario.recreate()
+        attach()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
         }
         assertEquals(2, source.refreshAttempts)
         composeTestRule.onNodeWithText(context.getString(R.string.error_network)).assertDoesNotExist()

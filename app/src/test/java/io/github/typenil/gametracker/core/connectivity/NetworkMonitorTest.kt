@@ -119,9 +119,16 @@ class NetworkMonitorTest {
         val monitor = NetworkMonitor(context)
         assertEquals(NetworkStatus.Unavailable, monitor.status.value)
 
+        // Distinct instances: the lost network and the replacement default must not be
+        // the same object, or the fixture cannot describe a real handover.
+        val lostNetwork = mockk<Network>()
+        val replacementNetwork = mockk<Network>()
         val validated = capabilities(internet = true, validated = true)
-        activeNetworkWith(validated)
-        callbackSlot.captured.onLost(network)
+        every { connectivityManager.activeNetwork } returns replacementNetwork
+        every {
+            connectivityManager.getNetworkCapabilities(replacementNetwork)
+        } returns validated
+        callbackSlot.captured.onLost(lostNetwork)
         assertEquals(NetworkStatus.Available, monitor.status.value)
     }
 

@@ -176,16 +176,30 @@ fun SearchScreen(
     val lazyItems = searchResults.collectAsLazyPagingItems()
 
     // Device-network recovery is an event, not data: only a genuine Unavailable ->
-    // Available transition observed while this composition is active may retry a
-    // currently failed Paging load. The first composition (Unknown baseline) is never
-    // treated as recovery, and collection upstream is lifecycle-suspended when stopped.
-    var previousNetworkStatus by remember { mutableStateOf(NetworkStatus.Unknown) }
-    LaunchedEffect(networkStatus) {
-        val recovered = previousNetworkStatus == NetworkStatus.Unavailable &&
+    // Available transition may retry a currently failed Paging load. Both the baseline
+    // and the one pending recovery intent must survive configuration recreation: the
+    // ViewModel-scope cachedIn generation outlives it, and a restored composition can
+    // replay the failed LoadStates a frame after its first effect pass (Loading first).
+    // The first composition (Unknown baseline) is never treated as recovery.
+    var previousNetworkStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
+    var pendingRecoveryRetry by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(networkStatus, lazyItems.loadState.refresh, lazyItems.loadState.append) {
+        val loadStates = lazyItems.loadState
+        val recoveredNow = previousNetworkStatus == NetworkStatus.Unavailable &&
             networkStatus == NetworkStatus.Available
         previousNetworkStatus = networkStatus
-        if (recovered && shouldRetryOnReconnect(lazyItems.loadState)) {
-            lazyItems.retry()
+        if (recoveredNow) {
+            pendingRecoveryRetry = true
+        }
+        when {
+            networkStatus != NetworkStatus.Available -> pendingRecoveryRetry = false
+            pendingRecoveryRetry && shouldRetryOnReconnect(loadStates) -> {
+                lazyItems.retry()
+                pendingRecoveryRetry = false
+            }
+            // Settled healthy without ever needing the retry: drop the intent. While any
+            // load is still in flight the intent stays pending until it resolves.
+            pendingRecoveryRetry && !loadStates.isLoading -> pendingRecoveryRetry = false
         }
     }
 
@@ -712,3 +726,7 @@ private fun SearchErrorState(
  */
 internal fun shouldRetryOnReconnect(loadStates: CombinedLoadStates): Boolean =
     loadStates.refresh is LoadState.Error || loadStates.append is LoadState.Error
+
+/** True while a refresh or append transition is still in flight. */
+private val CombinedLoadStates.isLoading: Boolean
+    get() = refresh is LoadState.Loading || append is LoadState.Loading

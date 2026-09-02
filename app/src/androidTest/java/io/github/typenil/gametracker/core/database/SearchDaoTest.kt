@@ -204,6 +204,17 @@ class SearchDaoTest {
 
     @Test
     fun getSearchResultGameIds_returnsPersistedIds() = runTest {
+        // search_results has RESTRICT foreign keys on both parents: the games and the
+        // query metadata must exist before any cross-reference row is insertable.
+        gameDao.upsertGames(
+            listOf(
+                GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L),
+                GameEntity(7L, "G7", null, null, null, null, emptyList(), emptyList(), 100L)
+            )
+        )
+        searchDao.upsertSearchQuery(SearchQueryEntity("q", 100L, 100L, 1))
+        searchDao.upsertSearchQuery(SearchQueryEntity("other", 100L, 100L, 1))
+
         searchDao.insertSearchResults(
             listOf(
                 SearchResultCrossRef(query = "q", gameId = 1L, position = 0)
