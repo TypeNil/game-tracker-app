@@ -864,11 +864,15 @@ class SearchScreenTest {
             composeTestRule.onAllNodesWithText("Placeholder Game 0")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // Only 2 of 6 authoritative rows are loaded at first; the remaining committed
-        // positions must render as real skeleton rows, not collapse the window to 2 cards.
+        // The old collapse bug truncated the presented window to the just-loaded page, so
+        // scrolling to the last padded position (index 6 = count header + sixth slot) is only
+        // possible while the full 6-slot window stays presented. Appends are held by the gate,
+        // so those padded slots must render as skeleton rows. The CI skin is 320x640 dp where
+        // only one row fits past the fold: assert padding exists, never a viewport count.
+        composeTestRule.onNode(hasScrollToIndexAction()).performScrollToIndex(6)
         assertTrue(
             composeTestRule.onAllNodesWithTag(FEED_SKELETON_ROW_TEST_TAG)
-                .fetchSemanticsNodes().size >= 2,
+                .fetchSemanticsNodes().isNotEmpty(),
         )
         // Release the held appends; every authoritative position then converges to a card.
         appendGate.complete(Unit)
