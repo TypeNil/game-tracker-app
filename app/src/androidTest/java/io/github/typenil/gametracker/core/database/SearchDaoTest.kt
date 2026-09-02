@@ -9,6 +9,9 @@ import io.github.typenil.gametracker.core.database.dao.SearchDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
+import androidx.paging.PagingSource
+import kotlinx.coroutines.CompletableDeferred
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -160,5 +163,47 @@ class SearchDaoTest {
         )
     }
 
+    @Test
+    fun pagingSource_isInvalidated_andReloadsAppendedRowsInPositionOrder() = runTest(timeout = 30.seconds) {
+        val query = "pagination"
+        val games = (0L until 40L).map { id ->
+            GameEntity(id, "Game $id", null, null, null, null, emptyList(), emptyList(), 100L)
+        }
+        gameDao.upsertGames(games)
+        searchDao.upsertSearchQuery(SearchQueryEntity(query, 100L, 100L, 20))
+        searchDao.insertSearchResults(
+            (0L until 20L).map { SearchResultCrossRef(query = query, gameId = it, position = it.toInt()) }
+        )
+
+        val firstSource: PagingSource<Int, GameEntity> = searchDao.getSearchResultsPagingSource(query)
+        val invalidated = CompletableDeferred<Unit>()
+        firstSource.registerInvalidatedCallback { invalidated.complete(Unit) }
+
+        val initial = firstSource.load(
+            PagingSource.LoadParams.Refresh(key = 0, loadSize = 20, placeholdersEnabled = false),
+        )
+        assertTrue(initial is PagingSource.LoadResult.Page)
+        assertEquals((0L until 20L).toList(), (initial as PagingSource.LoadResult.Page).data.map { it.id })
+
+        // The append write the RemoteMediator performs for the next page must trip Room's
+        // invalidation tracker so the paging container reloads instead of freezing at 20 rows.
+        searchDao.insertSearchResults(
+            (20L until 40L).map { SearchResultCrossRef(query = query, gameId = it, position = it.toInt()) }
+        )
+        invalidated.await()
+
+        // Paging restarts through the factory with the next key, exactly like the mediator's
+        // resolved append offset: rows from both writes come back in position order.
+        val reloaded = searchDao.getSearchResultsPagingSource(query)
+            .load(PagingSource.LoadParams.Refresh(key = 20, loadSize = 20, placeholdersEnabled = false))
+        assertTrue(reloaded is PagingSource.LoadResult.Page)
+        val page = reloaded as PagingSource.LoadResult.Page
+        assertEquals((20L until 40L).toList(), page.data.map { it.id })
+        assertEquals(20, page.prevKey)
+        // Room compares offset + returned rows against the total count: at the true end of
+        // the table nextKey is null — exactly the end-of-pagination signal the paging
+        // container uses to stop requesting appends.
+        assertNull(page.nextKey)
+    }
 }
 

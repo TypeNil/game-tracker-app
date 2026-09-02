@@ -3,6 +3,10 @@ package io.github.typenil.gametracker.feature.search
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
@@ -21,7 +25,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -68,7 +71,6 @@ class SearchViewModel @Inject constructor(
     val recentQueries: StateFlow<List<String>> = gameRepository
         .getRecentSearchQueriesFlow(MAX_RECENT_QUERIES)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    private val retryEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private val librarySnapshot = MutableStateFlow<LibrarySnapshot>(LibrarySnapshot.Ready(emptyMap()))
     private val editingGameId = MutableStateFlow<Long?>(null)
     private val isLibrarySubmitting = MutableStateFlow(false)
@@ -97,74 +99,62 @@ class SearchViewModel @Inject constructor(
             )
         }
 
-    private val retryCommands: Flow<SearchCommand> = retryEvents.map {
-        val query = rawQuery.value
-        val currentFilters = filterSnapshot.value.toDomainFilters()
-        SearchCommand(
-            domainQuery = currentFilters.toDomainQuery(query, clockYear()),
-            shouldDebounce = false,
-            force = true,
-        )
-    }
-
     private val automaticCommands: Flow<SearchCommand> = merge(textCommands, filterCommands)
         .distinctUntilChanged { old, new ->
             old.domainQuery == new.domainQuery
         }
 
-    private val searchResults: Flow<SearchExecutionResult> = merge(automaticCommands, retryCommands)
+    private val pendingSearchLoadStates = LoadStates(
+        refresh = LoadState.Loading,
+        prepend = LoadState.NotLoading(endOfPaginationReached = true),
+        append = LoadState.NotLoading(endOfPaginationReached = false),
+    )
+
+    val searchResults: Flow<PagingData<Game>> = automaticCommands
         .flatMapLatest { command ->
             val validation = SearchInputPolicy.validate(command.domainQuery.query)
             when {
-                validation !is SearchInputValidation.Valid -> flowOf(SearchExecutionResult.Idle)
-                !command.domainQuery.shouldSearch -> flowOf(SearchExecutionResult.Idle)
-                else -> flow<SearchExecutionResult> {
+                validation !is SearchInputValidation.Valid -> flowOf(PagingData.empty())
+                !command.domainQuery.shouldSearch -> flowOf(PagingData.empty())
+                else -> flow {
+                    // The explicit loading generation is emitted before the debounce so the UI
+                    // can never present the previous query's cached PagingData (or an idle empty
+                    // initial state) under the new query text: the pending generation replaces
+                    // cachedIn's replay immediately on every committed command.
+                    emit(PagingData.empty(sourceLoadStates = pendingSearchLoadStates))
                     if (command.shouldDebounce) {
                         delay(SEARCH_DEBOUNCE_MILLIS)
                     }
-                    val localFlow = gameRepository.getSearchResultsFlow(command.domainQuery)
-                    val refreshFlow = flow<RefreshStatus> {
-                        emit(RefreshStatus.Loading)
-                        val result = gameRepository.searchGames(query = command.domainQuery, limit = SEARCH_LIMIT, force = command.force)
-                        emit(RefreshStatus.Completed(result))
+                    // History is optional: a failed write surfaces as a snackbar and must never
+                    // gate the paged results themselves.
+                    when (gameRepository.recordSearchHistory(command.domainQuery.query)) {
+                        is AppResult.Success -> Unit
+                        is AppResult.Error -> userMessageRes.value = R.string.error_history_save_failed
                     }
                     emitAll(
-                        combine(localFlow, refreshFlow) { games, status ->
-                            val refreshError = (status as? RefreshStatus.Completed)?.result?.let {
-                                (it as? AppResult.Error)?.error
-                            }
-                            when {
-                                games.isNotEmpty() -> SearchExecutionResult.Success(
-                                    domainQuery = command.domainQuery,
-                                    games = games,
-                                    refreshError = refreshError,
-                                )
-                                status is RefreshStatus.Loading -> SearchExecutionResult.Loading(command.domainQuery)
-                                status is RefreshStatus.Completed && status.result is AppResult.Error ->
-                                    SearchExecutionResult.Error(domainQuery = command.domainQuery, error = status.result.error)
-                                else -> SearchExecutionResult.Empty(
-                                    domainQuery = command.domainQuery,
-                                    hasConstraints = command.domainQuery.hasConstraints,
-                                )
-                            }
-                        }
+                        gameRepository.getPagedSearchResults(
+                            query = command.domainQuery,
+                            pageSize = PAGE_SIZE,
+                        ),
                     )
                 }
             }
         }
+        .cachedIn(viewModelScope)
 
     private val searchStateBundle: Flow<SearchStateBundle> = combine(
         rawQuery,
         filters,
         recentQueries,
-        searchResults,
-    ) { currentRawQuery, currentFilters, recent, result ->
+    ) { currentRawQuery, currentFilters, recent ->
+        val validation = SearchInputPolicy.validate(currentRawQuery)
         SearchStateBundle(
             query = currentRawQuery,
             filters = currentFilters,
             recentQueries = recent,
-            result = result,
-            queryValidation = SearchInputPolicy.validate(currentRawQuery),
+            searchActive = validation is SearchInputValidation.Valid &&
+                currentFilters.toDomainQuery(currentRawQuery, clockYear()).shouldSearch,
+            queryValidation = validation,
         )
     }
 
@@ -181,47 +171,11 @@ class SearchViewModel @Inject constructor(
         libraryUiFlow,
         userMessageRes,
     ) { searchBundle, library, message ->
-        val currentDomainQuery = searchBundle.filters.toDomainQuery(searchBundle.query, clockYear())
-        val resultState = when {
-            !currentDomainQuery.shouldSearch -> SearchResultUiState.Idle
-            searchBundle.queryValidation is SearchInputValidation.Invalid -> SearchResultUiState.Idle
-            else -> when (val res = searchBundle.result) {
-                is SearchExecutionResult.Idle,
-                is SearchExecutionResult.Loading -> SearchResultUiState.Loading
-                is SearchExecutionResult.Success -> {
-                    if (res.domainQuery == currentDomainQuery) {
-                        SearchResultUiState.Content(
-                            games = res.games,
-                            refreshError = res.refreshError,
-                        )
-                    } else {
-                        SearchResultUiState.Loading
-                    }
-                }
-                is SearchExecutionResult.Empty -> {
-                    if (res.domainQuery == currentDomainQuery) {
-                        SearchResultUiState.Empty(
-                            query = searchBundle.query,
-                            hasConstraints = res.hasConstraints,
-                        )
-                    } else {
-                        SearchResultUiState.Loading
-                    }
-                }
-                is SearchExecutionResult.Error -> {
-                    if (res.domainQuery == currentDomainQuery) {
-                        SearchResultUiState.Error(res.error)
-                    } else {
-                        SearchResultUiState.Loading
-                    }
-                }
-            }
-        }
         SearchUiState(
             query = searchBundle.query,
             filters = searchBundle.filters,
             recentQueries = searchBundle.recentQueries,
-            result = resultState,
+            searchActive = searchBundle.searchActive,
             inputValidation = searchBundle.queryValidation,
             librarySnapshot = library.snapshot,
             editingGameId = library.editingGameId,
@@ -236,16 +190,15 @@ class SearchViewModel @Inject constructor(
             val restoredFilters = savedStateHandle.get<SearchFiltersSnapshot>(KEY_FILTERS)?.toDomainFilters()
                 ?: SearchFilters.Empty
             val restoredValidation = SearchInputPolicy.validate(restoredQuery)
-            // The restored result state must agree with the validation verdict the interactive
-            // path uses: an invalid persisted query cannot start as Loading (the screen would
-            // render the inline error and the skeleton simultaneously).
-            val restoredShouldSearch =
+            // The restored state must agree with the validation verdict the interactive path
+            // uses: an invalid persisted query never activates the paged result container.
+            val restoredSearchActive =
                 restoredValidation is SearchInputValidation.Valid &&
                     restoredFilters.toDomainQuery(restoredQuery, clockYear()).shouldSearch
             SearchUiState(
                 query = restoredQuery,
                 filters = restoredFilters,
-                result = if (restoredShouldSearch) SearchResultUiState.Loading else SearchResultUiState.Idle,
+                searchActive = restoredSearchActive,
                 inputValidation = restoredValidation,
             )
         }
@@ -349,10 +302,6 @@ class SearchViewModel @Inject constructor(
     }
 
 
-    fun retry() {
-        retryEvents.tryEmit(Unit)
-    }
-
     fun onUserMessageShown() {
         userMessageRes.value = null
     }
@@ -429,7 +378,7 @@ class SearchViewModel @Inject constructor(
         val query: String,
         val filters: SearchFilters,
         val recentQueries: List<String>,
-        val result: SearchExecutionResult,
+        val searchActive: Boolean,
         val queryValidation: SearchInputValidation,
     )
     private data class LibraryUi(
@@ -441,7 +390,6 @@ class SearchViewModel @Inject constructor(
     private data class SearchCommand(
         val domainQuery: GameSearchQuery,
         val shouldDebounce: Boolean,
-        val force: Boolean = false,
     )
 
     private fun clockYear(): Int = Year.now(clock).value
@@ -466,30 +414,13 @@ class SearchViewModel @Inject constructor(
     }
 
 
-    private sealed interface RefreshStatus {
-        data object Loading : RefreshStatus
-        data class Completed(val result: AppResult<Unit>) : RefreshStatus
-    }
-
-    private sealed interface SearchExecutionResult {
-        data object Idle : SearchExecutionResult
-        data class Loading(val domainQuery: GameSearchQuery) : SearchExecutionResult
-        data class Success(
-            val domainQuery: GameSearchQuery,
-            val games: List<Game>,
-            val refreshError: AppError? = null,
-        ) : SearchExecutionResult
-        data class Empty(val domainQuery: GameSearchQuery, val hasConstraints: Boolean) : SearchExecutionResult
-        data class Error(val domainQuery: GameSearchQuery, val error: AppError) : SearchExecutionResult
-    }
-
     companion object {
         const val KEY_QUERY = "search_query"
         const val KEY_FILTERS = "search_filters"
 
         const val SEARCH_DEBOUNCE_MILLIS = 300L
         const val FILTER_DEBOUNCE_MILLIS = 150L
-        const val SEARCH_LIMIT = 30
+        const val PAGE_SIZE = 20
         const val MAX_QUERY_LENGTH = 100
         const val MAX_RECENT_QUERIES = 10
 

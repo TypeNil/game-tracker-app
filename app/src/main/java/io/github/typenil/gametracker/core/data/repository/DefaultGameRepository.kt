@@ -393,17 +393,9 @@ class DefaultGameRepository internal constructor(
                 val nowSeconds = nowEpochSeconds()
 
                 // Search history records user intent; it must not depend on whether a network
-                // refresh was actually needed. The history trim keeps the table bounded.
-                if (query.query.isNotBlank()) {
-                    searchHistoryDao.upsertSearchHistory(
-                        SearchHistoryEntity(
-                            normalizedQuery = GameQueryKey.normalize(query.query),
-                            displayQuery = query.query.trim(),
-                            lastQueriedAtEpochSeconds = nowSeconds,
-                        )
-                    )
-                    searchHistoryDao.trimSearchHistory(SEARCH_HISTORY_KEEP_ENTRIES)
-                }
+                // refresh was actually needed. A failed history write still fails this call
+                // exactly as before the extraction into writeSearchHistory().
+                writeSearchHistory(query.query)
 
                 // TTL gate: a structurally intact, recently refreshed cache skips the network.
                 if (!force && isSearchCacheFresh(cacheKey, nowSeconds, requiredCount = limit)) {
@@ -487,6 +479,26 @@ class DefaultGameRepository internal constructor(
         val hasRequestedWindow = actualCount >= requiredCount || remoteKey.nextOffset == null
 
         return isWithinTtl && hasRequestedWindow
+    }
+
+    override suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit> =
+        withContext(ioDispatcher) {
+            runSuspendCatching { writeSearchHistory(rawQuery) }.fold(
+                onSuccess = { AppResult.Success(Unit) },
+                onFailure = { AppResult.Error(it.toAppError()) },
+            )
+        }
+
+    private suspend fun writeSearchHistory(rawQuery: String) {
+        if (rawQuery.isBlank()) return
+        searchHistoryDao.upsertSearchHistory(
+            SearchHistoryEntity(
+                normalizedQuery = GameQueryKey.normalize(rawQuery),
+                displayQuery = rawQuery.trim(),
+                lastQueriedAtEpochSeconds = nowEpochSeconds(),
+            )
+        )
+        searchHistoryDao.trimSearchHistory(SEARCH_HISTORY_KEEP_ENTRIES)
     }
 
     override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> {

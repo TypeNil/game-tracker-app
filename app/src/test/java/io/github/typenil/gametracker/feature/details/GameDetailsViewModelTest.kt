@@ -400,6 +400,8 @@ class GameDetailsViewModelTest {
             pageSize: Int,
         ) = flowOf(androidx.paging.PagingData.empty<Game>())
 
+        override suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit> = AppResult.Success(Unit)
+
         override suspend fun searchGames(
             query: io.github.typenil.gametracker.core.model.GameSearchQuery,
             limit: Int,

@@ -11,8 +11,11 @@ import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
+import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
+import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.model.AppErrorException
 import io.github.typenil.gametracker.core.model.Game
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -92,6 +95,12 @@ class GamesRemoteMediatorTest {
             lastUpdatedEpochSeconds = now - 100
         )
         coEvery { searchDao.countSearchResultsForQuery(key) } returns 20
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = now - 400,
+            lastQueriedAtEpochSeconds = now - 100,
+            resultCount = 20,
+        )
 
         val mediator = GamesRemoteMediator(
             queryKey = key,
@@ -142,6 +151,12 @@ class GamesRemoteMediatorTest {
             lastUpdatedEpochSeconds = now - 4000
         )
         coEvery { searchDao.countSearchResultsForQuery(key) } returns 20
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = now - 400,
+            lastQueriedAtEpochSeconds = now - 4000,
+            resultCount = 20,
+        )
 
         val mediator = GamesRemoteMediator(
             queryKey = key,
@@ -159,7 +174,40 @@ class GamesRemoteMediatorTest {
     }
 
     @Test
-    fun `initialize returns LAUNCH_INITIAL_REFRESH when remoteKey is fresh but local rows are 0`() = runTest {
+    fun `fresh terminal empty cache skips initial refresh`() = runTest {
+        val now = 10_000L
+        val key = GameQueryKey.KEY_DISCOVER_TOP_RATED
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = null,
+            lastUpdatedEpochSeconds = now - 100
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 0
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = now - 100,
+            lastQueriedAtEpochSeconds = now - 100,
+            resultCount = 0,
+        )
+
+        val mediator = GamesRemoteMediator(
+            queryKey = key,
+            ttlSeconds = 3600L,
+            fetcher = { _, _ -> emptyList() },
+            gameDao = gameDao,
+            searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = transactionRunner,
+            nowEpochSeconds = { now }
+        )
+
+        val result = mediator.initialize()
+        assertEquals(RemoteMediator.InitializeAction.SKIP_INITIAL_REFRESH, result)
+    }
+
+    @Test
+    fun `missing rows with nonzero metadata launches initial refresh`() = runTest {
         val now = 10_000L
         val key = GameQueryKey.KEY_DISCOVER_TOP_RATED
         coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
@@ -169,6 +217,45 @@ class GamesRemoteMediatorTest {
             lastUpdatedEpochSeconds = now - 100
         )
         coEvery { searchDao.countSearchResultsForQuery(key) } returns 0
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = now - 100,
+            lastQueriedAtEpochSeconds = now - 100,
+            resultCount = 20,
+        )
+
+        val mediator = GamesRemoteMediator(
+            queryKey = key,
+            ttlSeconds = 3600L,
+            fetcher = { _, _ -> emptyList() },
+            gameDao = gameDao,
+            searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = transactionRunner,
+            nowEpochSeconds = { now }
+        )
+
+        val result = mediator.initialize()
+        assertEquals(RemoteMediator.InitializeAction.LAUNCH_INITIAL_REFRESH, result)
+    }
+
+    @Test
+    fun `future remote key timestamp launches initial refresh`() = runTest {
+        val now = 10_000L
+        val key = GameQueryKey.KEY_DISCOVER_TOP_RATED
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = 20,
+            lastUpdatedEpochSeconds = now + 500
+        )
+        coEvery { searchDao.countSearchResultsForQuery(key) } returns 20
+        coEvery { searchDao.getSearchQuery(key) } returns SearchQueryEntity(
+            query = key,
+            createdAtEpochSeconds = now + 400,
+            lastQueriedAtEpochSeconds = now + 500,
+            resultCount = 20,
+        )
 
         val mediator = GamesRemoteMediator(
             queryKey = key,
@@ -392,7 +479,10 @@ class GamesRemoteMediatorTest {
 
         val result = mediator.load(LoadType.REFRESH, testPagingState)
         assertTrue(result is RemoteMediator.MediatorResult.Error)
-        assertTrue((result as RemoteMediator.MediatorResult.Error).throwable is IOException)
+        val throwable = (result as RemoteMediator.MediatorResult.Error).throwable
+        assertTrue(throwable is AppErrorException)
+        assertEquals(AppError.NetworkError, (throwable as AppErrorException).error)
+        assertTrue(throwable.cause is IOException)
 
         coVerify(exactly = 0) { gameDao.upsertGames(any()) }
         coVerify(exactly = 0) { searchDao.insertSearchResults(any()) }

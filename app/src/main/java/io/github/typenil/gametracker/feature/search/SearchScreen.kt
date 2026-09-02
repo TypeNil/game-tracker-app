@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +62,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
@@ -68,6 +74,7 @@ import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.model.AppErrorException
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -76,12 +83,21 @@ import io.github.typenil.gametracker.core.model.SearchInputViolation
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.search.component.SearchFilterBar
 import io.github.typenil.gametracker.feature.search.component.SearchFilterSheet
+import kotlinx.coroutines.flow.Flow
 
 private fun SearchInputViolation.messageRes(): Int = when (this) {
     SearchInputViolation.TOO_LONG -> R.string.search_input_error_too_long
     SearchInputViolation.QUOTE_OR_BACKSLASH -> R.string.search_input_error_unsupported_chars
     SearchInputViolation.CONTROL_CHAR, SearchInputViolation.INVISIBLE_FORMAT -> R.string.search_input_error_invisible_chars
 }
+
+/**
+ * Paging only carries [Throwable]; the data boundary (GamesRemoteMediator) already classified it
+ * into an [AppError] via AppErrorException. Presentation must not import transport-specific
+ * mapping, so anything unrecognized degrades to UnknownError.
+ */
+private fun Throwable.toPresentedAppError(): AppError =
+    (this as? AppErrorException)?.error ?: AppError.UnknownError(this)
 
 @Composable
 fun SearchRoute(
@@ -94,9 +110,9 @@ fun SearchRoute(
 
     SearchScreen(
         uiState = uiState,
+        searchResults = viewModel.searchResults,
         onQueryChange = viewModel::onQueryChanged,
         onClearQuery = viewModel::onClearQuery,
-        onRetry = viewModel::retry,
         onGameClick = onGameClick,
         onBackClick = onBackClick,
         onToggleGenre = viewModel::onGenreToggled,
@@ -127,9 +143,9 @@ fun SearchRoute(
 @Composable
 fun SearchScreen(
     uiState: SearchUiState,
+    searchResults: Flow<PagingData<Game>>,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
-    onRetry: () -> Unit,
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit,
     onToggleGenre: (String) -> Unit = {},
@@ -151,6 +167,7 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     var isFilterSheetOpen by rememberSaveable { mutableStateOf(false) }
+    val lazyItems = searchResults.collectAsLazyPagingItems()
 
     val userMessage = uiState.userMessageRes?.let { stringResource(it) }
     LaunchedEffect(userMessage) {
@@ -255,14 +272,17 @@ fun SearchScreen(
                 onResetFilters = onResetFilters,
             )
 
-            // Result State Container
+            // Result State Container. Content/Empty/Error are derived from the paged load
+            // states; uiState.searchActive only gates the idle suggestions container.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
             ) {
-                when (val result = uiState.result) {
-                    is SearchResultUiState.Idle -> {
+                val refreshState = lazyItems.loadState.refresh
+                val appendState = lazyItems.loadState.append
+                when {
+                    !uiState.searchActive -> {
                         SearchIdleState(
                             recentQueries = uiState.recentQueries,
                             onSelectRecentQuery = onSelectRecentQuery,
@@ -270,31 +290,31 @@ fun SearchScreen(
                             onClearAllRecentQueries = onClearAllRecentQueries,
                         )
                     }
-                    is SearchResultUiState.Loading -> {
+                    refreshState is LoadState.Loading && lazyItems.itemCount == 0 -> {
                         SearchLoadingState()
                     }
-                    is SearchResultUiState.Content -> {
-                        SearchContentState(
-                            games = result.games,
-                            refreshError = result.refreshError,
-                            librarySnapshot = uiState.librarySnapshot,
-                            onGameClick = onGameClick,
-                            onLibraryAction = onLibraryAction,
-                            onRetry = onRetry,
+                    lazyItems.itemCount == 0 && refreshState is LoadState.Error -> {
+                        SearchErrorState(
+                            error = refreshState.error.toPresentedAppError(),
+                            onRetry = { lazyItems.retry() },
                         )
                     }
-                    is SearchResultUiState.Empty -> {
+                    lazyItems.itemCount == 0 &&
+                        refreshState is LoadState.NotLoading &&
+                        appendState is LoadState.NotLoading -> {
                         SearchEmptyState(
-                            query = result.query,
-                            hasConstraints = result.hasConstraints,
+                            query = uiState.query,
+                            hasConstraints = uiState.filters.hasConstraints,
                             onClearQuery = onClearQuery,
                             onResetFilters = onResetFilters,
                         )
                     }
-                    is SearchResultUiState.Error -> {
-                        SearchErrorState(
-                            error = result.error,
-                            onRetry = onRetry,
+                    else -> {
+                        SearchContentState(
+                            games = lazyItems,
+                            librarySnapshot = uiState.librarySnapshot,
+                            onGameClick = onGameClick,
+                            onLibraryAction = onLibraryAction,
                         )
                     }
                 }
@@ -431,21 +451,24 @@ private fun SearchLoadingState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SearchContentState(
-    games: List<Game>,
-    refreshError: AppError?,
+    games: LazyPagingItems<Game>,
     librarySnapshot: LibrarySnapshot,
     onGameClick: (Long) -> Unit,
     onLibraryAction: (Game) -> Unit,
-    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val ready = librarySnapshot as? LibrarySnapshot.Ready
+    val refreshError = games.loadState.refresh as? LoadState.Error
+    val appendState = games.loadState.append
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(GtDimens.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (refreshError != null) {
+            // Cached rows remain the SSOT while the background refresh failed: banner, not
+            // full-screen replacement. games.retry() re-runs the failed mediator refresh and
+            // always hits the network (initialize/TTL is not re-consulted on retry).
             item(key = "refresh_error_banner") {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -468,7 +491,7 @@ private fun SearchContentState(
                             modifier = Modifier.weight(1f),
                         )
                         TextButton(
-                            onClick = onRetry,
+                            onClick = { games.retry() },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         ) {
                             Text(
@@ -482,11 +505,17 @@ private fun SearchContentState(
             }
         }
         item(key = "results_count_header") {
+            val count = games.itemCount
+            val finished = appendState is LoadState.NotLoading &&
+                appendState.endOfPaginationReached &&
+                games.loadState.refresh !is LoadState.Loading
             Text(
-                text = if (games.size == 1) {
-                    stringResource(R.string.search_results_count_single)
-                } else {
-                    stringResource(R.string.search_results_count_format, games.size)
+                text = when {
+                    count == 1 -> stringResource(R.string.search_results_count_single)
+                    // While more pages may load, the count is a prefix, not the total: claiming
+                    // "Showing N games" at a full first page would lie about the match count.
+                    !finished -> stringResource(R.string.search_results_count_partial_format, count)
+                    else -> stringResource(R.string.search_results_count_format, count)
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -495,15 +524,55 @@ private fun SearchContentState(
         }
 
         items(
-            items = games,
-            key = { it.id },
-        ) { game ->
-            GameCard(
-                game = game,
-                onClick = { onGameClick(game.id) },
-                libraryStatus = ready?.entries?.get(game.id)?.status,
-                onLibraryAction = if (ready != null) onLibraryAction else null,
-            )
+            count = games.itemCount,
+            key = games.itemKey { it.id },
+        ) { index ->
+            // enablePlaceholders = false: a null slot only exists transitively between
+            // invalidation and reload; rendering nothing is correct, access via games[index]
+            // still submits the paging hint.
+            val game = games[index]
+            if (game != null) {
+                GameCard(
+                    game = game,
+                    onClick = { onGameClick(game.id) },
+                    libraryStatus = ready?.entries?.get(game.id)?.status,
+                    onLibraryAction = if (ready != null) onLibraryAction else null,
+                )
+            }
+        }
+
+        when (appendState) {
+            is LoadState.Loading -> {
+                item(key = "load_more") {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(strokeWidth = 2.dp)
+                    }
+                }
+            }
+            is LoadState.Error -> {
+                item(key = "load_more") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.error_load_more_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        TextButton(onClick = { games.retry() }) {
+                            Text(stringResource(R.string.retry_button))
+                        }
+                    }
+                }
+            }
+            else -> Unit
         }
     }
 }

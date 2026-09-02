@@ -14,7 +14,9 @@ import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
 import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
+import io.github.typenil.gametracker.core.model.AppErrorException
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.network.mapper.toAppError
 
 /**
  * Paging 3 [RemoteMediator] coordinating network requests to BFF and local Room database SSOT.
@@ -35,12 +37,21 @@ class GamesRemoteMediator(
     override suspend fun initialize(): InitializeAction {
         val now = nowEpochSeconds()
         val remoteKey = remoteKeyDao.getRemoteKey(queryKey)
-        val hasLocalRows = searchDao.countSearchResultsForQuery(queryKey) > 0
-        val isCacheValid = remoteKey != null &&
-            (now - remoteKey.lastUpdatedEpochSeconds) < ttlSeconds &&
-            hasLocalRows
+        val metadata = searchDao.getSearchQuery(queryKey)
+        val actualCount = searchDao.countSearchResultsForQuery(queryKey)
 
-        return if (isCacheValid) {
+        // A zero-row window is a valid cache only when the server reported a terminal list
+        // (nextOffset == null). Zero rows with non-terminal or non-zero metadata mean the cache
+        // is damaged or incomplete and must be refetched.
+        val isStructurallyValid = remoteKey != null &&
+            metadata != null &&
+            actualCount == metadata.resultCount &&
+            (actualCount > 0 || remoteKey.nextOffset == null)
+        val ageSeconds = remoteKey?.let { now - it.lastUpdatedEpochSeconds }
+        // A future timestamp (device clock skew) must count as expired, never as fresh.
+        val isFresh = ageSeconds != null && ageSeconds in 0 until ttlSeconds
+
+        return if (isStructurallyValid && isFresh) {
             InitializeAction.SKIP_INITIAL_REFRESH
         } else {
             InitializeAction.LAUNCH_INITIAL_REFRESH
@@ -81,7 +92,11 @@ class GamesRemoteMediator(
             MediatorResult.Success(endOfPaginationReached = isEndOfList)
         }.fold(
             onSuccess = { it },
-            onFailure = { MediatorResult.Error(it) }
+            // Classify failures at the data boundary: presentation renders MediatorResult.Error
+            // through AppErrorException without importing transport-specific mapping.
+            onFailure = { throwable ->
+                MediatorResult.Error(AppErrorException(throwable.toAppError(), throwable))
+            }
         )
     }
 

@@ -635,6 +635,53 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `recordSearchHistory writes normalized query and trims history`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+
+        val result = repository.recordSearchHistory(" Elden Ring ")
+
+        assertTrue(result is AppResult.Success)
+        val historySlot = slot<io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity>()
+        coVerify(exactly = 1) { searchHistoryDao.upsertSearchHistory(capture(historySlot)) }
+        assertEquals("elden ring", historySlot.captured.normalizedQuery)
+        assertEquals("Elden Ring", historySlot.captured.displayQuery)
+        coVerify(exactly = 1) { searchHistoryDao.trimSearchHistory(100) }
+    }
+
+    @Test
+    fun `recordSearchHistory is a no-op success for blank query`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+
+        assertTrue(repository.recordSearchHistory("   ") is AppResult.Success)
+        coVerify(exactly = 0) { searchHistoryDao.upsertSearchHistory(any()) }
+    }
+
+    @Test
+    fun `recordSearchHistory maps dao failure to AppResult Error`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { searchHistoryDao.upsertSearchHistory(any()) } throws IOException("disk full")
+
+        assertTrue(repository.recordSearchHistory("witcher") is AppResult.Error)
+    }
+
+    @Test
+    fun `searchGames fails without remote call when history write fails`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { searchHistoryDao.upsertSearchHistory(any()) } throws IOException("disk full")
+
+        val result = repository.searchGames(
+            io.github.typenil.gametracker.core.model.GameSearchQuery(query = "witcher"),
+        )
+
+        assertTrue(result is AppResult.Error)
+        coVerify(exactly = 0) { remoteDataSource.searchGames(any(), any(), any()) }
+    }
+
+    @Test
     fun `searchGames skips remote fetch when a structurally intact cache is fresh`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)

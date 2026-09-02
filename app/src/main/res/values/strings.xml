@@ -25,6 +25,8 @@
     <string name="error_generic">An error occurred while communicating with the server.</string>
     <string name="error_serialization">Failed to process data from the server.</string>
     <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+    <string name="error_load_more_failed">Could not load more results.</string>
+    <string name="error_history_save_failed">Could not save recent searches.</string>
     <string name="error_refresh_failed">Could not refresh catalog. Showing cached data.</string>
     <string name="search_hint">Search games by title…</string>
     <string name="search_clear_desc">Clear search query</string>
@@ -82,6 +84,7 @@
     <string name="search_remove_filter_desc">Remove %1$s filter</string>
     <string name="search_results_count_format">Showing %1$d games</string>
     <string name="search_results_count_single">Showing 1 game</string>
+    <string name="search_results_count_partial_format">Showing first %1$d results</string>
     <string name="search_recent_title">Recent Searches</string>
     <string name="search_recent_clear_all">Clear all</string>
     <string name="search_recent_remove_desc">Remove %1$s from recent searches</string>

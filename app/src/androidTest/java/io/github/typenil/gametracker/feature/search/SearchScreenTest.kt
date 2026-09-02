@@ -7,38 +7,41 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onAllNodesWithTag
-
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.lifecycle.SavedStateHandle
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
+import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.designsystem.component.GAME_CARD_LIBRARY_ACTION_TEST_TAG
-
-import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.model.AppError
+import io.github.typenil.gametracker.core.model.AppErrorException
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.LibraryEntry
-import io.github.typenil.gametracker.core.model.LibrarySnapshot
-
 import io.github.typenil.gametracker.core.model.LibraryGame
+import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
-
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-
+import java.io.IOException
 
 class SearchScreenTest {
 
@@ -62,16 +65,56 @@ class SearchScreenTest {
         )
     )
 
+    /**
+     * Deterministic paged flow: a static generation carrying explicit NotLoading source states,
+     * so header/end-of-pagination branches do not depend on background paging timing.
+     */
+    private fun completedPaged(games: List<Game>, complete: Boolean = true): Flow<PagingData<Game>> =
+        flowOf(
+            PagingData.from(
+                games,
+                LoadStates(
+                    refresh = LoadState.NotLoading(endOfPaginationReached = false),
+                    prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                    append = LoadState.NotLoading(endOfPaginationReached = complete),
+                ),
+            )
+        )
+
+    private fun pendingPaged(): Flow<PagingData<Game>> = flowOf(
+        PagingData.empty(
+            sourceLoadStates = LoadStates(
+                refresh = LoadState.Loading,
+                prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                append = LoadState.NotLoading(endOfPaginationReached = false),
+            ),
+        )
+    )
+
+    /** A paging source that fails every load with a data-boundary-classified error. */
+    private class FailingPagingSource(private val error: Throwable) : PagingSource<Int, Game>() {
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Game> =
+            LoadResult.Error(error)
+
+        override fun getRefreshKey(state: PagingState<Int, Game>): Int? = null
+    }
+
+    private fun failingPaged(throwable: Throwable): Flow<PagingData<Game>> =
+        Pager(
+            config = PagingConfig(pageSize = 20, initialLoadSize = 20),
+            pagingSourceFactory = { FailingPagingSource(throwable) },
+        ).flow
+
     @Test
     fun idleState_rendersSearchHint() {
         val context = composeTestRule.activity
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(query = "", result = SearchResultUiState.Idle),
+                uiState = SearchUiState(query = "", searchActive = false),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {}
             )
@@ -79,16 +122,17 @@ class SearchScreenTest {
 
         composeTestRule.onNodeWithText(context.getString(R.string.search_hint)).assertIsDisplayed()
     }
+
     @Test
     fun loadingState_rendersSkeletonAndCopy() {
         val context = composeTestRule.activity
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(query = "witcher", result = SearchResultUiState.Loading),
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = pendingPaged(),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {}
             )
@@ -104,13 +148,10 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(
-                    query = "witcher",
-                    result = SearchResultUiState.Content(sampleGames)
-                ),
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = completedPaged(sampleGames),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = { clickedGameId = it },
                 onBackClick = {}
             )
@@ -124,6 +165,44 @@ class SearchScreenTest {
     }
 
     @Test
+    fun contentState_showsTotalCountAtEndOfPagination() {
+        val context = composeTestRule.activity
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = completedPaged(sampleGames, complete = true),
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+                onBackClick = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText(context.getString(R.string.search_results_count_format, 2))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun contentState_showsPartialCountWhileMorePagesMayLoad() {
+        val context = composeTestRule.activity
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = completedPaged(sampleGames, complete = false),
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+                onBackClick = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText(context.getString(R.string.search_results_count_partial_format, 2))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun contentState_libraryAction_doesNotForwardGameClick() {
         var gameClicks = 0
         var libraryActions = 0
@@ -131,12 +210,12 @@ class SearchScreenTest {
             SearchScreen(
                 uiState = SearchUiState(
                     query = "witcher",
-                    result = SearchResultUiState.Content(sampleGames),
+                    searchActive = true,
                     librarySnapshot = LibrarySnapshot.Ready(emptyMap()),
                 ),
+                searchResults = completedPaged(sampleGames),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = { gameClicks++ },
                 onBackClick = {},
                 onLibraryAction = { libraryActions++ },
@@ -147,7 +226,6 @@ class SearchScreenTest {
         assertEquals(0, gameClicks)
     }
 
-
     @Test
     fun emptyState_rendersEmptyMessageWithQuery() {
         val context = composeTestRule.activity
@@ -155,13 +233,10 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(
-                    query = "nonexistent",
-                    result = SearchResultUiState.Empty("nonexistent")
-                ),
+                uiState = SearchUiState(query = "nonexistent", searchActive = true),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = {},
                 onClearQuery = { cleared = true },
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {}
             )
@@ -174,29 +249,56 @@ class SearchScreenTest {
     }
 
     @Test
-    fun errorState_rendersErrorAndTriggersRetry() {
+    fun errorState_rendersClassifiedErrorAndRetryKeepsErrorVisible() {
         val context = composeTestRule.activity
-        var retryClicked = false
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(
-                    query = "error",
-                    result = SearchResultUiState.Error(AppError.NetworkError)
-                ),
+                uiState = SearchUiState(query = "error", searchActive = true),
+                searchResults = failingPaged(AppErrorException(AppError.NetworkError, IOException("no network"))),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = { retryClicked = true },
                 onGameClick = {},
                 onBackClick = {}
             )
         }
 
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(context.getString(R.string.error_network))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText(context.getString(R.string.error_network)).assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.retry_button)).assertIsDisplayed()
 
+        // Retry re-runs the failing source; the screen must settle back into the error state.
         composeTestRule.onNodeWithText(context.getString(R.string.retry_button)).performClick()
-        assertTrue(retryClicked)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(context.getString(R.string.error_network))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(context.getString(R.string.error_network)).assertIsDisplayed()
+    }
+
+    @Test
+    fun errorState_unknownThrowableFallsBackToGenericError() {
+        val context = composeTestRule.activity
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "error", searchActive = true),
+                searchResults = failingPaged(IOException("raw transport error")),
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+                onBackClick = {}
+            )
+        }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(context.getString(R.string.error_unknown))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(context.getString(R.string.error_unknown)).assertIsDisplayed()
     }
 
     @Test
@@ -206,10 +308,10 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(query = "", result = SearchResultUiState.Idle),
+                uiState = SearchUiState(query = "", searchActive = false),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = { enteredText = it },
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {}
             )
@@ -226,10 +328,10 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(query = "Witcher", result = SearchResultUiState.Loading),
+                uiState = SearchUiState(query = "Witcher", searchActive = true),
+                searchResults = pendingPaged(),
                 onQueryChange = {},
                 onClearQuery = { clearClicked = true },
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {}
             )
@@ -248,10 +350,10 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             SearchScreen(
-                uiState = SearchUiState(query = "", result = SearchResultUiState.Idle),
+                uiState = SearchUiState(query = "", searchActive = false),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = { backClicked = true }
             )
@@ -279,11 +381,11 @@ class SearchScreenTest {
                 uiState = SearchUiState(
                     query = "",
                     filters = filters,
-                    result = SearchResultUiState.Idle,
+                    searchActive = false,
                 ),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {},
                 onToggleGenre = { genreToggled = true },
@@ -312,11 +414,11 @@ class SearchScreenTest {
                 uiState = SearchUiState(
                     query = "",
                     recentQueries = listOf("Elden Ring", "Cyberpunk"),
-                    result = SearchResultUiState.Idle,
+                    searchActive = false,
                 ),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {},
                 onSelectRecentQuery = { selectedQuery = it },
@@ -347,11 +449,11 @@ class SearchScreenTest {
                 uiState = SearchUiState(
                     query = "",
                     filters = SearchFilters(genres = setOf("Action")),
-                    result = SearchResultUiState.Empty(query = "", hasConstraints = true),
+                    searchActive = true,
                 ),
+                searchResults = completedPaged(emptyList()),
                 onQueryChange = {},
                 onClearQuery = {},
-                onRetry = {},
                 onGameClick = {},
                 onBackClick = {},
                 onResetFilters = { resetClicked = true },
@@ -366,7 +468,7 @@ class SearchScreenTest {
 
     @Test
     fun searchRoute_typingQuery_displaysLoading_thenDisplaysResultGames() {
-        val fakeRepository = FakeDeferredGameRepository()
+        val fakeRepository = FakePagedGameRepository()
         val savedStateHandle = SavedStateHandle()
         val viewModel = SearchViewModel(
             gameRepository = fakeRepository,
@@ -390,17 +492,23 @@ class SearchScreenTest {
         composeTestRule.onNodeWithText(searchHint).assertIsDisplayed()
         composeTestRule.onNodeWithText(searchHint).performTextInput("witcher")
 
-        // combine() maps Idle + non-blank query to Loading before debounce / searchGames().
+        // The pending generation activates the paged container before any repository dispatch;
+        // synchronization is the @Volatile capture after the real 300 ms debounce.
+        composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             fakeRepository.capturedQuery != null
         }
+        assertEquals("witcher", fakeRepository.capturedQuery)
+        assertEquals(20, fakeRepository.capturedPageSize)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            fakeRepository.capturedHistoryQuery != null
+        }
+        assertEquals("witcher", fakeRepository.capturedHistoryQuery)
+
+        // The skeleton stays visible while the repository generation has not emitted yet.
         composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
 
-        assertEquals("witcher", fakeRepository.capturedQuery)
-        assertEquals(30, fakeRepository.capturedLimit)
-
-        fakeRepository.searchFlow.value = sampleGames
-        fakeRepository.deferredResult.complete(AppResult.Success(Unit))
+        fakeRepository.deferredGeneration.complete(PagingData.from(sampleGames))
 
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt").fetchSemanticsNodes().isNotEmpty()
@@ -410,13 +518,14 @@ class SearchScreenTest {
     }
 
     @Suppress("TooManyFunctions")
-    private class FakeDeferredGameRepository : GameRepository {
+    private class FakePagedGameRepository : GameRepository {
         @Volatile
         var capturedQuery: String? = null
         @Volatile
-        var capturedLimit: Int? = null
-        val deferredResult = CompletableDeferred<AppResult<Unit>>()
-        val searchFlow = MutableStateFlow<List<Game>>(emptyList())
+        var capturedPageSize: Int? = null
+        @Volatile
+        var capturedHistoryQuery: String? = null
+        val deferredGeneration = CompletableDeferred<PagingData<Game>>()
 
         override fun getTopRatedGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
 
@@ -434,7 +543,6 @@ class SearchScreenTest {
             return AppResult.Success(Unit)
         }
 
-
         override suspend fun getRecommendationCandidates(
             genres: List<String>,
             themes: List<String>,
@@ -444,19 +552,21 @@ class SearchScreenTest {
             limit: Int,
         ) = AppResult.Success(emptyList<io.github.typenil.gametracker.core.model.RecommendationCandidate>())
 
-        override fun getSearchResultsFlow(query: io.github.typenil.gametracker.core.model.GameSearchQuery): Flow<List<Game>> = searchFlow
+        override fun getSearchResultsFlow(query: io.github.typenil.gametracker.core.model.GameSearchQuery): Flow<List<Game>> = flowOf(emptyList())
 
         override fun getPagedSearchResults(query: io.github.typenil.gametracker.core.model.GameSearchQuery, pageSize: Int): Flow<PagingData<Game>> {
-            return flowOf(PagingData.empty())
+            capturedQuery = query.query
+            capturedPageSize = pageSize
+            return flow { emit(deferredGeneration.await()) }
         }
 
-        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int,
-            force: Boolean,
-        ): AppResult<Unit> {
-            capturedQuery = query.query
-            capturedLimit = limit
-            return deferredResult.await()
+        override suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit> {
+            capturedHistoryQuery = rawQuery
+            return AppResult.Success(Unit)
         }
+
+        override suspend fun searchGames(query: io.github.typenil.gametracker.core.model.GameSearchQuery, limit: Int, force: Boolean): AppResult<Unit> =
+            AppResult.Success(Unit)
 
         override fun getRecentSearchQueriesFlow(limit: Int): Flow<List<String>> = flowOf(emptyList())
         override suspend fun deleteSearchQuery(query: String): AppResult<Unit> = AppResult.Success(Unit)
@@ -473,7 +583,7 @@ class SearchScreenTest {
     }
 
     private class FakeLibraryRepository : LibraryRepository {
-        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = MutableStateFlow(emptyList())
+        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = MutableStateFlowHolder.empty
         override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = flowOf(null)
         override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> =
             AppResult.Success(Unit)
@@ -492,5 +602,7 @@ class SearchScreenTest {
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
     }
 
+    private object MutableStateFlowHolder {
+        val empty: Flow<List<LibraryGame>> = kotlinx.coroutines.flow.MutableStateFlow(emptyList())
+    }
 }
-

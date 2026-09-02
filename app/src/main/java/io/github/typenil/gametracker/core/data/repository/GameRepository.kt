@@ -56,6 +56,11 @@ interface GameRepository {
     ): Flow<PagingData<Game>>
     fun getPagedSearchResults(query: String, pageSize: Int = 20): Flow<PagingData<Game>> =
         getPagedSearchResults(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), pageSize)
+    /**
+     * Records a user-issued search in the recent-queries history (normalized, trimmed to a bound).
+     * Blank queries are user intent without a searchable term and are never recorded.
+     */
+    suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit>
     suspend fun searchGames(
         query: io.github.typenil.gametracker.core.model.GameSearchQuery,
         limit: Int = 20,
