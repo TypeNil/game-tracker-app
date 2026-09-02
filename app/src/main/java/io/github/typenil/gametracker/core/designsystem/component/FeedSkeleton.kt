@@ -73,8 +73,8 @@ fun FeedSkeleton(
 /**
  * Single GameCard-shaped skeleton row: fixed 100dp cover at the shared poster aspect ratio plus
  * title/subtitle bars. Reused inside [FeedSkeleton] and as the null-slot placeholder of paged
- * lists, so an unloaded position occupies the same footprint as a loaded card and the list
- * space never collapses mid-scroll.
+ * lists: it shares the loaded card's minimum cover geometry (a loaded row can still grow with
+ * title lines or chips), which keeps every unloaded position a stable, non-zero footprint.
  */
 @Composable
 fun SkeletonCardRow(modifier: Modifier = Modifier) {

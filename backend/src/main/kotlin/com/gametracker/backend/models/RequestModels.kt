@@ -304,8 +304,9 @@ class SearchRequest(
         append(";\n")
         if (canonicalQuery == null) {
             // Offset paging is only contractual with a deterministic order. For text queries
-            // relevance ordering is kept; filter-only browsing gets an explicit sort, and the
-            // default relevance branch falls back to the immutable id order.
+            // relevance ordering is kept; filter-only browsing always gets an explicit sort.
+            // The default branch falls back to the unique immutable id (total order); the
+            // explicit single-field sorts keep their equal-value tie risk (no IGDB tie-break).
             if (sort == SearchSortField.RELEVANCE) {
                 append("sort id asc;\n")
             } else {

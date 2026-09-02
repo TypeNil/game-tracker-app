@@ -570,9 +570,10 @@ private fun SearchContentState(
         ) { index ->
             // enablePlaceholders = true: a null slot is an unloaded local position whose count
             // is authoritative (dense window, committed-count invariant). Rendering a real
-            // same-footprint row keeps the list space stable across the anchor re-generation
-            // Room invalidation causes after each mediator append; skipping nulls would
-            // collapse it and re-expose the first cards. games[index] still submits the hint.
+            // fixed-geometry row (minimum cover geometry shared with GameCard) keeps the list
+            // space stable across the anchor re-generation that Room invalidation causes after
+            // each mediator append; skipping nulls would collapse it and re-expose the first
+            // cards. games[index] still submits the hint.
             val game = games[index]
             if (game == null) {
                 SkeletonCardRow()
