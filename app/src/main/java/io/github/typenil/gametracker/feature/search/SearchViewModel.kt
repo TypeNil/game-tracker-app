@@ -24,6 +24,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -125,18 +126,24 @@ class SearchViewModel @Inject constructor(
                     if (command.shouldDebounce) {
                         delay(SEARCH_DEBOUNCE_MILLIS)
                     }
-                    // History is optional: a failed write surfaces as a snackbar and must never
-                    // gate the paged results themselves.
-                    when (gameRepository.recordSearchHistory(command.domainQuery.query)) {
-                        is AppResult.Success -> Unit
-                        is AppResult.Error -> userMessageRes.value = R.string.error_history_save_failed
+                    // History is optional and must never gate results — not even through a
+                    // slow or locked storage write: it runs as a sibling child of the paging
+                    // collection. A new committed query cancels both through flatMapLatest,
+                    // so structured concurrency still owns the history task.
+                    coroutineScope {
+                        launch {
+                            when (gameRepository.recordSearchHistory(command.domainQuery.query)) {
+                                is AppResult.Success -> Unit
+                                is AppResult.Error -> userMessageRes.value = R.string.error_history_save_failed
+                            }
+                        }
+                        emitAll(
+                            gameRepository.getPagedSearchResults(
+                                query = command.domainQuery,
+                                pageSize = PAGE_SIZE,
+                            ),
+                        )
                     }
-                    emitAll(
-                        gameRepository.getPagedSearchResults(
-                            query = command.domainQuery,
-                            pageSize = PAGE_SIZE,
-                        ),
-                    )
                 }
             }
         }

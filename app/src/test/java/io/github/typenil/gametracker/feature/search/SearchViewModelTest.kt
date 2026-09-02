@@ -36,6 +36,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -476,6 +477,76 @@ class SearchViewModelTest {
         assertEquals(R.string.error_history_save_failed, viewModel.uiState.value.userMessageRes)
     }
 
+    @Test
+    fun `suspended history write does not delay paged generation`() = runTest(testDispatcher) {
+        val gen = PagingData.from(sampleGames)
+        stubPagedResults({ it.query == "witcher" }, flowOf(gen))
+        val historyGate = CompletableDeferred<Unit>()
+        coEvery { repository.recordSearchHistory("witcher") } coAnswers {
+            historyGate.await()
+            AppResult.Success(Unit)
+        }
+        val viewModel = createViewModel()
+
+        viewModel.searchResults.test {
+            awaitItem() // idle generation
+
+            viewModel.onQueryChanged("witcher")
+            runCurrent()
+            awaitItem() // pending
+
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            // The content generation arrives while the history write is still suspended:
+            // storage latency can never keep the screen on the skeleton.
+            awaitItem()
+            assertFalse(historyGate.isCompleted)
+
+            historyGate.complete(Unit)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `changing query cancels the in-flight history write`() = runTest(testDispatcher) {
+        val gen = PagingData.from(sampleGames)
+        stubPagedResults({ it.query == "witcher" }, flowOf(gen))
+        stubPagedResults({ it.query == "doom" }, flowOf(gen))
+        val historyCancelled = AtomicBoolean(false)
+        coEvery { repository.recordSearchHistory("witcher") } coAnswers {
+            try {
+                awaitCancellation()
+            } finally {
+                historyCancelled.set(true)
+            }
+        }
+        coEvery { repository.recordSearchHistory("doom") } returns AppResult.Success(Unit)
+        val viewModel = createViewModel()
+
+        viewModel.searchResults.test {
+            awaitItem() // idle
+
+            viewModel.onQueryChanged("witcher")
+            runCurrent()
+            awaitItem() // pending witcher
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            awaitItem() // content with the history write still in flight
+
+            viewModel.onQueryChanged("doom")
+            runCurrent()
+            awaitItem() // pending doom
+            // flatMapLatest tears down the whole branch scope, so the stale history task is
+            // cancelled instead of ever persisting the previous query.
+            assertTrue(historyCancelled.get())
+
+            advanceTimeBy(350L)
+            advanceUntilIdle()
+            awaitItem() // doom content
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun `filter changes trigger search after filter debounce`() = runTest(testDispatcher) {

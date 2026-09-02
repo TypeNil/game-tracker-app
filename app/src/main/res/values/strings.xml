@@ -82,8 +82,12 @@
     <string name="search_filter_section_year">Release Year</string>
     <string name="search_filter_section_rating">Minimum Rating</string>
     <string name="search_remove_filter_desc">Remove %1$s filter</string>
-    <string name="search_results_count_format">Showing %1$d games</string>
-    <string name="search_results_count_single">Showing 1 game</string>
+    <!-- Terminal counts must stay neutral: endOfPaginationReached cannot distinguish a
+         truly exhausted result set from the BFF offset ceiling. -->
+    <plurals name="search_results_loaded_count">
+        <item quantity="one">Showing %1$d loaded result</item>
+        <item quantity="other">Showing %1$d loaded results</item>
+    </plurals>
     <string name="search_results_count_partial_format">Showing first %1$d results</string>
     <string name="search_recent_title">Recent Searches</string>
     <string name="search_recent_clear_all">Clear all</string>

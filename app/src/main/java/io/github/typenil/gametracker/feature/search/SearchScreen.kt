@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -510,12 +511,13 @@ private fun SearchContentState(
                 appendState.endOfPaginationReached &&
                 games.loadState.refresh !is LoadState.Loading
             Text(
-                text = when {
-                    count == 1 -> stringResource(R.string.search_results_count_single)
-                    // While more pages may load, the count is a prefix, not the total: claiming
-                    // "Showing N games" at a full first page would lie about the match count.
-                    !finished -> stringResource(R.string.search_results_count_partial_format, count)
-                    else -> stringResource(R.string.search_results_count_format, count)
+                text = if (!finished) {
+                    stringResource(R.string.search_results_count_partial_format, count)
+                } else {
+                    // A terminal state can mean a truly exhausted result set or the BFF
+                    // offset ceiling (1000): LazyPagingItems cannot tell the two apart, so
+                    // the copy stays neutral about how many matches the server knows.
+                    pluralStringResource(R.plurals.search_results_loaded_count, count, count)
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -11,6 +11,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
@@ -31,6 +33,7 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
+import java.util.concurrent.ConcurrentHashMap
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.CompletableDeferred
@@ -165,9 +168,7 @@ class SearchScreenTest {
     }
 
     @Test
-    fun contentState_showsTotalCountAtEndOfPagination() {
-        val context = composeTestRule.activity
-
+    fun contentState_showsNeutralLoadedCountAtEndOfPagination() {
         composeTestRule.setContent {
             SearchScreen(
                 uiState = SearchUiState(query = "witcher", searchActive = true),
@@ -179,8 +180,20 @@ class SearchScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText(context.getString(R.string.search_results_count_format, 2))
-            .assertIsDisplayed()
+        // Terminal wording never claims the server-side total: the end can be a short page
+        // or the BFF offset ceiling, and the UI cannot tell them apart. The plural is resolved
+        // by name from the target context because the androidTest resource table assigns the
+        // plurals type a different id than the installed app package exposes.
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val targetContext = instrumentation.targetContext
+        val pluralId = targetContext.resources.getIdentifier(
+            "search_results_loaded_count",
+            "plurals",
+            targetContext.packageName,
+        )
+        assertTrue(pluralId != 0)
+        val loadedCount = targetContext.resources.getQuantityString(pluralId, 2, 2)
+        composeTestRule.onNodeWithText(loadedCount).assertIsDisplayed()
     }
 
     @Test
@@ -493,12 +506,11 @@ class SearchScreenTest {
         composeTestRule.onNodeWithText(searchHint).performTextInput("witcher")
 
         // The pending generation activates the paged container before any repository dispatch;
-        // synchronization is the @Volatile capture after the real 300 ms debounce.
+        // synchronization is the per-query gate registered after the real 300 ms debounce.
         composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            fakeRepository.capturedQuery != null
+            fakeRepository.requested("witcher")
         }
-        assertEquals("witcher", fakeRepository.capturedQuery)
         assertEquals(20, fakeRepository.capturedPageSize)
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             fakeRepository.capturedHistoryQuery != null
@@ -508,7 +520,7 @@ class SearchScreenTest {
         // The skeleton stays visible while the repository generation has not emitted yet.
         composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
 
-        fakeRepository.deferredGeneration.complete(PagingData.from(sampleGames))
+        fakeRepository.emit("witcher", PagingData.from(sampleGames))
 
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt").fetchSemanticsNodes().isNotEmpty()
@@ -517,15 +529,79 @@ class SearchScreenTest {
         composeTestRule.onNodeWithText("Cyberpunk 2077").assertIsDisplayed()
     }
 
+    @Test
+    fun searchRoute_changingQuery_neverRendersPreviousGenerationItems() {
+        val fakeRepository = FakePagedGameRepository()
+        val viewModel = SearchViewModel(
+            gameRepository = fakeRepository,
+            savedStateHandle = SavedStateHandle(),
+            libraryRepository = FakeLibraryRepository(),
+            clock = java.time.Clock.fixed(java.time.Instant.parse("2026-01-15T12:00:00Z"), java.time.ZoneOffset.UTC),
+        )
+
+        composeTestRule.setContent {
+            SearchRoute(
+                onGameClick = {},
+                onBackClick = {},
+                viewModel = viewModel
+            )
+        }
+
+        val context = composeTestRule.activity
+        val loadingText = context.getString(R.string.search_loading_games)
+
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("alpha")
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { fakeRepository.requested("alpha") }
+        fakeRepository.emit("alpha", PagingData.from(sampleGames))
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").assertIsDisplayed()
+
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("beta")
+        // The committed beta command replaces the container with the pending generation
+        // before any beta data exists: alpha's rendered items must disappear with it —
+        // the Paging Compose presenter, not just the ViewModel, is under test here.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(loadingText).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").assertDoesNotExist()
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { fakeRepository.requested("beta") }
+        val betaGames = listOf(
+            Game(
+                id = 201L,
+                name = "Beta Game",
+                rating = 70.0,
+                releaseDateEpochSeconds = 1500000000L,
+                genres = listOf("Action"),
+                platforms = listOf("PC (Microsoft Windows)"),
+            )
+        )
+        fakeRepository.emit("beta", PagingData.from(betaGames))
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("Beta Game").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("Beta Game").assertIsDisplayed()
+        composeTestRule.onNodeWithText("The Witcher 3: Wild Hunt").assertDoesNotExist()
+    }
+
     @Suppress("TooManyFunctions")
     private class FakePagedGameRepository : GameRepository {
-        @Volatile
-        var capturedQuery: String? = null
         @Volatile
         var capturedPageSize: Int? = null
         @Volatile
         var capturedHistoryQuery: String? = null
-        val deferredGeneration = CompletableDeferred<PagingData<Game>>()
+
+        // One gate per dispatched query: `requested` proves the paged flow started for that
+        // query; `emit` releases its generation. This drives deterministic A/B transitions.
+        private val gates = ConcurrentHashMap<String, CompletableDeferred<PagingData<Game>>>()
+
+        fun requested(query: String): Boolean = gates.containsKey(query)
+
+        fun emit(query: String, generation: PagingData<Game>) {
+            gates.getValue(query).complete(generation)
+        }
 
         override fun getTopRatedGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
 
@@ -555,9 +631,9 @@ class SearchScreenTest {
         override fun getSearchResultsFlow(query: io.github.typenil.gametracker.core.model.GameSearchQuery): Flow<List<Game>> = flowOf(emptyList())
 
         override fun getPagedSearchResults(query: io.github.typenil.gametracker.core.model.GameSearchQuery, pageSize: Int): Flow<PagingData<Game>> {
-            capturedQuery = query.query
             capturedPageSize = pageSize
-            return flow { emit(deferredGeneration.await()) }
+            val gate = gates.computeIfAbsent(query.query) { CompletableDeferred() }
+            return flow { emit(gate.await()) }
         }
 
         override suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit> {

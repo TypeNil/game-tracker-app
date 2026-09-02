@@ -437,7 +437,68 @@ class GamesRemoteMediatorTest {
     }
 
     @Test
-    fun `load returns Success endOfPaginationReached true when targetOffset exceeds MAX_BFF_OFFSET`() = runTest {
+    fun `load APPEND crossing the BFF offset ceiling reports end and records null nextOffset`() = runTest {
+        val key = "discover:top-rated"
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
+            queryKey = key,
+            prevOffset = null,
+            nextOffset = 1000,
+            lastUpdatedEpochSeconds = 1000L
+        )
+        // A full page is returned, yet the page crosses MAX_BFF_OFFSET (1000 + 20 > 1000):
+        // pagination must stop because of the ceiling, and the terminal decision must be
+        // recorded (null nextOffset) instead of being guessed by the UI from
+        // endOfPaginationReached — offset exhaustion is not result exhaustion.
+        val ceilingPage = List(20) { index -> sampleGame1.copy(id = 900L + index) }
+        val mediator = GamesRemoteMediator(
+            queryKey = key,
+            ttlSeconds = 3600L,
+            fetcher = { limit, offset ->
+                assertEquals(20, limit)
+                assertEquals(1000, offset)
+                ceilingPage
+            },
+            gameDao = gameDao,
+            searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = transactionRunner
+        )
+
+        val result = mediator.load(LoadType.APPEND, testPagingState)
+        assertTrue(result is RemoteMediator.MediatorResult.Success)
+        assertTrue((result as RemoteMediator.MediatorResult.Success).endOfPaginationReached)
+
+        // The page itself is still persisted: users keep access to every reachable row.
+        coVerify(exactly = 1) { searchDao.insertSearchResults(match { it.size == 20 }) }
+
+        val keySlot = slot<RemoteKeyEntity>()
+        coVerify(exactly = 1) { remoteKeyDao.upsert(capture(keySlot)) }
+        assertNull(keySlot.captured.nextOffset)
+
+        // The next append reads the recorded terminal state and stops without any request.
+        coEvery { remoteKeyDao.getRemoteKey(key) } returns keySlot.captured
+        var fetcherCalled = false
+        val terminalMediator = GamesRemoteMediator(
+            queryKey = key,
+            ttlSeconds = 3600L,
+            fetcher = { _, _ ->
+                fetcherCalled = true
+                emptyList()
+            },
+            gameDao = gameDao,
+            searchDao = searchDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = transactionRunner
+        )
+
+        val terminal = terminalMediator.load(LoadType.APPEND, testPagingState)
+        assertTrue(terminal is RemoteMediator.MediatorResult.Success)
+        assertTrue((terminal as RemoteMediator.MediatorResult.Success).endOfPaginationReached)
+        assertEquals(false, fetcherCalled)
+    }
+
+    @Test
+    fun `load APPEND beyond the BFF offset ceiling ends without any request`() = runTest {
         val key = "discover:top-rated"
         coEvery { remoteKeyDao.getRemoteKey(key) } returns RemoteKeyEntity(
             queryKey = key,
