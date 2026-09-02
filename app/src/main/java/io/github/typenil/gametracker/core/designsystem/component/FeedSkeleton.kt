@@ -42,7 +42,6 @@ fun FeedSkeleton(
     modifier: Modifier = Modifier,
     label: String? = null,
 ) {
-    val barColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val rowHeight = CoverWidth / GAME_COVER_ASPECT_RATIO + GtDimens.Card
     BoxWithConstraints(
         modifier = modifier
@@ -65,42 +64,54 @@ fun FeedSkeleton(
                 )
             }
             repeat(rows) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag(FEED_SKELETON_ROW_TEST_TAG),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(CoverWidth)
-                            .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                            .clip(RoundedCornerShape(GtDimens.Card))
-                            .background(barColor),
-                    )
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = CoverTextGap),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(TITLE_BAR_FRACTION)
-                                .height(TitleBarHeight)
-                                .clip(RoundedCornerShape(BarCorner))
-                                .background(barColor),
-                        )
-                        Spacer(Modifier.height(TextGap))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(SUBTITLE_BAR_FRACTION)
-                                .height(SubtitleBarHeight)
-                                .clip(RoundedCornerShape(BarCorner))
-                                .background(barColor),
-                        )
-                    }
-                }
+                SkeletonCardRow()
             }
+        }
+    }
+}
+
+/**
+ * Single GameCard-shaped skeleton row: fixed 100dp cover at the shared poster aspect ratio plus
+ * title/subtitle bars. Reused inside [FeedSkeleton] and as the null-slot placeholder of paged
+ * lists, so an unloaded position occupies the same footprint as a loaded card and the list
+ * space never collapses mid-scroll.
+ */
+@Composable
+fun SkeletonCardRow(modifier: Modifier = Modifier) {
+    val barColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(FEED_SKELETON_ROW_TEST_TAG),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(CoverWidth)
+                .aspectRatio(GAME_COVER_ASPECT_RATIO)
+                .clip(RoundedCornerShape(GtDimens.Card))
+                .background(barColor),
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = CoverTextGap),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(TITLE_BAR_FRACTION)
+                    .height(TitleBarHeight)
+                    .clip(RoundedCornerShape(BarCorner))
+                    .background(barColor),
+            )
+            Spacer(Modifier.height(TextGap))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(SUBTITLE_BAR_FRACTION)
+                    .height(SubtitleBarHeight)
+                    .clip(RoundedCornerShape(BarCorner))
+                    .background(barColor),
+            )
         }
     }
 }

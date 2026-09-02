@@ -91,6 +91,31 @@ class SearchRequestContractTest {
         val request = SearchRequest("witcher")
         assertTrue(request.toApicalypseQuery().contains("cover != null"))
     }
+
+    @Test
+    fun `filter-only queries always carry a deterministic sort clause`() {
+        val relevance = SearchRequest(rawQuery = null, genresParam = "Role-Playing (RPG)")
+            .toApicalypseQuery()
+        assertTrue(
+            "Default relevance fallback must pin id order for stable offset paging",
+            relevance.contains("\nsort id asc;"),
+        )
+        val rating = SearchRequest(
+            rawQuery = null,
+            genresParam = "Role-Playing (RPG)",
+            sortParam = "rating",
+        ).toApicalypseQuery()
+        assertTrue(rating.contains("\nsort rating desc;"))
+        assertTrue(!rating.contains("sort id asc;"))
+    }
+
+    @Test
+    fun `text queries stay relevance-ordered without any sort clause`() {
+        val query = SearchRequest("witcher").toApicalypseQuery()
+        assertTrue(!query.contains("\nsort "))
+        val explicitSortOnText = SearchRequest("witcher", sortParam = "rating").toApicalypseQuery()
+        assertTrue(!explicitSortOnText.contains("\nsort "))
+    }
 }
 
 @Serializable

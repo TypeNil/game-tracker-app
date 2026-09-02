@@ -5,6 +5,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
 import io.github.typenil.gametracker.core.connectivity.NetworkStatus
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -15,7 +16,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.LoadState
@@ -28,6 +31,7 @@ import androidx.paging.cachedIn
 import androidx.paging.PagingState
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
+import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_ROW_TEST_TAG
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.designsystem.component.GAME_CARD_LIBRARY_ACTION_TEST_TAG
@@ -49,6 +53,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.delay
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -790,6 +795,89 @@ class SearchScreenTest {
             composeTestRule.onAllNodesWithText("Append First").fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals(2, source.appendAttempts)
+    }
+
+    /**
+     * Count-aware source (itemsBefore/itemsAfter) mimicking Room's LimitOffsetPagingSource
+     * with enablePlaceholders = true; non-first pages are delayed so the placeholder padding
+     * is observable in the composition.
+     */
+    private class PaddedPagingSource(private val games: List<Game>) : PagingSource<Int, Game>() {
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Game> {
+            val offset = params.key ?: 0
+            val size = minOf(params.loadSize, games.size - offset)
+            if (offset > 0) delay(1_000)
+            val page = games.subList(offset, offset + size)
+            return LoadResult.Page(
+                data = page,
+                // Append-only, exactly like the production search window.
+                prevKey = null,
+                nextKey = if (offset + size >= games.size) null else offset + size,
+                itemsBefore = offset,
+                itemsAfter = games.size - offset - size,
+            )
+        }
+
+        override fun getRefreshKey(state: PagingState<Int, Game>): Int? =
+            state.anchorPosition?.let { anchor ->
+                state.closestPageToPosition(anchor)?.nextKey
+            }
+    }
+
+    @Test
+    fun placeholderSlotsRenderSkeletonRowsAndAreReplacedWhenLoaded() {
+        val games = (0 until 6).map { index ->
+            sampleGames[index % sampleGames.size].copy(
+                id = 600L + index,
+                name = "Placeholder Game $index",
+            )
+        }
+        val results = Pager(
+            config = PagingConfig(
+                pageSize = 2,
+                initialLoadSize = 2,
+                prefetchDistance = 2,
+                enablePlaceholders = true,
+            ),
+            pagingSourceFactory = { PaddedPagingSource(games) },
+        ).flow
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "witcher", searchActive = true),
+                searchResults = results,
+                networkStatus = NetworkStatus.Unknown,
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+                onBackClick = {},
+            )
+        }
+
+        // The full-screen loading state reuses the same row tag, so gate on the first real
+        // card before attributing skeleton rows to placeholder padding.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("Placeholder Game 0")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        // Only 2 of 6 authoritative rows are loaded at first; the remaining committed
+        // positions must render as real skeleton rows, not collapse the window to 2 cards.
+        assertTrue(
+            composeTestRule.onAllNodesWithTag(FEED_SKELETON_ROW_TEST_TAG)
+                .fetchSemanticsNodes().size >= 2,
+        )
+        // Once the delayed appends finish every authoritative position becomes a real item.
+        // The last row sits at the fold, so poll with a scroll-to-index (index 6 = count
+        // header plus the sixth game row) until the final page inserts.
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeTestRule.onNode(hasScrollToIndexAction()).performScrollToIndex(6)
+            }
+            composeTestRule.onAllNodesWithText("Placeholder Game 5")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        // No placeholder rows remain at all: every padded position was replaced by a card.
+        composeTestRule.onAllNodesWithTag(FEED_SKELETON_ROW_TEST_TAG).assertCountEquals(0)
     }
 
     @Suppress("TooManyFunctions")
