@@ -1,10 +1,8 @@
 package io.github.typenil.gametracker.feature.library.component
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -382,38 +381,43 @@ private fun HoursHeroStepper(
             }
 
             val diff = currentHours - initialHours
-            AnimatedVisibility(
-                visible = isHoursValid && diff != 0,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+            Box(
+                modifier = Modifier.height(24.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                val isPositive = diff > 0
-                val badgeBg = if (isPositive) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.tertiaryContainer
-                }
-                val badgeFg = if (isPositive) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onTertiaryContainer
-                }
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = badgeBg,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                this@Column.AnimatedVisibility(
+                    visible = isHoursValid && diff != 0,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
                 ) {
-                    Text(
-                        text = if (isPositive) {
-                            stringResource(R.string.library_session_delta_plus, diff)
-                        } else {
-                            stringResource(R.string.library_session_delta_minus, diff)
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = badgeFg,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    )
+                    val isPositive = diff > 0
+                    val badgeBg = if (isPositive) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    }
+                    val badgeFg = if (isPositive) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    }
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = badgeBg,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    ) {
+                        Text(
+                            text = if (isPositive) {
+                                stringResource(R.string.library_session_delta_plus, diff)
+                            } else {
+                                stringResource(R.string.library_session_delta_minus, diff)
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = badgeFg,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
                 }
             }
         }
