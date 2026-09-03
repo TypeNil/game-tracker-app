@@ -585,11 +585,8 @@ private fun LibraryStatusControl(
 
 
 
-private fun LibraryEntry.showsHours(): Boolean = when (status) {
-    LibraryStatus.PLAYING -> true
-    LibraryStatus.COMPLETED, LibraryStatus.DROPPED -> hoursPlayed > 0
-    LibraryStatus.WISHLIST, LibraryStatus.NOT_INTERESTED -> false
-}
+private fun LibraryEntry.showsHours(): Boolean =
+    status.supportsHours && (status == LibraryStatus.PLAYING || hoursPlayed > 0)
 
 internal fun formatLibraryAddedDate(
     epochSeconds: Long,

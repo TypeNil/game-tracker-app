@@ -116,7 +116,8 @@ class EditLibrarySheetTest {
         composeTestRule.onNodeWithTag(EDIT_LIBRARY_RATING_BAR_TEST_TAG).performTouchInput {
             swipeRight()
         }
-        // A rating was selected and clear button appeared
+        // Rating 10 was selected on the far right and clear button appeared
+        composeTestRule.onNodeWithText("10/10").assertIsDisplayed()
         composeTestRule.onNodeWithText(clearText).assertIsDisplayed()
     }
 

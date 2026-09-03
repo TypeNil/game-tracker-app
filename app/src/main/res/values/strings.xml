@@ -204,8 +204,6 @@
     <string name="library_retained_hours">Retained progress: %1$d hrs</string>
     <string name="library_has_notes">Has notes</string>
     <string name="library_rating_format">%1$d/10</string>
-    <string name="library_rating_selected">Selected</string>
-    <string name="library_rating_not_selected">Not selected</string>
     <string name="library_close">Close</string>
     <string name="library_rating_out_of_ten">%1$d out of 10</string>
     <string name="library_edit_action_desc">Edit library entry</string>

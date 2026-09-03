@@ -24,9 +24,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -90,9 +90,9 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -624,7 +624,7 @@ private fun RatingSection(
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                         color = when {
                             isSelected -> palette.onActive
-                            isBelow -> palette.onContainer
+                            isBelow -> MaterialTheme.colorScheme.onSurface
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     )
@@ -638,7 +638,6 @@ private data class RatingTierPalette(
     val activeBg: Color,
     val onActive: Color,
     val containerBg: Color,
-    val onContainer: Color,
 )
 
 @Suppress("MagicNumber")
@@ -648,31 +647,26 @@ private val RATING_TIER_PALETTES: List<RatingTierPalette> = (1..10).map { value 
             activeBg = Color(0xFFC62828),
             onActive = Color.White,
             containerBg = Color(0xFFC62828).copy(alpha = 0.28f),
-            onContainer = Color(0xFFFFB4AB),
         )
         in 4..5 -> RatingTierPalette(
             activeBg = Color(0xFFFB8C00),
             onActive = Color(0xFF1B1B1B),
             containerBg = Color(0xFFFB8C00).copy(alpha = 0.28f),
-            onContainer = Color(0xFFFFCC80),
         )
         in 6..7 -> RatingTierPalette(
             activeBg = Color(0xFF7CB342),
             onActive = Color(0xFF1B1B1B),
             containerBg = Color(0xFF7CB342).copy(alpha = 0.28f),
-            onContainer = Color(0xFFDCEDC8),
         )
         in 8..9 -> RatingTierPalette(
             activeBg = Color(0xFF2E7D32),
             onActive = Color.White,
             containerBg = Color(0xFF2E7D32).copy(alpha = 0.28f),
-            onContainer = Color(0xFFA5D6A7),
         )
         else -> RatingTierPalette(
             activeBg = Color(0xFF00C853),
             onActive = Color(0xFF003314),
             containerBg = Color(0xFF00C853).copy(alpha = 0.32f),
-            onContainer = Color(0xFFB9F6CA),
         )
     }
 }
