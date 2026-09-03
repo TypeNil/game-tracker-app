@@ -1,7 +1,14 @@
 package io.github.typenil.gametracker.core.designsystem.component
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
@@ -51,4 +58,12 @@ fun LibraryStatus.contentColor(isDarkTheme: Boolean): Color = if (isDarkTheme) {
 fun LibraryStatus.contentColor(): Color {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     return contentColor(isDarkTheme)
+}
+
+fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
+    LibraryStatus.PLAYING -> Icons.Filled.Bookmark
+    LibraryStatus.WISHLIST -> Icons.Filled.BookmarkBorder
+    LibraryStatus.COMPLETED -> Icons.Filled.Check
+    LibraryStatus.DROPPED -> Icons.Filled.Close
+    LibraryStatus.NOT_INTERESTED -> Icons.Filled.RemoveCircleOutline
 }
