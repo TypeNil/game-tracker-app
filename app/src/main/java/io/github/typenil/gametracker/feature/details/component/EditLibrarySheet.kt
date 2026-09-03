@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -89,6 +90,7 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -98,7 +100,6 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -122,6 +123,8 @@ private const val MAX_HOURS = 99999
 private val RATING_RANGE = 1..10
 private val QUICK_HOURS_OFFSETS = listOf(1, 2, 5)
 private const val SHEET_MAX_HEIGHT_FRACTION = 0.94f
+
+const val EDIT_LIBRARY_RATING_BAR_TEST_TAG = "edit_library_rating_bar"
 
 private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
     this.then(
@@ -150,7 +153,7 @@ fun EditLibrarySheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
+        dragHandle = { BottomSheetDefaults.DragHandle(modifier = Modifier.statusBarsPadding()) },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         modifier = modifier,
     ) {
@@ -213,7 +216,7 @@ fun EditLibrarySheet(
 }
 
 @Composable
-fun EditLibrarySheetContent(
+internal fun EditLibrarySheetContent(
     initialEntry: LibraryEntry?,
     onDismiss: () -> Unit,
     onSave: (status: LibraryStatus, rating: Int?, hours: Int, notes: String?, isFavorite: Boolean) -> Unit,
@@ -282,7 +285,7 @@ fun EditLibrarySheetContent(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = stringResource(R.string.library_cancel),
+                    contentDescription = stringResource(R.string.library_close),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -318,11 +321,7 @@ fun EditLibrarySheetContent(
             )
 
             // Section 3: Hours Played (Conditional on status: PLAYING, COMPLETED, DROPPED)
-            val supportsHours = selectedStatus in setOf(
-                LibraryStatus.PLAYING,
-                LibraryStatus.COMPLETED,
-                LibraryStatus.DROPPED,
-            )
+            val supportsHours = selectedStatus.supportsHours
             AnimatedVisibility(
                 visible = supportsHours,
                 enter = fadeIn() + expandVertically(),
@@ -344,7 +343,6 @@ fun EditLibrarySheetContent(
                         onHoursChange = { newHours ->
                             val clamped = newHours.coerceIn(0, MAX_HOURS)
                             if (hours != clamped) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 hours = clamped
                             }
                         },
@@ -353,7 +351,11 @@ fun EditLibrarySheetContent(
             }
 
             // Retained progress notice when hours > 0 but status hidden
-            if (!supportsHours && hours > 0) {
+            AnimatedVisibility(
+                visible = !supportsHours && hours > 0,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -383,7 +385,7 @@ fun EditLibrarySheetContent(
             FavoriteToggleSection(
                 isFavorite = isFavorite,
                 onFavoriteChange = { newFavorite ->
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     isFavorite = newFavorite
                 },
             )
@@ -403,7 +405,7 @@ fun EditLibrarySheetContent(
                 PersonalNotesSection(
                     notes = notes,
                     onNotesChange = { newNotes ->
-                        if (newNotes.length <= MAX_NOTES_LENGTH) {
+                        if (newNotes.codePointCount(0, newNotes.length) <= MAX_NOTES_LENGTH) {
                             notes = newNotes
                         }
                     },
@@ -561,6 +563,7 @@ private fun RatingSection(
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .selectableGroup()
+                .testTag(EDIT_LIBRARY_RATING_BAR_TEST_TAG)
                 .pointerInput(layoutDirection) {
                     detectRatingScrub(
                         layoutDirection = layoutDirection,
@@ -579,22 +582,18 @@ private fun RatingSection(
                         },
                     )
                 },
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RATING_RANGE.forEach { value ->
                 val isSelected = rating == value
                 val isBelow = rating != null && value < rating
                 val palette = getRatingTierPalette(value)
-                val cd = stringResource(R.string.library_rating_format, value)
-                val stateDesc = stringResource(
-                    if (isSelected) R.string.library_rating_selected else R.string.library_rating_not_selected
-                )
+                val cd = stringResource(R.string.library_rating_out_of_ten, value)
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp)
+                        .height(44.dp)
                         .padding(horizontal = 1.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(
@@ -608,7 +607,6 @@ private fun RatingSection(
                             contentDescription = cd
                             role = Role.RadioButton
                             selected = isSelected
-                            stateDescription = stateDesc
                             onClick {
                                 val next = if (isSelected) null else value
                                 if (next != currentRating) {
@@ -644,23 +642,23 @@ private data class RatingTierPalette(
 )
 
 @Suppress("MagicNumber")
-private fun getRatingTierPalette(value: Int): RatingTierPalette {
-    return when (value) {
+private val RATING_TIER_PALETTES: List<RatingTierPalette> = (1..10).map { value ->
+    when (value) {
         in 1..3 -> RatingTierPalette(
-            activeBg = Color(0xFFE53935),
+            activeBg = Color(0xFFC62828),
             onActive = Color.White,
-            containerBg = Color(0xFFE53935).copy(alpha = 0.28f),
+            containerBg = Color(0xFFC62828).copy(alpha = 0.28f),
             onContainer = Color(0xFFFFB4AB),
         )
         in 4..5 -> RatingTierPalette(
             activeBg = Color(0xFFFB8C00),
-            onActive = Color.White,
+            onActive = Color(0xFF1B1B1B),
             containerBg = Color(0xFFFB8C00).copy(alpha = 0.28f),
             onContainer = Color(0xFFFFCC80),
         )
         in 6..7 -> RatingTierPalette(
             activeBg = Color(0xFF7CB342),
-            onActive = Color.White,
+            onActive = Color(0xFF1B1B1B),
             containerBg = Color(0xFF7CB342).copy(alpha = 0.28f),
             onContainer = Color(0xFFDCEDC8),
         )
@@ -672,11 +670,16 @@ private fun getRatingTierPalette(value: Int): RatingTierPalette {
         )
         else -> RatingTierPalette(
             activeBg = Color(0xFF00C853),
-            onActive = Color.White,
+            onActive = Color(0xFF003314),
             containerBg = Color(0xFF00C853).copy(alpha = 0.32f),
             onContainer = Color(0xFFB9F6CA),
         )
     }
+}
+
+private fun getRatingTierPalette(value: Int): RatingTierPalette {
+    val index = (value - 1).coerceIn(0, RATING_TIER_PALETTES.size - 1)
+    return RATING_TIER_PALETTES[index]
 }
 
 private suspend fun PointerInputScope.detectRatingScrub(
@@ -733,6 +736,7 @@ private fun HoursPlayedSection(
     modifier: Modifier = Modifier,
 ) {
     var rawText by remember(hours) { mutableStateOf(hours.toString()) }
+    val haptic = LocalHapticFeedback.current
 
     Column(modifier = modifier) {
         Text(
@@ -750,7 +754,10 @@ private fun HoursPlayedSection(
         ) {
             // Decrement button
             FilledTonalIconButton(
-                onClick = { onHoursChange(hours - 1) },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onHoursChange(hours - 1)
+                },
                 enabled = hours > 0,
                 shape = CircleShape,
                 modifier = Modifier.size(44.dp),
@@ -790,7 +797,10 @@ private fun HoursPlayedSection(
 
             // Increment button
             FilledTonalIconButton(
-                onClick = { onHoursChange(hours + 1) },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onHoursChange(hours + 1)
+                },
                 enabled = hours < MAX_HOURS,
                 shape = CircleShape,
                 modifier = Modifier.size(44.dp),
@@ -817,8 +827,10 @@ private fun HoursPlayedSection(
                     else -> R.string.library_quick_add_1h
                 }
                 FilledTonalButton(
-                    onClick = { onHoursChange(hours + offset) },
-                    enabled = hours + offset <= MAX_HOURS,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onHoursChange(hours + offset)
+                    },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
@@ -925,10 +937,11 @@ private fun PersonalNotesSection(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+            val count = notes.codePointCount(0, notes.length)
             Text(
-                text = "${notes.length}/$MAX_NOTES_LENGTH",
+                text = "$count/$MAX_NOTES_LENGTH",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (notes.length >= MAX_NOTES_LENGTH) {
+                color = if (count >= MAX_NOTES_LENGTH) {
                     MaterialTheme.colorScheme.error
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant

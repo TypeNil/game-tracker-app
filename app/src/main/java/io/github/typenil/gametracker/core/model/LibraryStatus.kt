@@ -8,5 +8,11 @@ enum class LibraryStatus {
     WISHLIST,
     COMPLETED,
     DROPPED,
-    NOT_INTERESTED
+    NOT_INTERESTED;
+
+    /**
+     * Whether this status supports tracking hours played.
+     */
+    val supportsHours: Boolean
+        get() = this == PLAYING || this == COMPLETED || this == DROPPED
 }

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -73,7 +74,7 @@ class EditLibrarySheetTest {
         }
 
         // Tap on rating "8"
-        val rating8Desc = composeTestRule.activity.getString(R.string.library_rating_format, 8)
+        val rating8Desc = composeTestRule.activity.getString(R.string.library_rating_out_of_ten, 8)
         composeTestRule.onNodeWithContentDescription(rating8Desc).performClick()
         composeTestRule.onNodeWithText("8/10").assertIsDisplayed()
 
@@ -82,7 +83,7 @@ class EditLibrarySheetTest {
         composeTestRule.onNodeWithText("8/10").assertDoesNotExist()
 
         // Tap rating "5"
-        val rating5Desc = composeTestRule.activity.getString(R.string.library_rating_format, 5)
+        val rating5Desc = composeTestRule.activity.getString(R.string.library_rating_out_of_ten, 5)
         composeTestRule.onNodeWithContentDescription(rating5Desc).performClick()
         composeTestRule.onNodeWithText("5/10").assertIsDisplayed()
 
@@ -111,12 +112,10 @@ class EditLibrarySheetTest {
         val clearText = composeTestRule.activity.getString(R.string.library_clear_rating)
         composeTestRule.onNodeWithText(clearText).assertDoesNotExist()
 
-        // Swipe right from "1" across the rating bar
-        val rating1Desc = composeTestRule.activity.getString(R.string.library_rating_format, 1)
-        composeTestRule.onNodeWithContentDescription(rating1Desc).performTouchInput {
-            swipeRight(startX = 10f, endX = 800f, durationMillis = 200)
+        // Swipe right across the rating scrubber bar using node bounds
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_RATING_BAR_TEST_TAG).performTouchInput {
+            swipeRight()
         }
-
         // A rating was selected and clear button appeared
         composeTestRule.onNodeWithText(clearText).assertIsDisplayed()
     }
@@ -138,8 +137,8 @@ class EditLibrarySheetTest {
             }
         }
 
-        val cancelDesc = composeTestRule.activity.getString(R.string.library_cancel)
-        composeTestRule.onNodeWithContentDescription(cancelDesc).performClick()
+        val closeDesc = composeTestRule.activity.getString(R.string.library_close)
+        composeTestRule.onNodeWithContentDescription(closeDesc).performClick()
         assertTrue(dismissed)
     }
 
@@ -173,5 +172,75 @@ class EditLibrarySheetTest {
         val removeDesc = composeTestRule.activity.getString(R.string.library_remove)
         composeTestRule.onNodeWithContentDescription(removeDesc).performClick()
         assertTrue(deleteClicked)
+    }
+
+    @Test
+    fun hoursSection_hiddenForWishlist_butHoursRetainedOnSave() {
+        var savedHours = -1
+        var savedStatus: LibraryStatus? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { status, _, hours, _, _ ->
+                            savedStatus = status
+                            savedHours = hours
+                        },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        // Initially PLAYING -> hours section is visible. Click "+5h"
+        val quickAdd5h = composeTestRule.activity.getString(R.string.library_quick_add_5h)
+        composeTestRule.onNodeWithText(quickAdd5h).performClick()
+
+        // Switch to Wishlist -> hours section hides, retained progress notice appears
+        val wishlistText = composeTestRule.activity.getString(R.string.library_status_wishlist)
+        composeTestRule.onNodeWithText(wishlistText).performClick()
+        composeTestRule.onNodeWithText(quickAdd5h).assertDoesNotExist()
+
+        // Retained progress notice is displayed with 5 hours
+        val retainedNotice = composeTestRule.activity.getString(R.string.library_retained_hours, 5)
+        composeTestRule.onNodeWithText(retainedNotice).assertIsDisplayed()
+
+        // Save and assert hours are retained in database/save callback
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+        assertEquals(LibraryStatus.WISHLIST, savedStatus)
+        assertEquals(5, savedHours)
+    }
+
+    @Test
+    fun favoriteToggle_stateChangesAndSaved() {
+        var savedFavorite = false
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { _, _, _, _, isFavorite ->
+                            savedFavorite = isFavorite
+                        },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        // Click Favorite toggle
+        val favoriteText = composeTestRule.activity.getString(R.string.library_favorite)
+        composeTestRule.onNodeWithText(favoriteText).performClick()
+
+        // Save and verify favorite is true
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+        assertTrue(savedFavorite)
     }
 }
