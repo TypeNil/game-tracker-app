@@ -192,6 +192,11 @@
     <string name="library_log_hours">Log Hours Played</string>
     <string name="library_quick_add_1h">+1h</string>
     <string name="library_quick_add_5h">+5h</string>
+    <string name="library_quick_add_2h">+2h</string>
+    <string name="library_hours_unit">hours</string>
+    <string name="library_current_hours">Currently: %1$d hrs</string>
+    <string name="library_session_delta_plus">+%1$d hrs this session</string>
+    <string name="library_session_delta_minus">%1$d hrs this session</string>
     <string name="library_remove">Remove from Library</string>
     <string name="library_has_notes">Has notes</string>
     <string name="library_rating_format">%1$d/10</string>
