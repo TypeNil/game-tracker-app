@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -129,17 +128,19 @@ fun QuickHoursDialog(
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                val diff = currentHours - initialHours
                 GameContextHeader(
                     gameName = gameName,
                     initialHours = initialHours,
                     coverUrl = coverUrl,
+                    diff = diff,
+                    isHoursValid = isHoursValid,
                 )
 
                 HoursHeroStepper(
                     hoursText = hoursText,
                     onHoursTextChange = { hoursText = it },
                     currentHours = currentHours,
-                    initialHours = initialHours,
                     isHoursValid = isHoursValid,
                     isSaving = isSaving,
                     onConfirm = { parsedHours?.let(onConfirm) },
@@ -200,6 +201,8 @@ private fun GameContextHeader(
     gameName: String,
     initialHours: Int,
     coverUrl: String?,
+    diff: Int,
+    isHoursValid: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -240,11 +243,50 @@ private fun GameContextHeader(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = stringResource(R.string.library_current_hours, initialHours),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.library_current_hours, initialHours),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    AnimatedVisibility(
+                        visible = isHoursValid && diff != 0,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        val isPositive = diff > 0
+                        val badgeBg = if (isPositive) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        }
+                        val badgeFg = if (isPositive) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        }
+                        Surface(
+                            shape = MaterialTheme.shapes.extraSmall,
+                            color = badgeBg,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        ) {
+                            Text(
+                                text = if (isPositive) {
+                                    stringResource(R.string.library_session_delta_plus, diff)
+                                } else {
+                                    stringResource(R.string.library_session_delta_minus, diff)
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = badgeFg,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -255,7 +297,6 @@ private fun HoursHeroStepper(
     hoursText: String,
     onHoursTextChange: (String) -> Unit,
     currentHours: Int,
-    initialHours: Int,
     isHoursValid: Boolean,
     isSaving: Boolean,
     onConfirm: () -> Unit,
@@ -275,18 +316,13 @@ private fun HoursHeroStepper(
         ),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(horizontal = 8.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
                 FilledTonalIconButton(
                     onClick = {
                         val decremented = (currentHours - 1).coerceAtLeast(0)
@@ -379,49 +415,7 @@ private fun HoursHeroStepper(
                     )
                 }
             }
-
-            val diff = currentHours - initialHours
-            Box(
-                modifier = Modifier.height(24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                this@Column.AnimatedVisibility(
-                    visible = isHoursValid && diff != 0,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    val isPositive = diff > 0
-                    val badgeBg = if (isPositive) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    }
-                    val badgeFg = if (isPositive) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onTertiaryContainer
-                    }
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = badgeBg,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    ) {
-                        Text(
-                            text = if (isPositive) {
-                                stringResource(R.string.library_session_delta_plus, diff)
-                            } else {
-                                stringResource(R.string.library_session_delta_minus, diff)
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = badgeFg,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        )
-                    }
-                }
-            }
         }
-    }
 }
 
 @Composable
