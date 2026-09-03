@@ -8,8 +8,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,17 +19,14 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -79,6 +77,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,14 +85,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -109,11 +115,24 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private const val MAX_NOTES_LENGTH = 1000
 private const val MAX_HOURS = 99999
 private val RATING_RANGE = 1..10
 private val QUICK_HOURS_OFFSETS = listOf(1, 2, 5)
+private const val SHEET_MAX_HEIGHT_FRACTION = 0.94f
+
+private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
+    this.then(
+        Modifier.layout { measurable, constraints ->
+            val cappedMax = (constraints.maxHeight * fraction)
+                .roundToInt()
+                .coerceAtLeast(constraints.minHeight)
+            val placeable = measurable.measure(constraints.copy(maxHeight = cappedMax))
+            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+        }
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,9 +151,7 @@ fun EditLibrarySheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         dragHandle = { BottomSheetDefaults.DragHandle() },
-        contentWindowInsets = {
-            BottomSheetDefaults.windowInsets.exclude(WindowInsets.ime)
-        },
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         modifier = modifier,
     ) {
         EditLibrarySheetContent(
@@ -149,7 +166,7 @@ fun EditLibrarySheet(
             actionsEnabled = actionsEnabled,
             modifier = Modifier
                 .fillMaxWidth()
-                .imePadding(),
+                .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),
         )
     }
 
@@ -232,52 +249,55 @@ fun EditLibrarySheetContent(
     val notesRequester = remember { BringIntoViewRequester() }
 
     Column(modifier = modifier) {
-        // Scrollable form body
+        // 1. Fixed Header (outside scroll, instant swipe-down target)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = GtDimens.Gutter, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = if (isNewEntry) Icons.Filled.Bookmark else Icons.Filled.Edit,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(
+                    text = stringResource(
+                        if (isNewEntry) R.string.library_add_to_library else R.string.library_edit_entry_title
+                    ),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.library_cancel),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+        // 2. Scrollable form body
         Column(
             modifier = Modifier
                 .weight(1f, fill = false)
                 .verticalScroll(scrollState)
-                .padding(horizontal = GtDimens.Gutter),
+                .padding(horizontal = GtDimens.Gutter, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Header: Title & Close Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        imageVector = if (isNewEntry) Icons.Filled.Bookmark else Icons.Filled.Edit,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Text(
-                        text = stringResource(
-                            if (isNewEntry) R.string.library_add_to_library else R.string.library_edit_entry_title
-                        ),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.library_cancel),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
             // Section 1: Status chips
             StatusSelectionSection(
                 selectedStatus = selectedStatus,
@@ -289,13 +309,10 @@ fun EditLibrarySheetContent(
                 },
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Section 2: Rating (1-10)
             RatingSection(
                 rating = rating,
                 onRatingSelected = { newRating ->
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     rating = newRating
                 },
             )
@@ -322,7 +339,6 @@ fun EditLibrarySheetContent(
                             }
                         },
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
                     HoursPlayedSection(
                         hours = hours,
                         onHoursChange = { newHours ->
@@ -338,7 +354,6 @@ fun EditLibrarySheetContent(
 
             // Retained progress notice when hours > 0 but status hidden
             if (!supportsHours && hours > 0) {
-                Spacer(modifier = Modifier.height(12.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -364,8 +379,6 @@ fun EditLibrarySheetContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Section 4: Favorite toggle
             FavoriteToggleSection(
                 isFavorite = isFavorite,
@@ -374,8 +387,6 @@ fun EditLibrarySheetContent(
                     isFavorite = newFavorite
                 },
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Section 5: Personal Notes
             Column(
@@ -401,8 +412,6 @@ fun EditLibrarySheetContent(
                     },
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Sticky Bottom Actions Footer
@@ -437,12 +446,14 @@ private fun StatusSelectionSection(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier.padding(bottom = 4.dp),
         )
 
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            // 0dp: chips carry a standard 48dp minimum interactive size, so the
+            // visible pill spacing already comes from the touch-target insets.
+            verticalArrangement = Arrangement.spacedBy(0.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             LibraryStatus.entries.forEach { status ->
@@ -491,9 +502,16 @@ private fun RatingSection(
     onRatingSelected: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val layoutDirection = LocalLayoutDirection.current
+    val haptic = LocalHapticFeedback.current
+    val currentRating by rememberUpdatedState(rating)
+    val currentOnRatingSelected by rememberUpdatedState(onRatingSelected)
+
     Column(modifier = modifier) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -508,15 +526,16 @@ private fun RatingSection(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (rating != null) {
+                    val activePalette = getRatingTierPalette(rating)
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = activePalette.activeBg,
                         shape = RoundedCornerShape(6.dp),
                     ) {
                         Text(
                             text = "$rating/10",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = activePalette.onActive,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
@@ -525,7 +544,7 @@ private fun RatingSection(
 
             if (rating != null) {
                 TextButton(
-                    onClick = { onRatingSelected(null) },
+                    onClick = { currentOnRatingSelected(null) },
                 ) {
                     Text(
                         text = stringResource(R.string.library_clear_rating),
@@ -538,13 +557,39 @@ private fun RatingSection(
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .selectableGroup()
+                .pointerInput(layoutDirection) {
+                    detectRatingScrub(
+                        layoutDirection = layoutDirection,
+                        onPreview = { previewRating ->
+                            if (previewRating != currentRating) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                currentOnRatingSelected(previewRating)
+                            }
+                        },
+                        onTapToggle = { tappedRating ->
+                            val next = if (tappedRating == currentRating) null else tappedRating
+                            if (next != currentRating) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                            currentOnRatingSelected(next)
+                        },
+                    )
+                },
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             RATING_RANGE.forEach { value ->
                 val isSelected = rating == value
-                val isBelowOrAt = rating != null && value <= rating
+                val isBelow = rating != null && value < rating
+                val palette = getRatingTierPalette(value)
                 val cd = stringResource(R.string.library_rating_format, value)
+                val stateDesc = stringResource(
+                    if (isSelected) R.string.library_rating_selected else R.string.library_rating_not_selected
+                )
 
                 Box(
                     modifier = Modifier
@@ -554,20 +599,24 @@ private fun RatingSection(
                         .clip(RoundedCornerShape(6.dp))
                         .background(
                             when {
-                                isSelected -> MaterialTheme.colorScheme.primary
-                                isBelowOrAt -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                isSelected -> palette.activeBg
+                                isBelow -> palette.containerBg
                                 else -> MaterialTheme.colorScheme.surfaceContainerHighest
                             }
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { onRatingSelected(value) },
                         )
                         .semantics {
                             contentDescription = cd
                             role = Role.RadioButton
-                            stateDescription = if (isSelected) "Selected" else "Not selected"
+                            selected = isSelected
+                            stateDescription = stateDesc
+                            onClick {
+                                val next = if (isSelected) null else value
+                                if (next != currentRating) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                                currentOnRatingSelected(next)
+                                true
+                            }
                         },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -576,11 +625,101 @@ private fun RatingSection(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                         color = when {
-                            isSelected -> MaterialTheme.colorScheme.onPrimary
-                            isBelowOrAt -> MaterialTheme.colorScheme.onPrimaryContainer
+                            isSelected -> palette.onActive
+                            isBelow -> palette.onContainer
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     )
+                }
+            }
+        }
+    }
+}
+
+private data class RatingTierPalette(
+    val activeBg: Color,
+    val onActive: Color,
+    val containerBg: Color,
+    val onContainer: Color,
+)
+
+@Suppress("MagicNumber")
+private fun getRatingTierPalette(value: Int): RatingTierPalette {
+    return when (value) {
+        in 1..3 -> RatingTierPalette(
+            activeBg = Color(0xFFE53935),
+            onActive = Color.White,
+            containerBg = Color(0xFFE53935).copy(alpha = 0.28f),
+            onContainer = Color(0xFFFFB4AB),
+        )
+        in 4..5 -> RatingTierPalette(
+            activeBg = Color(0xFFFB8C00),
+            onActive = Color.White,
+            containerBg = Color(0xFFFB8C00).copy(alpha = 0.28f),
+            onContainer = Color(0xFFFFCC80),
+        )
+        in 6..7 -> RatingTierPalette(
+            activeBg = Color(0xFF7CB342),
+            onActive = Color.White,
+            containerBg = Color(0xFF7CB342).copy(alpha = 0.28f),
+            onContainer = Color(0xFFDCEDC8),
+        )
+        in 8..9 -> RatingTierPalette(
+            activeBg = Color(0xFF2E7D32),
+            onActive = Color.White,
+            containerBg = Color(0xFF2E7D32).copy(alpha = 0.28f),
+            onContainer = Color(0xFFA5D6A7),
+        )
+        else -> RatingTierPalette(
+            activeBg = Color(0xFF00C853),
+            onActive = Color.White,
+            containerBg = Color(0xFF00C853).copy(alpha = 0.32f),
+            onContainer = Color(0xFFB9F6CA),
+        )
+    }
+}
+
+private suspend fun PointerInputScope.detectRatingScrub(
+    layoutDirection: LayoutDirection,
+    onPreview: (Int) -> Unit,
+    onTapToggle: (Int) -> Unit,
+) {
+    val slop = viewConfiguration.touchSlop
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        var dragging = false
+        var finished = false
+        while (!finished) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            val width = size.width.toFloat().coerceAtLeast(1f)
+            val rawX = change.position.x.coerceIn(0f, width)
+            val x = if (layoutDirection == LayoutDirection.Ltr) rawX else width - rawX
+            val segment = ((x / width) * RATING_RANGE.count().toFloat()).toInt().coerceIn(0, RATING_RANGE.count() - 1) + 1
+            val delta = change.position - down.position
+            when {
+                !change.pressed -> {
+                    if (dragging) {
+                        onPreview(segment)
+                    } else {
+                        onTapToggle(segment)
+                    }
+                    finished = true
+                }
+                !dragging && kotlin.math.abs(delta.y) > slop &&
+                    kotlin.math.abs(delta.y) > kotlin.math.abs(delta.x) -> {
+                    // Vertical slop won: allow parent verticalScroll / sheet to consume
+                    return@awaitEachGesture
+                }
+                !dragging && kotlin.math.abs(delta.x) > slop &&
+                    kotlin.math.abs(delta.x) > kotlin.math.abs(delta.y) -> {
+                    dragging = true
+                    change.consume()
+                    onPreview(segment)
+                }
+                dragging -> {
+                    change.consume()
+                    onPreview(segment)
                 }
             }
         }
@@ -720,7 +859,7 @@ private fun FavoriteToggleSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -761,7 +900,7 @@ private fun FavoriteToggleSection(
 
             Switch(
                 checked = isFavorite,
-                onCheckedChange = null, // Handled by card click
+                onCheckedChange = onFavoriteChange,
             )
         }
     }
@@ -804,7 +943,7 @@ private fun PersonalNotesSection(
             onValueChange = onNotesChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 96.dp, max = 160.dp),
+                .heightIn(min = 72.dp, max = 130.dp),
             placeholder = {
                 Text(
                     text = stringResource(R.string.library_personal_notes),
@@ -819,7 +958,8 @@ private fun PersonalNotesSection(
             keyboardActions = KeyboardActions(
                 onDone = { onDone() },
             ),
-            maxLines = 5,
+            minLines = 2,
+            maxLines = 4,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -841,13 +981,17 @@ private fun StickyActionFooter(
         tonalElevation = 3.dp,
         modifier = modifier,
     ) {
-        Column {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding(),
+        ) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(horizontal = GtDimens.Gutter, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
