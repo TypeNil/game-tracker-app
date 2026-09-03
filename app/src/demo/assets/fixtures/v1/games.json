@@ -176,11 +176,11 @@
   },
   {
     "id": 900001,
-    "name": "Cthulhu Saves the World: Super Hyper Enhanced Championship Edition Alpha",
-    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "name": "Cthulhu Saves the World: Enhanced Edition",
+    "coverUrl": "file:///android_asset/covers/cover_cthulhu.jpg",
     "rating": 82.0,
     "releaseDateEpochSeconds": 1293753600,
-    "summary": "The lord of insanity, Cthulhu, is all set to plunge the world into despair and destruction when his powers are sealed away by a mysterious sorcerer.",
+    "summary": "The lord of insanity, Cthulhu, is all set to plunge the world into despair and destruction when his powers are sealed away by a mysterious sorcerer! The only way he can break the curse is by becoming a true hero!",
     "genres": [
       "Role-playing (RPG)",
       "Indie",
@@ -196,12 +196,14 @@
   {
     "id": 900002,
     "name": "Silk",
-    "coverUrl": "file:///android_asset/covers/14593.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_silk.jpg",
     "rating": 74.0,
     "releaseDateEpochSeconds": 1568246400,
     "summary": null,
     "genres": [
-      "Adventure"
+      "Role-playing (RPG)",
+      "Adventure",
+      "Strategy"
     ],
     "platforms": [
       "PC"
@@ -210,7 +212,7 @@
   {
     "id": 900003,
     "name": "Grand Theft Auto VI",
-    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_gtavi.jpg",
     "rating": null,
     "releaseDateEpochSeconds": null,
     "summary": "Grand Theft Auto VI heads to the state of Leonida, home to the neon-soaked streets of Vice City and beyond in the biggest, most immersive evolution of the Grand Theft Auto series yet.",
@@ -225,11 +227,11 @@
   },
   {
     "id": 900004,
-    "name": "Retro Space Invaders 1978",
-    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "name": "Space Invaders (1978)",
+    "coverUrl": "file:///android_asset/covers/cover_space_invaders.jpg",
     "rating": null,
     "releaseDateEpochSeconds": 268185600,
-    "summary": "A classic 1978 arcade game where the player defeats waves of descending aliens with a horizontally moving laser cannon to earn points.",
+    "summary": "The seminal 1978 arcade shoot 'em up game designed by Tomohiro Nishikado and manufactured by Taito. Defend the Earth against endless descending waves of hostile alien invaders.",
     "genres": [
       "Shooter",
       "Arcade"
@@ -241,7 +243,7 @@
   {
     "id": 900005,
     "name": "Doom",
-    "coverUrl": "file:///android_asset/covers/1942.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_doom1993.jpg",
     "rating": 85.0,
     "releaseDateEpochSeconds": 755481600,
     "summary": "The classic 1993 first-person shooter developed by id Software. In the role of a space marine, the player fights through hordes of invading demons on Mars.",
@@ -257,7 +259,7 @@
   {
     "id": 900006,
     "name": "Doom",
-    "coverUrl": "file:///android_asset/covers/1877.jpg",
+    "coverUrl": "file:///android_asset/covers/cover_doom2016.jpg",
     "rating": 86.0,
     "releaseDateEpochSeconds": 1463097600,
     "summary": "The 2016 modern reboot of the legendary Doom franchise by id Software and Bethesda Softworks.",
@@ -273,48 +275,33 @@
   },
   {
     "id": 900007,
-    "name": "Multiplatform Sandbox Quest",
-    "coverUrl": "file:///android_asset/covers/119388.jpg",
-    "rating": 88.0,
-    "releaseDateEpochSeconds": 1321574400,
-    "summary": "An expansive sandbox quest released and maintained on sixteen different gaming platforms across three console generations.",
+    "name": "Phantom Blade 0",
+    "coverUrl": "file:///android_asset/covers/cover_phantom_blade.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Framed for the death of his master and left with a ruined heart, Soul has sixty-six days to live. Alone and hunted by former allies, he embarks on a relentless quest for truth in this dark martial arts RPG.",
     "genres": [
-      "Adventure",
-      "Simulator"
+      "Role-playing (RPG)",
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 5",
-      "PlayStation 4",
-      "PlayStation 3",
-      "Xbox Series X|S",
-      "Xbox One",
-      "Xbox 360",
-      "Nintendo Switch",
-      "Wii U",
-      "Nintendo 3DS",
-      "PlayStation Vita",
-      "macOS",
-      "Linux",
-      "Android",
-      "iOS",
-      "Meta Quest 3"
+      "PlayStation 5"
     ]
   },
   {
     "id": 900008,
-    "name": "Mega Studio Blockbuster Online",
-    "coverUrl": "file:///android_asset/covers/112875.jpg",
-    "rating": 79.0,
-    "releaseDateEpochSeconds": 1636070400,
-    "summary": "A large-scale multiplayer production with twelve credited development and publishing entities worldwide.",
+    "name": "The Elder Scrolls VI",
+    "coverUrl": "file:///android_asset/covers/cover_tes6.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "The Elder Scrolls VI is an upcoming single-player fantasy action RPG from Bethesda Game Studios, serving as the next major entry in the legendary Elder Scrolls franchise.",
     "genres": [
-      "Shooter",
-      "Tactical"
+      "Role-playing (RPG)",
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 5",
       "Xbox Series X|S"
     ]
   },
@@ -335,60 +322,52 @@
   },
   {
     "id": 900010,
-    "name": "Tag Overload: Unlimited Edition",
-    "coverUrl": "file:///android_asset/covers/204350.jpg",
-    "rating": 84.0,
-    "releaseDateEpochSeconds": 1672531200,
-    "summary": "A genre-blending masterpiece incorporating elements of almost every game mechanic and atmospheric theme known in gaming history.",
+    "name": "Marvel's Wolverine",
+    "coverUrl": "file:///android_asset/covers/cover_wolverine.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Marvel's Wolverine is an upcoming single-player action-adventure game developed by Insomniac Games in collaboration with Marvel Games and PlayStation Studios.",
     "genres": [
-      "Role-playing (RPG)",
-      "Adventure",
-      "Shooter",
-      "Platform",
-      "Puzzle",
-      "Strategy",
-      "Hack and slash/Beat 'em up",
-      "Simulator",
-      "Tactical",
-      "Indie"
+      "Action",
+      "Adventure"
     ],
     "platforms": [
-      "PC",
-      "PlayStation 5",
-      "Xbox Series X|S"
+      "PlayStation 5"
     ]
   },
   {
     "id": 900011,
-    "name": "Endless Lore Chronicles: The Ancient Prophecy of Forgotten Realms",
-    "coverUrl": "file:///android_asset/covers/119171.jpg",
-    "rating": 91.0,
-    "releaseDateEpochSeconds": 1690848000,
-    "summary": "In the primordial age of the world before the stars were counted, three elder dragons fashioned the world from stardust and sacred fire. For millennia, the kingdoms of man, elf, and dwarf prospered under the benevolent gaze of the Celestial Guardians.\n\nYet when the Shadow of the Abyssal Veil crept across the northern mountains, the ancient pact was shattered. Brother turned upon brother, and the great spires of Eldoria crumbled into ash and sorrow. A chosen hero must now arise from the desolate wastes of the Outer Rim, bearing the Mark of the Sunweaver and wielding the Blade of Eternal Dawns.\n\nJourney across vast continents spanning frozen tundras, sun-scorched deserts, and subterranean dwarven citadels. Meet over three hundred fully voiced companions, each with their own branching storylines, moral dilemmas, and hidden loyalties. Engage in tactical turn-based combat where every positioning choice, elemental synergy, and environmental hazard can turn the tide of battle.\n\nCraft legendary armaments using forgotten alchemical recipes, tame mythical beasts to traverse uncharted mountain ranges, and make world-altering political decisions that determine the fate of entire empires. The prophecy awaits its fulfillment, but whether in triumph or cataclysm remains entirely in your hands.",
+    "name": "Fable",
+    "coverUrl": "file:///android_asset/covers/cover_fable.jpg",
+    "rating": null,
+    "releaseDateEpochSeconds": null,
+    "summary": "Become the Hero you want to be in an immersive open-world action RPG where each choice shapes your journey, reputation, and the fate of Albion. A fresh beginning for the legendary franchise.",
     "genres": [
       "Role-playing (RPG)",
-      "Adventure",
-      "Strategy"
+      "Adventure"
     ],
     "platforms": [
       "PC",
-      "PlayStation 5",
       "Xbox Series X|S"
     ]
   },
   {
     "id": 900012,
-    "name": "Competitive Arena Pro",
-    "coverUrl": "file:///android_asset/covers/72.jpg",
+    "name": "Apex Legends",
+    "coverUrl": "file:///android_asset/covers/cover_apex.jpg",
     "rating": 42.0,
     "releaseDateEpochSeconds": 1640995200,
-    "summary": "A purely multiplayer competitive arena shooter with no campaign or story mode.",
+    "summary": "Conquer with character in Apex Legends, a free-to-play hero shooter where legendary competitors battle for glory, fame, and fortune on the fringes of the Frontier.",
     "genres": [
-      "Shooter",
-      "Sport"
+      "Shooter"
     ],
     "platforms": [
-      "PC"
+      "PC",
+      "PlayStation 4",
+      "PlayStation 5",
+      "Xbox One",
+      "Xbox Series X|S",
+      "Nintendo Switch"
     ]
   }
 ]

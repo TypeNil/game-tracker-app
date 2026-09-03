@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
 import io.github.typenil.gametracker.core.designsystem.component.GAME_CARD_LIBRARY_ACTION_TEST_TAG
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
@@ -27,7 +28,10 @@ class DiscoverScreenTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
-    private fun setContent(uiState: DiscoverUiState) {
+    private fun setContent(
+        uiState: DiscoverUiState,
+        onLoadMoreRail: (DiscoverRail) -> Unit = {},
+    ) {
         composeTestRule.setContent {
             GameTrackerTheme {
                 DiscoverScreen(
@@ -39,6 +43,7 @@ class DiscoverScreenTest {
                     onRetry = {},
                     onUserMessageShown = {},
                     onLoadMoreTrending = {},
+                    onLoadMoreRail = onLoadMoreRail,
                 )
             }
         }
@@ -170,5 +175,89 @@ class DiscoverScreenTest {
             }
         }
         composeTestRule.onNodeWithTag(GAME_CARD_LIBRARY_ACTION_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun emptyRailError_showsErrorState_andDoesNotShowEmptyState() {
+        setContent(
+            DiscoverUiState(
+                selectedTab = DiscoverTab.CHARTS,
+                rails = listOf(
+                    DiscoverRailState(
+                        rail = DiscoverRail.POPULAR_NOW,
+                        games = emptyList(),
+                        error = AppError.NetworkError,
+                    ),
+                ),
+            ),
+        )
+        val emptyMessage = composeTestRule.activity.getString(R.string.discover_rail_empty)
+        composeTestRule.onNodeWithText(emptyMessage).assertDoesNotExist()
+        val retryText = composeTestRule.activity.getString(R.string.retry_button)
+        composeTestRule.onNodeWithText(retryText).assertIsDisplayed()
+    }
+
+    @Test
+    fun emptyRailWithoutError_showsEmptyState() {
+        setContent(
+            DiscoverUiState(
+                selectedTab = DiscoverTab.CHARTS,
+                rails = listOf(
+                    DiscoverRailState(
+                        rail = DiscoverRail.POPULAR_NOW,
+                        games = emptyList(),
+                        error = null,
+                        isLoading = false,
+                    ),
+                ),
+            ),
+        )
+        val emptyMessage = composeTestRule.activity.getString(R.string.discover_rail_empty)
+        composeTestRule.onNodeWithText(emptyMessage).assertIsDisplayed()
+    }
+
+    @Test
+    fun nonEmptyRail_appendError_showsRetryButton_andClickInvokesOnLoadMoreRail() {
+        var requestedRail: DiscoverRail? = null
+        val game = Game(id = 42L, name = "Elden Ring")
+        setContent(
+            uiState = DiscoverUiState(
+                selectedTab = DiscoverTab.CHARTS,
+                rails = listOf(
+                    DiscoverRailState(
+                        rail = DiscoverRail.POPULAR_NOW,
+                        games = listOf(game),
+                        error = AppError.NetworkError,
+                    ),
+                ),
+            ),
+            onLoadMoreRail = { requestedRail = it },
+        )
+
+        val retryText = composeTestRule.activity.getString(R.string.retry_button)
+        composeTestRule.onNodeWithText(retryText).assertIsDisplayed().performClick()
+        assertEquals(DiscoverRail.POPULAR_NOW, requestedRail)
+    }
+
+    @Test
+    fun nonEmptyRail_appendError_doesNotAutoLoadMoreOnComposition() {
+        var loadMoreCalls = 0
+        setContent(
+            uiState = DiscoverUiState(
+                selectedTab = DiscoverTab.CHARTS,
+                rails = listOf(
+                    DiscoverRailState(
+                        rail = DiscoverRail.POPULAR_NOW,
+                        games = listOf(Game(id = 42L, name = "Elden Ring")),
+                        error = AppError.NetworkError,
+                    ),
+                ),
+            ),
+            onLoadMoreRail = { loadMoreCalls++ },
+        )
+
+        composeTestRule.waitForIdle()
+
+        assertEquals(0, loadMoreCalls)
     }
 }

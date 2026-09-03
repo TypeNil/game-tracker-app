@@ -2,6 +2,10 @@ package io.github.typenil.gametracker.feature.settings
 
 import android.content.ActivityNotFoundException
 import android.widget.Toast
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.font.FontWeight
+import io.github.typenil.gametracker.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,6 +68,13 @@ fun SettingsRoute(
                 Toast.makeText(context, R.string.settings_igdb_open_error, Toast.LENGTH_SHORT).show()
             }
         },
+        onOpenGitHub = {
+            try {
+                context.startActivity(SettingsIntents.gitHubIntent())
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(context, R.string.settings_github_open_error, Toast.LENGTH_SHORT).show()
+            }
+        },
         modifier = modifier
     )
 
@@ -77,6 +88,7 @@ fun SettingsScreen(
     onManageNotifications: () -> Unit,
     onBackClick: () -> Unit,
     onOpenIgdb: () -> Unit,
+    onOpenGitHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -96,11 +108,13 @@ fun SettingsScreen(
             )
         }
     ) { innerPadding ->
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(GtDimens.Gutter)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(GtDimens.Gutter)
         ) {
             Card(
@@ -150,6 +164,41 @@ fun SettingsScreen(
                                 Text(text = stringResource(R.string.settings_notifications_manage))
                             }
                         }
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(GtDimens.Gutter),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_app_info_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_app_name),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_app_version,
+                            BuildConfig.VERSION_NAME,
+                            BuildConfig.FLAVOR
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(onClick = onOpenGitHub) {
+                        Text(text = stringResource(R.string.settings_github_link))
                     }
                 }
             }

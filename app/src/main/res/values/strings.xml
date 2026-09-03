@@ -239,4 +239,12 @@
     <string name="discover_cold_start_title">No Recommendations Yet</string>
     <string name="discover_cold_start_subtitle">Add games to your Library or rate games to get personalized recommendations tailored to your taste.</string>
     <string name="discover_cold_start_action">Browse Popular Games</string>
+    <string name="library_loading">Loading your library…</string>
+    <string name="discover_rail_empty">No games available in this chart right now</string>
+    <string name="library_search_clear_action">Reset search &amp; filters</string>
+    <string name="settings_app_info_title">App Information</string>
+    <string name="settings_app_name">GameTracker</string>
+    <string name="settings_app_version">Version %1$s (%2$s)</string>
+    <string name="settings_github_link">GitHub Repository</string>
+    <string name="settings_github_open_error">No app available to open this link.</string>
 </resources>

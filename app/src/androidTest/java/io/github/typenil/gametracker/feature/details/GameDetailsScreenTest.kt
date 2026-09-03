@@ -18,6 +18,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
@@ -393,6 +398,77 @@ class GameDetailsScreenTest {
         composeTestRule.onNodeWithContentDescription(closeDesc).performClick()
 
         composeTestRule.onNodeWithText(page1Text).assertDoesNotExist()
+    }
+    @Test
+    fun screenshotViewer_atOneX_horizontalSwipeChangesPage() {
+        val screenshotsDetails = compactDetails.copy(
+            screenshots = listOf("https://example.com/shot1.jpg", "https://example.com/shot2.jpg"),
+        )
+        setContent(GameDetailsUiState(game = screenshotsDetails, isHydrated = true))
+
+        val screenshotDesc = composeTestRule.activity.getString(R.string.details_screenshot_desc)
+        composeTestRule.onAllNodesWithContentDescription(screenshotDesc)[0].performClick()
+
+        val page1Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 1, 2)
+        val page2Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 2, 2)
+        composeTestRule.onNodeWithContentDescription(page1Text).assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription(page1Text).performTouchInput {
+            swipeLeft()
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithContentDescription(page2Text).assertIsDisplayed()
+    }
+
+    @Test
+    fun screenshotViewer_whenZoomed_horizontalDragDoesNotChangePage() {
+        val screenshotsDetails = compactDetails.copy(
+            screenshots = listOf("https://example.com/shot1.jpg", "https://example.com/shot2.jpg"),
+        )
+        setContent(GameDetailsUiState(game = screenshotsDetails, isHydrated = true))
+
+        val screenshotDesc = composeTestRule.activity.getString(R.string.details_screenshot_desc)
+        composeTestRule.onAllNodesWithContentDescription(screenshotDesc)[0].performClick()
+
+        val page1Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 1, 2)
+        val page2Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 2, 2)
+        composeTestRule.onNodeWithContentDescription(page1Text).assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription(page1Text).performTouchInput {
+            doubleClick()
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithContentDescription(page1Text).performTouchInput {
+            swipeLeft()
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithContentDescription(page1Text).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(page2Text).assertDoesNotExist()
+    }
+
+    @Test
+    fun screenshotViewer_imageFillsDialogViewport() {
+        val screenshotsDetails = compactDetails.copy(
+            screenshots = listOf("https://example.com/shot1.jpg"),
+        )
+        setContent(GameDetailsUiState(game = screenshotsDetails, isHydrated = true))
+
+        val screenshotDesc = composeTestRule.activity.getString(R.string.details_screenshot_desc)
+        composeTestRule.onAllNodesWithContentDescription(screenshotDesc)[0].performClick()
+
+        val page1Text = composeTestRule.activity.getString(R.string.details_viewer_page_format, 1, 1)
+        // Two semantics roots exist while the Dialog is open (activity + dialog);
+        // onRoot() expects exactly one and throws. The dialog root is registered last.
+        val dialogRootBounds = composeTestRule.onAllNodes(isRoot()).onLast().getUnclippedBoundsInRoot()
+        val imageBounds = composeTestRule
+            .onNodeWithContentDescription(page1Text)
+            .getUnclippedBoundsInRoot()
+
+        assertEquals(dialogRootBounds.right - dialogRootBounds.left, imageBounds.right - imageBounds.left)
+        assertEquals(dialogRootBounds.bottom - dialogRootBounds.top, imageBounds.bottom - imageBounds.top)
     }
 
     @Test

@@ -26,6 +26,7 @@ data class DiscoverRailState(
     val games: List<Game> = emptyList(),
     val isLoading: Boolean = false,
     val endReached: Boolean = false,
+    val error: AppError? = null,
 )
 
 data class DiscoverUiState(

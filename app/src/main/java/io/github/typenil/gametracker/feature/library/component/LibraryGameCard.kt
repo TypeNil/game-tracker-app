@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.DropdownMenu
@@ -183,12 +184,25 @@ fun LibraryGameCard(
                         .testTag(LIBRARY_CARD_CLICK_TARGET_TEST_TAG),
                 ) {
                     val bannerImage = resolveLibraryBannerUrl(libraryGame.bannerUrl, game.coverUrl)
+                    var bannerLoadFailed by remember(bannerImage) { mutableStateOf(false) }
+                    if (bannerImage == null || bannerLoadFailed) {
+                        Icon(
+                            imageVector = Icons.Default.VideogameAsset,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.20f),
+                            modifier = Modifier
+                                .size(64.dp)
+                                .align(Alignment.Center),
+                        )
+                    }
                     if (bannerImage != null) {
                         AsyncImage(
                             model = bannerImage,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             alignment = Alignment.Center,
+                            onSuccess = { bannerLoadFailed = false },
+                            onError = { bannerLoadFailed = true },
                             modifier = Modifier.matchParentSize(),
                         )
                     }
