@@ -181,4 +181,48 @@ class QuickHoursDialogTest {
             composeTestRule.activity.getString(R.string.library_cancel),
         ).assertIsNotEnabled()
     }
+
+    @Test
+    fun dialog_quickAdd2h_andDeltaBadge_displayed() {
+        var confirmedHours: Int? = null
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                QuickHoursDialog(
+                    gameName = "Hades",
+                    initialHours = 10,
+                    onDismissRequest = {},
+                    onConfirm = { confirmedHours = it },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_quick_add_2h),
+        ).performClick()
+        composeTestRule.onNodeWithText("12").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_session_delta_plus, 2),
+        ).assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag(QUICK_HOURS_SAVE_TEST_TAG).performClick()
+        assertEquals(12, confirmedHours)
+    }
+
+    @Test
+    fun dialog_blankCoverUrl_rendersGracefully() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                QuickHoursDialog(
+                    gameName = "Celeste",
+                    initialHours = 20,
+                    onDismissRequest = {},
+                    onConfirm = {},
+                    coverUrl = "",
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Celeste").assertIsDisplayed()
+        composeTestRule.onNodeWithText("20").assertIsDisplayed()
+    }
 }

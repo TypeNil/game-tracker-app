@@ -409,6 +409,7 @@ fun LibraryScreen(
         QuickHoursDialog(
             gameName = targetGame.game.name,
             initialHours = targetGame.entry.hoursPlayed,
+            coverUrl = targetGame.game.coverUrl,
             onDismissRequest = {
                 if (!isSaving) {
                     editingHoursGameId = null
