@@ -30,14 +30,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
@@ -59,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
@@ -73,6 +67,7 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
+import io.github.typenil.gametracker.core.designsystem.component.leadingIcon
 import io.github.typenil.gametracker.core.designsystem.component.PlatformIconsRow
 import io.github.typenil.gametracker.core.designsystem.component.resolvePlatformFamilies
 import io.github.typenil.gametracker.core.designsystem.component.selectGenreTags
@@ -589,19 +584,9 @@ private fun LibraryStatusControl(
 }
 
 
-private fun LibraryStatus.leadingIcon(): ImageVector = when (this) {
-    LibraryStatus.PLAYING -> Icons.Filled.Bookmark
-    LibraryStatus.WISHLIST -> Icons.Filled.BookmarkBorder
-    LibraryStatus.COMPLETED -> Icons.Filled.Check
-    LibraryStatus.DROPPED -> Icons.Filled.Close
-    LibraryStatus.NOT_INTERESTED -> Icons.Filled.RemoveCircleOutline
-}
 
-private fun LibraryEntry.showsHours(): Boolean = when (status) {
-    LibraryStatus.PLAYING -> true
-    LibraryStatus.COMPLETED, LibraryStatus.DROPPED -> hoursPlayed > 0
-    LibraryStatus.WISHLIST, LibraryStatus.NOT_INTERESTED -> false
-}
+private fun LibraryEntry.showsHours(): Boolean =
+    status.supportsHours && (status == LibraryStatus.PLAYING || hoursPlayed > 0)
 
 internal fun formatLibraryAddedDate(
     epochSeconds: Long,
