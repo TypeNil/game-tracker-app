@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -513,7 +514,7 @@ private fun RatingSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp),
+                .padding(bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -547,6 +548,8 @@ private fun RatingSection(
             if (rating != null) {
                 TextButton(
                     onClick = { currentOnRatingSelected(null) },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    modifier = Modifier.height(32.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.library_clear_rating),
@@ -556,12 +559,9 @@ private fun RatingSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
                 .selectableGroup()
                 .testTag(EDIT_LIBRARY_RATING_BAR_TEST_TAG)
                 .pointerInput(layoutDirection) {
@@ -593,7 +593,7 @@ private fun RatingSection(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
+                        .height(36.dp)
                         .padding(horizontal = 1.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(
