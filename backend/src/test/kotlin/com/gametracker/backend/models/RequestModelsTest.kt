@@ -416,7 +416,8 @@ class RequestModelsTest {
         assertTrue(q.contains("genres.name = (\"RPG\")"))
         assertFalse(q.contains("themes.name ="))
         assertTrue(q.contains("id != (5,10)") || q.contains("id != (10,5)"))
-        assertTrue(q.contains("limit 10;"))
+        assertTrue(q.contains("limit 100;"))
+
     }
 
     @Test
@@ -455,9 +456,34 @@ class RequestModelsTest {
         )
 
         val query = request.toTagApicalypseQuery()
-        assertTrue(query.contains("limit 60;"))
+        assertTrue(query.contains("limit 100;"))
+
         assertTrue(query.contains("offset 0;"))
     }
+
+    @Test
+    fun `candidate pool cache key cannot collide across tag fields`() {
+        val embeddedDelimiter = RecommendationCandidatesRequest(
+            genresParam = "RPG|Fantasy",
+            themesParam = "Horror",
+        )
+        val separateFields = RecommendationCandidatesRequest(
+            genresParam = "RPG",
+            themesParam = "Fantasy|Horror",
+        )
+
+        assertNotEquals(
+            embeddedDelimiter.candidatePoolCacheKey,
+            separateFields.candidatePoolCacheKey,
+        )
+        assertNotEquals(
+            embeddedDelimiter.cacheKey,
+            separateFields.cacheKey,
+        )
+    }
+
+
+
  
     @Test
     fun `SearchRequest rejects variation-selector-only input before length check`() {

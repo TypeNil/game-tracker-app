@@ -66,6 +66,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
+import io.github.typenil.gametracker.core.designsystem.component.errorMessage
+
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
@@ -337,12 +339,27 @@ fun LibraryScreen(
                     )
                 }
 
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = uiState.error.errorMessage(),
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(GtDimens.Gutter),
+                        )
+                    }
+                }
+
                 uiState.isCatalogEmpty -> {
                     LibraryEmptyState(
                         onNavigateToDiscover = onNavigateToDiscover,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+
 
                 else -> {
                     HorizontalPager(

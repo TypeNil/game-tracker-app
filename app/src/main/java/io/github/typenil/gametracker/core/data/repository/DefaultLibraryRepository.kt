@@ -7,15 +7,23 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.mapper.toDomain
 import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
+import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
+import io.github.typenil.gametracker.core.model.RecommendationSignal
+
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryNotes
+
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.catch
+
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -24,18 +32,23 @@ class DefaultLibraryRepository @Inject constructor(
     private val libraryDao: LibraryDao,
     private val gameDao: GameDao,
     private val transactionRunner: TransactionRunner,
+    private val signalCollector: RoomRecommendationSignalCollector,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : LibraryRepository {
 
-    override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> =
+
+    override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> =
         libraryDao.getPopulatedLibraryEntriesFlow()
             .map { list -> list.map { it.toDomain() } }
+            .asAppResult()
             .flowOn(ioDispatcher)
 
-    override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> =
+    override fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>> =
         libraryDao.getLibraryEntryFlow(gameId)
             .map { it?.toDomain() }
+            .asAppResult()
             .flowOn(ioDispatcher)
+
 
     override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> =
         withContext(ioDispatcher) {
@@ -76,14 +89,8 @@ class DefaultLibraryRepository @Inject constructor(
                 val now = System.currentTimeMillis() / 1000
                 val clampedRating = entry.userRating?.coerceIn(1, 10)
                 val clampedHours = entry.hoursPlayed.coerceAtLeast(0)
-                val sanitizedNotes = entry.userNotes?.let { notes ->
-                    if (notes.codePointCount(0, notes.length) > MAX_NOTES_CODE_POINTS) {
-                        val endIdx = notes.offsetByCodePoints(0, MAX_NOTES_CODE_POINTS)
-                        notes.substring(0, endIdx)
-                    } else {
-                        notes
-                    }
-                }
+                val sanitizedNotes = entry.userNotes?.let(LibraryNotes::clamp)
+
                 val entity = entry.copy(
                     userRating = clampedRating,
                     hoursPlayed = clampedHours,
@@ -141,13 +148,8 @@ class DefaultLibraryRepository @Inject constructor(
                         )
                     val now = System.currentTimeMillis() / 1000
                     val notes = userNotes?.trim()?.takeIf { it.isNotEmpty() }
-                    val sanitizedNotes = notes?.let { raw ->
-                        if (raw.codePointCount(0, raw.length) > MAX_NOTES_CODE_POINTS) {
-                            raw.substring(0, raw.offsetByCodePoints(0, MAX_NOTES_CODE_POINTS))
-                        } else {
-                            raw
-                        }
-                    }
+                    val sanitizedNotes = notes?.let(LibraryNotes::clamp)
+
                     libraryDao.upsertLibraryEntry(
                         existing.copy(
                             status = status,
@@ -211,7 +213,23 @@ class DefaultLibraryRepository @Inject constructor(
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 
-    companion object {
-        const val MAX_NOTES_CODE_POINTS = 500
-    }
+
+    override suspend fun getRecommendationSignals(): AppResult<List<RecommendationSignal>> =
+        withContext(ioDispatcher) {
+            runSuspendCatching {
+                transactionRunner { signalCollector.collect() }
+            }.fold(
+                onSuccess = { AppResult.Success(it) },
+                onFailure = { AppResult.Error(AppError.UnknownError(it)) },
+            )
+        }
 }
+
+private fun <T> Flow<T>.asAppResult(): Flow<AppResult<T>> =
+    map<T, AppResult<T>> { value -> AppResult.Success(value) }
+        .catch { error ->
+            if (error is CancellationException) throw error
+            emit(AppResult.Error(AppError.UnknownError(error)))
+        }
+
+

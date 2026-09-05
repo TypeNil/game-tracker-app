@@ -624,6 +624,29 @@ class GameDetailsScreenTest {
     }
 
     @Test
+    fun libraryFailure_doesNotShowAddOrEditAction() {
+        setContent(
+            GameDetailsUiState(
+                game = compactDetails,
+                isHydrated = true,
+                libraryLoadError = AppError.UnknownError(null),
+            ),
+        )
+
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_add_to_library),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_in_library),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.error_library_load_failed),
+        ).assertIsDisplayed()
+    }
+
+
+
+    @Test
     fun nullGameRendersHeaderSkeletonInsteadOfSpinner() {
         setContent(GameDetailsUiState(game = null, isLoading = true))
 

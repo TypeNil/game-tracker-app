@@ -26,8 +26,8 @@ class RoomRecommendationSignalCollectorTest {
         libraryDao = libraryDao,
         gameDao = gameDao,
         gameDetailsDao = gameDetailsDao,
-        ioDispatcher = testDispatcher,
     )
+
 
     @Test
     fun collect_emptyLibrary_returnsEmpty_withoutIdQueries() = runTest(testDispatcher) {

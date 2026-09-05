@@ -3,6 +3,8 @@ package io.github.typenil.gametracker.core.data.repository
 import androidx.paging.PagingData
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.PageContinuation
+
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
@@ -25,7 +27,10 @@ interface GameRepository {
         limit: Int = 20,
         offset: Int = 0,
         append: Boolean = false,
-    ): AppResult<Unit> = AppResult.Success(Unit)
+    ): AppResult<PageContinuation> = AppResult.Success(
+        PageContinuation(nextOffset = null, endReached = true),
+    )
+
     fun getPopularGamesFlow(type: String): Flow<List<Game>> = flowOf(emptyList())
     suspend fun getRecommendationCandidates(
         genres: List<String> = emptyList(),

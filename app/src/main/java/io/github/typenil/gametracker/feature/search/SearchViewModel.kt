@@ -223,11 +223,20 @@ class SearchViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                libraryRepository.getLibraryGamesFlow().collect { games ->
-                    librarySnapshot.value = LibrarySnapshot.Ready(
-                        games.associate { it.entry.gameId to it.entry },
-                    )
+                libraryRepository.getLibraryGamesFlow().collect { result ->
+                    when (result) {
+                        is AppResult.Success -> {
+                            librarySnapshot.value = LibrarySnapshot.Ready(
+                                result.data.associate { it.entry.gameId to it.entry },
+                            )
+                        }
+                        is AppResult.Error -> {
+                            librarySnapshot.value = LibrarySnapshot.Failed(result.error)
+                            userMessageRes.value = R.string.error_library_load_failed
+                        }
+                    }
                 }
+
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

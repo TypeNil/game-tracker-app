@@ -168,10 +168,18 @@ private fun Route.pagedRecommendationCandidatesRoute(igdbService: IgdbService, c
             call.respond(RecommendationCandidatePageDto())
             return@get
         }
-        val page = cache.getOrPut("${request.cacheKey}_page", CachePolicy.RECOMMEND) {
-            loadCandidates(igdbService, request)
+        val pool = cache.getOrPut(request.candidatePoolCacheKey, CachePolicy.RECOMMEND) {
+            loadCandidatePool(igdbService, request)
         }
-        call.respond(page)
+        val items = pool.drop(request.offset).take(request.limit)
+        val endReached = request.offset + items.size >= pool.size
+        call.respond(
+            RecommendationCandidatePageDto(
+                items = items,
+                nextOffset = if (endReached) null else request.offset + request.limit,
+                endReached = endReached,
+            ),
+        )
     }
 }
 
@@ -212,6 +220,20 @@ private suspend fun loadCandidates(
     igdbService: IgdbService,
     request: RecommendationCandidatesRequest,
 ): RecommendationCandidatePageDto {
+    val all = loadCandidatePool(igdbService, request)
+    val items = all.drop(request.offset).take(request.limit)
+    val endReached = request.offset + items.size >= all.size || items.size < request.limit
+    return RecommendationCandidatePageDto(
+        items = items,
+        nextOffset = if (endReached) null else request.offset + request.limit,
+        endReached = endReached,
+    )
+}
+
+private suspend fun loadCandidatePool(
+    igdbService: IgdbService,
+    request: RecommendationCandidatesRequest,
+): List<RecommendationCandidateDto> {
     val similarOwners = linkedMapOf<Long, MutableSet<Long>>()
     if (request.similarTo.isNotEmpty()) {
         igdbService.queryGames(request.toSimilarSeedsApicalypseQuery()).forEach { seed ->
@@ -234,15 +256,9 @@ private suspend fun loadCandidates(
             if (game.id !in merged) merged[game.id] = game.toCandidateDto()
         }
     }
-    val all = merged.values.filterNot { it.id in request.blockedIds }
-    val items = all.drop(request.offset).take(request.limit)
-    val endReached = request.offset + items.size >= all.size || items.size < request.limit
-    return RecommendationCandidatePageDto(
-        items = items,
-        nextOffset = if (endReached) null else request.offset + request.limit,
-        endReached = endReached,
-    )
+    return merged.values.filterNot { it.id in request.blockedIds }
 }
+
 
 private fun parseIntegerParam(raw: String?, paramName: String): Int? {
     if (raw == null) return null

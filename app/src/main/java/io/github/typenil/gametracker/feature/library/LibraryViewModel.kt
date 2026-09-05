@@ -7,6 +7,7 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppResult
+
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,33 +91,50 @@ class LibraryViewModel @Inject constructor(
         _filterState,
         _userMessageRes,
         _hoursSaveState,
-    ) { allGames, filterState, userMessageRes, hoursSaveState ->
-        val counts = computeTabCounts(allGames)
-        val orderedAllGames = sortLibraryGames(allGames, filterState.sortOption)
-        val filtered = filterLibraryGames(
-            allGames = orderedAllGames,
-            selectedTab = filterState.selectedTab,
-            favoritesOnly = filterState.favoritesOnly,
-            query = filterState.query,
-        )
-        LibraryUiState(
-            allGames = orderedAllGames,
-            filteredGames = filtered,
-            selectedTab = filterState.selectedTab,
-            tabCounts = counts,
-            filterFavoritesOnly = filterState.favoritesOnly,
-            searchQuery = filterState.query,
-            isSearchActive = filterState.isSearchActive,
-            sortOption = filterState.sortOption,
-            isLoading = false,
-            userMessageRes = userMessageRes,
-            hoursSaveState = hoursSaveState,
-        )
+    ) { gamesResult, filterState, userMessageRes, hoursSaveState ->
+        when (gamesResult) {
+            is AppResult.Success -> {
+                val allGames = gamesResult.data
+                val counts = computeTabCounts(allGames)
+                val orderedAllGames = sortLibraryGames(allGames, filterState.sortOption)
+                val filtered = filterLibraryGames(
+                    allGames = orderedAllGames,
+                    selectedTab = filterState.selectedTab,
+                    favoritesOnly = filterState.favoritesOnly,
+                    query = filterState.query,
+                )
+                LibraryUiState(
+                    allGames = orderedAllGames,
+                    filteredGames = filtered,
+                    selectedTab = filterState.selectedTab,
+                    tabCounts = counts,
+                    filterFavoritesOnly = filterState.favoritesOnly,
+                    searchQuery = filterState.query,
+                    isSearchActive = filterState.isSearchActive,
+                    sortOption = filterState.sortOption,
+                    isLoading = false,
+                    userMessageRes = userMessageRes,
+                    hoursSaveState = hoursSaveState,
+                )
+            }
+            is AppResult.Error -> LibraryUiState(
+                selectedTab = filterState.selectedTab,
+                filterFavoritesOnly = filterState.favoritesOnly,
+                searchQuery = filterState.query,
+                isSearchActive = filterState.isSearchActive,
+                sortOption = filterState.sortOption,
+                isLoading = false,
+                error = gamesResult.error,
+                userMessageRes = userMessageRes,
+                hoursSaveState = hoursSaveState,
+            )
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = LibraryUiState(isLoading = true)
     )
+
     fun onTabSelected(tab: LibraryTab) {
         _selectedTab.value = tab
     }

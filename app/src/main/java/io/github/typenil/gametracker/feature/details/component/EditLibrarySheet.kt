@@ -115,11 +115,14 @@ import io.github.typenil.gametracker.core.designsystem.component.leadingIcon
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryNotes
+
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private const val MAX_NOTES_LENGTH = 1000
+private const val MAX_NOTES_LENGTH = LibraryNotes.MAX_CODE_POINTS
+
 private const val MAX_HOURS = 99999
 private val RATING_RANGE = 1..10
 private val QUICK_HOURS_OFFSETS = listOf(1, 2, 5)

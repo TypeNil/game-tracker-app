@@ -17,9 +17,14 @@ import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.flow
+
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -348,6 +353,118 @@ class GameDetailsViewModelTest {
         }
     }
 
+    @Test
+    fun saveInFlight_blocksSecondSaveAndRemove() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        val gate = CompletableDeferred<Unit>()
+        fakeLibraryRepository.saveGate = gate
+        val viewModel = createViewModel()
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.COMPLETED,
+            userRating = 9,
+            hoursPlayed = 10,
+            userNotes = "first",
+            isFavorite = true,
+        )
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.PLAYING,
+            userRating = 1,
+            hoursPlayed = 1,
+            userNotes = "second",
+            isFavorite = false,
+        )
+        viewModel.onRemoveFromLibrary()
+
+        assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
+        assertTrue(fakeLibraryRepository.deletedGameIds.isEmpty())
+
+        gate.complete(Unit)
+
+        assertEquals(1, fakeLibraryRepository.savedEntries.size)
+        assertEquals("first", fakeLibraryRepository.savedEntries.single().userNotes)
+        assertTrue(fakeLibraryRepository.deletedGameIds.isEmpty())
+        assertFalse(viewModel.uiState.value.isEditingLibrary)
+    }
+
+
+    @Test
+    fun libraryObservationFailure_exposesErrorWithoutThrowing() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeLibraryRepository.entryResultFlow = flowOf(AppResult.Error(AppError.UnknownError(null)))
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.libraryLoadError is AppError.UnknownError)
+            assertNull(state.libraryEntry)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onEditLibraryClicked_whileLoadError_doesNotOpenEditor() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeLibraryRepository.entryResultFlow = flowOf(AppResult.Error(AppError.UnknownError(null)))
+        val viewModel = createViewModel()
+        viewModel.uiState.test { awaitItem() }
+
+        viewModel.onEditLibraryClicked()
+
+        assertFalse(viewModel.uiState.value.isEditingLibrary)
+        assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
+    }
+
+    @Test
+    fun saveWhileLoadError_doesNotWriteEvenIfFreshObservationSucceeds() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        val existing = LibraryEntry(
+            gameId = 1942L,
+            status = LibraryStatus.PLAYING,
+            userRating = 10,
+            userNotes = "keep these notes",
+            isFavorite = true,
+            hoursPlayed = 40,
+            addedAtEpochSeconds = 100L,
+            updatedAtEpochSeconds = 200L,
+        )
+        var collections = 0
+        fakeLibraryRepository.entryResultFlow = flow {
+            collections += 1
+            if (collections == 1) {
+                emit(AppResult.Error(AppError.UnknownError(null)))
+                awaitCancellation()
+            } else {
+                emit(AppResult.Success(existing))
+            }
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.libraryLoadError is AppError.UnknownError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.WISHLIST,
+            userRating = null,
+            hoursPlayed = 0,
+            userNotes = null,
+            isFavorite = false,
+        )
+
+        assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
+        assertFalse(viewModel.uiState.value.isEditingLibrary)
+        assertEquals(R.string.error_library_load_failed, viewModel.uiState.value.userMessageRes)
+    }
+
+
+
     private fun GameDetailsUiState.similarGamesShown(): Boolean = game?.similarGames?.isNotEmpty() == true
 
     @Suppress("TooManyFunctions")
@@ -418,26 +535,34 @@ class GameDetailsViewModelTest {
 
     private class FakeLibraryRepository : LibraryRepository {
         val entryFlow = MutableStateFlow<LibraryEntry?>(null)
+        var entryResultFlow: Flow<AppResult<LibraryEntry?>>? = null
         val savedEntries = mutableListOf<LibraryEntry>()
         val deletedGameIds = mutableListOf<Long>()
         var saveResult: AppResult<Unit> = AppResult.Success(Unit)
         var removeResult: AppResult<Unit> = AppResult.Success(Unit)
+        var saveGate: CompletableDeferred<Unit>? = null
 
-        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = flowOf(emptyList())
+        override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> =
+            flowOf(AppResult.Success(emptyList()))
 
-        override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = entryFlow
+        override fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>> =
+            entryResultFlow ?: entryFlow.map { AppResult.Success(it) }
+
+
 
         override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> {
             return AppResult.Success(Unit)
         }
 
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> {
+            saveGate?.await()
             savedEntries += entry
             if (saveResult is AppResult.Success) {
                 entryFlow.value = entry
             }
             return saveResult
         }
+
 
         override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
 

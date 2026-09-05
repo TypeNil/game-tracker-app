@@ -18,6 +18,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -590,11 +592,31 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun libraryObservationFailure_exposesErrorWithoutThrowing() = runTest {
+        fakeLibraryRepository.libraryResultFlow = flowOf(AppResult.Error(AppError.UnknownError(null)))
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            var state = awaitItem()
+            if (state.isLoading) state = awaitItem()
+            assertTrue(state.error is AppError.UnknownError)
+            assertTrue(state.allGames.isEmpty())
+            assertFalse(state.isCatalogEmpty)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
+        var libraryResultFlow: Flow<AppResult<List<LibraryGame>>>? = null
 
-        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = libraryGamesFlow
-        override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = flowOf(null)
+        override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> =
+            libraryResultFlow ?: libraryGamesFlow.map { AppResult.Success(it) }
+
+        override fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>> =
+            flowOf(AppResult.Success(null))
+
         override suspend fun setGameStatus(
             gameId: Long,
             status: LibraryStatus

@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.feature.library
 
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import java.util.Locale
@@ -13,11 +14,13 @@ data class LibraryUiState(
     val isSearchActive: Boolean = false,
     val sortOption: LibrarySortOption = LibrarySortOption.ADDED_DESC,
     val isLoading: Boolean = false,
+    val error: AppError? = null,
     val userMessageRes: Int? = null,
     val hoursSaveState: HoursSaveState = HoursSaveState.Idle,
 ) {
     val isCatalogEmpty: Boolean
-        get() = !isLoading && allGames.isEmpty()
+        get() = !isLoading && error == null && allGames.isEmpty()
+
 
     val isSearchOrFilterActive: Boolean
         get() = searchQuery.isNotBlank() || filterFavoritesOnly

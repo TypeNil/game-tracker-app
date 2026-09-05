@@ -335,11 +335,13 @@ fun GameDetailsScreen(
             else -> GameDetailsContent(
                 game = game,
                 libraryEntry = uiState.libraryEntry,
+                libraryLoadError = uiState.libraryLoadError,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onRefresh,
                 onGameClick = onGameClick,
                 onVideoClick = onVideoClick,
                 onEditLibraryClicked = onEditLibraryClicked,
+
                 onPlatformsClick = { overflowSheet = DetailsOverflowSheet.Platforms },
                 onTagsOverflowClick = { overflowSheet = DetailsOverflowSheet.Tags },
                 onGameModesClick = { overflowSheet = DetailsOverflowSheet.GameModes },
@@ -380,16 +382,18 @@ fun GameDetailsScreen(
                 }
             }
         }
-        if (uiState.isEditingLibrary) {
+        if (uiState.isEditingLibrary && uiState.libraryLoadError == null) {
             EditLibrarySheet(
                 initialEntry = uiState.libraryEntry,
                 onDismiss = onDismissEditLibrary,
                 onSave = onSaveLibraryEntry,
-                onRemove = onRemoveFromLibrary
+                onRemove = onRemoveFromLibrary,
+                actionsEnabled = !uiState.isLibrarySubmitting,
             )
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -473,6 +477,7 @@ private fun DetailsTopAppBar(
 private fun GameDetailsContent(
     game: GameDetails?,
     libraryEntry: LibraryEntry?,
+    libraryLoadError: AppError?,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onGameClick: (Long) -> Unit,
@@ -487,6 +492,7 @@ private fun GameDetailsContent(
     titleHandoffProgress: () -> Float = { 0f },
     titleTranslationRangePx: Float = 0f,
 ) {
+
     val pullToRefreshState = rememberPullToRefreshState()
     var selectedScreenshotIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
@@ -522,12 +528,19 @@ private fun GameDetailsContent(
             // but complete page rather than a wall of empty headers.
             if (game != null) {
                 item(key = "library-status") {
-                    LibraryStatusCard(
-                        libraryEntry = libraryEntry,
-                        onEditClicked = onEditLibraryClicked,
-                        modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
-                    )
+                    if (libraryLoadError != null) {
+                        LibraryUnavailableCard(
+                            modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
+                        )
+                    } else {
+                        LibraryStatusCard(
+                            libraryEntry = libraryEntry,
+                            onEditClicked = onEditLibraryClicked,
+                            modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
+                        )
+                    }
                 }
+
 
                 if (!game.summary.isNullOrBlank()) {
                     item(key = "about") {
@@ -1489,6 +1502,28 @@ private fun ScreenshotViewerDialog(
         }
     }
 }
+
+@Composable
+private fun LibraryUnavailableCard(
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+    ) {
+        Text(
+            text = stringResource(R.string.error_library_load_failed),
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+        )
+    }
+}
+
 
 @Composable
 private fun LibraryStatusCard(

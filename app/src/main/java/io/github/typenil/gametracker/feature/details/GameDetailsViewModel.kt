@@ -56,7 +56,15 @@ class GameDetailsViewModel(
         gameRepository.isGameDetailsHydratedFlow(gameId),
         libraryRepository.getLibraryEntryFlow(gameId),
         _flags
-    ) { game, isHydrated, libraryEntry, flags ->
+    ) { game, isHydrated, libraryResult, flags ->
+        val libraryEntry = when (libraryResult) {
+            is AppResult.Success -> libraryResult.data
+            is AppResult.Error -> null
+        }
+        val libraryLoadError = when (libraryResult) {
+            is AppResult.Error -> libraryResult.error
+            is AppResult.Success -> null
+        }
         val error = flags.message?.first
         GameDetailsUiState(
             game = game,
@@ -65,7 +73,9 @@ class GameDetailsViewModel(
             isLoading = flags.isLoading,
             isRefreshing = flags.isRefreshing,
             isEditingLibrary = flags.isEditingLibrary,
+            isLibrarySubmitting = flags.isSubmitting,
             error = if (game != null) null else error,
+            libraryLoadError = libraryLoadError,
             userMessageRes = if (game != null && error != null) {
                 flags.message?.second ?: R.string.error_refresh_failed
             } else {
@@ -79,6 +89,7 @@ class GameDetailsViewModel(
     )
 
     private var refreshJob: Job? = null
+    private var libraryMutationJob: Job? = null
 
     init {
         refreshDetails(force = false)
@@ -100,6 +111,7 @@ class GameDetailsViewModel(
     }
 
     fun onEditLibraryClicked() {
+        if (uiState.value.libraryLoadError != null) return
         _flags.update { it.copy(isEditingLibrary = true) }
     }
 
@@ -114,9 +126,31 @@ class GameDetailsViewModel(
         userNotes: String?,
         isFavorite: Boolean
     ) {
-        viewModelScope.launch {
+        val loadError = uiState.value.libraryLoadError
+        if (loadError != null) {
+            _flags.update {
+                it.copy(
+                    isEditingLibrary = false,
+                    message = loadError to R.string.error_library_load_failed,
+                )
+            }
+            return
+        }
+
+        mutateLibrary {
             val now = System.currentTimeMillis() / 1000
-            val existing = libraryRepository.getLibraryEntryFlow(gameId).first()
+            val existing = when (val observed = libraryRepository.getLibraryEntryFlow(gameId).first()) {
+                is AppResult.Success -> observed.data
+                is AppResult.Error -> {
+                    _flags.update {
+                        it.copy(
+                            isEditingLibrary = true,
+                            message = observed.error to R.string.error_library_update_failed,
+                        )
+                    }
+                    return@mutateLibrary
+                }
+            }
             val entry = LibraryEntry(
                 gameId = gameId,
                 status = status,
@@ -141,10 +175,11 @@ class GameDetailsViewModel(
                 }
             }
         }
+
     }
 
     fun onRemoveFromLibrary() {
-        viewModelScope.launch {
+        mutateLibrary {
             when (val result = libraryRepository.removeGameFromLibrary(gameId)) {
                 is AppResult.Success -> {
                     _flags.update { it.copy(isEditingLibrary = false, message = null) }
@@ -160,6 +195,19 @@ class GameDetailsViewModel(
             }
         }
     }
+
+    private fun mutateLibrary(block: suspend () -> Unit) {
+        if (libraryMutationJob?.isActive == true) return
+        libraryMutationJob = viewModelScope.launch {
+            _flags.update { it.copy(isSubmitting = true) }
+            try {
+                block()
+            } finally {
+                _flags.update { it.copy(isSubmitting = false) }
+            }
+        }
+    }
+
 
     private fun refreshDetails(force: Boolean, isUserPullRefresh: Boolean = false) {
         // Single-flight: a refresh in progress swallows retries, PTR and the
@@ -212,7 +260,9 @@ class GameDetailsViewModel(
         val isLoading: Boolean = true,
         val isRefreshing: Boolean = false,
         val isEditingLibrary: Boolean = false,
+        val isSubmitting: Boolean = false,
         val message: Pair<AppError?, Int?>? = null
     )
+
 
 }
