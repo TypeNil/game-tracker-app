@@ -17,6 +17,9 @@ import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.flow
+
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -402,7 +405,7 @@ class GameDetailsViewModelTest {
     }
 
     @Test
-    fun saveWhenEntryObservationFails_keepsEditorOpen() = runTest {
+    fun onEditLibraryClicked_whileLoadError_doesNotOpenEditor() = runTest {
         fakeGameRepository.detailsFlow.value = hydratedDetails
         fakeGameRepository.hydratedFlow.value = true
         fakeLibraryRepository.entryResultFlow = flowOf(AppResult.Error(AppError.UnknownError(null)))
@@ -410,22 +413,56 @@ class GameDetailsViewModelTest {
         viewModel.uiState.test { awaitItem() }
 
         viewModel.onEditLibraryClicked()
-        viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.COMPLETED,
-            userRating = 9,
-            hoursPlayed = 10,
-            userNotes = "keep",
+
+        assertFalse(viewModel.uiState.value.isEditingLibrary)
+        assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
+    }
+
+    @Test
+    fun saveWhileLoadError_doesNotWriteEvenIfFreshObservationSucceeds() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        val existing = LibraryEntry(
+            gameId = 1942L,
+            status = LibraryStatus.PLAYING,
+            userRating = 10,
+            userNotes = "keep these notes",
             isFavorite = true,
+            hoursPlayed = 40,
+            addedAtEpochSeconds = 100L,
+            updatedAtEpochSeconds = 200L,
+        )
+        var collections = 0
+        fakeLibraryRepository.entryResultFlow = flow {
+            collections += 1
+            if (collections == 1) {
+                emit(AppResult.Error(AppError.UnknownError(null)))
+                awaitCancellation()
+            } else {
+                emit(AppResult.Success(existing))
+            }
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.libraryLoadError is AppError.UnknownError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.WISHLIST,
+            userRating = null,
+            hoursPlayed = 0,
+            userNotes = null,
+            isFavorite = false,
         )
 
         assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertTrue(state.isEditingLibrary)
-            assertEquals(R.string.error_library_update_failed, state.userMessageRes)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertFalse(viewModel.uiState.value.isEditingLibrary)
+        assertEquals(R.string.error_library_load_failed, viewModel.uiState.value.userMessageRes)
     }
+
 
 
     private fun GameDetailsUiState.similarGamesShown(): Boolean = game?.similarGames?.isNotEmpty() == true

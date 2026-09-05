@@ -47,6 +47,13 @@ private val TAG_PUNCTUATION = setOf(
     '(', ')', '[', ']', '/', '|',
 )
 
+private fun encodePart(value: String): String = "${value.length}:$value"
+
+private fun encodeList(values: List<String>): String =
+    values.sorted().joinToString(separator = "") { encodePart(it) }
+
+
+
 private val IGDB_GENRE_MAP: Map<String, Int> = mapOf(
     "point-and-click" to 2,
     "fighting" to 4,
@@ -339,13 +346,9 @@ class SearchRequest(
             return tags
         }
 
-        private fun encodePart(value: String): String = "${value.length}:$value"
-
-        private fun encodeList(values: List<String>): String =
-            values.sorted().joinToString(separator = "") { encodePart(it) }
-
         private fun quotedList(values: List<String>): String =
             values.joinToString(prefix = "(", postfix = ")") { "\"${escapeApicalypseLiteral(it)}\"" }
+
     }
 }
 
@@ -470,19 +473,15 @@ class RecommendationCandidatesRequest(
     }
 
     val candidatePoolCacheKey: String = buildString {
-        append("rec_pool|")
-        append(genres.sorted().joinToString(","))
-        append('|')
-        append(themes.sorted().joinToString(","))
-        append('|')
-        append(platforms.sorted().joinToString(","))
-        append('|')
-        append(exclude.sorted().joinToString(","))
-        append('|')
-        append(similarTo.sorted().joinToString(","))
-        append('|')
-        append(sort)
+        append("rec_pool:v1")
+        append("|genres=").append(encodePart(encodeList(genres)))
+        append("|themes=").append(encodePart(encodeList(themes)))
+        append("|platforms=").append(encodePart(encodeList(platforms)))
+        append("|exclude=").append(encodePart(exclude.sorted().joinToString(",")))
+        append("|similarTo=").append(encodePart(similarTo.sorted().joinToString(",")))
+        append("|sort=").append(encodePart(sort))
     }
+
 
 
     val hasTags: Boolean = genres.isNotEmpty() || themes.isNotEmpty() || platforms.isNotEmpty()

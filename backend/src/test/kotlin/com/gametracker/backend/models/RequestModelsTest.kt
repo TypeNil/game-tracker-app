@@ -460,6 +460,25 @@ class RequestModelsTest {
 
         assertTrue(query.contains("offset 0;"))
     }
+
+    @Test
+    fun `candidate pool cache key cannot collide across tag fields`() {
+        val embeddedDelimiter = RecommendationCandidatesRequest(
+            genresParam = "RPG|Fantasy",
+            themesParam = "Horror",
+        )
+        val separateFields = RecommendationCandidatesRequest(
+            genresParam = "RPG",
+            themesParam = "Fantasy|Horror",
+        )
+
+        assertNotEquals(
+            embeddedDelimiter.candidatePoolCacheKey,
+            separateFields.candidatePoolCacheKey,
+        )
+    }
+
+
  
     @Test
     fun `SearchRequest rejects variation-selector-only input before length check`() {

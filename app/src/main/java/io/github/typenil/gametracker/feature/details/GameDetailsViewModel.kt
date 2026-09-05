@@ -111,6 +111,7 @@ class GameDetailsViewModel(
     }
 
     fun onEditLibraryClicked() {
+        if (uiState.value.libraryLoadError != null) return
         _flags.update { it.copy(isEditingLibrary = true) }
     }
 
@@ -125,6 +126,17 @@ class GameDetailsViewModel(
         userNotes: String?,
         isFavorite: Boolean
     ) {
+        val loadError = uiState.value.libraryLoadError
+        if (loadError != null) {
+            _flags.update {
+                it.copy(
+                    isEditingLibrary = false,
+                    message = loadError to R.string.error_library_load_failed,
+                )
+            }
+            return
+        }
+
         mutateLibrary {
             val now = System.currentTimeMillis() / 1000
             val existing = when (val observed = libraryRepository.getLibraryEntryFlow(gameId).first()) {
