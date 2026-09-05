@@ -348,6 +348,42 @@ class GameDetailsViewModelTest {
         }
     }
 
+    @Test
+    fun saveInFlight_blocksSecondSaveAndRemove() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        val gate = CompletableDeferred<Unit>()
+        fakeLibraryRepository.saveGate = gate
+        val viewModel = createViewModel()
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.COMPLETED,
+            userRating = 9,
+            hoursPlayed = 10,
+            userNotes = "first",
+            isFavorite = true,
+        )
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.PLAYING,
+            userRating = 1,
+            hoursPlayed = 1,
+            userNotes = "second",
+            isFavorite = false,
+        )
+        viewModel.onRemoveFromLibrary()
+
+        assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
+        assertTrue(fakeLibraryRepository.deletedGameIds.isEmpty())
+
+        gate.complete(Unit)
+
+        assertEquals(1, fakeLibraryRepository.savedEntries.size)
+        assertEquals("first", fakeLibraryRepository.savedEntries.single().userNotes)
+        assertTrue(fakeLibraryRepository.deletedGameIds.isEmpty())
+        assertFalse(viewModel.uiState.value.isEditingLibrary)
+    }
+
+
     private fun GameDetailsUiState.similarGamesShown(): Boolean = game?.similarGames?.isNotEmpty() == true
 
     @Suppress("TooManyFunctions")
@@ -422,6 +458,8 @@ class GameDetailsViewModelTest {
         val deletedGameIds = mutableListOf<Long>()
         var saveResult: AppResult<Unit> = AppResult.Success(Unit)
         var removeResult: AppResult<Unit> = AppResult.Success(Unit)
+        var saveGate: CompletableDeferred<Unit>? = null
+
 
         override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = flowOf(emptyList())
 
@@ -432,12 +470,14 @@ class GameDetailsViewModelTest {
         }
 
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> {
+            saveGate?.await()
             savedEntries += entry
             if (saveResult is AppResult.Success) {
                 entryFlow.value = entry
             }
             return saveResult
         }
+
 
         override suspend fun addToWishlist(game: Game): AppResult<Unit> = AppResult.Success(Unit)
 

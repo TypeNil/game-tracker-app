@@ -2,6 +2,8 @@ package io.github.typenil.gametracker.core.data
 
 import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.repository.DefaultLibraryRepository
+import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
+
 import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
@@ -9,12 +11,17 @@ import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEntity
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryNotes
+
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
 import io.github.typenil.gametracker.core.model.Game
 
 import io.mockk.coEvery
+
 import io.mockk.coVerify
+import io.mockk.slot
+
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
@@ -28,6 +35,7 @@ class DefaultLibraryRepositoryTest {
 
     private val libraryDao: LibraryDao = mockk(relaxed = true)
     private val gameDao: GameDao = mockk(relaxed = true)
+    private val signalCollector: RoomRecommendationSignalCollector = mockk(relaxed = true)
     private val testDispatcher = StandardTestDispatcher()
     private val passThroughTransactionRunner = object : TransactionRunner {
         override suspend fun <T> invoke(block: suspend () -> T): T = block()
@@ -36,8 +44,10 @@ class DefaultLibraryRepositoryTest {
         libraryDao,
         gameDao,
         passThroughTransactionRunner,
+        signalCollector,
         testDispatcher,
     )
+
 
     @Test
     fun getLibraryGamesFlow_mapsEntitiesToDomain() = runTest(testDispatcher) {
@@ -109,6 +119,37 @@ class DefaultLibraryRepositoryTest {
             )
         }
     }
+
+    @Test
+    fun acceptedNotes_surviveSaveAndReloadWithoutTruncation() = runTest(testDispatcher) {
+        coEvery { gameDao.getGameById(42L) } returns GameEntity(
+            42L, "G", null, null, null, null, emptyList(), emptyList(), 1L,
+        )
+        val captured = slot<LibraryEntryEntity>()
+        coEvery { libraryDao.upsertLibraryEntry(capture(captured)) } returns 1L
+
+        val rocket = String(intArrayOf(0x1F680), 0, 1)
+        val notes = rocket.repeat(LibraryNotes.MAX_CODE_POINTS)
+        assertEquals(LibraryNotes.MAX_CODE_POINTS, LibraryNotes.codePointCount(notes))
+
+        val result = repository.saveLibraryEntry(
+            LibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.PLAYING,
+                userNotes = notes,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+            ),
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(notes, captured.captured.userNotes)
+        assertEquals(
+            LibraryNotes.MAX_CODE_POINTS,
+            LibraryNotes.codePointCount(captured.captured.userNotes!!),
+        )
+    }
+
 
     @Test
     fun setGameStatus_withoutParentGame_returnsError() = runTest(testDispatcher) {
@@ -285,8 +326,10 @@ class DefaultLibraryRepositoryTest {
             libraryDao,
             gameDao,
             trackingRunner,
+            signalCollector,
             testDispatcher,
         )
+
         coEvery { gameDao.getGameById(7L) } returns GameEntity(
             7L, "Hades II", null, null, null, null, emptyList(), emptyList(), 1L,
         )
@@ -317,6 +360,40 @@ class DefaultLibraryRepositoryTest {
         assertTrue(getInsideTransaction)
         assertTrue(upsertInsideTransaction)
     }
+
+    @Test
+    fun recommendationSignals_areReadInsideOneTransaction() = runTest(testDispatcher) {
+        var inTransaction = false
+        var collectInsideTransaction = false
+        val trackingRunner = object : TransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                inTransaction = true
+                try {
+                    return block()
+                } finally {
+                    inTransaction = false
+                }
+            }
+        }
+        val trackingCollector = mockk<RoomRecommendationSignalCollector>()
+        coEvery { trackingCollector.collect() } answers {
+            collectInsideTransaction = inTransaction
+            emptyList()
+        }
+        val trackingRepository = DefaultLibraryRepository(
+            libraryDao,
+            gameDao,
+            trackingRunner,
+            trackingCollector,
+            testDispatcher,
+        )
+
+        val result = trackingRepository.getRecommendationSignals()
+
+        assertTrue(result is AppResult.Success)
+        assertTrue(collectInsideTransaction)
+    }
+
 
 
 }

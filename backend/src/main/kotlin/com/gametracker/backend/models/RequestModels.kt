@@ -478,7 +478,8 @@ class RecommendationCandidatesRequest(
             tagOrGroup()?.let { add(it) }
             idExclusion()?.let { add(it) }
         }.joinToString(" & ")
-        val upstreamLimit = (limit + offset).coerceAtMost(MAX_LIMIT)
+        val upstreamLimit = MAX_LIMIT
+
         return "${CANDIDATE_FIELDS}where $where;\nsort $sort desc;\nlimit $upstreamLimit;\noffset 0;"
     }
 

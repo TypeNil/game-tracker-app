@@ -25,6 +25,8 @@ import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.PageContinuation
+
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
@@ -232,7 +234,12 @@ class DefaultGameRepository internal constructor(
             .flowOn(ioDispatcher)
     }
 
-    override suspend fun refreshPopular(type: String, limit: Int, offset: Int, append: Boolean): AppResult<Unit> {
+    override suspend fun refreshPopular(
+        type: String,
+        limit: Int,
+        offset: Int,
+        append: Boolean,
+    ): AppResult<PageContinuation> {
         return withContext(ioDispatcher) {
             runSuspendCatching {
                 val page = remoteDataSource.getPopularPage(type, limit, offset)
@@ -259,12 +266,14 @@ class DefaultGameRepository internal constructor(
                         RemoteKeyEntity(queryKey, null, page.nextOffset, now)
                     )
                 }
+                PageContinuation(nextOffset = page.nextOffset, endReached = page.endReached)
             }.fold(
-                onSuccess = { AppResult.Success(Unit) },
+                onSuccess = { AppResult.Success(it) },
                 onFailure = { AppResult.Error(it.toAppError()) },
             )
         }
     }
+
 
     override suspend fun getRecommendationCandidatesPage(
         genres: List<String>,

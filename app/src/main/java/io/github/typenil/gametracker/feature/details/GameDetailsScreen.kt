@@ -385,8 +385,10 @@ fun GameDetailsScreen(
                 initialEntry = uiState.libraryEntry,
                 onDismiss = onDismissEditLibrary,
                 onSave = onSaveLibraryEntry,
-                onRemove = onRemoveFromLibrary
+                onRemove = onRemoveFromLibrary,
+                actionsEnabled = !uiState.isLibrarySubmitting,
             )
+
         }
     }
 }

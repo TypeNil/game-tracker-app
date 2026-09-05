@@ -235,6 +235,10 @@ class GameRepositoryTest {
         val result = repository.refreshPopular("playing", 20, 20, append = true)
 
         assertTrue(result is AppResult.Success)
+        val continuation = (result as AppResult.Success).data
+        assertEquals(40, continuation.nextOffset)
+        assertEquals(false, continuation.endReached)
+
         coVerify(exactly = 0) { searchDao.deleteSearchResultsForQuery(GameQueryKey.popular("playing")) }
         coVerify(exactly = 1) {
             searchDao.deleteSearchResultsFromPosition(GameQueryKey.popular("playing"), 20)

@@ -5,6 +5,8 @@ import com.gametracker.backend.auth.IgdbTokenManager
 import com.gametracker.backend.cache.BffCache
 import com.gametracker.backend.error.ErrorResponse
 import com.gametracker.backend.models.RecommendationCandidateDto
+import com.gametracker.backend.models.RecommendationCandidatePageDto
+
 import com.gametracker.backend.models.RecommendationCandidatesRequest
 import com.gametracker.backend.error.configureErrorHandling
 import com.gametracker.backend.igdb.IgdbService
@@ -749,7 +751,28 @@ class GamesRoutesTest {
 
         assertEquals(10, request.limit)
         assertEquals(20, request.offset)
-        assertTrue(request.toTagApicalypseQuery().contains("limit 30;"))
+        assertTrue(request.toTagApicalypseQuery().contains("limit 100;"))
         assertTrue(request.toTagApicalypseQuery().contains("offset 0;"))
     }
+
+    @Test
+    fun `candidatesPage_fullFirstPageWithMoreCandidates_isNotTerminal`() = testApplication {
+        val payload = (1L..40L).joinToString(",") { candidateJson(it) }
+        val (service, seen) = createInspectingService { "[$payload]" }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val response = client.get("/v1/recommendations/candidates/page?genres=RPG&limit=30&offset=0")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<RecommendationCandidatePageDto>()
+        assertEquals(30, page.items.size)
+        assertEquals(false, page.endReached)
+        assertEquals(30, page.nextOffset)
+        assertTrue(seen.any { it.contains("limit 100;") })
+        cache.close()
+    }
+
 }

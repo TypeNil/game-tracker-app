@@ -4,12 +4,14 @@ import app.cash.turbine.test
 import io.github.typenil.gametracker.R
 
 import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
-import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
 import io.github.typenil.gametracker.core.data.repository.GameRepository
+
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.PageContinuation
+
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryEntry
 
@@ -47,7 +49,7 @@ class DiscoverViewModelTest {
     private val gameRepository: GameRepository = mockk()
     private val libraryRepository: LibraryRepository = mockk()
     private val librarySeeder: LibrarySeeder = mockk()
-    private val signalCollector: RoomRecommendationSignalCollector = mockk()
+
 
     private val trendingFlow = MutableStateFlow<List<Game>>(emptyList())
     private val libraryFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
@@ -59,13 +61,17 @@ class DiscoverViewModelTest {
         every { gameRepository.getTrendingGamesFlow() } returns trendingFlow
         every { gameRepository.getPopularGamesFlow(any()) } returns MutableStateFlow(emptyList())
         every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow
+
         coEvery { librarySeeder.seedIfEmpty() } returns Unit
-        coEvery { signalCollector.collect() } returns emptyList()
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(emptyList())
         coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
             trendingFlow.value = trendingGames
             AppResult.Success(Unit)
         }
-        coEvery { gameRepository.refreshPopular(any(), any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { gameRepository.refreshPopular(any(), any(), any(), any()) } returns AppResult.Success(
+            PageContinuation(nextOffset = 20, endReached = false),
+        )
+
         coEvery {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(RecommendationCandidatePage(items = emptyList(), nextOffset = null, endReached = true))
@@ -108,14 +114,14 @@ class DiscoverViewModelTest {
 
     @Test
     fun recsError_keepsTrendingVisible() = runTest {
-        coEvery { signalCollector.collect() } returns listOf(
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(
                 gameId = 1942L,
                 status = LibraryStatus.COMPLETED,
                 isFavorite = true,
                 genres = listOf("RPG"),
             )
-        )
+        ))
         coEvery {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         } returns AppResult.Error(AppError.NetworkError)
@@ -155,14 +161,14 @@ class DiscoverViewModelTest {
 
     @Test
     fun positiveLibrary_buildsForYouAndDropsRecFromTrending() = runTest {
-        coEvery { signalCollector.collect() } returns listOf(
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(
                 gameId = 1942L,
                 status = LibraryStatus.COMPLETED,
                 isFavorite = true,
                 genres = listOf("RPG"),
             )
-        )
+        ))
         coEvery {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(
@@ -237,14 +243,14 @@ class DiscoverViewModelTest {
         )
         val game = Game(id = 1942L, name = "Game 1942")
         libraryFlow.value = listOf(LibraryGame(game = game, entry = entry))
-        coEvery { signalCollector.collect() } returns listOf(
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(
                 gameId = 1942L,
                 status = LibraryStatus.COMPLETED,
                 isFavorite = true,
                 genres = listOf("RPG"),
             )
-        )
+        ))
         coEvery {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         } returns AppResult.Success(
@@ -296,8 +302,14 @@ class DiscoverViewModelTest {
     @Test
     fun `selectRail updates selectedRail in uiState and triggers load if empty`() = runTest {
         val wantedGames = listOf(Game(id = 201L, name = "Wanted Game"))
-        every { gameRepository.getPopularGamesFlow(DiscoverRail.WANTED_NOW.type) } returns MutableStateFlow(wantedGames)
-        coEvery { gameRepository.refreshPopular(DiscoverRail.WANTED_NOW.type, any(), any(), any()) } returns AppResult.Success(Unit)
+        val wantedFlow = MutableStateFlow<List<Game>>(emptyList())
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.WANTED_NOW.type) } returns wantedFlow
+        coEvery { gameRepository.refreshPopular(DiscoverRail.WANTED_NOW.type, any(), any(), any()) } coAnswers {
+            wantedFlow.value = wantedGames
+            AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
+        }
+
+
 
         val viewModel = createViewModel()
         advanceUntilIdle()
@@ -320,9 +332,9 @@ class DiscoverViewModelTest {
     fun `loadMoreForYou appends paged candidates and filters duplicates`() = runTest {
         val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
         val c2 = RecommendationCandidate(102L, "Rec 102", genres = listOf("RPG"), rating = 88.0, ratingCount = 150L)
-        coEvery { signalCollector.collect() } returns listOf(
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))
-        )
+        ))
         coEvery {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         } answers {
@@ -471,7 +483,7 @@ class DiscoverViewModelTest {
                 gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
             } coAnswers {
                 popularFlow.value = recoveredGames
-                AppResult.Success(Unit)
+                AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
             }
 
             viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
@@ -493,7 +505,7 @@ class DiscoverViewModelTest {
         every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
         coEvery {
             gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
-        } returns AppResult.Success(Unit)
+        } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
 
         val viewModel = createViewModel()
         advanceUntilIdle()
@@ -534,7 +546,7 @@ class DiscoverViewModelTest {
 
             coEvery {
                 gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
-            } returns AppResult.Success(Unit)
+            } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
 
             viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
             advanceUntilIdle()
@@ -545,6 +557,139 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun popularPage_with19ItemsAndNextOffset20_loadsNextPage() = runTest {
+        val popularFlow = MutableStateFlow(List(19) { Game(id = it.toLong() + 1, name = "G$it") })
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+        } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        coVerify(exactly = 1) {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 0, false)
+        }
+
+        viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+        advanceUntilIdle()
+        coVerify {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 20, true)
+        }
+    }
+
+    @Test
+    fun cachedRail_isVisibleWhenInitialRefreshFails() = runTest {
+        val cached = listOf(Game(id = 7L, name = "Cached"))
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns MutableStateFlow(cached)
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), any(), any())
+        } returns AppResult.Error(AppError.NetworkError)
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItemUntil { ui ->
+                val rail = ui.rails.firstOrNull { it.rail == DiscoverRail.POPULAR_NOW }
+                rail?.games?.isNotEmpty() == true && rail.error == AppError.NetworkError
+            }
+            val rail = state.rails.first { it.rail == DiscoverRail.POPULAR_NOW }
+            assertEquals(listOf(7L), rail.games.map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun failedPullRefresh_preservesCachedRails() = runTest {
+        val popularFlow = MutableStateFlow(listOf(Game(id = 3L, name = "Kept")))
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coEvery {
+            gameRepository.refreshPopular(any(), any(), any(), any())
+        } returns AppResult.Error(AppError.NetworkError)
+
+        viewModel.refresh()
+        viewModel.uiState.test {
+            val state = awaitItemUntil { ui ->
+                val rail = ui.rails.firstOrNull { it.rail == DiscoverRail.POPULAR_NOW }
+                rail?.error == AppError.NetworkError && rail.games.isNotEmpty() && !ui.isRefreshing
+            }
+            assertEquals(
+                listOf(3L),
+                state.rails.first { it.rail == DiscoverRail.POPULAR_NOW }.games.map { it.id },
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun forYouRefreshFailure_preservesExistingRecommendations() = runTest {
+        val candidate = RecommendationCandidate(
+            101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(
+            RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+        )
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns AppResult.Error(AppError.NetworkError)
+
+        viewModel.refresh()
+        viewModel.uiState.test {
+            val state = awaitItemUntil { it.forYouError == AppError.NetworkError && it.recommendations.isNotEmpty() }
+            assertEquals(listOf(101L), state.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun forYouAppendFailure_waitsForExplicitRetry() = runTest {
+        val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(
+            RecommendationCandidatePage(items = listOf(c1), nextOffset = 30, endReached = false),
+        )
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns AppResult.Error(AppError.NetworkError)
+
+        viewModel.loadMoreForYou()
+        advanceUntilIdle()
+        coVerify(exactly = 2) {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        }
+
+        viewModel.loadMoreForYou()
+        advanceUntilIdle()
+        coVerify(exactly = 2) {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        }
+
+        viewModel.retryForYou()
+        advanceUntilIdle()
+        coVerify(exactly = 3) {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        }
+    }
+
+
 
     private fun libraryGame(
         id: Long,
@@ -565,7 +710,6 @@ class DiscoverViewModelTest {
             gameRepository = gameRepository,
             libraryRepository = libraryRepository,
             librarySeeder = librarySeeder,
-            signalCollector = signalCollector,
         )
     }
 

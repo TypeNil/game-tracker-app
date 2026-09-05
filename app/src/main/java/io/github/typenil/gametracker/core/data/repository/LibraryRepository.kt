@@ -5,6 +5,8 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.RecommendationSignal
+
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -63,4 +65,11 @@ interface LibraryRepository {
      * Removes game [gameId] from user's library.
      */
     suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit>
+
+    /**
+     * Consistent library+catalog snapshot used to rank For You candidates.
+     */
+    suspend fun getRecommendationSignals(): AppResult<List<RecommendationSignal>> =
+        AppResult.Success(emptyList())
+
 }

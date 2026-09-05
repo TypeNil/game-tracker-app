@@ -36,6 +36,8 @@ data class DiscoverUiState(
     val isColdStart: Boolean = false,
     val forYouLoading: Boolean = false,
     val forYouEndReached: Boolean = false,
+    val forYouError: AppError? = null,
+
     val trending: List<Game> = emptyList(),
     val rails: List<DiscoverRailState> = emptyList(),
     val isLoading: Boolean = false,

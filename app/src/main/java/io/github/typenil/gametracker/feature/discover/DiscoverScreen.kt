@@ -85,6 +85,8 @@ fun DiscoverScreen(
     onSelectTab: (DiscoverTab) -> Unit = {},
     onSelectRail: (DiscoverRail) -> Unit = {},
     onLoadMoreForYou: () -> Unit = {},
+    onRetryForYou: () -> Unit = {},
+
     onLibraryAction: (Game) -> Unit = {},
     onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
@@ -133,6 +135,8 @@ fun DiscoverScreen(
                 onSelectTab = onSelectTab,
                 onSelectRail = onSelectRail,
                 onLoadMoreForYou = onLoadMoreForYou,
+                onRetryForYou = onRetryForYou,
+
                 onLibraryAction = onLibraryAction,
                 scrollToTopTrigger = scrollToTopTrigger,
                 modifier = Modifier.padding(innerPadding),
@@ -163,6 +167,8 @@ private fun DiscoverContent(
     onSelectTab: (DiscoverTab) -> Unit,
     onSelectRail: (DiscoverRail) -> Unit,
     onLoadMoreForYou: () -> Unit,
+    onRetryForYou: () -> Unit,
+
     onLibraryAction: (Game) -> Unit,
     scrollToTopTrigger: Long,
     modifier: Modifier,
@@ -232,7 +238,9 @@ private fun DiscoverContent(
                         onGameClick = onGameClick,
                         onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
                         onLoadMoreForYou = onLoadMoreForYou,
+                        onRetryForYou = onRetryForYou,
                     )
+
                     DiscoverTab.CHARTS -> ChartsFeed(
                         uiState = uiState,
                         listState = chartsListState,
@@ -286,6 +294,7 @@ private fun ForYouFeed(
     onGameClick: (Long) -> Unit,
     onBrowseChartsClick: () -> Unit,
     onLoadMoreForYou: () -> Unit,
+    onRetryForYou: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shouldLoadMore by remember {
@@ -296,8 +305,11 @@ private fun ForYouFeed(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, uiState.forYouLoading, uiState.forYouEndReached) {
-        if (shouldLoadMore && !uiState.forYouLoading && !uiState.forYouEndReached) {
+    LaunchedEffect(shouldLoadMore, uiState.forYouLoading, uiState.forYouEndReached, uiState.forYouError) {
+        val readyToAutoload = !uiState.forYouLoading &&
+            !uiState.forYouEndReached &&
+            uiState.forYouError == null
+        if (shouldLoadMore && readyToAutoload) {
             onLoadMoreForYou()
         }
     }
@@ -306,6 +318,12 @@ private fun ForYouFeed(
         ColdStartCard(
             onBrowseChartsClick = onBrowseChartsClick,
             modifier = modifier.padding(GtDimens.Gutter),
+        )
+    } else if (uiState.recommendations.isEmpty() && uiState.forYouError != null) {
+        DiscoverErrorState(
+            error = uiState.forYouError,
+            onRetry = onRetryForYou,
+            modifier = modifier.fillMaxSize(),
         )
     } else {
         LazyColumn(
@@ -317,21 +335,44 @@ private fun ForYouFeed(
             items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
                 RecommendationCard(recommendation, onGameClick)
             }
-            if (uiState.forYouLoading) {
-                item(key = "loading-append:for-you") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
+            when {
+                uiState.forYouError != null -> {
+                    item(key = "append-error:for-you") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = uiState.forYouError.errorMessage(),
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = onRetryForYou) {
+                                Text(stringResource(R.string.retry_button))
+                            }
+                        }
+                    }
+                }
+                uiState.forYouLoading -> {
+                    item(key = "loading-append:for-you") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun ColdStartCard(

@@ -7,10 +7,15 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.mapper.toDomain
 import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
+import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
+import io.github.typenil.gametracker.core.model.RecommendationSignal
+
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryNotes
+
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.CoroutineDispatcher
@@ -24,8 +29,10 @@ class DefaultLibraryRepository @Inject constructor(
     private val libraryDao: LibraryDao,
     private val gameDao: GameDao,
     private val transactionRunner: TransactionRunner,
+    private val signalCollector: RoomRecommendationSignalCollector,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : LibraryRepository {
+
 
     override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> =
         libraryDao.getPopulatedLibraryEntriesFlow()
@@ -76,14 +83,8 @@ class DefaultLibraryRepository @Inject constructor(
                 val now = System.currentTimeMillis() / 1000
                 val clampedRating = entry.userRating?.coerceIn(1, 10)
                 val clampedHours = entry.hoursPlayed.coerceAtLeast(0)
-                val sanitizedNotes = entry.userNotes?.let { notes ->
-                    if (notes.codePointCount(0, notes.length) > MAX_NOTES_CODE_POINTS) {
-                        val endIdx = notes.offsetByCodePoints(0, MAX_NOTES_CODE_POINTS)
-                        notes.substring(0, endIdx)
-                    } else {
-                        notes
-                    }
-                }
+                val sanitizedNotes = entry.userNotes?.let(LibraryNotes::clamp)
+
                 val entity = entry.copy(
                     userRating = clampedRating,
                     hoursPlayed = clampedHours,
@@ -141,13 +142,8 @@ class DefaultLibraryRepository @Inject constructor(
                         )
                     val now = System.currentTimeMillis() / 1000
                     val notes = userNotes?.trim()?.takeIf { it.isNotEmpty() }
-                    val sanitizedNotes = notes?.let { raw ->
-                        if (raw.codePointCount(0, raw.length) > MAX_NOTES_CODE_POINTS) {
-                            raw.substring(0, raw.offsetByCodePoints(0, MAX_NOTES_CODE_POINTS))
-                        } else {
-                            raw
-                        }
-                    }
+                    val sanitizedNotes = notes?.let(LibraryNotes::clamp)
+
                     libraryDao.upsertLibraryEntry(
                         existing.copy(
                             status = status,
@@ -211,7 +207,15 @@ class DefaultLibraryRepository @Inject constructor(
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 
-    companion object {
-        const val MAX_NOTES_CODE_POINTS = 500
-    }
+
+    override suspend fun getRecommendationSignals(): AppResult<List<RecommendationSignal>> =
+        withContext(ioDispatcher) {
+            runSuspendCatching {
+                transactionRunner { signalCollector.collect() }
+            }.fold(
+                onSuccess = { AppResult.Success(it) },
+                onFailure = { AppResult.Error(AppError.UnknownError(it)) },
+            )
+        }
 }
+

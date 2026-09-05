@@ -7,8 +7,8 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverFeedAssembler
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
-import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
 import io.github.typenil.gametracker.core.data.repository.GameRepository
+
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
@@ -19,14 +19,19 @@ import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
 import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
+import io.github.typenil.gametracker.core.model.RecommendationSignal
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+
+import kotlinx.coroutines.flow.catch
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -41,14 +46,16 @@ class DiscoverViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
     private val librarySeeder: LibrarySeeder,
-    private val signalCollector: RoomRecommendationSignalCollector,
 ) : ViewModel() {
+
     private val selectedTab = MutableStateFlow(DiscoverTab.FOR_YOU)
     private val selectedRail = MutableStateFlow(DiscoverRail.POPULAR_NOW)
     private val recommendations = MutableStateFlow<List<DiscoverRecommendation>>(emptyList())
     private val isColdStart = MutableStateFlow(false)
     private val forYouLoading = MutableStateFlow(false)
     private val forYouEndReached = MutableStateFlow(false)
+    private val forYouError = MutableStateFlow<AppError?>(null)
+
     private var forYouSortIndex = 0
     private var forYouCurrentOffset: Int? = 0
     private val forYouJobMutex = Mutex()
@@ -76,7 +83,8 @@ class DiscoverViewModel @Inject constructor(
 
     val uiState: StateFlow<DiscoverUiState> = combine(
         selectedTab,
-        combine(recommendations, isColdStart, forYouLoading, forYouEndReached, ::ForYouStateData),
+        combine(recommendations, isColdStart, forYouLoading, forYouEndReached, forYouError, ::ForYouStateData),
+
         gameRepository.getTrendingGamesFlow(),
         combine(selectedRail, hiddenFromTrending, railStates, ::RailStateData),
         combine(
@@ -99,6 +107,7 @@ class DiscoverViewModel @Inject constructor(
             isColdStart = forYou.isColdStart,
             forYouLoading = forYou.forYouLoading,
             forYouEndReached = forYou.forYouEndReached,
+            forYouError = forYou.forYouError,
             trending = visibleTrending,
             rails = railData.rails,
             isLoading = flags.loading,
@@ -109,6 +118,7 @@ class DiscoverViewModel @Inject constructor(
             editingGameId = flags.library.editingGameId,
             isLibrarySubmitting = flags.library.isSubmitting,
         )
+
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -116,6 +126,20 @@ class DiscoverViewModel @Inject constructor(
     )
 
     init {
+        DiscoverRail.entries.forEach { rail ->
+            viewModelScope.launch {
+                gameRepository.getPopularGamesFlow(rail.type)
+                    .catch { error ->
+                        if (error is CancellationException) throw error
+                        if (error !is Exception) throw error
+                        updateRail(rail) { it.copy(error = AppError.UnknownError(error)) }
+                    }
+                    .collect { games ->
+                        updateRail(rail) { it.copy(games = games) }
+                    }
+            }
+        }
+
 
         viewModelScope.launch {
             try {
@@ -164,6 +188,16 @@ class DiscoverViewModel @Inject constructor(
     fun retry() = hydrate(isUserPullToRefresh = false)
 
     fun refresh() = hydrate(isUserPullToRefresh = true)
+
+    fun retryForYou() {
+        forYouError.value = null
+        if (recommendations.value.isEmpty()) {
+            viewModelScope.launch { rebuildRecommendations(rotate = false) }
+        } else {
+            loadMoreForYou()
+        }
+    }
+
 
     fun onUserMessageShown() {
         userMessageRes.value = null
@@ -250,8 +284,10 @@ class DiscoverViewModel @Inject constructor(
 
     private fun canLoadMoreForYou(): Boolean {
         if (forYouJob?.isActive == true || forYouEndReached.value) return false
+        if (forYouError.value != null) return false
         return !refreshing.value && !isColdStart.value
     }
+
     private suspend fun executeLoadMoreForYou(initialOffset: Int) {
         forYouLoading.value = true
         try {
@@ -267,7 +303,14 @@ class DiscoverViewModel @Inject constructor(
     }
 
     private suspend fun fetchAndProcessCandidatesPage(offset: Int): StepResult? {
-        val signals = signalCollector.collect()
+        val signals = when (val result = libraryRepository.getRecommendationSignals()) {
+            is AppResult.Success -> result.data
+            is AppResult.Error -> {
+                forYouError.value = result.error
+                userMessageRes.value = R.string.error_refresh_failed
+                return null
+            }
+        }
         val profile = RecommendationProfileBuilder.build(signals)
         if (profile.isColdStart) {
             isColdStart.value = true
@@ -288,13 +331,18 @@ class DiscoverViewModel @Inject constructor(
             offset = offset,
             sort = currentSort,
         )) {
-            is AppResult.Success -> processPageSuccess(result.data, profile, inLibraryIds, alreadyShownIds)
+            is AppResult.Success -> {
+                forYouError.value = null
+                processPageSuccess(result.data, profile, inLibraryIds, alreadyShownIds)
+            }
             is AppResult.Error -> {
+                forYouError.value = result.error
                 userMessageRes.value = R.string.error_refresh_failed
                 null
             }
         }
     }
+
 
     private fun processPageSuccess(
         page: io.github.typenil.gametracker.core.model.RecommendationCandidatePage,
@@ -378,27 +426,27 @@ class DiscoverViewModel @Inject constructor(
         else if (recommendations.value.isEmpty()) loading.value = true
         refreshTrending()
         if (isUserPullToRefresh) {
-            railStates.value = DiscoverRail.entries.map { DiscoverRailState(it) }
             DiscoverRail.entries.forEach { railOffsets[it] = 0 }
+            updateRail(selectedRail.value) { it.copy(endReached = false, error = null) }
             refreshRail(selectedRail.value, append = false)
         }
         rebuildRecommendations(rotate = isUserPullToRefresh)
         loading.value = false
         refreshing.value = false
     }
+
     private suspend fun refreshRail(rail: DiscoverRail, append: Boolean) {
         val offset = if (append) railOffsets.getValue(rail) else 0
         updateRail(rail) { it.copy(isLoading = true, error = null) }
         try {
             when (val result = gameRepository.refreshPopular(rail.type, RAIL_PAGE_SIZE, offset, append)) {
                 is AppResult.Success -> {
-                    val games = gameRepository.getPopularGamesFlow(rail.type).first()
-                    railOffsets[rail] = games.size
+                    val continuation = result.data
+                    railOffsets[rail] = continuation.nextOffset ?: 0
                     updateRail(rail) {
                         it.copy(
-                            games = games,
                             isLoading = false,
-                            endReached = games.size < offset + RAIL_PAGE_SIZE,
+                            endReached = continuation.endReached,
                             error = null,
                         )
                     }
@@ -414,6 +462,7 @@ class DiscoverViewModel @Inject constructor(
             updateRail(rail) { it.copy(isLoading = false, error = AppError.UnknownError(e)) }
         }
     }
+
 
     private suspend fun refreshTrending() {
         trendingMutex.withLock {
@@ -441,22 +490,21 @@ class DiscoverViewModel @Inject constructor(
     private suspend fun rebuildRecommendations(rotate: Boolean) {
         rebuildMutex.withLock {
             forYouJob?.cancel()
-            val signals = signalCollector.collect()
+            val signals = loadRecommendationSignals() ?: return@withLock
             val profile = RecommendationProfileBuilder.build(signals)
-            isColdStart.value = profile.isColdStart
-            if (rotate) {
-                forYouSortIndex = (forYouSortIndex + 1) % FOR_YOU_SORT_MODES.size
+            val nextSortIndex = if (rotate) {
+                (forYouSortIndex + 1) % FOR_YOU_SORT_MODES.size
             } else {
-                forYouSortIndex = 0
+                0
             }
-            forYouCurrentOffset = 0
-            forYouEndReached.value = false
             val inLibraryIds = signals.map { it.gameId }.toSet()
-            val currentSort = FOR_YOU_SORT_MODES.getOrElse(forYouSortIndex) { FOR_YOU_SORT_MODES.first() }
-            val candidates = if (profile.isColdStart) {
-                emptyList()
-            } else {
-                when (val result = gameRepository.getRecommendationCandidatesPage(
+            val currentSort = FOR_YOU_SORT_MODES.getOrElse(nextSortIndex) { FOR_YOU_SORT_MODES.first() }
+            if (profile.isColdStart) {
+                applyColdStartRecommendations(profile, nextSortIndex)
+                return@withLock
+            }
+            when (
+                val result = gameRepository.getRecommendationCandidatesPage(
                     genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
                     themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
                     platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
@@ -465,34 +513,90 @@ class DiscoverViewModel @Inject constructor(
                     limit = CANDIDATE_PAGE_SIZE,
                     offset = 0,
                     sort = currentSort,
-                )) {
-                    is AppResult.Success -> result.data.items
-                    is AppResult.Error -> {
-                        userMessageRes.value = R.string.error_refresh_failed
-                        emptyList()
-                    }
+                )
+            ) {
+                is AppResult.Success -> applyForYouPage(
+                    page = result.data,
+                    profile = profile,
+                    inLibraryIds = inLibraryIds,
+                    rotate = rotate,
+                    nextSortIndex = nextSortIndex,
+                )
+                is AppResult.Error -> {
+                    forYouError.value = result.error
+                    userMessageRes.value = R.string.error_refresh_failed
                 }
             }
-            val shownIds = if (rotate) lastShownRecIds.value else emptySet()
-            val feed = DiscoverFeedAssembler.assemble(
-                profile = profile,
-                candidates = candidates,
-                trending = emptyList(),
-                nowEpochSeconds = System.currentTimeMillis() / 1000,
-                inLibraryIds = inLibraryIds,
-                shownIds = shownIds,
-                pageSize = Int.MAX_VALUE,
-            )
-            recommendations.value = feed.recommendations
-            lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
-            hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
-            forYouCurrentOffset = candidates.size.takeIf { it > 0 } ?: 0
         }
     }
 
+    private suspend fun loadRecommendationSignals(): List<RecommendationSignal>? {
+        return when (val result = libraryRepository.getRecommendationSignals()) {
+            is AppResult.Success -> result.data
+            is AppResult.Error -> {
+                forYouError.value = result.error
+                userMessageRes.value = R.string.error_refresh_failed
+                null
+            }
+        }
+    }
+
+    private fun applyColdStartRecommendations(profile: RecommendationProfile, nextSortIndex: Int) {
+        isColdStart.value = true
+        forYouError.value = null
+        forYouSortIndex = nextSortIndex
+        forYouCurrentOffset = 0
+        forYouEndReached.value = true
+        recommendations.value = emptyList()
+        lastShownRecIds.value = emptySet()
+        hiddenFromTrending.value = profile.excludedGameIds
+    }
+
+    private fun applyForYouPage(
+        page: RecommendationCandidatePage,
+
+        profile: RecommendationProfile,
+        inLibraryIds: Set<Long>,
+        rotate: Boolean,
+        nextSortIndex: Int,
+    ) {
+        val shownIds = if (rotate) lastShownRecIds.value else emptySet()
+        val feed = DiscoverFeedAssembler.assemble(
+            profile = profile,
+            candidates = page.items,
+            trending = emptyList(),
+            nowEpochSeconds = System.currentTimeMillis() / 1000,
+            inLibraryIds = inLibraryIds,
+            shownIds = shownIds,
+            pageSize = Int.MAX_VALUE,
+        )
+        isColdStart.value = false
+        forYouError.value = null
+        forYouSortIndex = nextSortIndex
+        forYouEndReached.value = false
+        if (page.endReached || page.nextOffset == null) {
+            if (nextSortIndex + 1 >= FOR_YOU_SORT_MODES.size) {
+                forYouEndReached.value = true
+                forYouCurrentOffset = null
+            } else {
+                forYouSortIndex = nextSortIndex + 1
+                forYouCurrentOffset = 0
+            }
+        } else {
+            forYouCurrentOffset = page.nextOffset
+        }
+        recommendations.value = feed.recommendations
+        lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
+        hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
+    }
+
+
     private suspend fun updateLibraryRecommendations(games: List<LibraryGame>) {
         rebuildMutex.withLock {
-            val signals = signalCollector.collect()
+            val signals = when (val result = libraryRepository.getRecommendationSignals()) {
+                is AppResult.Success -> result.data
+                is AppResult.Error -> return@withLock
+            }
             val profile = RecommendationProfileBuilder.build(signals)
             isColdStart.value = profile.isColdStart
             val inLibraryIds = signals.map { it.gameId }.toSet()
@@ -514,7 +618,9 @@ class DiscoverViewModel @Inject constructor(
         val isColdStart: Boolean,
         val forYouLoading: Boolean,
         val forYouEndReached: Boolean,
+        val forYouError: AppError?,
     )
+
 
     private data class RailStateData(
         val selectedRail: DiscoverRail,

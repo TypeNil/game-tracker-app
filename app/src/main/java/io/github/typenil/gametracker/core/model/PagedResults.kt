@@ -11,3 +11,9 @@ data class RecommendationCandidatePage(
     val nextOffset: Int?,
     val endReached: Boolean,
 )
+
+data class PageContinuation(
+    val nextOffset: Int?,
+    val endReached: Boolean,
+)
+
