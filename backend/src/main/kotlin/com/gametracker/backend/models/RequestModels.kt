@@ -454,23 +454,17 @@ class RecommendationCandidatesRequest(
     val blockedIds: List<Long> = (exclude + similarTo).distinct()
 
     val cacheKey: String = buildString {
-        append("rec_")
-        append(genres.sorted().joinToString(","))
-        append('|')
-        append(themes.sorted().joinToString(","))
-        append('|')
-        append(platforms.sorted().joinToString(","))
-        append('|')
-        append(exclude.sorted().joinToString(","))
-        append('|')
-        append(similarTo.sorted().joinToString(","))
-        append('|')
-        append(limit)
-        append('|')
-        append(offset)
-        append('|')
-        append(sort)
+        append("rec_page:v2")
+        append("|genres=").append(encodePart(encodeList(genres)))
+        append("|themes=").append(encodePart(encodeList(themes)))
+        append("|platforms=").append(encodePart(encodeList(platforms)))
+        append("|exclude=").append(encodePart(exclude.sorted().joinToString(",")))
+        append("|similarTo=").append(encodePart(similarTo.sorted().joinToString(",")))
+        append("|limit=").append(limit)
+        append("|offset=").append(offset)
+        append("|sort=").append(encodePart(sort))
     }
+
 
     val candidatePoolCacheKey: String = buildString {
         append("rec_pool:v1")

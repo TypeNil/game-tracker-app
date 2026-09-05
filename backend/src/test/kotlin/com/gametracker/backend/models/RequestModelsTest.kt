@@ -476,7 +476,12 @@ class RequestModelsTest {
             embeddedDelimiter.candidatePoolCacheKey,
             separateFields.candidatePoolCacheKey,
         )
+        assertNotEquals(
+            embeddedDelimiter.cacheKey,
+            separateFields.cacheKey,
+        )
     }
+
 
 
  
