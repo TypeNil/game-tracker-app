@@ -775,4 +775,27 @@ class GamesRoutesTest {
         cache.close()
     }
 
+    @Test
+    fun `candidatesPage consecutive offsets share one upstream pool`() = testApplication {
+        val payload = (1L..60L).joinToString(",") { candidateJson(it) }
+        val (service, seen) = createInspectingService { "[$payload]" }
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val first = client.get("/v1/recommendations/candidates/page?genres=RPG&limit=30&offset=0")
+            .body<RecommendationCandidatePageDto>()
+        val second = client.get("/v1/recommendations/candidates/page?genres=RPG&limit=30&offset=30")
+            .body<RecommendationCandidatePageDto>()
+
+        assertEquals((1L..30L).toList(), first.items.map { it.id })
+        assertEquals((31L..60L).toList(), second.items.map { it.id })
+        assertTrue(first.items.map { it.id }.intersect(second.items.map { it.id }.toSet()).isEmpty())
+        assertEquals(1, seen.count { it.contains("limit 100;") })
+        cache.close()
+    }
+
+
 }

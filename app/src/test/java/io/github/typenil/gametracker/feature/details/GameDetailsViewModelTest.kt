@@ -20,6 +20,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -384,6 +386,48 @@ class GameDetailsViewModelTest {
     }
 
 
+    @Test
+    fun libraryObservationFailure_exposesErrorWithoutThrowing() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeLibraryRepository.entryResultFlow = flowOf(AppResult.Error(AppError.UnknownError(null)))
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.libraryLoadError is AppError.UnknownError)
+            assertNull(state.libraryEntry)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun saveWhenEntryObservationFails_keepsEditorOpen() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeLibraryRepository.entryResultFlow = flowOf(AppResult.Error(AppError.UnknownError(null)))
+        val viewModel = createViewModel()
+        viewModel.uiState.test { awaitItem() }
+
+        viewModel.onEditLibraryClicked()
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.COMPLETED,
+            userRating = 9,
+            hoursPlayed = 10,
+            userNotes = "keep",
+            isFavorite = true,
+        )
+
+        assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.isEditingLibrary)
+            assertEquals(R.string.error_library_update_failed, state.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+
     private fun GameDetailsUiState.similarGamesShown(): Boolean = game?.similarGames?.isNotEmpty() == true
 
     @Suppress("TooManyFunctions")
@@ -454,16 +498,20 @@ class GameDetailsViewModelTest {
 
     private class FakeLibraryRepository : LibraryRepository {
         val entryFlow = MutableStateFlow<LibraryEntry?>(null)
+        var entryResultFlow: Flow<AppResult<LibraryEntry?>>? = null
         val savedEntries = mutableListOf<LibraryEntry>()
         val deletedGameIds = mutableListOf<Long>()
         var saveResult: AppResult<Unit> = AppResult.Success(Unit)
         var removeResult: AppResult<Unit> = AppResult.Success(Unit)
         var saveGate: CompletableDeferred<Unit>? = null
 
+        override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> =
+            flowOf(AppResult.Success(emptyList()))
 
-        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = flowOf(emptyList())
+        override fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>> =
+            entryResultFlow ?: entryFlow.map { AppResult.Success(it) }
 
-        override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = entryFlow
+
 
         override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> {
             return AppResult.Success(Unit)

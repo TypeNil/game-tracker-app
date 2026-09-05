@@ -30,6 +30,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+
 
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -41,7 +43,9 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class DiscoverViewModelTest {
+
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
@@ -60,7 +64,8 @@ class DiscoverViewModelTest {
     fun setUp() {
         every { gameRepository.getTrendingGamesFlow() } returns trendingFlow
         every { gameRepository.getPopularGamesFlow(any()) } returns MutableStateFlow(emptyList())
-        every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow
+        every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow.map { AppResult.Success(it) }
+
 
         coEvery { librarySeeder.seedIfEmpty() } returns Unit
         coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(emptyList())
@@ -688,6 +693,103 @@ class DiscoverViewModelTest {
             gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
         }
     }
+
+    @Test
+    fun forYouRefreshFailure_retryRebuildsPageZero() = runTest {
+        val candidate = RecommendationCandidate(
+            101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        val offsets = mutableListOf<Int>()
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = invocation.args[6] as Int
+            offsets += offset
+            if (offsets.size == 1) {
+                AppResult.Success(
+                    RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+                )
+            } else {
+                AppResult.Error(AppError.NetworkError)
+            }
+        }
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && it.forYouError == null }
+            assertEquals(listOf(0), offsets)
+
+            viewModel.refresh()
+            advanceUntilIdle()
+            assertEquals(AppError.NetworkError, viewModel.uiState.value.forYouError)
+            assertEquals(listOf(101L), viewModel.uiState.value.recommendations.map { it.game.id })
+
+            coEvery {
+                gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+            } answers {
+                val offset = invocation.args[6] as Int
+                offsets += offset
+                AppResult.Success(
+                    RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+                )
+            }
+
+            viewModel.retryForYou()
+            advanceUntilIdle()
+            assertEquals(0, offsets.last())
+            assertEquals(null, viewModel.uiState.value.forYouError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun librarySignalFailure_retryRebuildsRecommendations() = runTest {
+        val candidate = RecommendationCandidate(
+            101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        val offsets = mutableListOf<Int>()
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            offsets += invocation.args[6] as Int
+            AppResult.Success(
+                RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+            )
+        }
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && it.forYouError == null }
+            assertEquals(listOf(0), offsets)
+
+            coEvery {
+                libraryRepository.getRecommendationSignals()
+            } returns AppResult.Error(AppError.UnknownError(null))
+            libraryFlow.value = listOf(libraryGame(7L, LibraryStatus.PLAYING))
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.forYouError is AppError.UnknownError)
+            assertEquals(listOf(101L), viewModel.uiState.value.recommendations.map { it.game.id })
+
+            coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+                listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+            )
+            viewModel.retryForYou()
+            advanceUntilIdle()
+            assertEquals(0, offsets.last())
+            assertEquals(listOf(0, 0), offsets)
+            assertEquals(null, viewModel.uiState.value.forYouError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+
+
 
 
 

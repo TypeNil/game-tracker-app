@@ -60,6 +60,9 @@ class DiscoverViewModel @Inject constructor(
     private var forYouCurrentOffset: Int? = 0
     private val forYouJobMutex = Mutex()
     private var forYouJob: Job? = null
+    private var pendingForYouRetry: ForYouRetry? = null
+    private var forYouRetryJob: Job? = null
+
     private val hiddenFromTrending = MutableStateFlow<Set<Long>>(emptySet())
     private val railStates = MutableStateFlow(DiscoverRail.entries.map { DiscoverRailState(it) })
     private val railOffsets = DiscoverRail.entries.associateWith { 0 }.toMutableMap()
@@ -143,23 +146,34 @@ class DiscoverViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                libraryRepository.getLibraryGamesFlow().collect { games ->
-                    librarySnapshot.value = LibrarySnapshot.Ready(
-                        games.associate { it.entry.gameId to it.entry },
-                    )
-                    val entries = games.map { it.entry }.toSet()
-                    val isInitial = lastLibraryEntries == null
-                    val libraryChanged = lastLibraryEntries != entries
-                    lastLibraryEntries = entries
-                    if (!isInitial && !libraryChanged) return@collect
-                    if (refreshing.value && !libraryChanged) return@collect
-                    if (isInitial || recommendations.value.isEmpty()) {
-                        rebuildRecommendations(rotate = false)
-                    } else {
-                        updateLibraryRecommendations(games)
+                libraryRepository.getLibraryGamesFlow().collect { result ->
+                    when (result) {
+                        is AppResult.Success -> {
+                            val games = result.data
+                            librarySnapshot.value = LibrarySnapshot.Ready(
+                                games.associate { it.entry.gameId to it.entry },
+                            )
+                            val entries = games.map { it.entry }.toSet()
+                            val isInitial = lastLibraryEntries == null
+                            val libraryChanged = lastLibraryEntries != entries
+                            lastLibraryEntries = entries
+                            if (!isInitial && !libraryChanged) return@collect
+                            if (refreshing.value && !libraryChanged) return@collect
+                            if (isInitial || recommendations.value.isEmpty()) {
+                                rebuildRecommendations(rotate = false)
+                            } else {
+                                updateLibraryRecommendations(games)
+                            }
+                            loading.value = false
+                        }
+                        is AppResult.Error -> {
+                            librarySnapshot.value = LibrarySnapshot.Failed(result.error)
+                            userMessageRes.value = R.string.error_library_load_failed
+                            loading.value = false
+                        }
                     }
-                    loading.value = false
                 }
+
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -188,13 +202,25 @@ class DiscoverViewModel @Inject constructor(
     fun retry() = hydrate(isUserPullToRefresh = false)
 
     fun refresh() = hydrate(isUserPullToRefresh = true)
-
     fun retryForYou() {
+        val retry = pendingForYouRetry ?: return
+        if (forYouRetryJob?.isActive == true) return
+
         forYouError.value = null
-        if (recommendations.value.isEmpty()) {
-            viewModelScope.launch { rebuildRecommendations(rotate = false) }
-        } else {
-            loadMoreForYou()
+        pendingForYouRetry = null
+
+        when (retry) {
+            ForYouRetry.Append -> loadMoreForYou()
+            is ForYouRetry.Rebuild -> {
+                forYouRetryJob = viewModelScope.launch {
+                    forYouLoading.value = true
+                    try {
+                        rebuildRecommendations(rotate = retry.rotate)
+                    } finally {
+                        forYouLoading.value = false
+                    }
+                }
+            }
         }
     }
 
@@ -303,14 +329,7 @@ class DiscoverViewModel @Inject constructor(
     }
 
     private suspend fun fetchAndProcessCandidatesPage(offset: Int): StepResult? {
-        val signals = when (val result = libraryRepository.getRecommendationSignals()) {
-            is AppResult.Success -> result.data
-            is AppResult.Error -> {
-                forYouError.value = result.error
-                userMessageRes.value = R.string.error_refresh_failed
-                return null
-            }
-        }
+        val signals = loadRecommendationSignals(ForYouRetry.Append) ?: return null
         val profile = RecommendationProfileBuilder.build(signals)
         if (profile.isColdStart) {
             isColdStart.value = true
@@ -332,12 +351,12 @@ class DiscoverViewModel @Inject constructor(
             sort = currentSort,
         )) {
             is AppResult.Success -> {
+                pendingForYouRetry = null
                 forYouError.value = null
                 processPageSuccess(result.data, profile, inLibraryIds, alreadyShownIds)
             }
             is AppResult.Error -> {
-                forYouError.value = result.error
-                userMessageRes.value = R.string.error_refresh_failed
+                exposeForYouFailure(result.error, ForYouRetry.Append)
                 null
             }
         }
@@ -490,7 +509,8 @@ class DiscoverViewModel @Inject constructor(
     private suspend fun rebuildRecommendations(rotate: Boolean) {
         rebuildMutex.withLock {
             forYouJob?.cancel()
-            val signals = loadRecommendationSignals() ?: return@withLock
+            val retry = ForYouRetry.Rebuild(rotate)
+            val signals = loadRecommendationSignals(retry) ?: return@withLock
             val profile = RecommendationProfileBuilder.build(signals)
             val nextSortIndex = if (rotate) {
                 (forYouSortIndex + 1) % FOR_YOU_SORT_MODES.size
@@ -522,26 +542,29 @@ class DiscoverViewModel @Inject constructor(
                     rotate = rotate,
                     nextSortIndex = nextSortIndex,
                 )
-                is AppResult.Error -> {
-                    forYouError.value = result.error
-                    userMessageRes.value = R.string.error_refresh_failed
-                }
+                is AppResult.Error -> exposeForYouFailure(result.error, retry)
             }
         }
     }
 
-    private suspend fun loadRecommendationSignals(): List<RecommendationSignal>? {
+    private suspend fun loadRecommendationSignals(retry: ForYouRetry): List<RecommendationSignal>? {
         return when (val result = libraryRepository.getRecommendationSignals()) {
             is AppResult.Success -> result.data
             is AppResult.Error -> {
-                forYouError.value = result.error
-                userMessageRes.value = R.string.error_refresh_failed
+                exposeForYouFailure(result.error, retry)
                 null
             }
         }
     }
 
+    private fun exposeForYouFailure(error: AppError, retry: ForYouRetry) {
+        pendingForYouRetry = retry
+        forYouError.value = error
+        userMessageRes.value = R.string.error_refresh_failed
+    }
+
     private fun applyColdStartRecommendations(profile: RecommendationProfile, nextSortIndex: Int) {
+        pendingForYouRetry = null
         isColdStart.value = true
         forYouError.value = null
         forYouSortIndex = nextSortIndex
@@ -551,6 +574,7 @@ class DiscoverViewModel @Inject constructor(
         lastShownRecIds.value = emptySet()
         hiddenFromTrending.value = profile.excludedGameIds
     }
+
 
     private fun applyForYouPage(
         page: RecommendationCandidatePage,
@@ -571,9 +595,11 @@ class DiscoverViewModel @Inject constructor(
             pageSize = Int.MAX_VALUE,
         )
         isColdStart.value = false
+        pendingForYouRetry = null
         forYouError.value = null
         forYouSortIndex = nextSortIndex
         forYouEndReached.value = false
+
         if (page.endReached || page.nextOffset == null) {
             if (nextSortIndex + 1 >= FOR_YOU_SORT_MODES.size) {
                 forYouEndReached.value = true
@@ -595,7 +621,11 @@ class DiscoverViewModel @Inject constructor(
         rebuildMutex.withLock {
             val signals = when (val result = libraryRepository.getRecommendationSignals()) {
                 is AppResult.Success -> result.data
-                is AppResult.Error -> return@withLock
+                is AppResult.Error -> {
+                    exposeForYouFailure(result.error, ForYouRetry.Rebuild(rotate = false))
+                    return@withLock
+                }
+
             }
             val profile = RecommendationProfileBuilder.build(signals)
             isColdStart.value = profile.isColdStart
@@ -610,6 +640,12 @@ class DiscoverViewModel @Inject constructor(
             hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
         }
     }
+
+    private sealed interface ForYouRetry {
+        data class Rebuild(val rotate: Boolean) : ForYouRetry
+        data object Append : ForYouRetry
+    }
+
 
     private data class StepResult(val nextOffset: Int?, val hasNewItems: Boolean)
 

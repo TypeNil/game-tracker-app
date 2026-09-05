@@ -963,8 +963,10 @@ class SearchScreenTest {
     }
 
     private class FakeLibraryRepository : LibraryRepository {
-        override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> = MutableStateFlowHolder.empty
-        override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> = flowOf(null)
+        override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> = MutableStateFlowHolder.empty
+        override fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>> =
+            flowOf(AppResult.Success(null))
+
         override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> =
             AppResult.Success(Unit)
         override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> = AppResult.Success(Unit)
@@ -983,6 +985,8 @@ class SearchScreenTest {
     }
 
     private object MutableStateFlowHolder {
-        val empty: Flow<List<LibraryGame>> = kotlinx.coroutines.flow.MutableStateFlow(emptyList())
+        val empty: Flow<AppResult<List<LibraryGame>>> =
+            kotlinx.coroutines.flow.MutableStateFlow(AppResult.Success(emptyList()))
     }
+
 }

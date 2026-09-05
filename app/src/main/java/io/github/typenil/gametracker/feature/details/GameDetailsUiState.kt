@@ -23,9 +23,11 @@ data class GameDetailsUiState(
     val isEditingLibrary: Boolean = false,
     val isLibrarySubmitting: Boolean = false,
     val error: AppError? = null,
+    val libraryLoadError: AppError? = null,
 
-    @StringRes val userMessageRes: Int? = null
+    @StringRes val userMessageRes: Int? = null,
 ) {
     val isInitialLoading: Boolean
         get() = isLoading && game == null
+
 }

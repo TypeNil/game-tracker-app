@@ -9,7 +9,9 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEntity
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryNotes
 
@@ -25,6 +27,8 @@ import io.mockk.slot
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
+
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -64,11 +68,12 @@ class DefaultLibraryRepositoryTest {
         )
         val entryEntity = LibraryEntryEntity(1L, LibraryStatus.PLAYING, 10, "Great game", true, 1000L, 1000L, 25)
         val populated = PopulatedLibraryGameEntity(entry = entryEntity, game = gameEntity)
-
         every { libraryDao.getPopulatedLibraryEntriesFlow() } returns flowOf(listOf(populated))
 
         repository.getLibraryGamesFlow().test {
-            val games = awaitItem()
+            val result = awaitItem()
+            assertTrue(result is AppResult.Success)
+            val games = (result as AppResult.Success).data
             assertEquals(1, games.size)
             assertEquals("Hades", games[0].game.name)
             assertEquals(LibraryStatus.PLAYING, games[0].entry.status)
@@ -78,6 +83,35 @@ class DefaultLibraryRepositoryTest {
             awaitComplete()
         }
     }
+
+    @Test
+    fun getLibraryGamesFlow_emitsErrorWhenDaoThrows() = runTest(testDispatcher) {
+        every { libraryDao.getPopulatedLibraryEntriesFlow() } returns flow {
+            throw IllegalStateException("room down")
+        }
+
+        repository.getLibraryGamesFlow().test {
+            val result = awaitItem()
+            assertTrue(result is AppResult.Error)
+            assertTrue((result as AppResult.Error).error is AppError.UnknownError)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun getLibraryEntryFlow_emitsErrorWhenDaoThrows() = runTest(testDispatcher) {
+        every { libraryDao.getLibraryEntryFlow(1L) } returns flow {
+            throw IllegalStateException("room down")
+        }
+
+        repository.getLibraryEntryFlow(1L).test {
+            val result = awaitItem()
+            assertTrue(result is AppResult.Error)
+            assertTrue((result as AppResult.Error).error is AppError.UnknownError)
+            awaitComplete()
+        }
+    }
+
 
     @Test
     fun saveLibraryEntry_withoutParentGame_returnsError() = runTest(testDispatcher) {

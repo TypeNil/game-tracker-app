@@ -17,12 +17,13 @@ interface LibraryRepository {
     /**
      * Observes the reactive stream of all user library games joined with their game catalog entities.
      */
-    fun getLibraryGamesFlow(): Flow<List<LibraryGame>>
+    fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>>
 
     /**
      * Observes the library entry record for a specific [gameId].
      */
-    fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?>
+    fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>>
+
 
     /**
      * Updates or sets the library [status] for game [gameId].

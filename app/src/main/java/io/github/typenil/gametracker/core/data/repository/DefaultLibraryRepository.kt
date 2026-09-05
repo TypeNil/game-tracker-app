@@ -21,6 +21,9 @@ import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.catch
+
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -34,15 +37,18 @@ class DefaultLibraryRepository @Inject constructor(
 ) : LibraryRepository {
 
 
-    override fun getLibraryGamesFlow(): Flow<List<LibraryGame>> =
+    override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> =
         libraryDao.getPopulatedLibraryEntriesFlow()
             .map { list -> list.map { it.toDomain() } }
+            .asAppResult()
             .flowOn(ioDispatcher)
 
-    override fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntry?> =
+    override fun getLibraryEntryFlow(gameId: Long): Flow<AppResult<LibraryEntry?>> =
         libraryDao.getLibraryEntryFlow(gameId)
             .map { it?.toDomain() }
+            .asAppResult()
             .flowOn(ioDispatcher)
+
 
     override suspend fun setGameStatus(gameId: Long, status: LibraryStatus): AppResult<Unit> =
         withContext(ioDispatcher) {
@@ -218,4 +224,12 @@ class DefaultLibraryRepository @Inject constructor(
             )
         }
 }
+
+private fun <T> Flow<T>.asAppResult(): Flow<AppResult<T>> =
+    map<T, AppResult<T>> { value -> AppResult.Success(value) }
+        .catch { error ->
+            if (error is CancellationException) throw error
+            emit(AppResult.Error(AppError.UnknownError(error)))
+        }
+
 

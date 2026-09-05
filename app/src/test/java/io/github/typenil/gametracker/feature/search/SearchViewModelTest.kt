@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -93,7 +95,8 @@ class SearchViewModelTest {
         every { repository.getPagedSearchResults(any<GameSearchQuery>(), any()) } returns defaultPagedFlow
         coEvery { repository.recordSearchHistory(any()) } returns AppResult.Success(Unit)
         every { repository.getRecentSearchQueriesFlow(any()) } returns recentQueriesFlow
-        every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow
+        every { libraryRepository.getLibraryGamesFlow() } returns libraryFlow.map { AppResult.Success(it) }
+
         coEvery { libraryRepository.addToWishlist(any()) } returns AppResult.Success(Unit)
         coEvery {
             libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())

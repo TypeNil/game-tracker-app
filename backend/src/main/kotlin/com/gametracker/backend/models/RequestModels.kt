@@ -469,6 +469,22 @@ class RecommendationCandidatesRequest(
         append(sort)
     }
 
+    val candidatePoolCacheKey: String = buildString {
+        append("rec_pool|")
+        append(genres.sorted().joinToString(","))
+        append('|')
+        append(themes.sorted().joinToString(","))
+        append('|')
+        append(platforms.sorted().joinToString(","))
+        append('|')
+        append(exclude.sorted().joinToString(","))
+        append('|')
+        append(similarTo.sorted().joinToString(","))
+        append('|')
+        append(sort)
+    }
+
+
     val hasTags: Boolean = genres.isNotEmpty() || themes.isNotEmpty() || platforms.isNotEmpty()
 
     fun toTagApicalypseQuery(): String {
