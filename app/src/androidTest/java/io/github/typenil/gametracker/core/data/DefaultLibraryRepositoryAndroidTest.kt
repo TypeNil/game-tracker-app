@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.typenil.gametracker.core.data.recommendations.RoomRecommendationSignalCollector
 import io.github.typenil.gametracker.core.data.repository.DefaultLibraryRepository
 import io.github.typenil.gametracker.core.database.GameTrackerDatabase
 import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.mapper.toEntity
 import io.github.typenil.gametracker.core.database.transaction.RoomTransactionRunner
+
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -45,8 +47,14 @@ class DefaultLibraryRepositoryAndroidTest {
             libraryDao = libraryDao,
             gameDao = gameDao,
             transactionRunner = RoomTransactionRunner(database),
+            signalCollector = RoomRecommendationSignalCollector(
+                libraryDao = libraryDao,
+                gameDao = gameDao,
+                gameDetailsDao = database.gameDetailsDao(),
+            ),
             ioDispatcher = Dispatchers.Unconfined,
         )
+
     }
 
     @After
