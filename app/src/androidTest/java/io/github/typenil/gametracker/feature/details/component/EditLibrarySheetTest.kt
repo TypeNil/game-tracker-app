@@ -2,12 +2,14 @@ package io.github.typenil.gametracker.feature.details.component
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -19,6 +21,7 @@ import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -29,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalMaterial3Api::class)
 class EditLibrarySheetTest {
 
     @get:Rule
@@ -297,5 +301,35 @@ class EditLibrarySheetTest {
         composeTestRule
             .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun headerCloseButton_isTrailingAligned() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { _, _, _, _, _ -> },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        val headerBounds = composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .getUnclippedBoundsInRoot()
+        val closeBounds = composeTestRule
+            .onNodeWithContentDescription(composeTestRule.activity.getString(R.string.library_close))
+            .getUnclippedBoundsInRoot()
+
+        // Close button must be aligned towards the trailing edge of the header (within gutter padding)
+        val trailingDelta = headerBounds.right - closeBounds.right
+        assertTrue(
+            "Close button right (${closeBounds.right}) should be near header right (${headerBounds.right}), delta=$trailingDelta",
+            trailingDelta <= GtDimens.Gutter + 4.dp,
+        )
     }
 }

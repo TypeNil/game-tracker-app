@@ -491,7 +491,11 @@ fun LibraryScreen(
         EditLibrarySheet(
             initialEntry = editingEntry,
             sheetState = editSheetState,
-            onDismiss = { editingGameId = null },
+            onDismiss = {
+                if (!isMutating) {
+                    editingGameId = null
+                }
+            },
             onSave = { status, rating, hours, notes, favorite ->
                 onSaveLibraryEntry(
                     editingEntry.gameId,
