@@ -120,28 +120,38 @@ android {
         }
     }
 }
-// Fail-fast guard: a liveRelease baked against an emulator loopback or plain http
-// URL installs fine but is offline on real devices. Debug keeps the loopback fallback.
-androidComponents {
-    beforeVariants(selector().withBuildType("release").withFlavor("environment" to "live")) {
-        // beforeVariants runs while configuring :app for EVERY invocation (debug builds,
-        // unit tests, detekt), so enforce only when liveRelease artifacts are requested.
-        val buildsLiveRelease = gradle.startParameter.taskNames.any { name ->
-            name.contains("LiveRelease", ignoreCase = true) ||
-                name.contains("verifyReleaseArtifacts", ignoreCase = true)
-        }
-        if (!buildsLiveRelease) return@beforeVariants
-        val value = configuredLiveBaseUrl.orNull
+// Execution-time guard: a liveRelease baked against an emulator loopback or plain http
+// URL installs fine but is offline on real devices. Wired into preLiveReleaseBuild so it
+// cannot be bypassed via aggregate/alias tasks (:app:build, :app:assemble, :app:bundle,
+// Android Studio). Debug keeps the loopback fallback.
+abstract class ValidateLiveReleaseBffUrlTask : DefaultTask() {
+    @get:Input
+    @get:Optional
+    abstract val baseUrl: Property<String>
+
+    @TaskAction
+    fun validate() {
+        val value = baseUrl.orNull
             ?: error("BFF_BASE_URL is required for liveRelease (gradle property, env var, or local.properties)")
-        val uri = try {
-            URI(value)
-        } catch (e: IllegalArgumentException) {
+        val uri = runCatching { URI(value) }.getOrElse {
             error("liveRelease BFF_BASE_URL is not a valid URI: $value")
         }
-        require(uri.scheme == "https" && !uri.host.isNullOrBlank() &&
-            uri.host !in setOf("localhost", "127.0.0.1", "10.0.2.2")) {
+        require(uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank() &&
+            uri.host.lowercase() !in setOf("localhost", "127.0.0.1", "10.0.2.2")) {
             "liveRelease requires a non-loopback HTTPS BFF_BASE_URL, got: $value"
         }
+    }
+}
+
+val validateLiveReleaseBffUrl = tasks.register<ValidateLiveReleaseBffUrlTask>("validateLiveReleaseBffUrl") {
+    group = "verification"
+    description = "Fails unless liveRelease is configured with a non-loopback HTTPS BFF URL."
+    baseUrl.set(configuredLiveBaseUrl)
+}
+
+tasks.configureEach {
+    if (name == "preLiveReleaseBuild") {
+        dependsOn(validateLiveReleaseBffUrl)
     }
 }
 
@@ -227,9 +237,12 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
     @get:Internal
     abstract val buildDirectory: DirectoryProperty
 
+    @get:Input
+    abstract val flavors: ListProperty<String>
+
     @TaskAction
     fun verify() {
-        listOf("demo", "live").forEach { flavor ->
+        flavors.get().forEach { flavor ->
             val variantName = "${flavor}Release"
             val mappingFile = buildDirectory
                 .file("outputs/mapping/$variantName/mapping.txt")
@@ -296,6 +309,17 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
 tasks.register<VerifyReleaseArtifactsTask>("verifyReleaseArtifacts") {
     group = "verification"
     description = "Inspects demoRelease and liveRelease APKs to verify R8 minification and artifact integrity."
+    flavors.set(listOf("demo", "live"))
     dependsOn("assembleDemoRelease", "assembleLiveRelease")
+    buildDirectory.set(layout.buildDirectory)
+}
+
+// Production-only verifier: demoRelease is an unsigned, non-distributable R8 fixture
+// and must never be built or signed with the production identity.
+tasks.register<VerifyReleaseArtifactsTask>("verifyLiveReleaseArtifacts") {
+    group = "verification"
+    description = "Inspects the liveRelease APK only (production workflow)."
+    flavors.set(listOf("live"))
+    dependsOn("assembleLiveRelease")
     buildDirectory.set(layout.buildDirectory)
 }
