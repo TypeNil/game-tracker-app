@@ -42,7 +42,7 @@ class DefaultLibraryRepository @Inject constructor(
         libraryDao.getPopulatedLibraryEntriesFlow()
             .map { list ->
                 list.map { entry ->
-                    entry.toDomain().also { previewCache.put(it.game) }
+                    entry.toDomain().also { previewCache.putPreview(it.game) }
                 }
             }
             .asAppResult()

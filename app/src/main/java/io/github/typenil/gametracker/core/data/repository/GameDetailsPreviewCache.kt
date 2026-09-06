@@ -17,7 +17,7 @@ import javax.inject.Singleton
  * Uses a pure Kotlin/Java LRU [LinkedHashMap] with synchronized access for thread safety
  * across background Flow mapping threads and the Main thread, without Android framework test stubs.
  */
-enum class PreviewQuality {
+internal enum class PreviewQuality {
     CATALOG,
     HYDRATED,
 }
@@ -27,7 +27,6 @@ private data class Entry(
     val quality: PreviewQuality,
 )
 
-@Suppress("TooManyFunctions")
 @Singleton
 class GameDetailsPreviewCache @Inject constructor() {
 
@@ -58,10 +57,6 @@ class GameDetailsPreviewCache @Inject constructor() {
         put(details, PreviewQuality.HYDRATED)
     }
 
-    fun put(game: Game) = putPreview(game)
-    fun put(candidate: RecommendationCandidate) = putPreview(candidate)
-    fun put(summary: GameSummary) = putPreview(summary)
-    fun put(details: GameDetails) = putPreview(details)
 
     private fun put(details: GameDetails, quality: PreviewQuality) {
         synchronized(lock) {
@@ -78,7 +73,7 @@ class GameDetailsPreviewCache @Inject constructor() {
         }
     }
 
-    fun getQuality(id: Long): PreviewQuality? {
+    internal fun getQuality(id: Long): PreviewQuality? {
         return synchronized(lock) {
             map[id]?.quality
         }

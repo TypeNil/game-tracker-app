@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,6 +28,9 @@ class AppNavigationViewportTest {
 
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
+    private fun viewportBounds() = composeTestRule
+        .onNodeWithTag("app-nav-viewport")
+        .getUnclippedBoundsInRoot()
 
     @Test
     fun navViewport_keepsBoundsWhileNavigatingToDetailsAndBack() {
@@ -35,56 +39,57 @@ class AppNavigationViewportTest {
         }
 
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-            val discoverNavLabel = context.getString(R.string.nav_discover)
-            composeTestRule.waitUntil(timeoutMillis = 5_000) {
-                composeTestRule.onAllNodesWithText(discoverNavLabel).fetchSemanticsNodes().isNotEmpty()
-            }
-
-            // Capture unclipped viewport bounds in root
-            val viewportBefore = composeTestRule
-                .onNodeWithTag("app-nav-viewport")
-                .getUnclippedBoundsInRoot()
-
-            // Wait for catalog games to be visible
-            val sampleGameTitle = "The Witcher 3: Wild Hunt"
-            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            val sampleGameTitle = "Elden Ring"
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
                 composeTestRule.onAllNodesWithText(sampleGameTitle).fetchSemanticsNodes().isNotEmpty()
             }
 
-            // Click game card to trigger navigation to GameDetailsKey
+            val viewportBefore = viewportBounds()
+            // Pause animation clock to sample active transition frames
+            composeTestRule.mainClock.autoAdvance = false
             composeTestRule.onAllNodesWithText(sampleGameTitle)
                 .onFirst()
                 .performClick()
 
-            // Verify viewport bounds remain stable through transition and after settling
+            // Sample forward transition: immediately, midway (150ms), and near end (300ms)
+            composeTestRule.mainClock.advanceTimeByFrame()
+            assertEquals(viewportBefore, viewportBounds())
+
+            composeTestRule.mainClock.advanceTimeBy(150)
+            assertEquals(viewportBefore, viewportBounds())
+
+            composeTestRule.mainClock.advanceTimeBy(300)
+            assertEquals(viewportBefore, viewportBounds())
+
+            // Settle forward animation and verify details screen content
+            composeTestRule.mainClock.autoAdvance = true
             composeTestRule.waitUntil(timeoutMillis = 5_000) {
-                val currentBounds = composeTestRule
-                    .onNodeWithTag("app-nav-viewport")
-                    .getUnclippedBoundsInRoot()
-                currentBounds == viewportBefore
+                composeTestRule.onAllNodesWithText(sampleGameTitle).fetchSemanticsNodes().isNotEmpty()
+            }
+            assertEquals(viewportBefore, viewportBounds())
+
+            // Pause clock for pop transition
+            composeTestRule.mainClock.autoAdvance = false
+            scenario.onActivity {
+                it.onBackPressedDispatcher.onBackPressed()
             }
 
-            val viewportSettled = composeTestRule
-                .onNodeWithTag("app-nav-viewport")
-                .getUnclippedBoundsInRoot()
-            assertEquals(viewportBefore, viewportSettled)
+            // Sample pop transition: immediately, midway (150ms), and near end (300ms)
+            composeTestRule.mainClock.advanceTimeByFrame()
+            assertEquals(viewportBefore, viewportBounds())
 
-            // Navigate back
-            scenario.onActivity { activity ->
-                activity.onBackPressedDispatcher.onBackPressed()
+            composeTestRule.mainClock.advanceTimeBy(150)
+            assertEquals(viewportBefore, viewportBounds())
+
+            composeTestRule.mainClock.advanceTimeBy(300)
+            assertEquals(viewportBefore, viewportBounds())
+
+            // Settle return to discover
+            composeTestRule.mainClock.autoAdvance = true
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(sampleGameTitle).fetchSemanticsNodes().isNotEmpty()
             }
-
-            composeTestRule.waitUntil(timeoutMillis = 5_000) {
-                val currentBounds = composeTestRule
-                    .onNodeWithTag("app-nav-viewport")
-                    .getUnclippedBoundsInRoot()
-                currentBounds == viewportBefore
-            }
-
-            val viewportReturned = composeTestRule
-                .onNodeWithTag("app-nav-viewport")
-                .getUnclippedBoundsInRoot()
-            assertEquals(viewportBefore, viewportReturned)
+            assertEquals(viewportBefore, viewportBounds())
         }
     }
 }

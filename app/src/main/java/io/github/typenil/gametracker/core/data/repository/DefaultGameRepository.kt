@@ -84,12 +84,12 @@ class DefaultGameRepository internal constructor(
     )
 
     private fun rememberPreview(game: Game): Game {
-        previewCache.put(game)
+        previewCache.putPreview(game)
         return game
     }
 
     private fun rememberPreviews(games: List<Game>): List<Game> {
-        games.forEach(previewCache::put)
+        games.forEach(previewCache::putPreview)
         return games
     }
 
@@ -304,7 +304,7 @@ class DefaultGameRepository internal constructor(
                     genres, themes, platforms, exclude, similarTo, limit, offset, sort,
                 ).let { page ->
                     val domainItems = page.items.map { it.toDomain() }
-                    domainItems.forEach(previewCache::put)
+                    domainItems.forEach(previewCache::putPreview)
                     io.github.typenil.gametracker.core.model.RecommendationCandidatePage(
                         items = domainItems,
                         nextOffset = page.nextOffset,
@@ -336,7 +336,7 @@ class DefaultGameRepository internal constructor(
                     exclude = exclude,
                     similarTo = similarTo,
                     limit = limit,
-                ).map { it.toDomain().also(previewCache::put) }
+                ).map { it.toDomain().also(previewCache::putPreview) }
             }.fold(
                 onSuccess = { AppResult.Success(it) },
                 onFailure = { AppResult.Error(it.toAppError()) }
@@ -559,11 +559,11 @@ class DefaultGameRepository internal constructor(
     }
 
     override fun recordPreview(game: Game) {
-        previewCache.put(game)
+        previewCache.putPreview(game)
     }
 
     override fun recordPreview(details: GameDetails) {
-        previewCache.put(details)
+        previewCache.putPreview(details)
     }
 
     override fun getInitialGameDetails(id: Long): GameDetails? {

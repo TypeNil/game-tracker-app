@@ -7,7 +7,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -89,27 +88,24 @@ class GameDetailsPreviewCacheTest {
     }
 
     @Test
-    fun concurrentPutsAndGets_threadSafeWithoutConcurrentModificationException() {
+    fun concurrentPutsAndGets_propagatesNoWorkerFailure() {
         val threadCount = 8
         val iterationsPerThread = 200
         val executor = Executors.newFixedThreadPool(threadCount)
-        val latch = CountDownLatch(threadCount)
-
-        for (threadIndex in 0 until threadCount) {
-            executor.execute {
-                try {
-                    for (i in 0 until iterationsPerThread) {
-                        val id = (threadIndex * 1000 + i).toLong()
+        try {
+            val futures = (0 until threadCount).map { threadIndex ->
+                executor.submit {
+                    repeat(iterationsPerThread) { index ->
+                        val id = (threadIndex * 1_000 + index).toLong()
                         cache.putPreview(Game(id = id, name = "Game $id"))
                         cache.get(id)
                     }
-                } finally {
-                    latch.countDown()
                 }
             }
-        }
 
-        assertTrue("Timed out waiting for concurrent access", latch.await(5, TimeUnit.SECONDS))
-        executor.shutdown()
+            futures.forEach { it.get(5, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdownNow()
+        }
     }
 }
