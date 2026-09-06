@@ -15,7 +15,7 @@ Initial public release of **GameTracker** — a production-grade Android applica
 
 #### Android Application (`:app`)
 - **Discover Screen & Feeds**:
-  - Personalized "For You" recommendations powered by on-device heuristic preference scoring.
+  - Personalized "For You" recommendations powered by on-device heuristic preference scoring across genres, themes, and platforms.
   - Popular Upcoming games with countdown indicators.
   - Top-Rated games chart with infinite scroll via Room SSOT.
 - **Search & Filter**:
@@ -35,7 +35,7 @@ Initial public release of **GameTracker** — a production-grade Android applica
   - 5 status tiers (*Playing, Completed, Wishlist, Dropped, Not Interested*).
   - 1–10 rating scrubber with semantic tiers (*Masterpiece, Great, Good, Mediocre, Bad*).
   - Quick Hours stepper dialog with session delta tracking and playtime recording.
-  - Personal markdown notes preview in cards and full note editing in `EditLibrarySheet`.
+  - Personal plain-text notes preview in cards and full note editing in `EditLibrarySheet`.
   - Favorite toggle with persistent status.
 - **Background Release Tracking & Notifications**:
   - Periodic release date sync using WorkManager with network constraints.
