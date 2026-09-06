@@ -72,14 +72,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -157,8 +155,6 @@ fun EditLibrarySheet(
     actionsEnabled: Boolean = true,
 ) {
     var showConfirmDelete by rememberSaveable { mutableStateOf(false) }
-    val saveableStateRegistry = LocalSaveableStateRegistry.current
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -166,24 +162,20 @@ fun EditLibrarySheet(
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         modifier = modifier,
     ) {
-        CompositionLocalProvider(
-            LocalSaveableStateRegistry provides saveableStateRegistry,
-        ) {
-            EditLibrarySheetContent(
-                initialEntry = initialEntry,
-                onDismiss = onDismiss,
-                onSave = onSave,
-                onDeleteClick = if (onRemove != null && initialEntry != null) {
-                    { showConfirmDelete = true }
-                } else {
-                    null
-                },
-                actionsEnabled = actionsEnabled,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),
-            )
-        }
+        EditLibrarySheetContent(
+            initialEntry = initialEntry,
+            onDismiss = onDismiss,
+            onSave = onSave,
+            onDeleteClick = if (onRemove != null && initialEntry != null) {
+                { showConfirmDelete = true }
+            } else {
+                null
+            },
+            actionsEnabled = actionsEnabled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),
+        )
     }
     if (showConfirmDelete && onRemove != null) {
         AlertDialog(

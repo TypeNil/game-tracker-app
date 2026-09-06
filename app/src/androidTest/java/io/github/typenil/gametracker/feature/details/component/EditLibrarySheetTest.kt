@@ -8,6 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
@@ -331,5 +335,51 @@ class EditLibrarySheetTest {
             "Close button right (${closeBounds.right}) should be near header right (${headerBounds.right}), delta=$trailingDelta",
             trailingDelta <= GtDimens.Gutter + 4.dp,
         )
+    }
+
+    @Test
+    fun editLibrarySheetContent_notesDraft_restoresAcrossSavedStateRecreation() {
+        val restorationTester = StateRestorationTester(composeTestRule)
+        val initialEntry = LibraryEntry(
+            gameId = 1L,
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 15,
+            isFavorite = false,
+            addedAtEpochSeconds = 1_700_000_000L,
+            updatedAtEpochSeconds = 1_700_000_000L,
+            userNotes = "Initial persisted note",
+        )
+
+        restorationTester.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = initialEntry,
+                        onDismiss = {},
+                        onSave = { _, _, _, _, _ -> },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        val draft = "Unsaved draft surviving process death"
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .performTextClearance()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .performTextInput(draft)
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains(draft)
+
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains(draft)
     }
 }
