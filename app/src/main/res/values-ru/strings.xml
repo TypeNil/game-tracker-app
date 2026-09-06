@@ -102,7 +102,7 @@
     <string name="search_empty_filters_subtitle">Попробуйте ослабить фильтры или изменить критерии</string>
     <string name="search_empty_filters_action">Сбросить фильтры</string>
     <string name="details_title">Об игре</string>
-    <string name="details_date_unknown">Дата неизвестна</string>
+    <string name="details_date_unknown">Дата выхода не объявлена</string>
     <string name="error_not_found">Игра не найдена.</string>
     <string name="details_share_desc">Поделиться игрой</string>
     <string name="details_share_error">Нет приложения для отправки.</string>
@@ -230,7 +230,7 @@
     <string name="notification_channel_releases_desc">Уведомления о скорых и состоявшихся выходах игр из библиотеки</string>
     <string name="notification_date_tbd">Дата выхода не объявлена</string>
     <string name="notification_release_today_title">Игра вышла сегодня!</string>
-    <string name="notification_release_today_body">%1$s уже вышла!</string>
+    <string name="notification_release_today_body">Сегодня состоялся релиз «%1$s»!</string>
     <string name="notification_release_soon_title">Скоро выход</string>
     <string name="notification_release_soon_body">%1$s выходит %2$s.</string>
     <string name="notification_date_changed_title">Дата выхода изменилась</string>

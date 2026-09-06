@@ -1,10 +1,14 @@
 package io.github.typenil.gametracker.feature.library
 
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.getValue
@@ -46,6 +50,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class LibraryGameCardTest {
@@ -700,6 +705,68 @@ class LibraryGameCardTest {
         assertNotEllipsized(
             composeTestRule.onNodeWithText(expectedStatus, useUnmergedTree = true),
         )
+        assertNotEllipsized(
+            composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
+        )
+    }
+
+    private val ruLocale = Locale.forLanguageTag("ru-RU")
+
+    /**
+     * Renders [content] under a Russian configuration without touching the
+     * process-global locale, so RU layout coverage holds on any CI device.
+     */
+    private fun setRussianContent(content: @Composable () -> Unit) {
+        val activity = composeTestRule.activity
+        val configuration = Configuration(activity.resources.configuration).apply {
+            setLocale(ruLocale)
+        }
+        val localizedContext = activity.createConfigurationContext(configuration)
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalConfiguration provides configuration,
+            ) {
+                content()
+            }
+        }
+    }
+
+    @Test
+    fun card_russianLocale_compactWidth_hasNoOverlapOrTruncation() {
+        setRussianContent {
+            GameTrackerTheme {
+                Box(modifier = Modifier.width(320.dp)) {
+                    LibraryGameCard(
+                        libraryGame = libraryGame(
+                            name = "Hades",
+                            status = LibraryStatus.PLAYING,
+                            hoursPlayed = 999_999,
+                        ),
+                        onClick = {},
+                    )
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+        val statusBounds = composeTestRule.onNodeWithTag(
+            LIBRARY_CARD_STATUS_TEST_TAG,
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithTag(
+            LIBRARY_CARD_HOURS_TEST_TAG,
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        val addedBounds = composeTestRule.onNodeWithTag(
+            LIBRARY_CARD_ADDED_TEST_TAG,
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        assertNoOverlap(statusBounds, hoursBounds, "Status and hours")
+        assertNoOverlap(hoursBounds, addedBounds, "Hours and added date")
+        assertNoOverlap(statusBounds, addedBounds, "Status and added date")
+        assertTrue("Status right should be <= 320dp", statusBounds.right <= 320.dp)
+        assertTrue("Hours right should be <= 320dp", hoursBounds.right <= 320.dp)
+        assertTrue("Added right should be <= 320dp", addedBounds.right <= 320.dp)
         assertNotEllipsized(
             composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
         )
