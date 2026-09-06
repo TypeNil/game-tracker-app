@@ -15,8 +15,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeRight
-import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -279,21 +280,22 @@ class EditLibrarySheetTest {
         }
 
         composeTestRule
-            .onNodeWithText(
-                composeTestRule.activity.getString(
-                    R.string.library_edit_entry_title,
-                ),
-            )
-            .performTouchInput { swipeDown() }
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .performTouchInput {
+                val dragDistance = 400.dp.toPx()
+                swipe(
+                    start = center,
+                    end = center.copy(y = center.y + dragDistance),
+                    durationMillis = 300,
+                )
+            }
 
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            dismissCount == 1
+        }
         assertEquals(1, dismissCount)
         composeTestRule
-            .onNodeWithText(
-                composeTestRule.activity.getString(
-                    R.string.library_edit_entry_title,
-                ),
-            )
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
             .assertDoesNotExist()
     }
 }

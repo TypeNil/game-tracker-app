@@ -128,6 +128,8 @@ private val QUICK_HOURS_OFFSETS = listOf(1, 2, 5)
 private const val SHEET_MAX_HEIGHT_FRACTION = 0.94f
 
 const val EDIT_LIBRARY_RATING_BAR_TEST_TAG = "edit_library_rating_bar"
+const val EDIT_LIBRARY_SHEET_HEADER_TEST_TAG = "edit_library_sheet_header"
+const val EDIT_LIBRARY_NOTES_INPUT_TEST_TAG = "edit_library_notes_input"
 
 private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
     this.then(
@@ -259,8 +261,8 @@ internal fun EditLibrarySheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
                 .padding(horizontal = GtDimens.Gutter, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
@@ -952,6 +954,7 @@ private fun PersonalNotesSection(
             onValueChange = onNotesChange,
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
                 .heightIn(min = 72.dp, max = 130.dp),
             placeholder = {
                 Text(

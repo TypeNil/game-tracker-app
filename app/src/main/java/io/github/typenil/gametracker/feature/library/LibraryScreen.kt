@@ -40,6 +40,8 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
@@ -52,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -474,13 +477,21 @@ fun LibraryScreen(
     val editingEntry = uiState.allGames.firstOrNull { it.game.id == editingGameId }?.entry
     if (editingEntry != null) {
         val isMutating = uiState.libraryMutationState is LibraryMutationState.Saving
+        val currentIsMutating = rememberUpdatedState(isMutating)
+        val confirmSheetValueChange = remember {
+            { target: SheetValue ->
+                target != SheetValue.Hidden || !currentIsMutating.value
+            }
+        }
+        val editSheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = confirmSheetValueChange,
+        )
+
         EditLibrarySheet(
             initialEntry = editingEntry,
-            onDismiss = {
-                if (!isMutating) {
-                    editingGameId = null
-                }
-            },
+            sheetState = editSheetState,
+            onDismiss = { editingGameId = null },
             onSave = { status, rating, hours, notes, favorite ->
                 onSaveLibraryEntry(
                     editingEntry.gameId,
