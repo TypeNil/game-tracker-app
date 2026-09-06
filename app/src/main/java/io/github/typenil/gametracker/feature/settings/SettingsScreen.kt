@@ -45,9 +45,6 @@ import io.github.typenil.gametracker.core.notification.rememberNotificationPermi
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
-import io.github.typenil.gametracker.core.model.NotificationEventType
-import io.github.typenil.gametracker.core.model.ReleaseEvent
-import io.github.typenil.gametracker.core.notification.SystemReleaseNotifier
 @Composable
 fun SettingsRoute(
     onBackClick: () -> Unit,
@@ -68,20 +65,7 @@ fun SettingsRoute(
             }
         },
         onSendTestNotification = {
-            if (BuildConfig.DEBUG) {
-                val notifier = SystemReleaseNotifier(context)
-                val posted = notifier.postReleaseNotification(
-                    ReleaseEvent(
-                        gameId = 1942L,
-                        gameName = "The Witcher 3: Wild Hunt",
-                        eventType = NotificationEventType.RELEASE_TODAY,
-                        releaseDateEpochSeconds = System.currentTimeMillis() / 1000
-                    )
-                )
-                if (posted) {
-                    Toast.makeText(context, R.string.settings_notifications_test_sent, Toast.LENGTH_SHORT).show()
-                }
-            }
+            DebugNotificationActions.send(context)
         },
         onCheckReleasesNow = {
             ReleaseNotificationScheduler.triggerImmediateCheck(context)
@@ -118,7 +102,7 @@ fun SettingsScreen(
     onOpenGitHub: () -> Unit = {},
     onCheckReleasesNow: () -> Unit = {},
     onSendTestNotification: () -> Unit = {},
-    isSendTestNotificationVisible: Boolean = BuildConfig.DEBUG,
+    isSendTestNotificationVisible: Boolean = DebugNotificationActions.isVisible,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -196,7 +180,7 @@ fun SettingsScreen(
                         }
                     }
                     if (hasNotificationPermission) {
-                        if (BuildConfig.DEBUG && isSendTestNotificationVisible) {
+                        if (DebugNotificationActions.isVisible && isSendTestNotificationVisible) {
                             Spacer(modifier = Modifier.height(4.dp))
                             OutlinedButton(
                                 onClick = onSendTestNotification,

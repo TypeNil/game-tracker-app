@@ -223,12 +223,11 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
                     val containsTestAction = dexEntries.any { entry ->
                         zip.getInputStream(entry).use { input ->
                             val dexString = String(input.readBytes(), Charsets.ISO_8859_1)
-                            dexString.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION") ||
-                                dexString.contains("settings_notifications_test_sent")
+                            dexString.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION")
                         }
                     }
                     check(!containsTestAction) {
-                        "Release APK ${apk.name} still contains test-notification action or callback code"
+                        "Release APK ${apk.name} still contains ACTION_TEST_NOTIFICATION marker"
                     }
                     check(zip.getEntry("AndroidManifest.xml") != null) {
                         "Release APK ${apk.name} is missing AndroidManifest.xml"

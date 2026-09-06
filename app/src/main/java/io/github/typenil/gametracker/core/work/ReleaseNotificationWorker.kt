@@ -111,9 +111,8 @@ class ReleaseNotificationWorker @AssistedInject constructor(
     /**
      * Deduplicates and dispatches release events.
      * Delivery contract is at-least-once: notifications use deterministic IDs derived from
-     * (gameId, eventType) and `setOnlyAlertOnce(true)`. If process death occurs between dispatch
-     * and Room recording, subsequent retry updates the existing notification in place without
-     * re-alerting the user with repeated sound or vibration.
+     * (gameId, eventType) and `setOnlyAlertOnce(true)`. When the previous notification remains active,
+     * retry updates it without alerting again. If it was removed, at-least-once delivery may alert again.
      */
     private suspend fun dispatchAndRecordEvents(
         events: List<ReleaseEvent>,

@@ -77,18 +77,88 @@ class NetworkConnectivityPillAndroidTest {
     }
 
     @Test
+    fun initialUnavailable_doesNotShowBeforeDebounce() {
+        composeTestRule.mainClock.autoAdvance = false
+
+        val networkState = mutableStateOf(NetworkStatus.Unavailable)
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                NetworkConnectivityPill(networkStatus = networkState.value)
+            }
+        }
+        // Immediately upon initial composition, offline pill must not be visible
+        composeTestRule.mainClock.advanceTimeBy(500L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // After full debounce elapses, offline pill is displayed
+        composeTestRule.mainClock.advanceTimeBy(1_000L + 400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
+    }
+
+    @Test
+    fun enablingOfflinePillDuringPendingDebounce_doesNotBypassDelay() {
+        composeTestRule.mainClock.autoAdvance = false
+
+        val networkState = mutableStateOf(NetworkStatus.Unavailable)
+        val isOfflinePillEnabled = mutableStateOf(false)
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                NetworkConnectivityPill(
+                    networkStatus = networkState.value,
+                    isOfflinePillEnabled = isOfflinePillEnabled.value,
+                )
+            }
+        }
+        // Advance by 500ms while disabled
+        composeTestRule.mainClock.advanceTimeBy(500L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // Enable offline pill during pending debounce (e.g. user navigated to Discover)
+        composeTestRule.runOnIdle {
+            isOfflinePillEnabled.value = true
+        }
+        composeTestRule.mainClock.advanceTimeBy(300L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        // Must still be hidden because 1500ms total has not elapsed (800ms total)
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // Remaining 700ms plus enter animation completes debounce
+        composeTestRule.mainClock.advanceTimeBy(700L + 400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
+    }
+
+    @Test
     fun restoredPill_activityRecreation_preservesVisiblePillForRemainingDuration() {
         composeTestRule.mainClock.autoAdvance = false
         val restorationTester = StateRestorationTester(composeTestRule)
+
+        var elapsedRealtime = 10_000L
+        fun advanceBy(millis: Long) {
+            elapsedRealtime += millis
+            composeTestRule.mainClock.advanceTimeBy(millis)
+        }
 
         val networkState = mutableStateOf(NetworkStatus.Unavailable)
 
         restorationTester.setContent {
             GameTrackerTheme {
-                NetworkConnectivityPill(networkStatus = networkState.value)
+                NetworkConnectivityPill(
+                    networkStatus = networkState.value,
+                    elapsedRealtimeMillis = { elapsedRealtime },
+                )
             }
         }
-        composeTestRule.mainClock.advanceTimeBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS)
+        advanceBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS + 400L)
         composeTestRule.mainClock.advanceTimeByFrame()
 
         val restoredText = composeTestRule.activity.getString(R.string.connectivity_restored)
@@ -96,24 +166,30 @@ class NetworkConnectivityPillAndroidTest {
         composeTestRule.runOnIdle {
             networkState.value = NetworkStatus.Available
         }
-        // Advance past enter animation of restored pill
-        composeTestRule.mainClock.advanceTimeBy(400L)
+        // Advance past enter animation
+        advanceBy(400L)
         composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
 
-        // Advance by 1 second of the remaining 2.1s duration
-        composeTestRule.mainClock.advanceTimeBy(1_000L)
+        // Advance by 1 second of the duration
+        advanceBy(1_000L)
         composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
 
         // Emulate saved instance state restore (activity / composition recreation)
         restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.mainClock.advanceTimeByFrame()
 
         // Still visible immediately after restoration
         composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
 
-        // Advance remaining duration plus exit transition
-        composeTestRule.mainClock.advanceTimeBy(2_000L)
+        // Advance remaining duration (1.1s)
+        advanceBy(1_100L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
+
+        // Advance past deadline plus exit transition
+        advanceBy(1_000L)
         composeTestRule.waitForIdle()
 
         composeTestRule

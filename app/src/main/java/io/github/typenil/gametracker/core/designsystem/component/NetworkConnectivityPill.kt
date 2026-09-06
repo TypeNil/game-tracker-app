@@ -68,18 +68,21 @@ fun NetworkConnectivityPill(
     networkStatus: NetworkStatus,
     modifier: Modifier = Modifier,
     isOfflinePillEnabled: Boolean = true,
+    elapsedRealtimeMillis: () -> Long = SystemClock::elapsedRealtime,
 ) {
     var previousStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
     var mode by rememberSaveable(stateSaver = PillModeSaver) { mutableStateOf(PillMode.Hidden) }
     var displayedMode by rememberSaveable(stateSaver = PillModeSaver) { mutableStateOf(PillMode.Offline) }
     var restoredUntilMillis by rememberSaveable { mutableLongStateOf(0L) }
+    var offlineConfirmed by rememberSaveable { mutableStateOf(false) }
     if (mode != PillMode.Hidden) {
         displayedMode = mode
     }
     val offlinePillEnabled by rememberUpdatedState(isOfflinePillEnabled)
     LaunchedEffect(networkStatus) {
-        val now = SystemClock.elapsedRealtime()
+        val now = elapsedRealtimeMillis()
         if (mode == PillMode.Restored && networkStatus == NetworkStatus.Available && restoredUntilMillis > now) {
+            offlineConfirmed = false
             delay(restoredUntilMillis - now)
             if (mode == PillMode.Restored) {
                 mode = PillMode.Hidden
@@ -93,28 +96,32 @@ fun NetworkConnectivityPill(
 
         when {
             recovered -> {
+                offlineConfirmed = false
                 mode = PillMode.Restored
-                restoredUntilMillis = SystemClock.elapsedRealtime() + RESTORED_DISPLAY_DURATION_MILLIS
+                restoredUntilMillis = elapsedRealtimeMillis() + RESTORED_DISPLAY_DURATION_MILLIS
                 delay(RESTORED_DISPLAY_DURATION_MILLIS)
                 if (mode == PillMode.Restored) {
                     mode = PillMode.Hidden
                 }
             }
             networkStatus == NetworkStatus.Unavailable -> {
+                offlineConfirmed = false
                 delay(NETWORK_OFFLINE_DEBOUNCE_MILLIS)
+                offlineConfirmed = true
                 mode = if (offlinePillEnabled) PillMode.Offline else PillMode.Hidden
             }
-            else -> mode = PillMode.Hidden
+            else -> {
+                offlineConfirmed = false
+                mode = PillMode.Hidden
+            }
         }
     }
 
-    LaunchedEffect(isOfflinePillEnabled) {
-        if (networkStatus == NetworkStatus.Unavailable) {
-            if (!isOfflinePillEnabled && mode == PillMode.Offline) {
-                mode = PillMode.Hidden
-            } else if (isOfflinePillEnabled && mode == PillMode.Hidden && previousStatus == NetworkStatus.Unavailable) {
-                mode = PillMode.Offline
-            }
+    LaunchedEffect(isOfflinePillEnabled, offlineConfirmed) {
+        if (!isOfflinePillEnabled && mode == PillMode.Offline) {
+            mode = PillMode.Hidden
+        } else if (isOfflinePillEnabled && offlineConfirmed && networkStatus == NetworkStatus.Unavailable) {
+            mode = PillMode.Offline
         }
     }
 
