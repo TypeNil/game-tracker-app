@@ -290,4 +290,56 @@ class NetworkConnectivityPillAndroidTest {
             .onNodeWithTag(NETWORK_CONNECTIVITY_PILL_TAG)
             .assertDoesNotExist()
     }
+
+    @Test
+    fun pendingOfflineDebounce_activityRecreation_preservesRemainingDelay() {
+        composeTestRule.mainClock.autoAdvance = false
+        val restorationTester = StateRestorationTester(composeTestRule)
+
+        var elapsedRealtime = 10_000L
+        fun advanceBy(millis: Long) {
+            elapsedRealtime += millis
+            composeTestRule.mainClock.advanceTimeBy(millis)
+        }
+
+        val networkState = mutableStateOf(NetworkStatus.Available)
+
+        restorationTester.setContent {
+            GameTrackerTheme {
+                NetworkConnectivityPill(
+                    networkStatus = networkState.value,
+                    elapsedRealtimeMillis = { elapsedRealtime },
+                )
+            }
+        }
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+
+        // Drop network -> start debounce
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Unavailable
+        }
+        // Advance 1000ms out of the 1500ms debounce
+        advanceBy(1_000L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // Recreate activity mid-debounce
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        // Still hidden immediately after recreation (500ms remaining)
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // Advance 300ms (total 1300ms < 1500ms): still hidden!
+        advanceBy(300L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // Advance remaining 200ms + enter animation (400ms): now shown!
+        advanceBy(200L + 400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
+    }
 }
