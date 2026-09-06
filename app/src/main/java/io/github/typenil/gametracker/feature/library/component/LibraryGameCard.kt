@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -58,6 +60,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,6 +85,7 @@ import java.util.Locale
 private const val HERO_ASPECT_RATIO = 16f / 9f
 private val CardShape = RoundedCornerShape(16.dp)
 private val HeroShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+private val CardBottomShape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
 private val HeroScrim = Brush.verticalGradient(
     0.00f to Color.Transparent,
     0.35f to Color.Transparent,
@@ -109,6 +113,7 @@ const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
 const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
 const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
 const val LIBRARY_CARD_BANNER_TEST_TAG = "library_card_banner"
+const val LIBRARY_CARD_NOTES_TEST_TAG = "library_card_notes"
 
 const val LIBRARY_CARD_CLICK_TARGET_TEST_TAG = "library_card_click_target"
 internal fun resolveLibraryBannerUrl(
@@ -143,6 +148,7 @@ fun LibraryGameCard(
     onFavoriteClick: () -> Unit = {},
     onStatusSelected: (LibraryStatus) -> Unit = {},
     onHoursClick: () -> Unit = {},
+    onNotesClick: () -> Unit = {},
 ) {
     val game = libraryGame.game
     val entry = libraryGame.entry
@@ -407,7 +413,61 @@ fun LibraryGameCard(
                         }
                     }
                 }
+            val notes = entry.userNotes
+            if (!notes.isNullOrBlank()) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.padding(horizontal = 14.dp),
+                )
+                LibraryNotesPreview(
+                    notes = notes,
+                    onClick = onNotesClick,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun LibraryNotesPreview(
+    notes: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .sizeIn(minHeight = 48.dp)
+            .clip(CardBottomShape)
+            .clickable(
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .testTag(LIBRARY_CARD_NOTES_TEST_TAG)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Notes,
+            contentDescription = stringResource(R.string.library_personal_notes),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+            modifier = Modifier.size(MetaIconSize),
+        )
+        Text(
+            text = notes,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+            modifier = Modifier.size(MetaChevronSize),
+        )
     }
 }
 

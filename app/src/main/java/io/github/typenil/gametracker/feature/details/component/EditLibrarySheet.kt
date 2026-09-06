@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -97,6 +96,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -129,6 +129,8 @@ private val QUICK_HOURS_OFFSETS = listOf(1, 2, 5)
 private const val SHEET_MAX_HEIGHT_FRACTION = 0.94f
 
 const val EDIT_LIBRARY_RATING_BAR_TEST_TAG = "edit_library_rating_bar"
+const val EDIT_LIBRARY_SHEET_HEADER_TEST_TAG = "edit_library_sheet_header"
+const val EDIT_LIBRARY_NOTES_INPUT_TEST_TAG = "edit_library_notes_input"
 
 private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
     this.then(
@@ -153,11 +155,10 @@ fun EditLibrarySheet(
     actionsEnabled: Boolean = true,
 ) {
     var showConfirmDelete by rememberSaveable { mutableStateOf(false) }
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        dragHandle = { BottomSheetDefaults.DragHandle(modifier = Modifier.statusBarsPadding()) },
+        dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         modifier = modifier,
     ) {
@@ -176,7 +177,6 @@ fun EditLibrarySheet(
                 .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),
         )
     }
-
     if (showConfirmDelete && onRemove != null) {
         AlertDialog(
             onDismissRequest = { showConfirmDelete = false },
@@ -260,6 +260,7 @@ internal fun EditLibrarySheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
                 .padding(horizontal = GtDimens.Gutter, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -285,12 +286,17 @@ internal fun EditLibrarySheetContent(
             }
             IconButton(
                 onClick = onDismiss,
+                enabled = actionsEnabled,
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = stringResource(R.string.library_close),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (actionsEnabled) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    },
                 )
             }
         }
@@ -314,6 +320,7 @@ internal fun EditLibrarySheetContent(
                         selectedStatus = status
                     }
                 },
+                enabled = actionsEnabled,
             )
 
             // Section 2: Rating (1-10)
@@ -322,6 +329,7 @@ internal fun EditLibrarySheetContent(
                 onRatingSelected = { newRating ->
                     rating = newRating
                 },
+                enabled = actionsEnabled,
             )
 
             // Section 3: Hours Played (Conditional on status: PLAYING, COMPLETED, DROPPED)
@@ -350,6 +358,7 @@ internal fun EditLibrarySheetContent(
                                 hours = clamped
                             }
                         },
+                        enabled = actionsEnabled,
                     )
                 }
             }
@@ -392,6 +401,7 @@ internal fun EditLibrarySheetContent(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     isFavorite = newFavorite
                 },
+                enabled = actionsEnabled,
             )
 
             // Section 5: Personal Notes
@@ -416,6 +426,7 @@ internal fun EditLibrarySheetContent(
                     onDone = {
                         focusManager.clearFocus()
                     },
+                    enabled = actionsEnabled,
                 )
             }
         }
@@ -445,6 +456,7 @@ private fun StatusSelectionSection(
     selectedStatus: LibraryStatus,
     onStatusSelected: (LibraryStatus) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -469,6 +481,7 @@ private fun StatusSelectionSection(
                 FilterChip(
                     selected = isSelected,
                     onClick = { onStatusSelected(status) },
+                    enabled = enabled,
                     label = {
                         Text(
                             text = stringResource(status.displayNameRes()),
@@ -489,7 +502,7 @@ private fun StatusSelectionSection(
                         selectedLeadingIconColor = statusColor,
                     ),
                     border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
+                        enabled = enabled,
                         selected = isSelected,
                         borderColor = MaterialTheme.colorScheme.outlineVariant,
                         selectedBorderColor = statusColor,
@@ -507,6 +520,7 @@ private fun RatingSection(
     rating: Int?,
     onRatingSelected: (Int?) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val haptic = LocalHapticFeedback.current
@@ -551,6 +565,7 @@ private fun RatingSection(
             if (rating != null) {
                 TextButton(
                     onClick = { currentOnRatingSelected(null) },
+                    enabled = enabled,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     modifier = Modifier.height(32.dp),
                 ) {
@@ -567,24 +582,30 @@ private fun RatingSection(
                 .fillMaxWidth()
                 .selectableGroup()
                 .testTag(EDIT_LIBRARY_RATING_BAR_TEST_TAG)
-                .pointerInput(layoutDirection) {
-                    detectRatingScrub(
-                        layoutDirection = layoutDirection,
-                        onPreview = { previewRating ->
-                            if (previewRating != currentRating) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                currentOnRatingSelected(previewRating)
-                            }
-                        },
-                        onTapToggle = { tappedRating ->
-                            val next = if (tappedRating == currentRating) null else tappedRating
-                            if (next != currentRating) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            }
-                            currentOnRatingSelected(next)
-                        },
-                    )
-                },
+                .then(
+                    if (enabled) {
+                        Modifier.pointerInput(layoutDirection) {
+                            detectRatingScrub(
+                                layoutDirection = layoutDirection,
+                                onPreview = { previewRating ->
+                                    if (previewRating != currentRating) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        currentOnRatingSelected(previewRating)
+                                    }
+                                },
+                                onTapToggle = { tappedRating ->
+                                    val next = if (tappedRating == currentRating) null else tappedRating
+                                    if (next != currentRating) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    currentOnRatingSelected(next)
+                                },
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RATING_RANGE.forEach { value ->
@@ -610,13 +631,17 @@ private fun RatingSection(
                             contentDescription = cd
                             role = Role.RadioButton
                             selected = isSelected
-                            onClick {
-                                val next = if (isSelected) null else value
-                                if (next != currentRating) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            if (enabled) {
+                                onClick {
+                                    val next = if (isSelected) null else value
+                                    if (next != currentRating) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    currentOnRatingSelected(next)
+                                    true
                                 }
-                                currentOnRatingSelected(next)
-                                true
+                            } else {
+                                disabled()
                             }
                         },
                     contentAlignment = Alignment.Center,
@@ -731,6 +756,7 @@ private fun HoursPlayedSection(
     hours: Int,
     onHoursChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     var rawText by remember(hours) { mutableStateOf(hours.toString()) }
     val haptic = LocalHapticFeedback.current
@@ -755,7 +781,7 @@ private fun HoursPlayedSection(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onHoursChange(hours - 1)
                 },
-                enabled = hours > 0,
+                enabled = enabled && hours > 0,
                 shape = CircleShape,
                 modifier = Modifier.size(44.dp),
             ) {
@@ -779,6 +805,7 @@ private fun HoursPlayedSection(
                         }
                     }
                 },
+                enabled = enabled,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
@@ -798,7 +825,7 @@ private fun HoursPlayedSection(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onHoursChange(hours + 1)
                 },
-                enabled = hours < MAX_HOURS,
+                enabled = enabled && hours < MAX_HOURS,
                 shape = CircleShape,
                 modifier = Modifier.size(44.dp),
             ) {
@@ -828,6 +855,7 @@ private fun HoursPlayedSection(
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onHoursChange(hours + offset)
                     },
+                    enabled = enabled,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
@@ -850,11 +878,13 @@ private fun FavoriteToggleSection(
     isFavorite: Boolean,
     onFavoriteChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val heartColor = Color(0xFFE91E63)
 
     OutlinedCard(
         onClick = { onFavoriteChange(!isFavorite) },
+        enabled = enabled,
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(
             width = if (isFavorite) 1.5.dp else 1.dp,
@@ -910,6 +940,7 @@ private fun FavoriteToggleSection(
             Switch(
                 checked = isFavorite,
                 onCheckedChange = onFavoriteChange,
+                enabled = enabled,
             )
         }
     }
@@ -921,6 +952,7 @@ private fun PersonalNotesSection(
     onNotesChange: (String) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Column(modifier = modifier) {
         Row(
@@ -951,8 +983,10 @@ private fun PersonalNotesSection(
         OutlinedTextField(
             value = notes,
             onValueChange = onNotesChange,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
                 .heightIn(min = 72.dp, max = 130.dp),
             placeholder = {
                 Text(

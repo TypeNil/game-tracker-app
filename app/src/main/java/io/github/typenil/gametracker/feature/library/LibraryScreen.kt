@@ -40,6 +40,8 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
@@ -52,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -68,6 +71,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 
+import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
@@ -97,6 +101,9 @@ fun LibraryRoute(
         onHoursUpdated = viewModel::onHoursUpdated,
         onHoursSaveHandled = viewModel::onHoursSaveHandled,
         onCardVisible = viewModel::onCardVisible,
+        onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
+        onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
+        onLibraryMutationHandled = viewModel::onLibraryMutationHandled,
         modifier = modifier
     )
 }
@@ -119,10 +126,21 @@ fun LibraryScreen(
     onHoursSaveHandled: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     onCardVisible: (LibraryGame) -> Unit = {},
+    onSaveLibraryEntry: (
+        gameId: Long,
+        status: LibraryStatus,
+        rating: Int?,
+        hours: Int,
+        notes: String?,
+        isFavorite: Boolean,
+    ) -> Unit = { _, _, _, _, _, _ -> },
+    onRemoveFromLibrary: (Long) -> Unit = {},
+    onLibraryMutationHandled: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var editingGameId by rememberSaveable { mutableStateOf<Long?>(null) }
     val pagerState = rememberPagerState(
         initialPage = uiState.selectedTab.ordinal,
         pageCount = { LibraryTab.entries.size },
@@ -146,6 +164,20 @@ fun LibraryScreen(
             }
             is HoursSaveState.Failed -> {
                 onHoursSaveHandled()
+            }
+            else -> Unit
+        }
+    }
+    LaunchedEffect(uiState.libraryMutationState) {
+        when (val state = uiState.libraryMutationState) {
+            is LibraryMutationState.Saved -> {
+                if (editingGameId == state.gameId) {
+                    editingGameId = null
+                }
+                onLibraryMutationHandled()
+            }
+            is LibraryMutationState.Failed -> {
+                onLibraryMutationHandled()
             }
             else -> Unit
         }
@@ -407,6 +439,9 @@ fun LibraryScreen(
                                         onHoursClick = {
                                             editingHoursGameId = item.game.id
                                         },
+                                        onNotesClick = {
+                                            editingGameId = item.game.id
+                                        },
                                         modifier = Modifier.animateItem(),
                                     )
                                 }
@@ -436,6 +471,45 @@ fun LibraryScreen(
                 onHoursUpdated(targetGame.game.id, hours)
             },
             isSaving = isSaving,
+        )
+    }
+
+    val editingEntry = uiState.allGames.firstOrNull { it.game.id == editingGameId }?.entry
+    if (editingEntry != null) {
+        val isMutating = uiState.libraryMutationState is LibraryMutationState.Saving
+        val currentIsMutating = rememberUpdatedState(isMutating)
+        val confirmSheetValueChange = remember {
+            { target: SheetValue ->
+                target != SheetValue.Hidden || !currentIsMutating.value
+            }
+        }
+        val editSheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = confirmSheetValueChange,
+        )
+
+        EditLibrarySheet(
+            initialEntry = editingEntry,
+            sheetState = editSheetState,
+            onDismiss = {
+                if (!isMutating) {
+                    editingGameId = null
+                }
+            },
+            onSave = { status, rating, hours, notes, favorite ->
+                onSaveLibraryEntry(
+                    editingEntry.gameId,
+                    status,
+                    rating,
+                    hours,
+                    notes,
+                    favorite,
+                )
+            },
+            onRemove = {
+                onRemoveFromLibrary(editingEntry.gameId)
+            },
+            actionsEnabled = !isMutating,
         )
     }
 }

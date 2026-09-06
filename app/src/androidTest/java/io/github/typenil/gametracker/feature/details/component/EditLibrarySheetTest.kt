@@ -2,9 +2,18 @@ package io.github.typenil.gametracker.feature.details.component
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -12,8 +21,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -24,6 +36,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalMaterial3Api::class)
 class EditLibrarySheetTest {
 
     @get:Rule
@@ -243,5 +256,130 @@ class EditLibrarySheetTest {
         val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
         composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
         assertTrue(savedFavorite)
+    }
+
+    @Test
+    fun modalSheet_swipeDown_settlesAndDismissesOnce() {
+        var visible by mutableStateOf(true)
+        var dismissCount = 0
+        val existingEntry = LibraryEntry(
+            gameId = 1L,
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 15,
+            isFavorite = false,
+            addedAtEpochSeconds = 1_700_000_000L,
+            updatedAtEpochSeconds = 1_700_000_000L,
+        )
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                if (visible) {
+                    EditLibrarySheet(
+                        initialEntry = existingEntry,
+                        onDismiss = {
+                            dismissCount++
+                            visible = false
+                        },
+                        onSave = { _, _, _, _, _ -> },
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .performTouchInput {
+                val dragDistance = 400.dp.toPx()
+                swipe(
+                    start = center,
+                    end = center.copy(y = center.y + dragDistance),
+                    durationMillis = 300,
+                )
+            }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            dismissCount == 1
+        }
+        assertEquals(1, dismissCount)
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun headerCloseButton_isTrailingAligned() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { _, _, _, _, _ -> },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        val headerBounds = composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .getUnclippedBoundsInRoot()
+        val closeBounds = composeTestRule
+            .onNodeWithContentDescription(composeTestRule.activity.getString(R.string.library_close))
+            .getUnclippedBoundsInRoot()
+
+        // Close button must be aligned towards the trailing edge of the header (within gutter padding)
+        val trailingDelta = headerBounds.right - closeBounds.right
+        assertTrue(
+            "Close button right (${closeBounds.right}) should be near header right (${headerBounds.right}), delta=$trailingDelta",
+            trailingDelta <= GtDimens.Gutter + 4.dp,
+        )
+    }
+
+    @Test
+    fun editLibrarySheetContent_notesDraft_restoresAcrossSavedStateRecreation() {
+        val restorationTester = StateRestorationTester(composeTestRule)
+        val initialEntry = LibraryEntry(
+            gameId = 1L,
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 15,
+            isFavorite = false,
+            addedAtEpochSeconds = 1_700_000_000L,
+            updatedAtEpochSeconds = 1_700_000_000L,
+            userNotes = "Initial persisted note",
+        )
+
+        restorationTester.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = initialEntry,
+                        onDismiss = {},
+                        onSave = { _, _, _, _, _ -> },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        val draft = "Unsaved draft surviving process death"
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .performTextClearance()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .performTextInput(draft)
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains(draft)
+
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains(draft)
     }
 }

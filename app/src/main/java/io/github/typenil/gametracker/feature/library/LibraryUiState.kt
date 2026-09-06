@@ -17,6 +17,7 @@ data class LibraryUiState(
     val error: AppError? = null,
     val userMessageRes: Int? = null,
     val hoursSaveState: HoursSaveState = HoursSaveState.Idle,
+    val libraryMutationState: LibraryMutationState = LibraryMutationState.Idle,
 ) {
     val isCatalogEmpty: Boolean
         get() = !isLoading && error == null && allGames.isEmpty()
@@ -38,6 +39,13 @@ sealed interface HoursSaveState {
     data class Saving(val gameId: Long) : HoursSaveState
     data class Saved(val gameId: Long) : HoursSaveState
     data class Failed(val gameId: Long) : HoursSaveState
+}
+
+sealed interface LibraryMutationState {
+    data object Idle : LibraryMutationState
+    data class Saving(val gameId: Long) : LibraryMutationState
+    data class Saved(val gameId: Long) : LibraryMutationState
+    data class Failed(val gameId: Long) : LibraryMutationState
 }
 
 fun sortLibraryGames(

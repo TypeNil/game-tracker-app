@@ -69,6 +69,9 @@ class LibraryViewModel @Inject constructor(
     private val _sortOption = MutableStateFlow(LibrarySortOption.ADDED_DESC)
     private val _userMessageRes = MutableStateFlow<Int?>(null)
     private val _hoursSaveState = MutableStateFlow<HoursSaveState>(HoursSaveState.Idle)
+    private val _libraryMutationState =
+        MutableStateFlow<LibraryMutationState>(LibraryMutationState.Idle)
+    private var libraryMutationJob: Job? = null
 
     private val _filterState = combine(
         _selectedTab,
@@ -91,7 +94,8 @@ class LibraryViewModel @Inject constructor(
         _filterState,
         _userMessageRes,
         _hoursSaveState,
-    ) { gamesResult, filterState, userMessageRes, hoursSaveState ->
+        _libraryMutationState,
+    ) { gamesResult, filterState, userMessageRes, hoursSaveState, libraryMutationState ->
         when (gamesResult) {
             is AppResult.Success -> {
                 val allGames = gamesResult.data
@@ -115,6 +119,7 @@ class LibraryViewModel @Inject constructor(
                     isLoading = false,
                     userMessageRes = userMessageRes,
                     hoursSaveState = hoursSaveState,
+                    libraryMutationState = libraryMutationState,
                 )
             }
             is AppResult.Error -> LibraryUiState(
@@ -127,6 +132,7 @@ class LibraryViewModel @Inject constructor(
                 error = gamesResult.error,
                 userMessageRes = userMessageRes,
                 hoursSaveState = hoursSaveState,
+                libraryMutationState = libraryMutationState,
             )
         }
     }.stateIn(
@@ -203,6 +209,60 @@ class LibraryViewModel @Inject constructor(
 
     fun onHoursSaveHandled() {
         _hoursSaveState.value = HoursSaveState.Idle
+    }
+
+    fun onSaveLibraryEntry(
+        gameId: Long,
+        status: LibraryStatus,
+        userRating: Int?,
+        hoursPlayed: Int,
+        userNotes: String?,
+        isFavorite: Boolean,
+    ) {
+        if (libraryMutationJob?.isActive == true) return
+
+        _libraryMutationState.value = LibraryMutationState.Saving(gameId)
+        libraryMutationJob = viewModelScope.launch {
+            when (
+                libraryRepository.upsertUserEdits(
+                    gameId = gameId,
+                    status = status,
+                    userRating = userRating,
+                    hoursPlayed = hoursPlayed,
+                    userNotes = userNotes,
+                    isFavorite = isFavorite,
+                )
+            ) {
+                is AppResult.Success -> {
+                    _libraryMutationState.value = LibraryMutationState.Saved(gameId)
+                }
+                is AppResult.Error -> {
+                    _libraryMutationState.value = LibraryMutationState.Failed(gameId)
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
+    fun onRemoveFromLibrary(gameId: Long) {
+        if (libraryMutationJob?.isActive == true) return
+
+        _libraryMutationState.value = LibraryMutationState.Saving(gameId)
+        libraryMutationJob = viewModelScope.launch {
+            when (libraryRepository.removeGameFromLibrary(gameId)) {
+                is AppResult.Success -> {
+                    _libraryMutationState.value = LibraryMutationState.Saved(gameId)
+                }
+                is AppResult.Error -> {
+                    _libraryMutationState.value = LibraryMutationState.Failed(gameId)
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
+    fun onLibraryMutationHandled() {
+        _libraryMutationState.value = LibraryMutationState.Idle
     }
 
     fun onUserMessageShown() {

@@ -8,6 +8,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -21,6 +24,12 @@ import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOUR
 import io.github.typenil.gametracker.feature.library.component.QUICK_HOURS_DIALOG_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.QUICK_HOURS_INPUT_TEST_TAG
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
+import io.github.typenil.gametracker.feature.details.component.EDIT_LIBRARY_NOTES_INPUT_TEST_TAG
+import io.github.typenil.gametracker.feature.details.component.EDIT_LIBRARY_SHEET_HEADER_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_NOTES_TEST_TAG
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -47,6 +56,18 @@ class LibraryScreenTest {
             addedAtEpochSeconds = 1700000000L,
             updatedAtEpochSeconds = 1700000000L,
             hoursPlayed = 20,
+        )
+    )
+    private val hadesWithNotes = LibraryGame(
+        game = Game(id = 1L, name = "Hades", rating = 93.0),
+        entry = LibraryEntry(
+            gameId = 1L,
+            status = LibraryStatus.PLAYING,
+            isFavorite = true,
+            addedAtEpochSeconds = 1700000000L,
+            updatedAtEpochSeconds = 1700000000L,
+            hoursPlayed = 20,
+            userNotes = "Initial note",
         )
     )
 
@@ -304,6 +325,271 @@ class LibraryScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag(QUICK_HOURS_DIALOG_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun libraryScreen_failedLibrarySave_keepsSheetAndNotesDraft() {
+        var currentUiState by mutableStateOf(
+            LibraryUiState(
+                allGames = listOf(hadesWithNotes),
+                filteredGames = listOf(hadesWithNotes),
+                selectedTab = LibraryTab.ALL,
+                tabCounts = mapOf(LibraryTab.ALL to 1),
+                isLoading = false,
+            ),
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = currentUiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+
+        val uniqueDraft = "Unique draft note that must survive failure"
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).performTextClearance()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).performTextInput(uniqueDraft)
+
+        currentUiState = currentUiState.copy(
+            libraryMutationState = LibraryMutationState.Failed(hadesWithNotes.game.id),
+            userMessageRes = R.string.error_library_update_failed,
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(uniqueDraft).assertIsDisplayed()
+    }
+
+    @Test
+    fun libraryScreen_successfulLibrarySave_closesSheet() {
+        var currentUiState by mutableStateOf(
+            LibraryUiState(
+                allGames = listOf(hadesWithNotes),
+                filteredGames = listOf(hadesWithNotes),
+                selectedTab = LibraryTab.ALL,
+                tabCounts = mapOf(LibraryTab.ALL to 1),
+                isLoading = false,
+            ),
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = currentUiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+
+        currentUiState = currentUiState.copy(
+            libraryMutationState = LibraryMutationState.Saved(hadesWithNotes.game.id),
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun libraryScreen_editingSheetState_restoresAcrossSavedStateRecreation() {
+        val restorationTester = StateRestorationTester(composeTestRule)
+        restorationTester.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = LibraryUiState(
+                        allGames = listOf(hadesWithNotes),
+                        filteredGames = listOf(hadesWithNotes),
+                        selectedTab = LibraryTab.ALL,
+                        tabCounts = mapOf(LibraryTab.ALL to 1),
+                        isLoading = false,
+                    ),
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG)
+            .performClick()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains("Initial note")
+
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.waitForIdle()
+
+        // Verify editing sheet and its input survive process recreation via editingGameId rememberSaveable
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertExists()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains("Initial note")
+    }
+
+    @Test
+    fun libraryScreen_savingState_disablesActionsAndPreventsDismissal() {
+        var currentUiState by mutableStateOf(
+            LibraryUiState(
+                allGames = listOf(hadesWithNotes),
+                filteredGames = listOf(hadesWithNotes),
+                selectedTab = LibraryTab.ALL,
+                tabCounts = mapOf(LibraryTab.ALL to 1),
+                isLoading = false,
+            ),
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = currentUiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+        val initialNote = "Note before in-flight save"
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).performTextClearance()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).performTextInput(initialNote)
+
+        currentUiState = currentUiState.copy(
+            libraryMutationState = LibraryMutationState.Saving(hadesWithNotes.game.id),
+        )
+        composeTestRule.waitForIdle()
+
+        // 1. Assert Save and Close buttons are disabled
+        val saveText = composeTestRule.activity.getString(R.string.library_save)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).assertIsNotEnabled()
+
+        val closeDesc = composeTestRule.activity.getString(R.string.library_close)
+        composeTestRule.onNodeWithContentDescription(closeDesc).assertIsNotEnabled()
+
+        // 2. Assert Notes input is disabled
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).assertIsNotEnabled()
+
+        // 3. Swipe down is prevented by confirmValueChange
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .performTouchInput {
+                val dragDistance = 400.dp.toPx()
+                swipe(
+                    start = center,
+                    end = center.copy(y = center.y + dragDistance),
+                    durationMillis = 300,
+                )
+            }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(initialNote).assertIsDisplayed()
+
+        // 4. On failure, sheet and draft remain intact
+        currentUiState = currentUiState.copy(
+            libraryMutationState = LibraryMutationState.Failed(hadesWithNotes.game.id),
+            userMessageRes = R.string.error_library_update_failed,
+        )
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(initialNote).assertIsDisplayed()
+    }
+
+    @Test
+    fun libraryScreen_closeWhileSaving_doesNotDismiss_thenFailureKeepsDraft() {
+        var currentUiState by mutableStateOf(
+            LibraryUiState(
+                allGames = listOf(hadesWithNotes),
+                filteredGames = listOf(hadesWithNotes),
+                selectedTab = LibraryTab.ALL,
+                tabCounts = mapOf(LibraryTab.ALL to 1),
+                isLoading = false,
+            ),
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = currentUiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).performClick()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+
+        val draftNote = "Draft note that must survive failed save after attempted close"
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).performTextClearance()
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).performTextInput(draftNote)
+
+        currentUiState = currentUiState.copy(
+            libraryMutationState = LibraryMutationState.Saving(hadesWithNotes.game.id),
+        )
+        composeTestRule.waitForIdle()
+
+        // Click close button while saving
+        val closeDesc = composeTestRule.activity.getString(R.string.library_close)
+        composeTestRule.onNodeWithContentDescription(closeDesc).performClick()
+        composeTestRule.waitForIdle()
+
+        // Sheet and draft note must still be displayed
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(draftNote).assertIsDisplayed()
+
+        // After failure, sheet and draft remain intact
+        currentUiState = currentUiState.copy(
+            libraryMutationState = LibraryMutationState.Failed(hadesWithNotes.game.id),
+            userMessageRes = R.string.error_library_update_failed,
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText(draftNote).assertIsDisplayed()
     }
 
 }
