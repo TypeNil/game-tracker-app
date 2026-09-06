@@ -13,10 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
 import io.github.typenil.gametracker.navigation.AppNavHost
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var networkMonitor: NetworkMonitor
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.beginSection(TRACE_MAIN_ACTIVITY_ON_CREATE)
@@ -31,7 +36,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        AppNavHost()
+                        AppNavHost(networkMonitor = networkMonitor)
                     }
                 }
             }

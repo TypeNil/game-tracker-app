@@ -2,6 +2,10 @@ package io.github.typenil.gametracker.feature.details
 
 import app.cash.turbine.test
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
+import io.mockk.every
+import io.mockk.mockk
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
@@ -150,6 +154,55 @@ class GameDetailsViewModelTest {
             assertEquals(R.string.error_refresh_failed, state.userMessageRes)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `network reconnect triggers forced refresh when game is not hydrated`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        networkStatus.value = NetworkStatus.Available
+
+        assertEquals(
+            listOf(1942L to false, 1942L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `network reconnect does not trigger refresh when already hydrated without error`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        networkStatus.value = NetworkStatus.Available
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
     }
 
     @Test

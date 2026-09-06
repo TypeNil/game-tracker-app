@@ -258,4 +258,12 @@
     <string name="settings_app_version">Version %1$s (%2$s)</string>
     <string name="settings_github_link">GitHub Repository</string>
     <string name="settings_github_open_error">No app available to open this link.</string>
+
+    <!-- Connectivity Status Pill -->
+    <string name="connectivity_offline">Offline — showing cached data</string>
+    <string name="connectivity_restored">Back online</string>
+
+    <!-- Release Notification Manual Check -->
+    <string name="settings_notifications_check_now">Check Releases Now</string>
+    <string name="settings_notifications_check_triggered">Checking tracked game releases in background…</string>
 </resources>

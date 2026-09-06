@@ -53,6 +53,7 @@ class ReleaseNotificationSchedulerAndroidTest {
     @After
     fun tearDown() {
         workManager.cancelUniqueWork(ReleaseNotificationScheduler.WORK_NAME)
+        workManager.cancelUniqueWork(ReleaseNotificationScheduler.IMMEDIATE_WORK_NAME)
     }
 
     @Test
@@ -93,6 +94,19 @@ class ReleaseNotificationSchedulerAndroidTest {
                 after.state == WorkInfo.State.RUNNING ||
                 after.state == WorkInfo.State.SUCCEEDED
         )
+    }
+
+    @Test
+    fun triggerImmediateCheck_enqueuesUniqueOneTimeWorkWithConnectedConstraint() {
+        ReleaseNotificationScheduler.triggerImmediateCheck(context)
+
+        val workInfos = workManager.getWorkInfosForUniqueWork(ReleaseNotificationScheduler.IMMEDIATE_WORK_NAME).get()
+        assertNotNull(workInfos)
+        assertTrue(workInfos.isNotEmpty())
+        val workInfo = workInfos.first()
+        assertEquals(WorkInfo.State.ENQUEUED, workInfo.state)
+        assertTrue(workInfo.tags.contains(ReleaseNotificationWorker::class.java.name))
+        assertEquals(NetworkType.CONNECTED, workInfo.constraints.requiredNetworkType)
     }
 
     private fun requireUniqueWork(): WorkInfo {

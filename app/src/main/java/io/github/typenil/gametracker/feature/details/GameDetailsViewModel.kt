@@ -23,24 +23,29 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.reconnects
 import javax.inject.Inject
-
+@Suppress("TooManyFunctions")
 @HiltViewModel
-class GameDetailsViewModel(
+class GameDetailsViewModel internal constructor(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
-    val gameId: Long
+    val gameId: Long,
+    private val networkMonitor: NetworkMonitor? = null,
 ) : ViewModel() {
 
     @Inject
     constructor(
         gameRepository: GameRepository,
         libraryRepository: LibraryRepository,
-        savedStateHandle: SavedStateHandle
+        savedStateHandle: SavedStateHandle,
+        networkMonitor: NetworkMonitor,
     ) : this(
         gameRepository,
         libraryRepository,
-        savedStateHandle.toRoute<GameDetailsKey>().gameId
+        savedStateHandle.toRoute<GameDetailsKey>().gameId,
+        networkMonitor,
     )
 
     private val _flags = MutableStateFlow(DetailsInternalFlags())
@@ -94,6 +99,7 @@ class GameDetailsViewModel(
     init {
         refreshDetails(force = false)
         observeEviction()
+        observeNetworkReconnect()
     }
 
     /** Pull-to-refresh. */
@@ -252,6 +258,24 @@ class GameDetailsViewModel(
                     refreshDetails(force = true)
                 }
                 wasHydrated = hydrated
+            }
+        }
+    }
+
+    /**
+     * Reconnect guard: when device connectivity transitions Unavailable -> Available,
+     * automatically refetch full details if the current state is unhydrated (skeleton)
+     * or the previous refresh completed with an error.
+     */
+    private fun observeNetworkReconnect() {
+        val monitor = networkMonitor ?: return
+        viewModelScope.launch {
+            monitor.status.reconnects().collect {
+                val isHydrated = gameRepository.isGameDetailsHydratedFlow(gameId).first()
+                val lastFailed = _flags.value.message?.first != null
+                if (!isHydrated || lastFailed) {
+                    refreshDetails(force = true)
+                }
             }
         }
     }

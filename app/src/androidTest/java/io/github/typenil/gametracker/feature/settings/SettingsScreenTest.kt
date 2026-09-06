@@ -70,6 +70,29 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun notificationsEnabled_showsCheckReleasesNow_andInvokesCallback() {
+        var checkClicked = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = true,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    onOpenGitHub = {},
+                    onCheckReleasesNow = { checkClicked = true }
+                )
+            }
+        }
+
+        val checkNowLabel = composeTestRule.activity.getString(R.string.settings_notifications_check_now)
+        composeTestRule.onNodeWithText(checkNowLabel).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle { assertTrue(checkClicked) }
+    }
+
+    @Test
     fun appInfoCard_andGitHubLink_areDisplayedAndClickable() {
         var githubClicked = false
         setContent(onOpenGitHub = { githubClicked = true })
