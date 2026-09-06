@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -28,6 +31,7 @@ import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
 import io.github.typenil.gametracker.core.connectivity.reconnects
 import javax.inject.Inject
 @Suppress("TooManyFunctions")
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GameDetailsViewModel internal constructor(
     private val gameRepository: GameRepository,
@@ -49,15 +53,21 @@ class GameDetailsViewModel internal constructor(
         networkMonitor,
     )
 
+    private val screenStarted = MutableStateFlow(false)
     private val _flags = MutableStateFlow(DetailsInternalFlags())
     private val initialPreview: GameDetails? = gameRepository.getInitialGameDetails(gameId)
 
+    fun onScreenStarted() {
+        screenStarted.value = true
+    }
+
+    fun onScreenStopped() {
+        screenStarted.value = false
+    }
 
     /**
-     * Lazily (not WhileSubscribed): this screen pushes another copy of itself onto
-     * the back stack via similar games; a 5s sharing timeout would tear the pipeline
-     * down while covered and re-run it on pop. Refresh is init-triggered and TTL-gated
-     * in the repository, so a warm upstream never re-fetches on return.
+     * WhileSubscribed(5_000): stops collecting Room and library pipelines when covered
+     * in the back stack, avoiding redundant work while another destination is active.
      */
     val uiState: StateFlow<GameDetailsUiState> = combine(
         gameRepository.getGameDetailsFlow(gameId),
@@ -94,7 +104,7 @@ class GameDetailsViewModel internal constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
+        started = SharingStarted.WhileSubscribed(5_000),
         initialValue = GameDetailsUiState(
             game = initialPreview,
             isLoading = initialPreview == null
@@ -277,12 +287,16 @@ class GameDetailsViewModel internal constructor(
     private fun observeEviction() {
         viewModelScope.launch {
             var wasHydrated = false
-            gameRepository.isGameDetailsHydratedFlow(gameId).collect { hydrated ->
-                if (wasHydrated && !hydrated) {
-                    refreshDetails(force = true)
+            screenStarted
+                .flatMapLatest { started ->
+                    if (started) gameRepository.isGameDetailsHydratedFlow(gameId) else emptyFlow()
                 }
-                wasHydrated = hydrated
-            }
+                .collect { hydrated ->
+                    if (wasHydrated && !hydrated) {
+                        refreshDetails(force = true)
+                    }
+                    wasHydrated = hydrated
+                }
         }
     }
 
@@ -300,17 +314,21 @@ class GameDetailsViewModel internal constructor(
     private fun observeNetworkReconnect() {
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
-            monitor.status.reconnects().collect {
-                refreshJob?.join()
-                val shouldRecover =
-                    !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
-                        _flags.value.lastDetailsRefreshFailed
-                if (shouldRecover) {
-                    refreshDetails(force = true)
-                } else {
-                    incrementImageReloadToken()
+            screenStarted
+                .flatMapLatest { started ->
+                    if (started) monitor.status.reconnects() else emptyFlow()
                 }
-            }
+                .collect {
+                    refreshJob?.join()
+                    val shouldRecover =
+                        !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
+                            _flags.value.lastDetailsRefreshFailed
+                    if (shouldRecover) {
+                        refreshDetails(force = true)
+                    } else {
+                        incrementImageReloadToken()
+                    }
+                }
         }
     }
 

@@ -9,11 +9,18 @@ import io.github.typenil.gametracker.feature.details.GameDetailsRoute
 
 /**
  * Extension for navigating to the Game Details screen.
- * No launchSingleTop: similar games push new details destinations with
- * different ids, and stacking is the intended behavior.
+ * Uses launchSingleTop = true to prevent pushing duplicate instances of the
+ * exact same gameId consecutively (e.g. rapid double-tap), while still allowing
+ * normal backstack accumulation when drilling down into different similar games.
  */
 fun NavController.navigateToGameDetails(gameId: Long, navOptions: NavOptions? = null) {
-    navigate(route = GameDetailsKey(gameId = gameId), navOptions = navOptions)
+    if (navOptions != null) {
+        navigate(route = GameDetailsKey(gameId = gameId), navOptions = navOptions)
+    } else {
+        navigate(route = GameDetailsKey(gameId = gameId)) {
+            launchSingleTop = true
+        }
+    }
 }
 
 /**

@@ -155,6 +155,25 @@ fun EditLibrarySheet(
     actionsEnabled: Boolean = true,
 ) {
     var showConfirmDelete by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val latestOnDismiss by rememberUpdatedState(onDismiss)
+    var isDismissing by remember { mutableStateOf(false) }
+
+    fun dismissAnimated() {
+        if (isDismissing) return
+        isDismissing = true
+        scope.launch {
+            try {
+                sheetState.hide()
+                if (!sheetState.isVisible) {
+                    latestOnDismiss()
+                }
+            } finally {
+                isDismissing = false
+            }
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -164,14 +183,14 @@ fun EditLibrarySheet(
     ) {
         EditLibrarySheetContent(
             initialEntry = initialEntry,
-            onDismiss = onDismiss,
+            onDismiss = ::dismissAnimated,
             onSave = onSave,
             onDeleteClick = if (onRemove != null && initialEntry != null) {
                 { showConfirmDelete = true }
             } else {
                 null
             },
-            actionsEnabled = actionsEnabled,
+            actionsEnabled = actionsEnabled && !isDismissing,
             modifier = Modifier
                 .fillMaxWidth()
                 .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),

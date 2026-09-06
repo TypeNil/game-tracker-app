@@ -42,6 +42,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class GameDetailsViewModelTest {
 
     @get:Rule
@@ -84,7 +85,7 @@ class GameDetailsViewModelTest {
             gameRepository = fakeGameRepository,
             libraryRepository = fakeLibraryRepository,
             gameId = gameId
-        )
+        ).apply { onScreenStarted() }
     }
 
     @Test
@@ -232,6 +233,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -258,6 +260,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -284,6 +287,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -316,6 +320,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -351,6 +356,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -368,6 +374,49 @@ class GameDetailsViewModelTest {
 
         // Details refresh must not be triggered by unrelated library error
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+    }
+
+    @Test
+    fun `onlyStartedStackEntryRefreshesOnReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        // Covered screen in back stack: started then stopped
+        val coveredViewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 100L,
+            networkMonitor = networkMonitor,
+        )
+        coveredViewModel.onScreenStarted()
+        coveredViewModel.onScreenStopped()
+
+        // Active top screen: started
+        val activeViewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 200L,
+            networkMonitor = networkMonitor,
+        )
+        activeViewModel.onScreenStarted()
+
+        assertEquals(
+            listOf(100L to false, 200L to false),
+            fakeGameRepository.refreshCalls
+        )
+
+        // Network recovers
+        networkStatus.value = NetworkStatus.Available
+
+        // ONLY the active screen refreshes, the covered screen does NOT refresh
+        assertEquals(
+            listOf(100L to false, 200L to false, 200L to true),
+            fakeGameRepository.refreshCalls
+        )
     }
     @Test
     fun `initialNonForcedRefresh_doesNotIncrementImageReloadToken`() = runTest {
@@ -398,6 +447,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         viewModel.uiState.test {
             val initial = awaitItem()
@@ -426,6 +476,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         viewModel.uiState.test {
             val initial = awaitItem()

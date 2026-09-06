@@ -33,6 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,6 +71,24 @@ fun SearchFilterSheet(
     var draftFilters by rememberSaveable(stateSaver = SearchFilters.Saver) { mutableStateOf(initialFilters) }
     var isGenresExpanded by rememberSaveable { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val latestOnDismiss by rememberUpdatedState(onDismiss)
+    var isDismissing by remember { mutableStateOf(false) }
+
+    fun dismissAnimated() {
+        if (isDismissing) return
+        isDismissing = true
+        scope.launch {
+            try {
+                sheetState.hide()
+                if (!sheetState.isVisible) {
+                    latestOnDismiss()
+                }
+            } finally {
+                isDismissing = false
+            }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -327,7 +348,11 @@ fun SearchFilterSheet(
                     .padding(GtDimens.Gutter),
             ) {
                 Button(
-                    onClick = { onApply(draftFilters) },
+                    onClick = {
+                        onApply(draftFilters)
+                        dismissAnimated()
+                    },
+                    enabled = !isDismissing,
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 48.dp),

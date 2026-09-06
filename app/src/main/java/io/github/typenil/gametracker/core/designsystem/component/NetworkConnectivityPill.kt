@@ -75,9 +75,6 @@ fun NetworkConnectivityPill(
     var restoredUntilMillis by rememberSaveable { mutableLongStateOf(0L) }
     var offlineConfirmed by rememberSaveable { mutableStateOf(false) }
     var offlineConfirmAtMillis by rememberSaveable { mutableLongStateOf(0L) }
-    if (mode != PillMode.Hidden) {
-        displayedMode = mode
-    }
     val offlinePillEnabled by rememberUpdatedState(isOfflinePillEnabled)
     LaunchedEffect(networkStatus) {
         val now = elapsedRealtimeMillis()
@@ -93,6 +90,7 @@ fun NetworkConnectivityPill(
             networkStatus == NetworkStatus.Available && offlineConfirmed -> {
                 offlineConfirmAtMillis = 0L
                 offlineConfirmed = false
+                displayedMode = PillMode.Restored
                 mode = PillMode.Restored
                 restoredUntilMillis = elapsedRealtimeMillis() + RESTORED_DISPLAY_DURATION_MILLIS
 
@@ -117,13 +115,13 @@ fun NetworkConnectivityPill(
                         delay(remainingMillis)
                     }
                 }
-
                 offlineConfirmAtMillis = 0L
                 offlineConfirmed = true
-                mode = if (offlinePillEnabled) {
-                    PillMode.Offline
+                if (offlinePillEnabled) {
+                    displayedMode = PillMode.Offline
+                    mode = PillMode.Offline
                 } else {
-                    PillMode.Hidden
+                    mode = PillMode.Hidden
                 }
             }
 
@@ -138,6 +136,7 @@ fun NetworkConnectivityPill(
         if (!isOfflinePillEnabled && mode == PillMode.Offline) {
             mode = PillMode.Hidden
         } else if (isOfflinePillEnabled && offlineConfirmed && networkStatus == NetworkStatus.Unavailable) {
+            displayedMode = PillMode.Offline
             mode = PillMode.Offline
         }
     }

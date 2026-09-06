@@ -125,6 +125,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleStartEffect
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
@@ -197,8 +198,14 @@ fun GameDetailsRoute(
     onGameClick: (Long) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: GameDetailsViewModel = hiltViewModel()
+    viewModel: GameDetailsViewModel = hiltViewModel(),
 ) {
+    LifecycleStartEffect(viewModel) {
+        viewModel.onScreenStarted()
+        onStopOrDispose {
+            viewModel.onScreenStopped()
+        }
+    }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     GameDetailsScreen(
         uiState = uiState,
