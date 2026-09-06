@@ -231,8 +231,18 @@ class GameDetailsViewModel internal constructor(
 
             try {
                 when (val result = gameRepository.refreshGameDetails(gameId, force = force)) {
-                    is AppResult.Success -> _flags.update { it.copy(message = null) }
-                    is AppResult.Error -> _flags.update { it.copy(message = result.error to null) }
+                    is AppResult.Success -> _flags.update {
+                        it.copy(
+                            message = null,
+                            lastDetailsRefreshFailed = false,
+                        )
+                    }
+                    is AppResult.Error -> _flags.update {
+                        it.copy(
+                            message = result.error to null,
+                            lastDetailsRefreshFailed = true,
+                        )
+                    }
                 }
             } finally {
                 if (isUserPullRefresh) {
@@ -271,9 +281,11 @@ class GameDetailsViewModel internal constructor(
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
             monitor.status.reconnects().collect {
-                val isHydrated = gameRepository.isGameDetailsHydratedFlow(gameId).first()
-                val lastFailed = _flags.value.message?.first != null
-                if (!isHydrated || lastFailed) {
+                refreshJob?.join()
+                val shouldRecover =
+                    !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
+                        _flags.value.lastDetailsRefreshFailed
+                if (shouldRecover) {
                     refreshDetails(force = true)
                 }
             }
@@ -285,7 +297,8 @@ class GameDetailsViewModel internal constructor(
         val isRefreshing: Boolean = false,
         val isEditingLibrary: Boolean = false,
         val isSubmitting: Boolean = false,
-        val message: Pair<AppError?, Int?>? = null
+        val message: Pair<AppError?, Int?>? = null,
+        val lastDetailsRefreshFailed: Boolean = false,
     )
 
 

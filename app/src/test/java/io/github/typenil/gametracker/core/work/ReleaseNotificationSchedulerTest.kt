@@ -18,12 +18,12 @@ class ReleaseNotificationSchedulerTest {
     private val workManager: WorkManager = mockk(relaxed = true)
 
     @Test
-    fun triggerImmediateCheck_enqueuesUniqueWorkWithReplacePolicy() {
+    fun triggerImmediateCheck_enqueuesUniqueWorkWithKeepPolicy() {
         val requestSlot = slot<OneTimeWorkRequest>()
         every {
             workManager.enqueueUniqueWork(
                 ReleaseNotificationScheduler.IMMEDIATE_WORK_NAME,
-                ExistingWorkPolicy.REPLACE,
+                ExistingWorkPolicy.KEEP,
                 capture(requestSlot)
             )
         } returns mockk(relaxed = true)
@@ -33,7 +33,7 @@ class ReleaseNotificationSchedulerTest {
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
                 ReleaseNotificationScheduler.IMMEDIATE_WORK_NAME,
-                ExistingWorkPolicy.REPLACE,
+                ExistingWorkPolicy.KEEP,
                 any<OneTimeWorkRequest>()
             )
         }

@@ -206,6 +206,110 @@ class GameDetailsViewModelTest {
     }
 
     @Test
+    fun `reconnectDuringFailedInFlightRefresh_retriesAfterRefreshCompletes`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val gate = CompletableDeferred<Unit>()
+        fakeGameRepository.delayRefresh = gate
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        // Network recovers while initial refresh is still in-flight
+        networkStatus.value = NetworkStatus.Available
+
+        // Complete initial refresh with failure
+        gate.complete(Unit)
+
+        // Observe network reconnect joins the in-flight job and retries after failure
+        assertEquals(
+            listOf(1942L to false, 1942L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `dismissedRefreshError_stillRecoversOnReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        // Consumable UI message is dismissed by the user
+        viewModel.onUserMessageShown()
+
+        // Next refresh will succeed
+        fakeGameRepository.refreshResult = AppResult.Success(Unit)
+
+        // Reconnect happens
+        networkStatus.value = NetworkStatus.Available
+
+        // Durable lastDetailsRefreshFailed still triggers recovery even after message was dismissed
+        assertEquals(
+            listOf(1942L to false, 1942L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `libraryError_doesNotTriggerDetailsRefreshOnReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeLibraryRepository.saveResult = AppResult.Error(AppError.NetworkError)
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        // Trigger a library mutation error
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.PLAYING,
+            userRating = 9,
+            hoursPlayed = 10,
+            userNotes = "Notes",
+            isFavorite = false
+        )
+
+        // Network recovers
+        networkStatus.value = NetworkStatus.Available
+
+        // Details refresh must not be triggered by unrelated library error
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+    }
+
+    @Test
     fun `pull-to-refresh shows isRefreshing and forces network refresh`() = runTest {
         val viewModel = createViewModel()
 

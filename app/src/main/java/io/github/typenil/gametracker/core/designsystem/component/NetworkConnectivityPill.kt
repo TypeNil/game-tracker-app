@@ -24,10 +24,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -62,24 +63,31 @@ fun NetworkConnectivityPill(
 ) {
     var previousStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
     var mode by remember { mutableStateOf(PillMode.Hidden) }
+    val offlinePillEnabled by rememberUpdatedState(isOfflinePillEnabled)
 
-    LaunchedEffect(networkStatus, isOfflinePillEnabled) {
+    LaunchedEffect(networkStatus) {
         val recovered = previousStatus == NetworkStatus.Unavailable &&
             networkStatus == NetworkStatus.Available
         previousStatus = networkStatus
 
-        if (recovered) {
-            mode = PillMode.Restored
-            delay(RESTORED_DISPLAY_DURATION_MILLIS)
-            mode = PillMode.Hidden
-        } else if (networkStatus == NetworkStatus.Unavailable && isOfflinePillEnabled) {
-            mode = PillMode.Offline
-        } else if (networkStatus == NetworkStatus.Available) {
-            if (mode != PillMode.Restored) {
-                mode = PillMode.Hidden
+        when {
+            recovered -> {
+                mode = PillMode.Restored
+                delay(RESTORED_DISPLAY_DURATION_MILLIS)
+                if (mode == PillMode.Restored) {
+                    mode = PillMode.Hidden
+                }
             }
-        } else if (!isOfflinePillEnabled && mode == PillMode.Offline) {
-            mode = PillMode.Hidden
+            networkStatus == NetworkStatus.Unavailable -> {
+                mode = if (offlinePillEnabled) PillMode.Offline else PillMode.Hidden
+            }
+            else -> mode = PillMode.Hidden
+        }
+    }
+
+    LaunchedEffect(isOfflinePillEnabled) {
+        if (networkStatus == NetworkStatus.Unavailable) {
+            mode = if (isOfflinePillEnabled) PillMode.Offline else PillMode.Hidden
         }
     }
 
