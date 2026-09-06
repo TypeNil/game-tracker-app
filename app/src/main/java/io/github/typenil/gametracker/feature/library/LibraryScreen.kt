@@ -68,7 +68,6 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 
-import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -101,6 +100,7 @@ fun LibraryRoute(
         onCardVisible = viewModel::onCardVisible,
         onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
         onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
+        onLibraryMutationHandled = viewModel::onLibraryMutationHandled,
         modifier = modifier
     )
 }
@@ -132,11 +132,12 @@ fun LibraryScreen(
         isFavorite: Boolean,
     ) -> Unit = { _, _, _, _, _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
+    onLibraryMutationHandled: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var editingEntry by remember { mutableStateOf<LibraryEntry?>(null) }
+    var editingGameId by rememberSaveable { mutableStateOf<Long?>(null) }
     val pagerState = rememberPagerState(
         initialPage = uiState.selectedTab.ordinal,
         pageCount = { LibraryTab.entries.size },
@@ -160,6 +161,20 @@ fun LibraryScreen(
             }
             is HoursSaveState.Failed -> {
                 onHoursSaveHandled()
+            }
+            else -> Unit
+        }
+    }
+    LaunchedEffect(uiState.libraryMutationState) {
+        when (val state = uiState.libraryMutationState) {
+            is LibraryMutationState.Saved -> {
+                if (editingGameId == state.gameId) {
+                    editingGameId = null
+                }
+                onLibraryMutationHandled()
+            }
+            is LibraryMutationState.Failed -> {
+                onLibraryMutationHandled()
             }
             else -> Unit
         }
@@ -422,7 +437,7 @@ fun LibraryScreen(
                                             editingHoursGameId = item.game.id
                                         },
                                         onNotesClick = {
-                                            editingEntry = item.entry
+                                            editingGameId = item.game.id
                                         },
                                         modifier = Modifier.animateItem(),
                                     )
@@ -456,26 +471,30 @@ fun LibraryScreen(
         )
     }
 
-    val currentEditing = editingEntry
-    if (currentEditing != null) {
+    val editingEntry = uiState.allGames.firstOrNull { it.game.id == editingGameId }?.entry
+    if (editingEntry != null) {
+        val isMutating = uiState.libraryMutationState is LibraryMutationState.Saving
         EditLibrarySheet(
-            initialEntry = currentEditing,
-            onDismiss = { editingEntry = null },
+            initialEntry = editingEntry,
+            onDismiss = {
+                if (!isMutating) {
+                    editingGameId = null
+                }
+            },
             onSave = { status, rating, hours, notes, favorite ->
                 onSaveLibraryEntry(
-                    currentEditing.gameId,
+                    editingEntry.gameId,
                     status,
                     rating,
                     hours,
                     notes,
                     favorite,
                 )
-                editingEntry = null
             },
             onRemove = {
-                onRemoveFromLibrary(currentEditing.gameId)
-                editingEntry = null
+                onRemoveFromLibrary(editingEntry.gameId)
             },
+            actionsEnabled = !isMutating,
         )
     }
 }

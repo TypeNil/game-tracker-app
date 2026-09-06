@@ -753,6 +753,30 @@ class LibraryGameCardTest {
         composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).assertDoesNotExist()
     }
 
+    @Test
+    fun notesPreview_hasMinimumTouchTarget() {
+        val game = libraryGame(
+            name = "Hades",
+            status = LibraryStatus.PLAYING,
+            userNotes = "Short note",
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = game,
+                    onClick = {},
+                )
+            }
+        }
+
+        val bounds = composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
+        val height = bounds.bottom - bounds.top
+        assertTrue("Notes preview width $width should be >= 48.dp", width >= 47.9.dp)
+        assertTrue("Notes preview height $height should be >= 48.dp", height >= 47.9.dp)
+    }
+
     private fun libraryGame(
         name: String,
         status: LibraryStatus = LibraryStatus.PLAYING,

@@ -2,6 +2,9 @@ package io.github.typenil.gametracker.feature.details.component
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
@@ -13,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.swipeDown
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -243,5 +247,53 @@ class EditLibrarySheetTest {
         val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
         composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
         assertTrue(savedFavorite)
+    }
+
+    @Test
+    fun modalSheet_swipeDown_settlesAndDismissesOnce() {
+        var visible by mutableStateOf(true)
+        var dismissCount = 0
+        val existingEntry = LibraryEntry(
+            gameId = 1L,
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 15,
+            isFavorite = false,
+            addedAtEpochSeconds = 1_700_000_000L,
+            updatedAtEpochSeconds = 1_700_000_000L,
+        )
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                if (visible) {
+                    EditLibrarySheet(
+                        initialEntry = existingEntry,
+                        onDismiss = {
+                            dismissCount++
+                            visible = false
+                        },
+                        onSave = { _, _, _, _, _ -> },
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithText(
+                composeTestRule.activity.getString(
+                    R.string.library_edit_entry_title,
+                ),
+            )
+            .performTouchInput { swipeDown() }
+
+        composeTestRule.waitForIdle()
+        assertEquals(1, dismissCount)
+        composeTestRule
+            .onNodeWithText(
+                composeTestRule.activity.getString(
+                    R.string.library_edit_entry_title,
+                ),
+            )
+            .assertDoesNotExist()
     }
 }

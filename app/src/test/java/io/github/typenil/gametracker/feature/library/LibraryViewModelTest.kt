@@ -627,20 +627,14 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun onRemoveFromLibrary_callsRemoveGameFromLibrary() = runTest {
+    fun onSaveLibraryEntry_isSingleFlight() = runTest {
         val viewModel = createViewModel()
-        viewModel.onRemoveFromLibrary(gameId = 42L)
-
-        assertEquals(42L, fakeLibraryRepository.lastRemovedGameId)
-    }
-
-    @Test
-    fun onSaveLibraryEntry_error_exposesUserMessage() = runTest {
-        val viewModel = createViewModel()
-        fakeLibraryRepository.upsertResult = AppResult.Error(AppError.UnknownError(null))
+        val barrier = CompletableDeferred<Unit>()
+        fakeLibraryRepository.delayUpsert = barrier
 
         viewModel.uiState.test {
-            assertNull(awaitItem().userMessageRes)
+            assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
+
             viewModel.onSaveLibraryEntry(
                 gameId = 42L,
                 status = LibraryStatus.COMPLETED,
@@ -649,7 +643,99 @@ class LibraryViewModelTest {
                 userNotes = null,
                 isFavorite = false,
             )
-            assertEquals(R.string.error_library_update_failed, awaitItem().userMessageRes)
+            assertEquals(LibraryMutationState.Saving(42L), awaitItem().libraryMutationState)
+
+            viewModel.onSaveLibraryEntry(
+                gameId = 99L,
+                status = LibraryStatus.PLAYING,
+                userRating = null,
+                hoursPlayed = 0,
+                userNotes = null,
+                isFavorite = false,
+            )
+            assertEquals(1, fakeLibraryRepository.upsertCallCount)
+
+            barrier.complete(Unit)
+            assertEquals(LibraryMutationState.Saved(42L), awaitItem().libraryMutationState)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onSaveLibraryEntry_error_setsFailedMutationStateAndMessage() = runTest {
+        val viewModel = createViewModel()
+        fakeLibraryRepository.upsertResult = AppResult.Error(AppError.UnknownError(null))
+
+        viewModel.uiState.test {
+            assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
+            viewModel.onSaveLibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.COMPLETED,
+                userRating = null,
+                hoursPlayed = 0,
+                userNotes = null,
+                isFavorite = false,
+            )
+            val saving = awaitItem()
+            assertEquals(LibraryMutationState.Saving(42L), saving.libraryMutationState)
+
+            val failed = awaitItem()
+            assertEquals(LibraryMutationState.Failed(42L), failed.libraryMutationState)
+            assertEquals(R.string.error_library_update_failed, failed.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onRemoveFromLibrary_success_setsSavedMutationState() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
+            viewModel.onRemoveFromLibrary(gameId = 42L)
+            assertEquals(LibraryMutationState.Saving(42L), awaitItem().libraryMutationState)
+            assertEquals(LibraryMutationState.Saved(42L), awaitItem().libraryMutationState)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(42L, fakeLibraryRepository.lastRemovedGameId)
+    }
+
+    @Test
+    fun onRemoveFromLibrary_error_setsFailedMutationStateAndMessage() = runTest {
+        val viewModel = createViewModel()
+        fakeLibraryRepository.removeResult = AppResult.Error(AppError.UnknownError(null))
+
+        viewModel.uiState.test {
+            assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
+            viewModel.onRemoveFromLibrary(gameId = 42L)
+            assertEquals(LibraryMutationState.Saving(42L), awaitItem().libraryMutationState)
+
+            val failed = awaitItem()
+            assertEquals(LibraryMutationState.Failed(42L), failed.libraryMutationState)
+            assertEquals(R.string.error_library_update_failed, failed.userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onLibraryMutationHandled_resetsStateToIdle() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
+            viewModel.onSaveLibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.COMPLETED,
+                userRating = null,
+                hoursPlayed = 0,
+                userNotes = null,
+                isFavorite = false,
+            )
+            assertEquals(LibraryMutationState.Saving(42L), awaitItem().libraryMutationState)
+            assertEquals(LibraryMutationState.Saved(42L), awaitItem().libraryMutationState)
+
+            viewModel.onLibraryMutationHandled()
+            assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -681,6 +767,8 @@ class LibraryViewModelTest {
         var lastStatus: LibraryStatus? = null
         var setStatusResult: AppResult<Unit> = AppResult.Success(Unit)
 
+        var upsertCallCount: Int = 0
+        var delayUpsert: CompletableDeferred<Unit>? = null
         var lastUpsertGameId: Long? = null
         var lastUpsertStatus: LibraryStatus? = null
         var lastUpsertRating: Int? = null
@@ -697,12 +785,14 @@ class LibraryViewModelTest {
             userNotes: String?,
             isFavorite: Boolean,
         ): AppResult<Unit> {
+            upsertCallCount++
             lastUpsertGameId = gameId
             lastUpsertStatus = status
             lastUpsertRating = userRating
             lastUpsertHours = hoursPlayed
             lastUpsertNotes = userNotes
             lastUpsertFavorite = isFavorite
+            delayUpsert?.await()
             return upsertResult
         }
 
@@ -725,11 +815,15 @@ class LibraryViewModelTest {
             delayUpdateHours?.await()
             return updateHoursResult
         }
+        var removeCallCount: Int = 0
+        var delayRemove: CompletableDeferred<Unit>? = null
         var lastRemovedGameId: Long? = null
         var removeResult: AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> {
+            removeCallCount++
             lastRemovedGameId = gameId
+            delayRemove?.await()
             return removeResult
         }
     }
