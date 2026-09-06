@@ -56,6 +56,7 @@ fun GameVideoCard(
     video: GameVideo,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    imageReloadToken: Long = 0L,
 ) {
     val title = video.name?.takeIf(String::isNotBlank)
         ?: stringResource(R.string.details_watch_trailer)
@@ -91,8 +92,12 @@ fun GameVideoCard(
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center,
             ) {
+                val imageModel = io.github.typenil.gametracker.core.designsystem.component.rememberImageModel(
+                    url = thumbnailUrl,
+                    reloadToken = imageReloadToken
+                )
                 AsyncImage(
-                    model = thumbnailUrl,
+                    model = imageModel,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

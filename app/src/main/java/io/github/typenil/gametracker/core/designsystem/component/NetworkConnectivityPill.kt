@@ -39,6 +39,7 @@ import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import kotlinx.coroutines.delay
 
 const val NETWORK_CONNECTIVITY_PILL_TAG = "network_connectivity_pill"
+const val NETWORK_RECOVERY_DEBOUNCE_MILLIS = 200L
 private const val RESTORED_DISPLAY_DURATION_MILLIS = 2500L
 
 enum class PillMode {
@@ -63,6 +64,10 @@ fun NetworkConnectivityPill(
 ) {
     var previousStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
     var mode by remember { mutableStateOf(PillMode.Hidden) }
+    var displayedMode by remember { mutableStateOf(PillMode.Offline) }
+    if (mode != PillMode.Hidden) {
+        displayedMode = mode
+    }
     val offlinePillEnabled by rememberUpdatedState(isOfflinePillEnabled)
     LaunchedEffect(networkStatus) {
         val recovered = previousStatus == NetworkStatus.Unavailable &&
@@ -71,6 +76,7 @@ fun NetworkConnectivityPill(
 
         when {
             recovered -> {
+                delay(NETWORK_RECOVERY_DEBOUNCE_MILLIS)
                 mode = PillMode.Restored
                 delay(RESTORED_DISPLAY_DURATION_MILLIS)
                 if (mode == PillMode.Restored) {
@@ -102,7 +108,7 @@ fun NetworkConnectivityPill(
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
         ) {
-            val isRestored = mode == PillMode.Restored
+            val isRestored = displayedMode == PillMode.Restored
             val containerColor = if (isRestored) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {

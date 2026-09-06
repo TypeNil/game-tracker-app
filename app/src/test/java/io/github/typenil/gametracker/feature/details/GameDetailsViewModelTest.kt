@@ -308,6 +308,31 @@ class GameDetailsViewModelTest {
         // Details refresh must not be triggered by unrelated library error
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
     }
+    @Test
+    fun `reconnectIncrementsImageReloadToken`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            val initialToken = initial.imageReloadToken
+
+            networkStatus.value = NetworkStatus.Available
+
+            val updated = awaitItem()
+            assertTrue("imageReloadToken must increment on reconnect", updated.imageReloadToken > initialToken)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     @Test
     fun `pull-to-refresh shows isRefreshing and forces network refresh`() = runTest {

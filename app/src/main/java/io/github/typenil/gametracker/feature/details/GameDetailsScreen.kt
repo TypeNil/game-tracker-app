@@ -130,6 +130,7 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
+import io.github.typenil.gametracker.core.designsystem.component.rememberImageModel
 import io.github.typenil.gametracker.core.designsystem.component.TagChip
 import io.github.typenil.gametracker.core.designsystem.component.OverflowTagChip
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
@@ -349,7 +350,8 @@ fun GameDetailsScreen(
                 lazyListState = lazyListState,
                 titleHandoffProgress = titleHandoffProgress,
                 titleTranslationRangePx = titleTranslationRangePx,
-                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+                imageReloadToken = uiState.imageReloadToken,
             )
         }
 
@@ -491,6 +493,7 @@ private fun GameDetailsContent(
     lazyListState: LazyListState = rememberLazyListState(),
     titleHandoffProgress: () -> Float = { 0f },
     titleTranslationRangePx: Float = 0f,
+    imageReloadToken: Long = 0L,
 ) {
 
     val pullToRefreshState = rememberPullToRefreshState()
@@ -521,6 +524,7 @@ private fun GameDetailsContent(
                         onTagsOverflowClick = onTagsOverflowClick,
                         titleHandoffProgress = titleHandoffProgress,
                         titleTranslationRangePx = titleTranslationRangePx,
+                        imageReloadToken = imageReloadToken,
                     )
                 }
             }
@@ -583,7 +587,7 @@ private fun GameDetailsContent(
                                     key = { _, url -> url }
                                 ) { index, screenshot ->
                                     AsyncImage(
-                                        model = screenshot,
+                                        model = rememberImageModel(screenshot, imageReloadToken),
                                         contentDescription = stringResource(R.string.details_screenshot_desc),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
@@ -604,6 +608,7 @@ private fun GameDetailsContent(
                         VideosSection(
                             videos = game.videos,
                             onVideoClick = onVideoClick,
+                            imageReloadToken = imageReloadToken,
                             modifier = Modifier.padding(horizontal = DETAILS_GUTTER)
                         )
                     }
@@ -625,6 +630,7 @@ private fun GameDetailsContent(
                                     GamePosterCard(
                                         game = similar,
                                         onClick = { onGameClick(similar.id) },
+                                        imageReloadToken = imageReloadToken,
                                     )
                                 }
                             }
@@ -640,7 +646,8 @@ private fun GameDetailsContent(
                     screenshots = currentGame.screenshots,
                     initialIndex = initialIndex,
                     onDismissRequest = { selectedScreenshotIndex = null },
-                    onPageChanged = { selectedScreenshotIndex = it }
+                    onPageChanged = { selectedScreenshotIndex = it },
+                    imageReloadToken = imageReloadToken,
                 )
             }
         }
@@ -655,11 +662,12 @@ private fun GameDetailsHeader(
     modifier: Modifier = Modifier,
     titleHandoffProgress: () -> Float = { 0f },
     titleTranslationRangePx: Float = 0f,
+    imageReloadToken: Long = 0L,
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         if (!game.artworkUrl.isNullOrBlank()) {
             AsyncImage(
-                model = game.artworkUrl,
+                model = rememberImageModel(game.artworkUrl, imageReloadToken),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alpha = ARTWORK_ALPHA,
@@ -707,7 +715,7 @@ private fun GameDetailsHeader(
                     )
                     if (!game.coverUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = game.coverUrl,
+                            model = rememberImageModel(game.coverUrl, imageReloadToken),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -1337,6 +1345,7 @@ private fun ZoomableScreenshotImage(
     isCurrentPage: Boolean,
     onScaleChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    imageReloadToken: Long = 0L,
 ) {
     var scale by rememberSaveable(model) { mutableFloatStateOf(1f) }
     var offsetX by rememberSaveable(model) { mutableFloatStateOf(0f) }
@@ -1359,7 +1368,7 @@ private fun ZoomableScreenshotImage(
         val heightPx = constraints.maxHeight.toFloat()
 
         AsyncImage(
-            model = model,
+            model = rememberImageModel(model, imageReloadToken),
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
             onSuccess = { state ->
@@ -1428,6 +1437,7 @@ private fun ScreenshotViewerDialog(
     initialIndex: Int,
     onDismissRequest: () -> Unit,
     onPageChanged: (Int) -> Unit,
+    imageReloadToken: Long = 0L,
 ) {
     if (screenshots.isEmpty()) return
     val pagerState = rememberPagerState(
@@ -1470,6 +1480,7 @@ private fun ScreenshotViewerDialog(
                             activeScale = newScale
                         }
                     },
+                    imageReloadToken = imageReloadToken,
                 )
             }
 
@@ -1769,6 +1780,7 @@ private fun VideosSection(
     videos: List<GameVideo>,
     onVideoClick: (GameVideo) -> Unit,
     modifier: Modifier = Modifier,
+    imageReloadToken: Long = 0L,
 ) {
     var expanded by rememberSaveable(videos.map(GameVideo::videoId)) { mutableStateOf(false) }
     val hasToggle = videos.size > VIDEOS_COLLAPSED_COUNT
@@ -1791,6 +1803,7 @@ private fun VideosSection(
                     GameVideoCard(
                         video = video,
                         onClick = { onVideoClick(video) },
+                        imageReloadToken = imageReloadToken,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                 } else {
@@ -1812,6 +1825,7 @@ private fun VideosSection(
                         GameVideoCard(
                             video = video,
                             onClick = { onVideoClick(video) },
+                            imageReloadToken = imageReloadToken,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }

@@ -85,7 +85,8 @@ class GameDetailsViewModel internal constructor(
                 flags.message?.second ?: R.string.error_refresh_failed
             } else {
                 flags.message?.second
-            }
+            },
+            imageReloadToken = flags.imageReloadToken,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -245,10 +246,12 @@ class GameDetailsViewModel internal constructor(
                     }
                 }
             } finally {
-                if (isUserPullRefresh) {
-                    _flags.update { it.copy(isRefreshing = false) }
-                } else {
-                    _flags.update { it.copy(isLoading = false) }
+                _flags.update { current ->
+                    current.copy(
+                        isRefreshing = false,
+                        isLoading = if (isUserPullRefresh) current.isLoading else false,
+                        imageReloadToken = current.imageReloadToken + 1,
+                    )
                 }
             }
         }
@@ -282,6 +285,7 @@ class GameDetailsViewModel internal constructor(
         viewModelScope.launch {
             monitor.status.reconnects().collect {
                 refreshJob?.join()
+                _flags.update { it.copy(imageReloadToken = it.imageReloadToken + 1) }
                 val shouldRecover =
                     !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
                         _flags.value.lastDetailsRefreshFailed
@@ -299,6 +303,7 @@ class GameDetailsViewModel internal constructor(
         val isSubmitting: Boolean = false,
         val message: Pair<AppError?, Int?>? = null,
         val lastDetailsRefreshFailed: Boolean = false,
+        val imageReloadToken: Long = 0L,
     )
 
 

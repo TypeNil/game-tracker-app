@@ -44,6 +44,7 @@ fun GamePosterCard(
     game: GameSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    imageReloadToken: Long = 0L,
 ) {
     val genreTags = remember(game.genres) {
         selectGenreTags(game.genres)
@@ -72,9 +73,10 @@ fun GamePosterCard(
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 )
-                if (!game.coverUrl.isNullOrBlank()) {
+                val imageModel = rememberImageModel(game.coverUrl, imageReloadToken)
+                if (imageModel != null) {
                     AsyncImage(
-                        model = game.coverUrl,
+                        model = imageModel,
                         contentDescription = game.name,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

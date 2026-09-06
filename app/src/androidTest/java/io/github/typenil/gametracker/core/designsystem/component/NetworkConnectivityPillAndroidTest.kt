@@ -46,6 +46,7 @@ class NetworkConnectivityPillAndroidTest {
         composeTestRule.runOnIdle {
             networkState.value = NetworkStatus.Available
         }
+        composeTestRule.mainClock.advanceTimeBy(NETWORK_RECOVERY_DEBOUNCE_MILLIS)
         composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
 

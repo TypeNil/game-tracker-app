@@ -25,7 +25,8 @@ data class GameDetailsUiState(
     val error: AppError? = null,
     val libraryLoadError: AppError? = null,
 
-    @StringRes val userMessageRes: Int? = null,
+    @param:StringRes val userMessageRes: Int? = null,
+    val imageReloadToken: Long = 0L,
 ) {
     val isInitialLoading: Boolean
         get() = isLoading && game == null

@@ -38,6 +38,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -806,6 +808,64 @@ class DiscoverViewModelTest {
             updatedAtEpochSeconds = 1L,
         ),
     )
+    @Test
+    fun `reconnect when forYouError exists automatically retries For You`() = runTest {
+        val networkStatus = MutableStateFlow<NetworkStatus>(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val candidate = RecommendationCandidate(
+            101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L,
+        )
+        val offsets = mutableListOf<Int>()
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = invocation.args[6] as Int
+            offsets += offset
+            if (offsets.size == 1) {
+                AppResult.Success(
+                    RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+                )
+            } else {
+                AppResult.Error(AppError.NetworkError)
+            }
+        }
+
+        val viewModel = DiscoverViewModel(
+            gameRepository = gameRepository,
+            libraryRepository = libraryRepository,
+            librarySeeder = librarySeeder,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && it.forYouError == null }
+
+            viewModel.refresh()
+            advanceUntilIdle()
+            assertEquals(AppError.NetworkError, viewModel.uiState.value.forYouError)
+            coEvery {
+                gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+            } answers {
+                val offset = invocation.args[6] as Int
+                offsets += offset
+                AppResult.Success(
+                    RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+                )
+            }
+
+            networkStatus.value = NetworkStatus.Available
+            advanceUntilIdle()
+
+            assertEquals(null, viewModel.uiState.value.forYouError)
+            assertEquals(listOf(101L), viewModel.uiState.value.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     private fun createViewModel(): DiscoverViewModel {
         return DiscoverViewModel(
