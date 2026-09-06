@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleTestNotification(intent: Intent?) {
+        if (!BuildConfig.DEBUG) return
         if (intent?.action == ACTION_TEST_NOTIFICATION) {
             val gameId = intent.getLongExtra(EXTRA_GAME_ID, DEFAULT_TEST_GAME_ID)
             val gameName = intent.getStringExtra(EXTRA_GAME_NAME) ?: DEFAULT_TEST_GAME_NAME

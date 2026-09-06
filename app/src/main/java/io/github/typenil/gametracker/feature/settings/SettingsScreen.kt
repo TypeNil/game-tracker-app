@@ -192,7 +192,7 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    if (hasNotificationPermission) {
+                    if (BuildConfig.DEBUG && hasNotificationPermission) {
                         Spacer(modifier = Modifier.height(4.dp))
                         OutlinedButton(
                             onClick = onSendTestNotification,
