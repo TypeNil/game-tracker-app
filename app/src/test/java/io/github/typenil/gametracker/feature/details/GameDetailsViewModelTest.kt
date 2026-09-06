@@ -634,7 +634,7 @@ class GameDetailsViewModelTest {
     }
 
     @Test
-    fun `state survives re-subscription after back-stack pop navigation`() = runTest {
+    fun `state is retained when resubscribed within sharing timeout`() = runTest {
         fakeGameRepository.detailsFlow.value = hydratedDetails
         fakeGameRepository.hydratedFlow.value = true
         val viewModel = createViewModel()
@@ -645,8 +645,8 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        // Return from a stacked similar-game details screen: the Lazily pipeline
-        // stayed alive, so the first emission is the retained content, not Loading.
+        // Re-subscription occurs within WhileSubscribed(5_000), so StateFlow returns
+        // the retained content without exposing a transient Loading state.
         viewModel.uiState.test {
             val retained = awaitItem()
             assertNotNull("Content must be retained across re-subscription", retained.game)
