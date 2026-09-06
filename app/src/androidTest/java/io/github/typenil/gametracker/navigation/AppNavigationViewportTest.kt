@@ -50,15 +50,22 @@ class AppNavigationViewportTest {
             composeTestRule.onAllNodesWithText(sampleGameTitle)
                 .onFirst()
                 .performClick()
+            fun advanceToElapsed(startMillis: Long, targetMillis: Long) {
+                val remaining = targetMillis - (composeTestRule.mainClock.currentTime - startMillis)
+                if (remaining > 0) {
+                    composeTestRule.mainClock.advanceTimeBy(remaining)
+                }
+            }
 
             // Sample forward transition: immediately, midway (150ms), and near end (300ms)
+            val forwardStart = composeTestRule.mainClock.currentTime
             composeTestRule.mainClock.advanceTimeByFrame()
             assertEquals(viewportBefore, viewportBounds())
 
-            composeTestRule.mainClock.advanceTimeBy(150)
+            advanceToElapsed(forwardStart, 150)
             assertEquals(viewportBefore, viewportBounds())
 
-            composeTestRule.mainClock.advanceTimeBy(300)
+            advanceToElapsed(forwardStart, 300)
             assertEquals(viewportBefore, viewportBounds())
 
             // Settle forward animation and verify details screen content
@@ -70,6 +77,7 @@ class AppNavigationViewportTest {
 
             // Pause clock for pop transition
             composeTestRule.mainClock.autoAdvance = false
+            val popStart = composeTestRule.mainClock.currentTime
             scenario.onActivity {
                 it.onBackPressedDispatcher.onBackPressed()
             }
@@ -78,12 +86,11 @@ class AppNavigationViewportTest {
             composeTestRule.mainClock.advanceTimeByFrame()
             assertEquals(viewportBefore, viewportBounds())
 
-            composeTestRule.mainClock.advanceTimeBy(150)
+            advanceToElapsed(popStart, 150)
             assertEquals(viewportBefore, viewportBounds())
 
-            composeTestRule.mainClock.advanceTimeBy(300)
+            advanceToElapsed(popStart, 300)
             assertEquals(viewportBefore, viewportBounds())
-
             // Settle return to discover
             composeTestRule.mainClock.autoAdvance = true
             composeTestRule.waitUntil(timeoutMillis = 10_000) {
