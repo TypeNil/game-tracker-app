@@ -21,7 +21,7 @@ class NetworkConnectivityPillAndroidTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun unavailableBlipShorterThan1500ms_doesNotShowOfflinePill() {
+    fun unavailableBlipShorterThan1500ms_showsNoConnectivityPill() {
         composeTestRule.mainClock.autoAdvance = false
 
         val networkState = mutableStateOf(NetworkStatus.Available)
@@ -34,6 +34,7 @@ class NetworkConnectivityPillAndroidTest {
         composeTestRule.mainClock.advanceTimeByFrame()
 
         val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        val restoredText = composeTestRule.activity.getString(R.string.connectivity_restored)
 
         composeTestRule.runOnIdle {
             networkState.value = NetworkStatus.Unavailable
@@ -42,18 +43,20 @@ class NetworkConnectivityPillAndroidTest {
         composeTestRule.mainClock.advanceTimeBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS / 2)
         composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+        composeTestRule.onNodeWithText(restoredText).assertDoesNotExist()
 
         // Reconnects before debounce expires
         composeTestRule.runOnIdle {
             networkState.value = NetworkStatus.Available
         }
-        composeTestRule.mainClock.advanceTimeBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS)
+        composeTestRule.mainClock.advanceTimeBy(2_000L)
         composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+        composeTestRule.onNodeWithText(restoredText).assertDoesNotExist()
     }
 
     @Test
-    fun unavailableFor1500ms_showsOfflinePill() {
+    fun confirmedOffline_thenAvailable_showsRestoredPill() {
         composeTestRule.mainClock.autoAdvance = false
 
         val networkState = mutableStateOf(NetworkStatus.Available)
@@ -66,13 +69,104 @@ class NetworkConnectivityPillAndroidTest {
         composeTestRule.mainClock.advanceTimeByFrame()
 
         val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        val restoredText = composeTestRule.activity.getString(R.string.connectivity_restored)
 
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Unavailable
+        }
+        // Advance past debounce and enter animation
+        composeTestRule.mainClock.advanceTimeBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS + 400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
+
+        // Now reconnect
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Available
+        }
+        composeTestRule.mainClock.advanceTimeBy(400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
+
+        // After 2.5s duration + exit animation, hides
+        composeTestRule.mainClock.advanceTimeBy(2_500L + 500L)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag(NETWORK_CONNECTIVITY_PILL_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun unavailableWhileRestored_hidesRestoredImmediately() {
+        composeTestRule.mainClock.autoAdvance = false
+
+        val networkState = mutableStateOf(NetworkStatus.Available)
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                NetworkConnectivityPill(networkStatus = networkState.value)
+            }
+        }
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        val restoredText = composeTestRule.activity.getString(R.string.connectivity_restored)
+
+        // Enter confirmed offline
         composeTestRule.runOnIdle {
             networkState.value = NetworkStatus.Unavailable
         }
         composeTestRule.mainClock.advanceTimeBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS + 400L)
         composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
 
+        // Transition to Available -> Restored is shown
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Available
+        }
+        composeTestRule.mainClock.advanceTimeBy(400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(restoredText).assertIsDisplayed()
+        // Network drops again while Restored is showing -> Restored must exit immediately without waiting 1500ms
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Unavailable
+        }
+        // Advance past exit animation (500ms < 1500ms debounce)
+        composeTestRule.mainClock.advanceTimeBy(500L)
+        composeTestRule.onNodeWithText(restoredText).assertDoesNotExist()
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // After remaining debounce duration (1000ms) plus enter animation (400ms), offline pill appears
+        composeTestRule.mainClock.advanceTimeBy(1_000L + 400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
+    }
+    @Test
+    fun confirmedOfflineWhileSuppressed_thenEnabled_showsOfflineWithoutAnotherDelay() {
+        composeTestRule.mainClock.autoAdvance = false
+
+        val networkState = mutableStateOf(NetworkStatus.Unavailable)
+        val isOfflinePillEnabled = mutableStateOf(false)
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                NetworkConnectivityPill(
+                    networkStatus = networkState.value,
+                    isOfflinePillEnabled = isOfflinePillEnabled.value,
+                )
+            }
+        }
+        // Advance past debounce while suppressed (e.g. on Settings screen)
+        composeTestRule.mainClock.advanceTimeBy(NETWORK_OFFLINE_DEBOUNCE_MILLIS + 400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        composeTestRule.onNodeWithText(offlineText).assertDoesNotExist()
+
+        // Navigate to screen where offline pill is enabled (e.g. Discover)
+        composeTestRule.runOnIdle {
+            isOfflinePillEnabled.value = true
+        }
+        // Shows offline immediately (just enter animation, without another 1500ms debounce)
+        composeTestRule.mainClock.advanceTimeBy(400L)
+        composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
     }
 

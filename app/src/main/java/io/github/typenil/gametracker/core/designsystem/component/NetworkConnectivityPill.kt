@@ -70,7 +70,6 @@ fun NetworkConnectivityPill(
     isOfflinePillEnabled: Boolean = true,
     elapsedRealtimeMillis: () -> Long = SystemClock::elapsedRealtime,
 ) {
-    var previousStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
     var mode by rememberSaveable(stateSaver = PillModeSaver) { mutableStateOf(PillMode.Hidden) }
     var displayedMode by rememberSaveable(stateSaver = PillModeSaver) { mutableStateOf(PillMode.Offline) }
     var restoredUntilMillis by rememberSaveable { mutableLongStateOf(0L) }
@@ -82,7 +81,6 @@ fun NetworkConnectivityPill(
     LaunchedEffect(networkStatus) {
         val now = elapsedRealtimeMillis()
         if (mode == PillMode.Restored && networkStatus == NetworkStatus.Available && restoredUntilMillis > now) {
-            offlineConfirmed = false
             delay(restoredUntilMillis - now)
             if (mode == PillMode.Restored) {
                 mode = PillMode.Hidden
@@ -90,26 +88,36 @@ fun NetworkConnectivityPill(
             return@LaunchedEffect
         }
 
-        val recovered = previousStatus == NetworkStatus.Unavailable &&
-            networkStatus == NetworkStatus.Available
-        previousStatus = networkStatus
-
         when {
-            recovered -> {
+            networkStatus == NetworkStatus.Available && offlineConfirmed -> {
                 offlineConfirmed = false
                 mode = PillMode.Restored
                 restoredUntilMillis = elapsedRealtimeMillis() + RESTORED_DISPLAY_DURATION_MILLIS
+
                 delay(RESTORED_DISPLAY_DURATION_MILLIS)
                 if (mode == PillMode.Restored) {
                     mode = PillMode.Hidden
                 }
             }
+
             networkStatus == NetworkStatus.Unavailable -> {
-                offlineConfirmed = false
-                delay(NETWORK_OFFLINE_DEBOUNCE_MILLIS)
+                // Never claim recovery while the current network is unavailable.
+                if (mode == PillMode.Restored) {
+                    mode = PillMode.Hidden
+                }
+
+                if (!offlineConfirmed) {
+                    delay(NETWORK_OFFLINE_DEBOUNCE_MILLIS)
+                }
+
                 offlineConfirmed = true
-                mode = if (offlinePillEnabled) PillMode.Offline else PillMode.Hidden
+                mode = if (offlinePillEnabled) {
+                    PillMode.Offline
+                } else {
+                    PillMode.Hidden
+                }
             }
+
             else -> {
                 offlineConfirmed = false
                 mode = PillMode.Hidden
