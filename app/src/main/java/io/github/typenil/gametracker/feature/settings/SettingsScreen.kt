@@ -116,6 +116,7 @@ fun SettingsScreen(
     onOpenGitHub: () -> Unit = {},
     onCheckReleasesNow: () -> Unit = {},
     onSendTestNotification: () -> Unit = {},
+    isSendTestNotificationVisible: Boolean = BuildConfig.DEBUG,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -192,19 +193,21 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    if (BuildConfig.DEBUG && hasNotificationPermission) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedButton(
-                            onClick = onSendTestNotification,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = stringResource(R.string.settings_notifications_send_test))
+                    if (hasNotificationPermission) {
+                        if (isSendTestNotificationVisible) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = onSendTestNotification,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = stringResource(R.string.settings_notifications_send_test))
+                            }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         OutlinedButton(

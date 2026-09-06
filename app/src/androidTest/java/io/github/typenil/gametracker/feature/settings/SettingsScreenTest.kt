@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -90,6 +91,64 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText(checkNowLabel).performScrollTo().performClick()
 
         composeTestRule.runOnIdle { assertTrue(checkClicked) }
+    }
+
+    @Test
+    fun notificationsEnabled_releaseKeepsCheckNowAndHidesTestNotification() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = true,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    onOpenGitHub = {},
+                    onCheckReleasesNow = {},
+                    onSendTestNotification = {},
+                    isSendTestNotificationVisible = false
+                )
+            }
+        }
+
+        val checkNowLabel = composeTestRule.activity.getString(R.string.settings_notifications_check_now)
+        val sendTestLabel = composeTestRule.activity.getString(R.string.settings_notifications_send_test)
+
+        composeTestRule.onNodeWithText(checkNowLabel).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(sendTestLabel).assertDoesNotExist()
+    }
+
+    @Test
+    fun notificationsEnabled_debugShowsBothCheckNowAndTestNotification_andInvokesSendTestOnly() {
+        var checkNowClicked = false
+        var sendTestClicked = false
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = true,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    onOpenGitHub = {},
+                    onCheckReleasesNow = { checkNowClicked = true },
+                    onSendTestNotification = { sendTestClicked = true },
+                    isSendTestNotificationVisible = true
+                )
+            }
+        }
+
+        val checkNowLabel = composeTestRule.activity.getString(R.string.settings_notifications_check_now)
+        val sendTestLabel = composeTestRule.activity.getString(R.string.settings_notifications_send_test)
+
+        composeTestRule.onNodeWithText(checkNowLabel).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(sendTestLabel).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle {
+            assertTrue(sendTestClicked)
+            assertFalse(checkNowClicked)
+        }
     }
 
     @Test
