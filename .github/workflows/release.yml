@@ -4,8 +4,6 @@ name: GameTracker Production Release
 # PR code must never execute in a job that can access the release key.
 on:
   workflow_dispatch:
-  push:
-    tags: [ "v*" ]
 
 permissions:
   contents: read
