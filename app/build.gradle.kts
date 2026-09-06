@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.net.URI
+import java.net.InetAddress
 import java.util.zip.ZipFile
 
 plugins {
@@ -136,9 +137,27 @@ abstract class ValidateLiveReleaseBffUrlTask : DefaultTask() {
         val uri = runCatching { URI(value) }.getOrElse {
             error("liveRelease BFF_BASE_URL is not a valid URI: $value")
         }
-        require(uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank() &&
-            uri.host.lowercase() !in setOf("localhost", "127.0.0.1", "10.0.2.2")) {
-            "liveRelease requires a non-loopback HTTPS BFF_BASE_URL, got: $value"
+        // Retrofit requires a trailing slash; anything else crashes at Hilt init.
+        val host = uri.host
+            ?.removePrefix("[")
+            ?.removeSuffix("]")
+            ?.trimEnd('.')
+            ?.lowercase()
+            .orEmpty()
+        // Covers 127.x.x.x, ::1 and other spellings InetAddress resolves as loopback.
+        val isIpLiteral = host.contains(':') ||
+            host.matches(Regex("""\d{1,3}(\.\d{1,3}){3}"""))
+        val literalAddress = if (isIpLiteral) {
+            runCatching { InetAddress.getByName(host) }.getOrNull()
+        } else {
+            null
+        }
+        require(uri.scheme.equals("https", ignoreCase = true) && host.isNotBlank() &&
+            uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+            uri.rawPath.endsWith("/") && host != "localhost" &&
+            literalAddress?.isLoopbackAddress != true &&
+            literalAddress?.isAnyLocalAddress != true) {
+            "liveRelease requires a credential-free, non-loopback HTTPS base URL ending in '/': $value"
         }
     }
 }

@@ -11,31 +11,62 @@
 #   scripts/audit-release-apk.sh --self-test   # verifies the matcher itself
 set -euo pipefail
 
-HIGH_SIGNAL='twitch[_-]?client[_-]?secret|client[_-]?secret|api[_-]?key|apikey|\.env|10\.0\.2\.2|localhost:|127\.0\.0\.1:[0-9]|action_test_notification'
+HIGH_SIGNAL='twitch[_-]?client[_-]?secret|client[_-]?secret|api[_-]?key|apikey|\.env|10\.0\.2\.2|localhost:|127\.0\.0\.1:[0-9]|action_test_notification|(^|[^[:alnum:]])staging([.:/_-]|$)'
 GENERIC='Authorization|Bearer'
 
 match_high_signal() {
-    # $1: directory to scan. Prints matches, succeeds silently when clean.
-    grep -r -n -i -E "$HIGH_SIGNAL" "$1" || true
-}
+    # $1: directory to scan. Exit 0 prints matches; exit 1 (via return 0) means
+    # clean. Scanner errors (>1) propagate as failures, never as clean results.
+    local root="$1"
+    local output
+    local status
 
+    set +e
+    output="$(grep -r -n -i -E "$HIGH_SIGNAL" "$root" 2>&1)"
+    status=$?
+    set -e
+
+    case "$status" in
+        0) printf '%s\n' "$output" ;;
+        1) return 0 ;;
+        *)
+            printf '%s\n' "$output" >&2
+            return "$status"
+            ;;
+    esac
+}
 report_generic() {
+    # Informational only: these legitimately occur in OkHttp/Retrofit.
     grep -r -n -E "$GENERIC" "$1" | head -20 || true
 }
+
 
 if [[ "${1:-}" == "--self-test" ]]; then
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT
     mkdir -p "$TMP/app"
     echo 'twitch_client_secret = "canary"' > "$TMP/app/Canary.smali"
+    echo 'https://staging.example.com/v1/games' > "$TMP/app/Endpoint.smali"
     echo 'Authorization: Bearer xyz' > "$TMP/app/OkHttp.smali"
     if [[ -z "$(match_high_signal "$TMP/app")" ]]; then
         echo "SELF-TEST FAILED: canary marker not detected"
         exit 1
     fi
     echo "self-test: canary detected"
+    if ! match_high_signal "$TMP/app" | grep -q "staging.example"; then
+        echo "SELF-TEST FAILED: staging marker not detected"
+        exit 1
+    fi
+    echo "self-test: staging marker detected"
     report_generic "$TMP/app" > /dev/null
     echo "self-test: generic terms reported without failing"
+    mkdir -p "$TMP/locked/inner"
+    chmod 000 "$TMP/locked/inner"
+    if [[ "$(id -u)" != "0" ]] && match_high_signal "$TMP/locked" > /dev/null 2>&1; then
+        echo "SELF-TEST FAILED: scanner error reported as clean"
+        exit 1
+    fi
+    echo "self-test: scanner errors are not clean results"
     echo "SELF-TEST PASSED"
     exit 0
 fi

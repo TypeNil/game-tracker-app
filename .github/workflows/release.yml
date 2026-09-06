@@ -70,7 +70,9 @@ jobs:
 
       - name: Audit release APK for secrets
         run: |
+          bash scripts/audit-release-apk.sh --self-test
           APK="$(find app/build/outputs/apk/live/release -name '*.apk' -print -quit)"
+          test -n "$APK"
           bash scripts/audit-release-apk.sh "$APK"
 
       - name: Verify signer certificate
