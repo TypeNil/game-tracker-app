@@ -84,6 +84,7 @@ import java.util.Locale
 private const val HERO_ASPECT_RATIO = 16f / 9f
 private val CardShape = RoundedCornerShape(16.dp)
 private val HeroShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+private val CardBottomShape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
 private val HeroScrim = Brush.verticalGradient(
     0.00f to Color.Transparent,
     0.35f to Color.Transparent,
@@ -414,7 +415,8 @@ fun LibraryGameCard(
             val notes = entry.userNotes
             if (!notes.isNullOrBlank()) {
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.padding(horizontal = 14.dp),
                 )
                 LibraryNotesPreview(
                     notes = notes,
@@ -432,39 +434,35 @@ private fun LibraryNotesPreview(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        onClick = onClick,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f),
-        modifier = modifier.testTag(LIBRARY_CARD_NOTES_TEST_TAG),
+    Row(
+        modifier = modifier
+            .clip(CardBottomShape)
+            .clickable(onClick = onClick)
+            .testTag(LIBRARY_CARD_NOTES_TEST_TAG)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Notes,
-                contentDescription = stringResource(R.string.library_personal_notes),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(MetaIconSize),
-            )
-            Text(
-                text = notes,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.size(MetaChevronSize),
-            )
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Notes,
+            contentDescription = stringResource(R.string.library_personal_notes),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+            modifier = Modifier.size(MetaIconSize),
+        )
+        Text(
+            text = notes,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+            modifier = Modifier.size(MetaChevronSize),
+        )
     }
 }
 
