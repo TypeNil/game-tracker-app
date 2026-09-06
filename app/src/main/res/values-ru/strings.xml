@@ -1,0 +1,275 @@
+<resources>
+    <string name="app_name">GameTracker</string>
+    <string name="discover_title">Поиск игр</string>
+    <string name="discover_for_you">Для вас</string>
+    <string name="discover_trending">В тренде</string>
+    <string name="discover_trending_empty">Сейчас нет игр в тренде</string>
+    <string name="discover_loading">Загружаем рекомендации…</string>
+    <string name="reason_genre">Потому что вам нравится: %1$s</string>
+    <string name="reason_theme">Подходит вашим играм: %1$s</string>
+    <string name="reason_platform">Для %1$s</string>
+    <string name="reason_similar">Похоже на игры, в которые вы играете</string>
+    <string name="reason_rating">Высокий рейтинг</string>
+    <string name="reason_recency">Недавно вышла</string>
+
+    <string name="platform_playstation">PlayStation</string>
+    <string name="platform_xbox">Xbox</string>
+    <string name="platform_nintendo">Nintendo Switch</string>
+    <string name="platform_pc">PC</string>
+    <string name="search_action_desc">Искать игры</string>
+    <string name="back_action_desc">Назад</string>
+    <string name="retry_button">Повторить</string>
+    <string name="error_network">Нет соединения с сетью. Проверьте интернет.</string>
+    <string name="error_rate_limit">Слишком много запросов. Подождите немного и попробуйте снова.</string>
+    <string name="error_server">Сервер временно недоступен. Попробуйте позже.</string>
+    <string name="error_generic">Произошла ошибка при обмене данными с сервером.</string>
+    <string name="error_serialization">Не удалось обработать данные с сервера.</string>
+    <string name="error_unknown">Произошла непредвиденная ошибка. Попробуйте снова.</string>
+    <string name="error_load_more_failed">Не удалось загрузить ещё результаты.</string>
+    <string name="error_history_save_failed">Не удалось сохранить недавние запросы.</string>
+    <string name="error_refresh_failed">Не удалось обновить каталог. Показаны сохранённые данные.</string>
+    <string name="search_hint">Ищите игры по названию…</string>
+    <string name="search_clear_desc">Очистить запрос</string>
+    <string name="search_idle_title">Поиск видеоигр</string>
+    <string name="search_idle_subtitle">Введите название выше или используйте фильтры ниже</string>
+    <string name="search_empty_results_format">По запросу «%1$s» ничего не найдено</string>
+    <string name="search_empty_action">Очистить поиск</string>
+    <string name="search_loading_games">Ищем игры…</string>
+
+    <!-- Search Sorting -->
+    <string name="search_sort_relevance">По релевантности</string>
+    <string name="search_sort_rating_desc">Сначала с высоким рейтингом</string>
+    <string name="search_sort_date_desc">Сначала новые</string>
+    <string name="search_sort_date_asc">Сначала старые</string>
+    <string name="search_sort_name_asc">По названию (А–Я)</string>
+
+    <!-- Search Filter Options -->
+    <string name="search_filter_year_all">За всё время</string>
+    <string name="search_filter_year_this_year">Этот год</string>
+    <string name="search_filter_year_last_year">Прошлый год</string>
+    <string name="search_filter_year_last_3">Последние 3 года</string>
+    <string name="search_filter_year_2010s">2010-е</string>
+    <string name="search_filter_year_retro">Ретро (&lt;2010)</string>
+
+    <string name="search_filter_rating_any">Любой рейтинг</string>
+    <string name="search_filter_rating_70">70+ неплохо</string>
+    <string name="search_filter_rating_80">80+ отлично</string>
+    <string name="search_filter_rating_90">90+ шедевр</string>
+    <string name="search_filter_rating_70_suffix">Неплохо</string>
+    <string name="search_filter_rating_80_suffix">Отлично</string>
+    <string name="search_filter_rating_90_suffix">Шедевр</string>
+    <string name="search_input_error_unsupported_chars">Кавычки и обратные слеши не поддерживаются</string>
+    <string name="search_input_error_invisible_chars">Невидимые символы не поддерживаются</string>
+    <string name="search_input_error_too_long">Поиск ограничен 100 символами</string>
+
+    <!-- Search UI & Accessibility -->
+    <string name="search_filters_title">Фильтры</string>
+    <string name="search_filters_count_format">Фильтры (%1$d)</string>
+    <string name="search_filters_button_desc">Открыть фильтры поиска</string>
+    <string name="search_sort_button_desc">Изменить сортировку, текущая: %1$s</string>
+    <string name="search_filter_reset">Сбросить</string>
+    <string name="search_filter_reset_all">Сбросить все фильтры</string>
+    <string name="search_filter_apply">Применить</string>
+    <plurals name="search_filter_apply_count">
+        <item quantity="one">Применить (%d фильтр)</item>
+        <item quantity="few">Применить (%d фильтра)</item>
+        <item quantity="many">Применить (%d фильтров)</item>
+        <item quantity="other">Применить (%d фильтра)</item>
+    </plurals>
+    <string name="search_filter_section_sort">Сортировка</string>
+    <string name="search_filter_section_genres">Жанры</string>
+    <string name="search_filter_genres_show_all">Показать все (%1$d)</string>
+    <string name="search_filter_genres_show_less">Показать меньше</string>
+    <string name="search_filter_section_platforms">Платформы</string>
+    <string name="search_filter_section_year">Год выхода</string>
+    <string name="search_filter_section_rating">Минимальный рейтинг</string>
+    <string name="search_remove_filter_desc">Убрать фильтр «%1$s»</string>
+    <!-- Terminal counts must stay neutral: endOfPaginationReached cannot distinguish a
+         truly exhausted result set from the BFF offset ceiling. -->
+    <plurals name="search_results_loaded_count">
+        <item quantity="one">Показан %1$d загруженный результат</item>
+        <item quantity="few">Показано %1$d загруженных результата</item>
+        <item quantity="many">Показано %1$d загруженных результатов</item>
+        <item quantity="other">Показано %1$d загруженных результата</item>
+    </plurals>
+    <string name="search_results_count_partial_format">Показаны первые %1$d результатов</string>
+    <string name="search_recent_title">Недавние запросы</string>
+    <string name="search_recent_clear_all">Очистить всё</string>
+    <string name="search_recent_remove_desc">Убрать «%1$s» из недавних</string>
+    <string name="error_history_delete_failed">Не удалось удалить историю поиска</string>
+    <string name="search_presets_title">Быстрые подборки</string>
+    <string name="search_empty_filters_title">Под фильтры ничего не подошло</string>
+    <string name="search_empty_filters_subtitle">Попробуйте ослабить фильтры или изменить критерии</string>
+    <string name="search_empty_filters_action">Сбросить фильтры</string>
+    <string name="details_title">Об игре</string>
+    <string name="details_date_unknown">Дата неизвестна</string>
+    <string name="error_not_found">Игра не найдена.</string>
+    <string name="details_share_desc">Поделиться игрой</string>
+    <string name="details_share_error">Нет приложения для отправки.</string>
+    <string name="details_video_error">Нет приложения для открытия видео.</string>
+    <string name="details_watch_trailer">Смотреть трейлер</string>
+    <string name="details_video_source">YouTube</string>
+    <string name="details_play_video_action">Смотреть «%1$s» на YouTube</string>
+    <string name="details_section_about">Об игре</string>
+    <string name="details_about_show_more">Показать больше</string>
+    <string name="details_about_show_less">Показать меньше</string>
+    <string name="details_videos_show_all">Показать все (%1$d)</string>
+    <string name="details_videos_show_less">Показать меньше</string>
+    <string name="details_section_modes">Режимы игры</string>
+    <string name="details_section_platforms">Платформы</string>
+    <string name="details_section_screenshots">Скриншоты</string>
+    <string name="details_section_videos">Видео</string>
+    <string name="details_section_similar">Похожие игры</string>
+    <string name="details_section_genres_and_themes">Жанры и темы</string>
+    <string name="details_section_genres">Жанры</string>
+    <string name="details_section_themes">Темы</string>
+    <string name="details_platforms_and_releases">Платформы и даты выхода</string>
+    <string name="details_more_count">+ещё %1$d</string>
+    <string name="details_more_tags_desc">Показать все жанры и темы (%1$d)</string>
+    <string name="details_platforms_more_desc">Показать все платформы и даты выхода (%1$d)</string>
+    <string name="details_modes_more_desc">Показать все режимы игры (%1$d)</string>
+    <string name="details_card_release">Выход</string>
+    <string name="details_card_time_to_beat">Время прохождения</string>
+    <string name="details_time_hours_format">≈%1$d ч</string>
+    <string name="details_time_complete_format">100%%: %1$d ч</string>
+    <string name="details_votes_count_format">Голосов: %1$d</string>
+    <string name="details_developed_by_format">Разработчик: %1$s</string>
+    <string name="details_published_by_format">Издатель: %1$s</string>
+    <string name="details_developed_and_published_format">Разработка и издание: %1$s</string>
+    <string name="details_screenshot_desc">Скриншот из игры</string>
+    <string name="details_similar_game_desc_format">Открыть страницу «%1$s»</string>
+    <string name="details_viewer_close_desc">Закрыть просмотр скриншотов</string>
+    <string name="details_viewer_page_format">%1$d / %2$d</string>
+
+    <!-- Navigation -->
+    <string name="nav_discover">Поиск</string>
+    <string name="nav_library">Библиотека</string>
+
+    <!-- Library Status & Management -->
+    <string name="library_title">Моя библиотека</string>
+    <string name="library_status_wishlist">Хочу сыграть</string>
+    <string name="library_status_playing">Играю</string>
+    <string name="library_status_completed">Пройдено</string>
+    <string name="library_status_dropped">Заброшено</string>
+    <string name="library_status_not_interested">Не интересно</string>
+    <string name="library_tab_all">Все</string>
+    <string name="library_filter_favorites">Только избранное</string>
+    <string name="library_search_hint">Искать в библиотеке…</string>
+    <string name="library_empty_title">Библиотека пуста</string>
+    <string name="library_empty_subtitle">Загляните в поиск и добавьте игры в библиотеку</string>
+    <string name="library_empty_cta">Найти игры</string>
+    <string name="library_tab_empty_title">В этом разделе пусто</string>
+    <string name="library_tab_empty_subtitle">Игры с этим статусом появятся здесь</string>
+    <string name="library_search_empty_title">Ничего не подошло</string>
+    <string name="library_search_empty_subtitle">Попробуйте изменить запрос или фильтр</string>
+
+    <!-- Library Sort -->
+    <string name="library_sort_added_desc">Недавно добавленные</string>
+    <string name="library_sort_updated_desc">Недавно обновлённые</string>
+    <string name="library_sort_rating_desc">С высоким рейтингом</string>
+    <string name="library_sort_title_asc">По названию (А–Я)</string>
+    <string name="library_sort_hours_desc">По времени игры</string>
+    <string name="library_sort_menu_desc">Сортировать библиотеку</string>
+
+    <!-- Details Library Action & Sheet -->
+    <string name="library_add_to_library">В библиотеку</string>
+    <string name="library_in_library">В библиотеке</string>
+    <string name="library_add_to_library_subtitle">Отслеживайте прогресс, ставьте оценки и пишите заметки</string>
+    <string name="library_edit_entry_title">Редактировать запись</string>
+    <string name="library_status_label">Статус</string>
+    <string name="library_my_rating">Моя оценка (1–10)</string>
+    <string name="library_clear_rating">Очистить</string>
+    <string name="library_hours_played">Часов сыграно</string>
+    <string name="library_hours_format">%1$d ч</string>
+    <string name="library_hours_short">%1$d ч</string>
+    <string name="library_change_status">Сменить статус: %1$s</string>
+    <string name="library_added">Добавлено</string>
+    <string name="library_hours_decrement_desc">Уменьшить часы</string>
+    <string name="library_hours_increment_desc">Увеличить часы</string>
+    <string name="library_favorite">Избранное</string>
+    <string name="library_favorite_add">В избранное</string>
+    <string name="library_favorite_remove">Убрать из избранного</string>
+    <string name="library_favorite_subtitle">Выделить в личной коллекции</string>
+    <string name="library_personal_notes">Личные заметки</string>
+    <string name="library_save">Сохранить</string>
+    <string name="library_cancel">Отмена</string>
+    <string name="library_log_hours">Записать часы</string>
+    <string name="library_quick_add_1h">+1 ч</string>
+    <string name="library_quick_add_5h">+5 ч</string>
+    <string name="library_quick_add_2h">+2 ч</string>
+    <string name="library_hours_unit">часов</string>
+    <string name="library_current_hours">Сейчас: %1$d ч</string>
+    <string name="library_session_delta_plus">+%1$d ч за сессию</string>
+    <string name="library_session_delta_minus">%1$d ч за сессию</string>
+    <string name="library_remove">Убрать из библиотеки</string>
+    <string name="library_remove_confirm_title">Убрать из библиотеки?</string>
+    <string name="library_remove_confirm_message">Игра будет навсегда удалена из библиотеки вместе с часами, оценкой и заметками.</string>
+    <string name="library_remove_confirm_action">Удалить</string>
+    <string name="library_retained_hours">Сохранённый прогресс: %1$d ч</string>
+    <string name="library_has_notes">Есть заметки</string>
+    <string name="library_rating_format">%1$d/10</string>
+    <string name="library_close">Закрыть</string>
+    <string name="library_rating_out_of_ten">%1$d из 10</string>
+    <string name="library_edit_action_desc">Редактировать запись</string>
+    <string name="game_card_add_to_wishlist">В желаемое</string>
+    <string name="game_card_edit_library">В библиотеке: %1$s. Редактировать</string>
+
+    <string name="error_library_update_failed">Не удалось обновить запись</string>
+    <string name="error_library_load_failed">Действия библиотеки временно недоступны</string>
+
+    <string name="error_library_remove_failed">Не удалось убрать игру из библиотеки</string>
+
+    <!-- About / Attribution -->
+    <string name="settings_title">О приложении</string>
+    <string name="settings_action_desc">О приложении</string>
+    <string name="settings_igdb_attribution">Данные игр предоставлены IGDB</string>
+    <string name="settings_igdb_link">IGDB</string>
+    <string name="settings_igdb_open_error">Нет приложения для открытия ссылки.</string>
+    <!-- Release Notifications -->
+    <string name="notification_channel_releases_name">Выходы игр</string>
+    <string name="notification_channel_releases_desc">Уведомления о скорых и состоявшихся выходах игр из библиотеки</string>
+    <string name="notification_date_tbd">Дата выхода не объявлена</string>
+    <string name="notification_release_today_title">Игра вышла сегодня!</string>
+    <string name="notification_release_today_body">Сегодня состоялся релиз «%1$s»!</string>
+    <string name="notification_release_soon_title">Скоро выход</string>
+    <string name="notification_release_soon_body">%1$s выходит %2$s.</string>
+    <string name="notification_date_changed_title">Дата выхода изменилась</string>
+    <string name="notification_date_changed_body">Дата выхода «%1$s» изменилась: %2$s.</string>
+    <string name="settings_notifications_title">Уведомления</string>
+    <string name="settings_notifications_desc">Сообщим, когда отслеживаемые игры выйдут или сменят дату</string>
+    <string name="settings_notifications_enable">Включить уведомления</string>
+    <string name="settings_notifications_manage">Настроить</string>
+    <string name="settings_notifications_open_error">Не удалось открыть настройки уведомлений.</string>
+    <string name="settings_notifications_enabled">Уведомления включены</string>
+    <string name="settings_notifications_disabled">Уведомления выключены</string>
+    <string name="settings_notifications_permission_rationale">Включите уведомления, чтобы следить за датами выхода игр из вишлиста и библиотеки.</string>
+    <string name="discover_popular_now">Популярное</string>
+    <string name="discover_playing_now">Сейчас играют</string>
+    <string name="discover_wanted_now">Хотят сыграть</string>
+    <string name="discover_upcoming">Скоро выйдут</string>
+    <string name="discover_watched_now">Сейчас смотрят</string>
+    <string name="scroll_to_top_desc">Наверх</string>
+    <string name="discover_tab_for_you">Для вас</string>
+    <string name="discover_tab_charts">Популярное и чарты</string>
+    <string name="discover_cold_start_title">Пока нет рекомендаций</string>
+    <string name="discover_cold_start_subtitle">Добавляйте игры в библиотеку и ставьте оценки — подберём рекомендации под ваш вкус.</string>
+    <string name="discover_cold_start_action">Смотреть популярное</string>
+    <string name="library_loading">Загружаем библиотеку…</string>
+    <string name="discover_rail_empty">В этом чарте сейчас пусто</string>
+    <string name="library_search_clear_action">Сбросить поиск и фильтры</string>
+    <string name="settings_app_info_title">О приложении</string>
+    <string name="settings_app_name">GameTracker</string>
+    <string name="settings_app_version">Версия %1$s (%2$s)</string>
+    <string name="settings_github_link">Репозиторий GitHub</string>
+    <string name="settings_github_open_error">Нет приложения для открытия ссылки.</string>
+
+    <!-- Connectivity Status Pill -->
+    <string name="connectivity_offline">Офлайн — показаны сохранённые данные</string>
+    <string name="connectivity_restored">Снова онлайн</string>
+
+    <!-- Release Notification Manual Check -->
+    <string name="settings_notifications_check_now">Проверить выходы</string>
+    <string name="settings_notifications_check_triggered">Проверяем выходы отслеживаемых игр в фоне…</string>
+    <string name="settings_notifications_send_test">Отправить тестовое уведомление</string>
+    <string name="settings_notifications_test_sent">Тестовое уведомление отправлено! Проверьте шторку.</string>
+</resources>

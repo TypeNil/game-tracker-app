@@ -1,10 +1,14 @@
 package io.github.typenil.gametracker.feature.library
 
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.getValue
@@ -46,6 +50,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class LibraryGameCardTest {
@@ -233,7 +238,11 @@ class LibraryGameCardTest {
 
     @Test
     fun card_withMaxHours_dateAndHoursAreFullyDisplayedWithoutTruncation() {
-        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(1_700_000_000L)
+        val testLocale = composeTestRule.activity.resources.configuration.locales[0]
+        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(
+            epochSeconds = 1_700_000_000L,
+            locale = testLocale,
+        )
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
@@ -674,11 +683,17 @@ class LibraryGameCardTest {
         val statusWidth = statusBounds.right - statusBounds.left
         val hoursWidth = hoursBounds.right - hoursBounds.left
         val addedWidth = addedBounds.right - addedBounds.left
-        assertTrue("Status width should be positive", statusWidth > 0.dp)
-        assertTrue("Hours width should be positive", hoursWidth > 0.dp)
-        assertTrue("Added width should be positive", addedWidth > 0.dp)
-        assertTrue("Hours should be to the right of status", hoursBounds.left > statusBounds.right)
-        assertTrue("Added date should be to the right of hours", addedBounds.left > hoursBounds.right)
+        // Narrow metadata uses a wrapping FlowRow: longer locales (e.g. a Russian
+        // MEDIUM date) flow onto the next line instead of overlapping or truncating.
+        // Assert exactly that contract: no pairwise overlap, everything in bounds,
+        // reading order preserved (date at or below the hours line).
+        assertNoOverlap(statusBounds, hoursBounds, "Status and hours")
+        assertNoOverlap(hoursBounds, addedBounds, "Hours and added date")
+        assertNoOverlap(statusBounds, addedBounds, "Status and added date")
+        assertTrue(
+            "Added date should be to the right of or below hours",
+            addedBounds.left > hoursBounds.right || addedBounds.top >= hoursBounds.bottom,
+        )
         assertTrue("Status right ${statusBounds.right} should be <= 320dp", statusBounds.right <= 320.dp)
         assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
         assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)
@@ -693,6 +708,94 @@ class LibraryGameCardTest {
         assertNotEllipsized(
             composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
         )
+    }
+
+    private val ruLocale = Locale.forLanguageTag("ru-RU")
+
+    /**
+     * Renders [content] under a Russian configuration without touching the
+     * process-global locale, so RU layout coverage holds on any CI device.
+     */
+    private fun setRussianContent(content: @Composable () -> Unit) {
+        val activity = composeTestRule.activity
+        val configuration = Configuration(activity.resources.configuration).apply {
+            setLocale(ruLocale)
+        }
+        val localizedContext = activity.createConfigurationContext(configuration)
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalConfiguration provides configuration,
+            ) {
+                content()
+            }
+        }
+    }
+
+    @Test
+    fun card_russianLocale_compactWidth_hasNoOverlapOrTruncation() {
+        setRussianContent {
+            GameTrackerTheme {
+                Box(modifier = Modifier.width(320.dp)) {
+                    LibraryGameCard(
+                        libraryGame = libraryGame(
+                            name = "Hades",
+                            status = LibraryStatus.PLAYING,
+                            hoursPlayed = 999_999,
+                        ),
+                        onClick = {},
+                    )
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+        val statusBounds = composeTestRule.onNodeWithTag(
+            LIBRARY_CARD_STATUS_TEST_TAG,
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        val hoursBounds = composeTestRule.onNodeWithTag(
+            LIBRARY_CARD_HOURS_TEST_TAG,
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        val addedBounds = composeTestRule.onNodeWithTag(
+            LIBRARY_CARD_ADDED_TEST_TAG,
+            useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        assertNoOverlap(statusBounds, hoursBounds, "Status and hours")
+        assertNoOverlap(hoursBounds, addedBounds, "Hours and added date")
+        assertNoOverlap(statusBounds, addedBounds, "Status and added date")
+        assertTrue("Status right should be <= 320dp", statusBounds.right <= 320.dp)
+        assertTrue("Hours right should be <= 320dp", hoursBounds.right <= 320.dp)
+        assertTrue("Added right should be <= 320dp", addedBounds.right <= 320.dp)
+        // Prove the Russian strings actually rendered (not just some text that fits).
+        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(
+            epochSeconds = 1_700_000_000L,
+            locale = ruLocale,
+        )
+        composeTestRule.onNodeWithText("Играю").assertIsDisplayed()
+        composeTestRule.onNodeWithText("999999 ч").assertIsDisplayed()
+        composeTestRule.onNodeWithText(expectedDate).assertIsDisplayed()
+        assertNotEllipsized(
+            composeTestRule.onNodeWithText("Играю", useUnmergedTree = true),
+        )
+        assertNotEllipsized(
+            composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG, useUnmergedTree = true),
+        )
+        assertNotEllipsized(
+            composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
+        )
+    }
+
+    private fun assertNoOverlap(
+        first: androidx.compose.ui.unit.DpRect,
+        second: androidx.compose.ui.unit.DpRect,
+        names: String,
+    ) {
+        val separated = first.right <= second.left ||
+            second.right <= first.left ||
+            first.bottom <= second.top ||
+            second.bottom <= first.top
+        assertTrue("$names overlap: $first vs $second", separated)
     }
 
     private fun assertNotEllipsized(

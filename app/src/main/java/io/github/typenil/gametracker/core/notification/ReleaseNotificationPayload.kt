@@ -7,6 +7,7 @@ import io.github.typenil.gametracker.core.model.ReleaseEvent
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 /**
@@ -17,8 +18,6 @@ object ReleaseNotificationPayload {
     private const val HASH_MULTIPLIER = 31
     private const val POSITIVE_INTEGER_MASK = 0x7FFFFFFF
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US).withZone(ZoneOffset.UTC)
-
     fun buildDeepLinkUri(gameId: Long): String {
         return "gametracker://game/$gameId"
     }
@@ -28,11 +27,25 @@ object ReleaseNotificationPayload {
         return hash and POSITIVE_INTEGER_MASK
     }
 
-    fun formatDate(epochSeconds: Long?): String {
-        if (epochSeconds == null) return "TBD"
-        return dateFormatter.format(Instant.ofEpochSecond(epochSeconds))
+    /**
+     * Formats a calendar release date for notification copy. The locale and the
+     * unknown-date fallback are explicit inputs: no process-global locale is read,
+     * so a language change mid-process cannot leak the previous language.
+     */
+    fun formatDate(
+        epochSeconds: Long?,
+        locale: Locale,
+        unknownDate: String,
+    ): String {
+        if (epochSeconds == null) return unknownDate
+        val date = Instant.ofEpochSecond(epochSeconds)
+            .atZone(ZoneOffset.UTC)
+            .toLocalDate()
+        return DateTimeFormatter
+            .ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(locale)
+            .format(date)
     }
-
     fun getTitle(context: Context, event: ReleaseEvent): String {
         return when (event.eventType) {
             NotificationEventType.RELEASE_TODAY -> context.getString(R.string.notification_release_today_title)
@@ -47,11 +60,19 @@ object ReleaseNotificationPayload {
                 context.getString(R.string.notification_release_today_body, event.gameName)
             }
             NotificationEventType.RELEASE_SOON -> {
-                val formattedDate = formatDate(event.releaseDateEpochSeconds)
+                val formattedDate = formatDate(
+                    epochSeconds = event.releaseDateEpochSeconds,
+                    locale = context.resources.configuration.locales[0],
+                    unknownDate = context.getString(R.string.notification_date_tbd),
+                )
                 context.getString(R.string.notification_release_soon_body, event.gameName, formattedDate)
             }
             NotificationEventType.DATE_CHANGED -> {
-                val formattedDate = formatDate(event.releaseDateEpochSeconds)
+                val formattedDate = formatDate(
+                    epochSeconds = event.releaseDateEpochSeconds,
+                    locale = context.resources.configuration.locales[0],
+                    unknownDate = context.getString(R.string.notification_date_tbd),
+                )
                 context.getString(R.string.notification_date_changed_body, event.gameName, formattedDate)
             }
         }

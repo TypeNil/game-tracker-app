@@ -4,6 +4,7 @@ import io.github.typenil.gametracker.core.model.NotificationEventType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class ReleaseNotificationPayloadTest {
 
@@ -29,13 +30,25 @@ class ReleaseNotificationPayloadTest {
     fun formatDate_formatsUtcDateCorrectly() {
         // 2026-08-24 00:00:00 UTC
         val epoch = 1787529600L
-        val formatted = ReleaseNotificationPayload.formatDate(epoch)
+        val formatted = ReleaseNotificationPayload.formatDate(epoch, Locale.US, "TBD")
         assertEquals("Aug 24, 2026", formatted)
     }
 
     @Test
-    fun formatDate_handlesNullGracefully() {
-        val formatted = ReleaseNotificationPayload.formatDate(null)
+    fun formatDate_usesRequestedLocale() {
+        // 2026-08-24 00:00:00 UTC
+        val epoch = 1787529600L
+        val formatted = ReleaseNotificationPayload.formatDate(
+            epoch,
+            Locale.forLanguageTag("ru-RU"),
+            "TBD",
+        )
+        assertEquals("24 авг. 2026 г.", formatted)
+    }
+
+    @Test
+    fun formatDate_returnsFallbackTextForNull() {
+        val formatted = ReleaseNotificationPayload.formatDate(null, Locale.US, "TBD")
         assertEquals("TBD", formatted)
     }
 }

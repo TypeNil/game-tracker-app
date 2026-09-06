@@ -225,6 +225,7 @@
     <!-- Release Notifications -->
     <string name="notification_channel_releases_name">Game Releases</string>
     <string name="notification_channel_releases_desc">Notifications for upcoming and new game releases in your library</string>
+    <string name="notification_date_tbd">TBD</string>
     <string name="notification_release_today_title">Game Released Today!</string>
     <string name="notification_release_today_body">%1$s is out today!</string>
     <string name="notification_release_soon_title">Upcoming Release</string>

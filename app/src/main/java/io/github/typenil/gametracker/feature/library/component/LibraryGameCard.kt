@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -80,6 +81,7 @@ import io.github.typenil.gametracker.core.model.LibraryStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 private const val HERO_ASPECT_RATIO = 16f / 9f
@@ -98,8 +100,6 @@ private val FavoriteHitSize = FAVORITE_HIT_SIZE_DP.dp
 private val HeroContentTopPadding = (HERO_CONTROL_INSET_DP + FAVORITE_HIT_SIZE_DP + HERO_CONTROL_INSET_DP).dp
 private val MetaIconSize = 18.dp
 private val MetaChevronSize = 16.dp
-private val LibraryAddedDateFormatter =
-    DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 private const val ANIM_EXPAND_ENTER_MS = 250
 private const val ANIM_SHRINK_EXIT_MS = 200
 private const val ANIM_TEXT_FADE_IN_MS = 200
@@ -158,8 +158,14 @@ fun LibraryGameCard(
     val platformFamilies = remember(game.platforms) {
         resolvePlatformFamilies(game.platforms)
     }
-    val addedDate = remember(entry.addedAtEpochSeconds) {
-        formatLibraryAddedDate(entry.addedAtEpochSeconds)
+    val locale = LocalConfiguration.current.locales[0]
+    val zoneId = ZoneId.systemDefault()
+    val addedDate = remember(entry.addedAtEpochSeconds, locale, zoneId) {
+        formatLibraryAddedDate(
+            epochSeconds = entry.addedAtEpochSeconds,
+            zoneId = zoneId,
+            locale = locale,
+        )
     }
 
     Surface(
@@ -364,21 +370,22 @@ fun LibraryGameCard(
                         LibraryAddedDate(addedDate = addedDate)
                     }
                 } else {
-                    Row(
+                    // Single-line Row cannot fit status + hours + date in every locale
+                    // (a Russian MEDIUM date is visibly longer than the English one),
+                    // so the metadata flows: one SpaceBetween line when it fits,
+                    // wrapped lines otherwise. Never overlaps, never truncates.
+                    FlowRow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.CenterStart,
-                        ) {
-                            LibraryStatusControl(
-                                status = entry.status,
-                                onStatusSelected = onStatusSelected,
-                            )
-                        }
+                        LibraryStatusControl(
+                            status = entry.status,
+                            onStatusSelected = onStatusSelected,
+                        )
                         AnimatedVisibility(
                             visible = entry.showsHours(),
                             enter = fadeIn(animationSpec = tween(ANIM_EXPAND_ENTER_MS)) +
@@ -405,12 +412,7 @@ fun LibraryGameCard(
                                 onClick = onHoursClick,
                             )
                         }
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.CenterEnd,
-                        ) {
-                            LibraryAddedDate(addedDate = addedDate)
-                        }
+                        LibraryAddedDate(addedDate = addedDate)
                     }
                 }
             val notes = entry.userNotes
@@ -651,7 +653,13 @@ private fun LibraryEntry.showsHours(): Boolean =
 internal fun formatLibraryAddedDate(
     epochSeconds: Long,
     zoneId: ZoneId = ZoneId.systemDefault(),
-): String = Instant.ofEpochSecond(epochSeconds)
-    .atZone(zoneId)
-    .toLocalDate()
-    .format(LibraryAddedDateFormatter)
+    locale: Locale,
+): String {
+    val date = Instant.ofEpochSecond(epochSeconds)
+        .atZone(zoneId)
+        .toLocalDate()
+    return DateTimeFormatter
+        .ofLocalizedDate(FormatStyle.MEDIUM)
+        .withLocale(locale)
+        .format(date)
+}
