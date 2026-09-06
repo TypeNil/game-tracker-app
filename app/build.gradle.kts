@@ -1,4 +1,6 @@
 import java.util.Properties
+import java.net.URI
+import java.net.InetAddress
 import java.util.zip.ZipFile
 
 plugins {
@@ -17,9 +19,13 @@ val localProperties = Properties().apply {
     }
 }
 
-val liveBaseUrl: String = localProperties.getProperty("bff.baseUrl")
-    ?: (project.findProperty("BFF_BASE_URL") as? String)
-    ?: "http://10.0.2.2:8080/"
+// Resolution order: -PBFF_BASE_URL > env BFF_BASE_URL > local.properties (dev machine only).
+val configuredLiveBaseUrl: Provider<String> = providers.gradleProperty("BFF_BASE_URL")
+    .orElse(providers.environmentVariable("BFF_BASE_URL"))
+    .orElse(providers.provider { localProperties.getProperty("bff.baseUrl") })
+
+// Debug convenience fallback. liveRelease MUST NOT use it (fail-fast in androidComponents below).
+val liveBaseUrl: String = configuredLiveBaseUrl.getOrElse("http://10.0.2.2:8080/")
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -34,7 +40,7 @@ android {
         applicationId = "io.github.typenil.gametracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -56,6 +62,20 @@ android {
         }
     }
 
+    // Production signing credentials come ONLY from env (CI production environment).
+    // Without them release stays unsigned: PR CI and local builds are unaffected.
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -68,6 +88,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Signed only in the production release workflow; unsigned everywhere else.
+            if (!System.getenv("RELEASE_KEYSTORE_PATH").isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -95,6 +119,58 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+// Execution-time guard: a liveRelease baked against an emulator loopback or plain http
+// URL installs fine but is offline on real devices. Wired into preLiveReleaseBuild so it
+// cannot be bypassed via aggregate/alias tasks (:app:build, :app:assemble, :app:bundle,
+// Android Studio). Debug keeps the loopback fallback.
+abstract class ValidateLiveReleaseBffUrlTask : DefaultTask() {
+    @get:Input
+    @get:Optional
+    abstract val baseUrl: Property<String>
+
+    @TaskAction
+    fun validate() {
+        val value = baseUrl.orNull
+            ?: error("BFF_BASE_URL is required for liveRelease (gradle property, env var, or local.properties)")
+        val uri = runCatching { URI(value) }.getOrElse {
+            error("liveRelease BFF_BASE_URL is not a valid URI: $value")
+        }
+        // Retrofit requires a trailing slash; anything else crashes at Hilt init.
+        val host = uri.host
+            ?.removePrefix("[")
+            ?.removeSuffix("]")
+            ?.trimEnd('.')
+            ?.lowercase()
+            .orEmpty()
+        // Covers 127.x.x.x, ::1 and other spellings InetAddress resolves as loopback.
+        val isIpLiteral = host.contains(':') ||
+            host.matches(Regex("""\d{1,3}(\.\d{1,3}){3}"""))
+        val literalAddress = if (isIpLiteral) {
+            runCatching { InetAddress.getByName(host) }.getOrNull()
+        } else {
+            null
+        }
+        require(uri.scheme.equals("https", ignoreCase = true) && host.isNotBlank() &&
+            uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+            uri.rawPath.endsWith("/") && host != "localhost" &&
+            literalAddress?.isLoopbackAddress != true &&
+            literalAddress?.isAnyLocalAddress != true) {
+            "liveRelease requires a credential-free, non-loopback HTTPS base URL ending in '/': $value"
+        }
+    }
+}
+
+val validateLiveReleaseBffUrl = tasks.register<ValidateLiveReleaseBffUrlTask>("validateLiveReleaseBffUrl") {
+    group = "verification"
+    description = "Fails unless liveRelease is configured with a non-loopback HTTPS BFF URL."
+    baseUrl.set(configuredLiveBaseUrl)
+}
+
+tasks.configureEach {
+    if (name == "preLiveReleaseBuild") {
+        dependsOn(validateLiveReleaseBffUrl)
     }
 }
 
@@ -180,9 +256,12 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
     @get:Internal
     abstract val buildDirectory: DirectoryProperty
 
+    @get:Input
+    abstract val flavors: ListProperty<String>
+
     @TaskAction
     fun verify() {
-        listOf("demo", "live").forEach { flavor ->
+        flavors.get().forEach { flavor ->
             val variantName = "${flavor}Release"
             val mappingFile = buildDirectory
                 .file("outputs/mapping/$variantName/mapping.txt")
@@ -210,24 +289,31 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
                     check(dexEntries.isNotEmpty()) {
                         "Release APK ${apk.name} does not contain DEX"
                     }
-                    val hasSignature = zip.entries().asSequence().any {
+                    // Signature is NOT verified here: PR CI asserts unsigned via apksigner, while
+                    // the production release workflow pins the expected cert digest. APK Signature
+                    // Scheme v2/v3 lives outside ZIP entries, so META-INF presence proves nothing.
+                    val hasMetaInfSignature = zip.entries().asSequence().any {
                         it.name.startsWith("META-INF/") && (
                             it.name.endsWith(".RSA") || it.name.endsWith(".DSA") ||
                             it.name.endsWith(".EC") || it.name.endsWith(".SF")
                         )
                     }
-                    check(!hasSignature) {
-                        "Release APK ${apk.name} must be unsigned, but signature entries were found in META-INF"
-                    }
+                    println("META-INF signature entries present: $hasMetaInfSignature (verify signer with apksigner)")
 
-                    val containsTestAction = dexEntries.any { entry ->
+                    val dexStrings = dexEntries.map { entry ->
                         zip.getInputStream(entry).use { input ->
-                            val dexString = String(input.readBytes(), Charsets.ISO_8859_1)
-                            dexString.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION")
+                            String(input.readBytes(), Charsets.ISO_8859_1)
                         }
                     }
-                    check(!containsTestAction) {
+                    check(dexStrings.none { it.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION") }) {
                         "Release APK ${apk.name} still contains ACTION_TEST_NOTIFICATION marker"
+                    }
+                    // Defense in depth behind the liveRelease fail-fast URL validation above:
+                    // a live APK baked against the emulator loopback is offline on real devices.
+                    if (flavor == "live") {
+                        check(dexStrings.none { it.contains("10.0.2.2") }) {
+                            "Release APK ${apk.name} contains emulator loopback URL (BFF_BASE_URL misconfigured)"
+                        }
                     }
                     check(zip.getEntry("AndroidManifest.xml") != null) {
                         "Release APK ${apk.name} is missing AndroidManifest.xml"
@@ -242,6 +328,17 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
 tasks.register<VerifyReleaseArtifactsTask>("verifyReleaseArtifacts") {
     group = "verification"
     description = "Inspects demoRelease and liveRelease APKs to verify R8 minification and artifact integrity."
+    flavors.set(listOf("demo", "live"))
     dependsOn("assembleDemoRelease", "assembleLiveRelease")
+    buildDirectory.set(layout.buildDirectory)
+}
+
+// Production-only verifier: demoRelease is an unsigned, non-distributable R8 fixture
+// and must never be built or signed with the production identity.
+tasks.register<VerifyReleaseArtifactsTask>("verifyLiveReleaseArtifacts") {
+    group = "verification"
+    description = "Inspects the liveRelease APK only (production workflow)."
+    flavors.set(listOf("live"))
+    dependsOn("assembleLiveRelease")
     buildDirectory.set(layout.buildDirectory)
 }

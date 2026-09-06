@@ -83,6 +83,9 @@ jobs:
         run: ./gradlew assembleLiveDebug --stacktrace
 
       - name: Assemble & Verify Release APKs (R8 Minification)
+        env:
+          # Unsigned CI-only artifact; reserved non-routable HTTPS host, never uploaded.
+          BFF_BASE_URL: https://bff.invalid/
         run: ./gradlew :app:verifyReleaseArtifacts --stacktrace
 
       - name: Assert Release APKs are Unsigned
