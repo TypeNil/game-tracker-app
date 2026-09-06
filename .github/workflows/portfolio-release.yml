@@ -47,9 +47,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Assemble Demo Debug APK
-        run: ./gradlew :app:assembleDemoDebug --stacktrace
-
+      - name: Verify & Assemble Demo Debug APK
+        run: |
+          ./gradlew \
+            :app:detekt \
+            :app:testDemoDebugUnitTest \
+            :app:assembleDemoDebug \
+            --stacktrace
       - name: Prepare release files
         run: |
           cp app/build/outputs/apk/demo/debug/app-demo-debug.apk "GameTracker-${GITHUB_REF_NAME}-demo.apk"
@@ -76,16 +80,15 @@ jobs:
               --notes-file CHANGELOG.md
           fi
 
-          echo "Uploading $APK..."
-          gh release upload "$TAG" "$APK" --clobber
+          test -f art/walkthrough.gif
 
-          if [ -f "art/walkthrough.gif" ]; then
-            echo "Uploading walkthrough media..."
-            gh release upload "$TAG" "art/walkthrough.gif" --clobber
-          fi
+          echo "Uploading $APK and walkthrough.gif..."
+          gh release upload "$TAG" "$APK" "art/walkthrough.gif" --clobber
 
           echo "Verifying uploaded assets..."
-          test "$(gh release view "$TAG" --json assets --jq "[.assets[].name] | index(\"$APK\") != null")" = "true"
+          ASSETS="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+          grep -Fxq "$APK" <<< "$ASSETS"
+          grep -Fxq "walkthrough.gif" <<< "$ASSETS"
 
           echo "Publishing release (undrafting)..."
           gh release edit "$TAG" --draft=false
