@@ -309,7 +309,24 @@ class GameDetailsViewModelTest {
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
     }
     @Test
-    fun `reconnectIncrementsImageReloadToken`() = runTest {
+    fun `initialNonForcedRefresh_doesNotIncrementImageReloadToken`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `hydratedReconnect_incrementsImageReloadTokenExactlyOnce`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
         val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
         val networkMonitor: NetworkMonitor = mockk {
             every { status } returns networkStatus
@@ -323,12 +340,41 @@ class GameDetailsViewModelTest {
 
         viewModel.uiState.test {
             val initial = awaitItem()
-            val initialToken = initial.imageReloadToken
+            assertEquals(0L, initial.imageReloadToken)
 
             networkStatus.value = NetworkStatus.Available
 
             val updated = awaitItem()
-            assertTrue("imageReloadToken must increment on reconnect", updated.imageReloadToken > initialToken)
+            assertEquals(1L, updated.imageReloadToken)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `unhydratedReconnectWithForcedRefresh_incrementsImageReloadTokenExactlyOnce`() = runTest {
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+
+            networkStatus.value = NetworkStatus.Available
+
+            val updated = awaitItem()
+            assertEquals(1L, updated.imageReloadToken)
+            assertEquals(listOf(1942L to false, 1942L to true), fakeGameRepository.refreshCalls)
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -250,7 +250,11 @@ class GameDetailsViewModel internal constructor(
                     current.copy(
                         isRefreshing = false,
                         isLoading = if (isUserPullRefresh) current.isLoading else false,
-                        imageReloadToken = current.imageReloadToken + 1,
+                        imageReloadToken = if (force) {
+                            current.imageReloadToken + 1
+                        } else {
+                            current.imageReloadToken
+                        },
                     )
                 }
             }
@@ -280,17 +284,24 @@ class GameDetailsViewModel internal constructor(
      * automatically refetch full details if the current state is unhydrated (skeleton)
      * or the previous refresh completed with an error.
      */
+    private fun incrementImageReloadToken() {
+        _flags.update {
+            it.copy(imageReloadToken = it.imageReloadToken + 1)
+        }
+    }
+
     private fun observeNetworkReconnect() {
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
             monitor.status.reconnects().collect {
                 refreshJob?.join()
-                _flags.update { it.copy(imageReloadToken = it.imageReloadToken + 1) }
                 val shouldRecover =
                     !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
                         _flags.value.lastDetailsRefreshFailed
                 if (shouldRecover) {
                     refreshDetails(force = true)
+                } else {
+                    incrementImageReloadToken()
                 }
             }
         }

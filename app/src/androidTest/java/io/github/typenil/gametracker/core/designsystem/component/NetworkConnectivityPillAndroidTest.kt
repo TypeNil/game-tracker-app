@@ -65,4 +65,37 @@ class NetworkConnectivityPillAndroidTest {
             .onNodeWithTag(NETWORK_CONNECTIVITY_PILL_TAG)
             .assertDoesNotExist()
     }
+
+    @Test
+    fun availableBlipShorterThanDebounce_doesNotShowRestoredState() {
+        composeTestRule.mainClock.autoAdvance = false
+
+        val networkState = mutableStateOf(NetworkStatus.Unavailable)
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                NetworkConnectivityPill(networkStatus = networkState.value)
+            }
+        }
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        val offlineText = composeTestRule.activity.getString(R.string.connectivity_offline)
+        val restoredText = composeTestRule.activity.getString(R.string.connectivity_restored)
+
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Available
+        }
+        composeTestRule.mainClock.advanceTimeBy(NETWORK_RECOVERY_DEBOUNCE_MILLIS / 2)
+
+        composeTestRule.onNodeWithText(restoredText).assertDoesNotExist()
+
+        composeTestRule.runOnIdle {
+            networkState.value = NetworkStatus.Unavailable
+        }
+        composeTestRule.mainClock.advanceTimeBy(NETWORK_RECOVERY_DEBOUNCE_MILLIS * 2)
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        composeTestRule.onNodeWithText(offlineText).assertIsDisplayed()
+        composeTestRule.onNodeWithText(restoredText).assertDoesNotExist()
+    }
 }

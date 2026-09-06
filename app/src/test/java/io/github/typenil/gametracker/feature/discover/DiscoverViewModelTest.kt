@@ -866,6 +866,69 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun `reconnect with trending and forYou errors rebuilds recommendations once`() = runTest {
+        val networkStatus = MutableStateFlow<NetworkStatus>(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val candidate = RecommendationCandidate(
+            101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        // Initial load: trending fails and forYou fails
+        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } returns AppResult.Error(AppError.NetworkError)
+
+        val candidateCalls = mutableListOf<Int>()
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = invocation.args[6] as Int
+            candidateCalls += offset
+            if (candidateCalls.size == 1) {
+                AppResult.Error(AppError.NetworkError)
+            } else {
+                AppResult.Success(
+                    RecommendationCandidatePage(items = listOf(candidate), nextOffset = 30, endReached = false),
+                )
+            }
+        }
+
+        val viewModel = DiscoverViewModel(
+            gameRepository = gameRepository,
+            libraryRepository = libraryRepository,
+            librarySeeder = librarySeeder,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val errorState = awaitItemUntil { it.error != null && it.forYouError != null }
+            assertEquals(AppError.NetworkError, errorState.error)
+            assertEquals(AppError.NetworkError, errorState.forYouError)
+            assertEquals(1, candidateCalls.size)
+
+            // Configure success for trending on reconnect
+            coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
+                trendingFlow.value = trendingGames
+                AppResult.Success(Unit)
+            }
+
+            // Network reconnects
+            networkStatus.value = NetworkStatus.Available
+            advanceUntilIdle()
+
+            // Verify getRecommendationCandidatesPage was called exactly once during recovery (size == 2)
+            assertEquals(2, candidateCalls.size)
+            val recoveredState = viewModel.uiState.value
+            assertEquals(null, recoveredState.error)
+            assertEquals(null, recoveredState.forYouError)
+            assertEquals(listOf(101L), recoveredState.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     private fun createViewModel(): DiscoverViewModel {
         return DiscoverViewModel(

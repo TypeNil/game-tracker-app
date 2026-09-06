@@ -686,19 +686,29 @@ class DiscoverViewModel @Inject constructor(
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
             monitor.status.reconnects().collect {
-                if (pendingForYouRetry != null) {
-                    retryForYou()
-                } else if (recommendations.value.isEmpty() && !isColdStart.value) {
-                    rebuildRecommendations(rotate = false)
-                }
                 if (error.value != null) {
+                    // Includes trending refresh and recommendation rebuilding.
                     retry()
-                }
-                railStates.value.forEach { state ->
-                    if (state.error != null) {
-                        loadMoreRail(state.rail)
+                    hydrateJob?.join()
+                } else {
+                    when {
+                        pendingForYouRetry != null -> {
+                            retryForYou()
+                            forYouRetryJob?.join()
+                            forYouJob?.join()
+                        }
+
+                        recommendations.value.isEmpty() && !isColdStart.value -> {
+                            rebuildRecommendations(rotate = false)
+                        }
                     }
                 }
+
+                railStates.value
+                    .filter { it.error != null }
+                    .forEach { failedRail ->
+                        loadMoreRail(failedRail.rail)
+                    }
             }
         }
     }
