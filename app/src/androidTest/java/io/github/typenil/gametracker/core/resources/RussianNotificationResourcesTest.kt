@@ -31,4 +31,20 @@ class RussianNotificationResourcesTest {
             russianResources.getString(R.string.notification_release_today_body, "Hades"),
         )
     }
+
+    /**
+     * The two unknown-date labels are intentionally different: details covers
+     * historical/incomplete catalog records, notifications track a TBD release.
+     */
+    @Test
+    fun unknownDateLabels_matchTheirContexts() {
+        assertEquals(
+            "Дата неизвестна",
+            russianResources.getString(R.string.details_date_unknown),
+        )
+        assertEquals(
+            "Дата выхода не объявлена",
+            russianResources.getString(R.string.notification_date_tbd),
+        )
+    }
 }

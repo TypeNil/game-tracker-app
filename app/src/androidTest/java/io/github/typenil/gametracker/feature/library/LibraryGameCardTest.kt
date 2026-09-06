@@ -767,6 +767,20 @@ class LibraryGameCardTest {
         assertTrue("Status right should be <= 320dp", statusBounds.right <= 320.dp)
         assertTrue("Hours right should be <= 320dp", hoursBounds.right <= 320.dp)
         assertTrue("Added right should be <= 320dp", addedBounds.right <= 320.dp)
+        // Prove the Russian strings actually rendered (not just some text that fits).
+        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(
+            epochSeconds = 1_700_000_000L,
+            locale = ruLocale,
+        )
+        composeTestRule.onNodeWithText("Играю").assertIsDisplayed()
+        composeTestRule.onNodeWithText("999999 ч").assertIsDisplayed()
+        composeTestRule.onNodeWithText(expectedDate).assertIsDisplayed()
+        assertNotEllipsized(
+            composeTestRule.onNodeWithText("Играю", useUnmergedTree = true),
+        )
+        assertNotEllipsized(
+            composeTestRule.onNodeWithTag(LIBRARY_CARD_HOURS_TEXT_TEST_TAG, useUnmergedTree = true),
+        )
         assertNotEllipsized(
             composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
         )

@@ -102,7 +102,7 @@
     <string name="search_empty_filters_subtitle">Попробуйте ослабить фильтры или изменить критерии</string>
     <string name="search_empty_filters_action">Сбросить фильтры</string>
     <string name="details_title">Об игре</string>
-    <string name="details_date_unknown">Дата выхода не объявлена</string>
+    <string name="details_date_unknown">Дата неизвестна</string>
     <string name="error_not_found">Игра не найдена.</string>
     <string name="details_share_desc">Поделиться игрой</string>
     <string name="details_share_error">Нет приложения для отправки.</string>
