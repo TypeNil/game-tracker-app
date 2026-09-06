@@ -8,7 +8,13 @@ import androidx.compose.ui.text.font.FontWeight
 import io.github.typenil.gametracker.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -139,74 +145,109 @@ fun SettingsScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(GtDimens.Gutter),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = stringResource(R.string.settings_notifications_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_notifications_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = if (hasNotificationPermission) {
-                                stringResource(R.string.settings_notifications_enabled)
-                            } else {
-                                stringResource(R.string.settings_notifications_disabled)
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (hasNotificationPermission) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            }
+                            text = stringResource(R.string.settings_notifications_title),
+                            style = MaterialTheme.typography.titleMedium
                         )
-                        if (!hasNotificationPermission) {
-                            Button(onClick = onRequestPermission) {
-                                Text(text = stringResource(R.string.settings_notifications_enable))
-                            }
+                        Text(
+                            text = stringResource(R.string.settings_notifications_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (hasNotificationPermission) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                         } else {
-                            OutlinedButton(onClick = onManageNotifications) {
-                                Text(text = stringResource(R.string.settings_notifications_manage))
-                            }
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (hasNotificationPermission) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.error
+                                        }
+                                    )
+                            )
+                            Text(
+                                text = if (hasNotificationPermission) {
+                                    stringResource(R.string.settings_notifications_enabled)
+                                } else {
+                                    stringResource(R.string.settings_notifications_disabled)
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (hasNotificationPermission) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
-                    if (hasNotificationPermission) {
-                        if (DebugNotificationActions.isVisible && isSendTestNotificationVisible) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedButton(
-                                onClick = onSendTestNotification,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = stringResource(R.string.settings_notifications_send_test))
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedButton(
-                            onClick = onCheckReleasesNow,
+
+                    if (!hasNotificationPermission) {
+                        Button(
+                            onClick = onRequestPermission,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = Icons.Default.Notifications,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = stringResource(R.string.settings_notifications_check_now))
+                            Text(text = stringResource(R.string.settings_notifications_enable))
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = onManageNotifications,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(text = stringResource(R.string.settings_notifications_manage))
+                            }
+                            if (DebugNotificationActions.isVisible && isSendTestNotificationVisible) {
+                                OutlinedButton(
+                                    onClick = onSendTestNotification,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = stringResource(R.string.settings_notifications_send_test))
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = onCheckReleasesNow,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = stringResource(R.string.settings_notifications_check_now))
+                            }
                         }
                     }
                 }
