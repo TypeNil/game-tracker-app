@@ -410,7 +410,7 @@ class LibraryScreenTest {
     }
 
     @Test
-    fun libraryScreen_editingSheetState_restoresAcrossSavedStateRecreation() {
+    fun libraryScreen_notesDraft_restoresAcrossSavedStateRecreation() {
         val restorationTester = StateRestorationTester(composeTestRule)
         restorationTester.setContent {
             GameTrackerTheme {
@@ -434,17 +434,30 @@ class LibraryScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).performClick()
-        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
-        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).assertTextContains("Initial note")
+        composeTestRule
+            .onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG)
+            .performClick()
+
+        val draft = "Unsaved draft after process recreation"
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .performTextClearance()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .performTextInput(draft)
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains(draft)
 
         restorationTester.emulateSavedInstanceStateRestore()
         composeTestRule.waitForIdle()
 
-        // Verify editing sheet and its input survive process recreation via editingGameId rememberSaveable
-        composeTestRule.onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG).assertIsDisplayed()
-        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).assertExists()
-        composeTestRule.onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG).assertTextContains("Initial note")
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_SHEET_HEADER_TEST_TAG)
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
+            .assertTextContains(draft)
     }
 
     @Test
