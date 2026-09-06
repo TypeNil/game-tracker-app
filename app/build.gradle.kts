@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.net.URI
 import java.util.zip.ZipFile
 
 plugins {
@@ -17,9 +18,13 @@ val localProperties = Properties().apply {
     }
 }
 
-val liveBaseUrl: String = localProperties.getProperty("bff.baseUrl")
-    ?: (project.findProperty("BFF_BASE_URL") as? String)
-    ?: "http://10.0.2.2:8080/"
+// Resolution order: -PBFF_BASE_URL > env BFF_BASE_URL > local.properties (dev machine only).
+val configuredLiveBaseUrl: Provider<String> = providers.gradleProperty("BFF_BASE_URL")
+    .orElse(providers.environmentVariable("BFF_BASE_URL"))
+    .orElse(providers.provider { localProperties.getProperty("bff.baseUrl") })
+
+// Debug convenience fallback. liveRelease MUST NOT use it (fail-fast in androidComponents below).
+val liveBaseUrl: String = configuredLiveBaseUrl.getOrElse("http://10.0.2.2:8080/")
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -34,7 +39,7 @@ android {
         applicationId = "io.github.typenil.gametracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -56,6 +61,20 @@ android {
         }
     }
 
+    // Production signing credentials come ONLY from env (CI production environment).
+    // Without them release stays unsigned: PR CI and local builds are unaffected.
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -68,6 +87,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Signed only in the production release workflow; unsigned everywhere else.
+            if (!System.getenv("RELEASE_KEYSTORE_PATH").isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -94,6 +117,30 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+// Fail-fast guard: a liveRelease baked against an emulator loopback or plain http
+// URL installs fine but is offline on real devices. Debug keeps the loopback fallback.
+androidComponents {
+    beforeVariants(selector().withBuildType("release").withFlavor("environment" to "live")) {
+        // beforeVariants runs while configuring :app for EVERY invocation (debug builds,
+        // unit tests, detekt), so enforce only when liveRelease artifacts are requested.
+        val buildsLiveRelease = gradle.startParameter.taskNames.any { name ->
+            name.contains("LiveRelease", ignoreCase = true) ||
+                name.contains("verifyReleaseArtifacts", ignoreCase = true)
+        }
+        if (!buildsLiveRelease) return@beforeVariants
+        val value = configuredLiveBaseUrl.orNull
+            ?: error("BFF_BASE_URL is required for liveRelease (gradle property, env var, or local.properties)")
+        val uri = try {
+            URI(value)
+        } catch (e: IllegalArgumentException) {
+            error("liveRelease BFF_BASE_URL is not a valid URI: $value")
+        }
+        require(uri.scheme == "https" && !uri.host.isNullOrBlank() &&
+            uri.host !in setOf("localhost", "127.0.0.1", "10.0.2.2")) {
+            "liveRelease requires a non-loopback HTTPS BFF_BASE_URL, got: $value"
         }
     }
 }
@@ -210,24 +257,31 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
                     check(dexEntries.isNotEmpty()) {
                         "Release APK ${apk.name} does not contain DEX"
                     }
-                    val hasSignature = zip.entries().asSequence().any {
+                    // Signature is NOT verified here: PR CI asserts unsigned via apksigner, while
+                    // the production release workflow pins the expected cert digest. APK Signature
+                    // Scheme v2/v3 lives outside ZIP entries, so META-INF presence proves nothing.
+                    val hasMetaInfSignature = zip.entries().asSequence().any {
                         it.name.startsWith("META-INF/") && (
                             it.name.endsWith(".RSA") || it.name.endsWith(".DSA") ||
                             it.name.endsWith(".EC") || it.name.endsWith(".SF")
                         )
                     }
-                    check(!hasSignature) {
-                        "Release APK ${apk.name} must be unsigned, but signature entries were found in META-INF"
-                    }
+                    println("META-INF signature entries present: $hasMetaInfSignature (verify signer with apksigner)")
 
-                    val containsTestAction = dexEntries.any { entry ->
+                    val dexStrings = dexEntries.map { entry ->
                         zip.getInputStream(entry).use { input ->
-                            val dexString = String(input.readBytes(), Charsets.ISO_8859_1)
-                            dexString.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION")
+                            String(input.readBytes(), Charsets.ISO_8859_1)
                         }
                     }
-                    check(!containsTestAction) {
+                    check(dexStrings.none { it.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION") }) {
                         "Release APK ${apk.name} still contains ACTION_TEST_NOTIFICATION marker"
+                    }
+                    // Defense in depth behind the liveRelease fail-fast URL validation above:
+                    // a live APK baked against the emulator loopback is offline on real devices.
+                    if (flavor == "live") {
+                        check(dexStrings.none { it.contains("10.0.2.2") }) {
+                            "Release APK ${apk.name} contains emulator loopback URL (BFF_BASE_URL misconfigured)"
+                        }
                     }
                     check(zip.getEntry("AndroidManifest.xml") != null) {
                         "Release APK ${apk.name} is missing AndroidManifest.xml"

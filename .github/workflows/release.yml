@@ -1,0 +1,75 @@
+name: GameTracker Production Release
+
+# Production signing lives ONLY here. PR CI (ci.yml) stays unsigned on purpose:
+# PR code must never execute in a job that can access the release key.
+on:
+  workflow_dispatch:
+  push:
+    tags: [ "v*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Signed Live Release (R8 + apksigner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore release keystore
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          printf '%s' "$RELEASE_KEYSTORE_B64" \
+            | base64 --decode > "$RUNNER_TEMP/release.jks"
+
+      # demoRelease is an unsigned, non-distributable R8 fixture: never signed,
+      # never uploaded. Only the live variant ships.
+      - name: Build signed live release
+        env:
+          RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          BFF_BASE_URL: ${{ vars.PRODUCTION_BFF_BASE_URL }}
+        run: ./gradlew :app:assembleLiveRelease :app:verifyReleaseArtifacts --stacktrace
+
+      - name: Verify signer certificate
+        env:
+          EXPECTED_CERT_SHA256: ${{ vars.RELEASE_CERT_SHA256 }}
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          APK="$(find app/build/outputs/apk/live/release -name '*.apk' -print -quit)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          ACTUAL="$(
+            "$APKSIGNER" verify --print-certs "$APK" |
+            sed -n 's/^Signer #1 certificate SHA-256 digest: //p'
+          )"
+          test "$ACTUAL" = "$EXPECTED_CERT_SHA256"
+
+      - name: Upload signed live APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-release-signed
+          path: app/build/outputs/apk/live/release/*.apk
+
+      - name: Remove keystore material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
