@@ -12,44 +12,44 @@
 [![TargetSdk](https://img.shields.io/badge/targetSdk-36-blue.svg)](https://developer.android.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Production-grade Android application (2026) with companion Kotlin/Ktor Backend-for-Frontend (BFF) proxying the IGDB API.**  
-Engineered with Unidirectional Data Flow (UDF), Room Single Source of Truth (SSOT), smooth rate limiting, and an offline demo flavor.
+**Нативное Android-приложение (2026) с companion микросервисом BFF на Kotlin/Ktor для работы с IGDB API.**  
+Спроектировано по принципам Clean Architecture, Unidirectional Data Flow (UDF), Room Single Source of Truth (SSOT), монотонным rate limiting и автономным demo-режимом.
 
-[5-Minute Tour](#-5-minute-executive-tour) • [Quick Demo](#-quick-demo) • [Architecture](#-architecture-overview) • [Screenshots](#-screenshots) • [BFF Setup](#-live-local-bff-setup) • [Security](#-security-architecture--threat-model)
+[5-минутный обзор](#-5-минутный-экспресс-тур) • [Быстрый запуск](#-быстрый-запуск-демо-quick-demo) • [Архитектура](#-архитектурные-диаграммы) • [Скриншоты](#-скриншоты) • [Запуск BFF](#-локальный-запуск-bff-и-сетевое-взаимодействие) • [Безопасность](#-безопасность-и-модель-угроз)
 
 ---
 
 </div>
 
-## ⏱️ 5-Minute Executive Tour
+## ⏱️ 5-минутный экспресс-тур
 
-GameTracker is an architectural portfolio project demonstrating production-readiness in modern Android engineering:
+GameTracker — архитектурный портфолио-проект, демонстрирующий стандарты production-разработки под современный Android:
 
-- **True Offline-First Architecture**: Room Database (schema `v6`, migrations `1→2→3→4→5→6`) serves as the strict Single Source of Truth. The UI observes repository-provided `Flow<List<Game>>` and `Flow<PagingData<Game>>`; Room entities remain encapsulated in the data layer. Remote data updates Room; the UI reactively updates from Room.
-- **Zero-Secret Client & Production BFF**: Mobile binaries never store Twitch OAuth2 credentials. The Kotlin/Ktor 3 BFF service manages the token lifecycle, prevents burst quota violations on IGDB via a monotonic `SmoothRateLimiter` ($\le 3.33\text{ req/s}$), and eliminates request dogpiling with a Caffeine single-flight cache.
-- **Modern Jetpack Compose UI**: Built with Material 3 tokens, strong skipping mode, a custom gesture-arbitrated zoomable screenshot viewer (pinch-to-zoom 1x..4x with aspect-ratio bounded panning), and responsive empty/skeleton states.
-- **Personalized Recommendations**: Transparent heuristic engine extracting genre/theme preference vectors from user library signals (Playing, Completed, Wishlist, Dropped, User Rating) with human-readable rationale tags (*"Because you enjoyed Cyberpunk 2077"*).
-- **Dual Flavor Delivery**: `demo` (100% self-contained offline fixtures with bundled high-res assets) and `live` (connected to the Ktor BFF).
+- **Настоящий Offline-First и Room SSOT**: База данных Room (схема `v6`, миграции `1→2→3→4→5→6`) выступает единственным источником правды. UI подписывается на реактивные `Flow<List<Game>>` и `Flow<PagingData<Game>>` из репозитория; Room-сущности инкапсулированы внутри data-слоя. Данные из сети обновляют исключительно Room, а экран реактивно перерисовывается по событиям БД.
+- **BFF-шлюз и полная изоляция секретов**: Мобильный клиент никогда не содержит Client ID и Client Secret OAuth2. Сервис на Kotlin/Ktor 3 управляет жизненным циклом токенов, защищает жёсткий upstream-лимит IGDB (4 req/s) с помощью монотонного `SmoothRateLimiter` ($\le 3.33\text{ req/s}$) и предотвращает дублирующие запросы через in-memory кэш Caffeine (single-flight pattern).
+- **Современный UI на Jetpack Compose**: Material 3 токены, strong skipping mode, кастомный полноэкранный просмотрщик скриншотов с арбитражем жестов (pinch-to-zoom 1x..4x, double-tap zoom и ограничение панорамирования по реальным пропорциям картинки), анимации переходов и скелетоны загрузки без скачков вёрстки.
+- **Персонализированные рекомендации**: Эвристический движок на устройстве рассчитывает вектор предпочтений по жанрам, темам и разработчикам на основе библиотечных статусов (*Играю, Пройдено, Хочу поиграть, Брошено, Оценка*) и формирует понятные теги объяснения (*«Потому что вы любите RPG»*).
+- **Два независимых флейвора**: `demo` (100% автономные оффлайн-фикстуры с упакованными постерами высокого разрешения) и `live` (работа через Ktor BFF с реальным каталогом IGDB).
 
 ---
 
-## 🎬 Critical Flow Walkthrough
+## 🎬 Демонстрация ключевого сценария (Critical Flow)
 
 <div align="center">
 
-<img src="art/walkthrough.gif" width="340" alt="GameTracker Critical Flow Walkthrough" />
+<img src="art/walkthrough.gif" width="340" alt="GameTracker Walkthrough" />
 
-*Critical flow: Discover Feed with personalized recommendations → Debounced Search → Game Details with rich metadata and video trailer → Personal Library tracking.*
+*Критический путь: лента Discover с рекомендациями → дебаунс-поиск с автодополнением → карточка игры с метаданными и галереей скриншотов.*
 
 </div>
 
 ---
 
-## 🚀 Quick Demo
+## 🚀 Быстрый запуск демо (Quick Demo)
 
-Run the application immediately with zero API keys or backend setup.
+Оцените работу приложения за 1 минуту без регистрации API-ключей и без запуска бэкенда.
 
-### Option A: Install Prebuilt Demo APK (2 Commands)
+### Вариант A: Установка готового Demo APK (2 команды)
 
 ```bash
 curl --fail --location --output GameTracker-v1.0.0-demo.apk \
@@ -59,7 +59,7 @@ adb install -r GameTracker-v1.0.0-demo.apk \
   && adb shell am start -n io.github.typenil.gametracker.demo.debug/io.github.typenil.gametracker.MainActivity
 ```
 
-### Option B: Build and Run from Source
+### Вариант B: Сборка и запуск из исходного кода
 
 ```bash
 ./gradlew :app:assembleDemoDebug
@@ -67,238 +67,238 @@ adb install -r app/build/outputs/apk/demo/debug/app-demo-debug.apk \
   && adb shell am start -n io.github.typenil.gametracker.demo.debug/io.github.typenil.gametracker.MainActivity
 ```
 
-> **Signature Troubleshooting**: The prebuilt demo APK is signed with the standard Android debug certificate for frictionless evaluation. If a previous build with a different debug key was installed on your device, reinstall with:  
+> **Примечание по подписи**: Готовый demo APK подписан стандартным Android debug-сертификатом. Если ранее на устройстве была установлена сборка с другим debug-ключом, выполните чистую переустановку:  
 > `adb uninstall io.github.typenil.gametracker.demo.debug && adb install -r GameTracker-v1.0.0-demo.apk`
 
 ---
 
-## 🏛️ Architecture Overview
+## 🏛️ Архитектурные диаграммы
 
-The project adheres to Clean Architecture and Unidirectional Data Flow (UDF) principles with explicit layer and package boundaries.
+Проект строго следует принципам Clean Architecture и Unidirectional Data Flow (UDF) с изоляцией слоёв и границ пакетов.
 
-### High-Level System Architecture
+### Общая архитектура системы
 
 ```mermaid
 graph TD
-    subgraph "Android Client (:app)"
-        UI["Jetpack Compose UI (Material 3)"] -->|Events| VM["ViewModel (StateFlow & UDF)"]
-        VM -->|Collects Domain Models| Repo["Repository Boundary (Data Mapping)"]
-        Repo -->|Observes Flow| Room[("Room SSOT Database (v6)")]
-        Repo -->|Remote Refresh| DataSource{"DataSource Interface"}
-        DataSource -->|demo flavor| FakeDS["FakeBffDataSource (Offline Assets)"]
-        DataSource -->|live flavor| RetrofitDS["RetrofitBffDataSource (OkHttp)"]
+    subgraph "Мобильное приложение (:app)"
+        UI["Jetpack Compose UI (Material 3)"] -->|События / Намерения| VM["ViewModel (StateFlow & UDF)"]
+        VM -->|Подписка на доменные модели| Repo["Граница репозитория (Маппинг данных)"]
+        Repo -->|Реактивный Flow| Room[("Room SSOT База данных (v6)")]
+        Repo -->|Сетевой запрос| DataSource{"Интерфейс DataSource"}
+        DataSource -->|demo флейвор| FakeDS["FakeBffDataSource (Локальные ассеты)"]
+        DataSource -->|live флейвор| RetrofitDS["RetrofitBffDataSource (OkHttp)"]
     end
 
     subgraph "Backend-for-Frontend (:backend)"
-        RetrofitDS -->|HTTP / JSON| Ingress["Ingress Security (trustedHosts Check)"]
-        Ingress --> Validator["SearchQueryValidator (NFC Sanitization)"]
+        RetrofitDS -->|HTTP / JSON| Ingress["Ingress Security (Проверка trustedHosts)"]
+        Ingress --> Validator["SearchQueryValidator (NFC санитизация)"]
         Validator --> Cache["Caffeine Single-Flight Cache (SupervisorScope)"]
-        Cache --> Limiter["SmoothRateLimiter (300ms step <= 3.33 req/s)"]
+        Cache --> Limiter["SmoothRateLimiter (интервал 300мс <= 3.33 req/s)"]
         Limiter --> TokenMgr["IgdbTokenManager (Mutex + CAS OAuth2)"]
     end
 
-    subgraph "Upstream External Services"
+    subgraph "Внешние сервисы"
         TokenMgr -->|App Access Token| TwitchAuth["Twitch OAuth2 Endpoint"]
-        Limiter -->|APICalypse Queries| IGDB["IGDB API v4 Gateway"]
+        Limiter -->|APICalypse-запросы| IGDB["IGDB API v4 Gateway"]
     end
 ```
 
-### Data Flow & Security Pipeline
+### Поток данных и конвейер безопасности
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as Compose Screen
+    participant UI as Экран Compose
     participant VM as ViewModel
     participant Repo as GameRepository
-    participant DB as Room Database (v6)
-    participant BFF as Ktor BFF Gateway
-    participant IGDB as IGDB API
+    participant DB as База данных Room (v6)
+    participant BFF as Шлюз Ktor BFF
+    participant IGDB as IGDB API v4
 
-    UI->>VM: User opens Discover feed
-    VM->>Repo: Observe getTopRatedGamesFlow()
-    Repo->>DB: query SearchDao (SELECT cached games)
+    UI->>VM: Пользователь открывает ленту Discover
+    VM->>Repo: Запрос getTopRatedGamesFlow()
+    Repo->>DB: Запрос в SearchDao (кэшированные игры)
     DB-->>Repo: Flow<List<SearchResultCrossRef>>
-    Repo-->>VM: Flow<List<Game>> (Mapped to Domain)
+    Repo-->>VM: Flow<List<Game>> (Маппинг в домен)
     VM-->>UI: DiscoverUiState.Content
 
     rect rgb(30, 45, 60)
-    Note over VM,BFF: Background Refresh / RemoteMediator
+    Note over VM,BFF: Фоновое обновление / RemoteMediator
     VM->>Repo: refreshTopRatedGames(limit, offset)
     Repo->>BFF: GET /v1/discover/top-rated?limit=20&offset=0
-    BFF->>BFF: Cache check (Single-Flight CompletableDeferred)
-    alt Cache Miss
-        BFF->>BFF: SmoothRateLimiter.acquire()
+    BFF->>BFF: Проверка in-memory кэша (Single-Flight CompletableDeferred)
+    alt Промах кэша
+        BFF->>BFF: Ожидание SmoothRateLimiter.acquire()
         BFF->>IGDB: POST /v4/games (APICalypse body)
-        IGDB-->>BFF: 200 OK (Upstream DTOs)
-        BFF->>BFF: Populate Caffeine cache (TTL 60 min)
+        IGDB-->>BFF: 200 OK (Upstream DTO)
+        BFF->>BFF: Сохранение в кэш Caffeine (TTL 60 мин)
     end
-    BFF-->>Repo: 200 OK (GameDto list)
-    Repo->>DB: Room Transaction: Upsert games & CrossRef
-    DB-->>Repo: Invalidation Tracker triggers Flow emit
-    Repo-->>VM: Updated Flow<List<Game>>
-    VM-->>UI: Recomposed UI with latest data
+    BFF-->>Repo: 200 OK (Список GameDto)
+    Repo->>DB: Транзакция Room: Upsert игр и CrossRef связей
+    DB-->>Repo: Трекер инвалидации Room триггерит emit во Flow
+    Repo-->>VM: Обновлённый Flow<List<Game>>
+    VM-->>UI: Рекомпозиция экрана со свежими данными
     end
 ```
 
 ---
 
-## ✨ Features
+## ✨ Возможности (Features)
 
-### Android Client (`:app`)
-- **Discover & Charts**: Personalized "For You" recommendations, Popular Upcoming countdowns, and Top-Rated charts with infinite scrolling.
-- **Fast Debounced Search**: 300 ms debouncing, instant cancellation of in-flight coroutine jobs, and query history persistence in Room.
-- **Rich Game Details**: High-resolution covers, metadata tags (genres, themes, platforms, developers/publishers), rating badges, media carousels, similar games graph, and external trailer playback.
-- **Interactive Screenshot Viewer**: Fullscreen gesture viewer with pinch-to-zoom (1x..4x), double-tap zoom (1x $\leftrightarrow$ 2.5x), and dynamic pan bounds constrained to the actual fitted image aspect ratio.
-- **Personal Library**: 5 status tiers (*Playing, Completed, Wishlist, Dropped, Not Interested*), 1–10 rating scrubber with semantic tiers, personal notes preview, and Quick Hours stepper dialog with session delta tracking.
-- **Background Release Notifications**: Periodic background tracking via WorkManager, notification channels, Android 13+ runtime permissions, and type-safe deep linking (`gametracker://game/{id}`).
-- **Internationalization**: Full English and Russian localization with locale-aware date formatting.
+### Android-клиент (`:app`)
+- **Лента Discover и чарты**: Персонализированные рекомендации «Для вас», подборка самых ожидаемых игр с обратным отсчётом до релиза и топ рейтинга с плавной пагинацией.
+- **Мгновенный поиск с дебаунсом**: Дебаунс 300 мс, немедленная отмена устаревших корутин в полёте, фильтрация по жанрам/платформам и сохранение истории поисковых запросов в Room.
+- **Подробная карточка игры**: Постеры высокого разрешения, метаданные (жанры, темы, платформы, студии-разработчики и издатели), счётчики оценок, карусель скриншотов, граф похожих игр и запуск официальных трейлеров.
+- **Интерактивный просмотрщик скриншотов**: Полноэкранный просмотр с поддержкой pinch-to-zoom (1x..4x), double-tap zoom (1x $\leftrightarrow$ 2.5x) и ограничением панорамирования по реальным границам смасштабированного изображения.
+- **Пользовательская библиотека**: 5 статусов (*Играю, Пройдено, В планах, Брошено, Не интересно*), скруббер оценки 1–10 с семантическими категориями, предпросмотр личных заметок и диалог быстрого ввода времени с дельтой текущей игровой сессии.
+- **Фоновый трекинг релизов и уведомления**: Периодические проверки релизов через WorkManager с сетевыми ограничениями, поддержка разрешений Android 13+ (`POST_NOTIFICATIONS`), каналы уведомлений и типобезопасные deep links (`gametracker://game/{id}`).
+- **Локализация**: Полный перевод интерфейса на русский и английский языки с учётом локали при форматировании дат.
 
-### Ktor BFF Service (`:backend`)
-- **OAuth2 Token Management**: Thread-safe token acquisition and atomic CAS invalidation on upstream HTTP 401.
-- **Monotonic Rate Limiter**: 300 ms strict step ($\le 3.33\text{ req/s}$) mathematically eliminating burst violations against IGDB's 4 req/s limit.
-- **Single-Flight Cache**: Application-scoped `SupervisorScope` with `CompletableDeferred` preventing duplicate in-flight requests and isolating client disconnections.
-- **APICalypse Injection Guard**: Strict NFC Unicode validator (1..100 characters, allowlist) sanitizing user search input.
-- **Ingress Security**: Validates direct socket peer (`local.remoteHost`) against `trustedHosts` before trusting `X-Forwarded-For`.
-
----
-
-## 📱 Screenshots
-
-| Discover Feed | Upcoming & Charts | Real-time Search |
-| :---: | :---: | :---: |
-| <img src="art/screenshot_discover.png" width="260" alt="Discover Feed" /> | <img src="art/screenshot_charts.png" width="260" alt="Upcoming Charts" /> | <img src="art/screenshot_search.png" width="260" alt="Real-time Search" /> |
-
-| Game Details | User Library | Zoomable Screenshot Viewer |
-| :---: | :---: | :---: |
-| <img src="art/screenshot_details.png" width="260" alt="Game Details" /> | <img src="art/screenshot_library.png" width="260" alt="User Library" /> | <img src="art/screenshot_viewer.png" width="260" alt="Fullscreen Viewer" /> |
+### BFF-микросервис (`:backend`)
+- **Управление токенами OAuth2**: Потокобезопасное получение App Access токена через CAS-операции и автоматическая инвалидация при получении upstream HTTP 401.
+- **Монотонный Rate Limiter**: Защита лимита IGDB (4 req/s) с фиксированным шагом 300 мс между запросами ($\le 3.33\text{ req/s}$), исключающая всплески на стыке секунд.
+- **Single-Flight кэширование**: Изоляция отмены клиентских HTTP-запросов и предотвращение дублирующих запросов к IGDB через `SupervisorScope` и `CompletableDeferred`.
+- **Защита от APICalypse-инъекций**: Валидатор поисковых строк (нормализация Unicode NFC, длина 1..100 символов, строгий allowlist).
+- **Безопасность ingress**: Проверка непосредственного сокет-пира (`local.remoteHost`) по списку доверенных адресов перед обработкой заголовка `X-Forwarded-For`.
 
 ---
 
-## 🔀 Build Variants: Demo vs. Live
+## 📱 Скриншоты
 
-| Capability / Property | `demo` Flavor (Default) | `live` Flavor |
+| Лента Discover | Чарт релизов и популярного | Поиск в реальном времени |
+| :---: | :---: | :---: |
+| <img src="art/screenshot_discover.png" width="260" alt="Лента Discover" /> | <img src="art/screenshot_charts.png" width="260" alt="Чарт релизов" /> | <img src="art/screenshot_search.png" width="260" alt="Поиск игр" /> |
+
+| Карточка игры | Библиотека пользователя | Просмотр скриншотов с зумом |
+| :---: | :---: | :---: |
+| <img src="art/screenshot_details.png" width="260" alt="Карточка игры" /> | <img src="art/screenshot_library.png" width="260" alt="Библиотека" /> | <img src="art/screenshot_viewer.png" width="260" alt="Просмотр скриншотов" /> |
+
+---
+
+## 🔀 Режимы сборки: Demo vs. Live
+
+| Параметр / Характеристика | `demo` флейвор (По умолчанию) | `live` флейвор |
 | :--- | :--- | :--- |
-| **Data Source** | `FakeBffDataSource` (bundled offline assets) | `RetrofitBffDataSource` (Ktor BFF over HTTP) |
-| **External Credentials** | **None** (Zero configuration) | Twitch Client ID & Client Secret |
-| **Offline Independence** | **100% autonomous** (works in Airplane Mode) | Requires reachable Ktor service |
-| **Media Assets** | High-res covers & screenshots in `demo/assets/` | Remote CDN URLs from IGDB |
-| **Target Use Case** | Portfolio evaluation, fast CI, automated tests | Real-time full IGDB catalog exploration |
+| **Источник данных** | `FakeBffDataSource` (встроенные оффлайн-ассеты) | `RetrofitBffDataSource` (Ktor BFF по HTTP) |
+| **Внешние секреты/ключи** | **Не требуются** (Zero configuration) | Twitch Client ID и Client Secret |
+| **Автономность без интернета** | **100% автономно** (работает в режиме полёта) | Требует доступный запущенный BFF |
+| **Медиа-ресурсы** | Постеры и арты в высоком разрешении в `demo/assets/` | Загрузка с CDN серверов IGDB |
+| **Назначение** | Презентация портфолио, быстрый запуск в CI, автотесты | Исследование полного каталога IGDB |
 | **Application ID** | `io.github.typenil.gametracker.demo.debug` | `io.github.typenil.gametracker.debug` |
 
 ---
 
-## 🛠️ Live Local BFF Setup
+## 🛠️ Локальный запуск BFF и сетевое взаимодействие
 
-To explore the live IGDB catalog through your own proxy:
+Если вы хотите подключить мобильное приложение к реальному каталогу IGDB:
 
-### 1. Register Twitch Developer Credentials
-Obtain a Client ID and Client Secret at the [Twitch Developer Console](https://dev.twitch.tv/console/apps).
+### 1. Получите ключи разработчика Twitch
+Зарегистрируйте приложение в [Twitch Developer Console](https://dev.twitch.tv/console/apps) и получите Client ID и Client Secret.
 
-### 2. Start the Ktor BFF Service
+### 2. Запустите сервис Ktor BFF
 
 ```bash
-export TWITCH_CLIENT_ID="your_client_id"
-export TWITCH_CLIENT_SECRET="your_client_secret"
+export TWITCH_CLIENT_ID="ваш_client_id"
+export TWITCH_CLIENT_SECRET="ваш_client_secret"
 ./gradlew :backend:run
 ```
 
-The service will start at `http://127.0.0.1:8080/`. Confirm readiness with:
+Сервис запустится на `http://127.0.0.1:8080/`. Проверьте готовность запросом:
 ```bash
 curl http://127.0.0.1:8080/health
 # {"status":"ok","version":"1.0.0"}
 ```
 
-### 3. Connect the Android Client
+### 3. Подключение Android-клиента
 
-#### Network Contexts Explained:
-- **`localhost` (`127.0.0.1`)**: Refers to the loopback interface of the *Android device itself*. Inside an emulator or physical phone, `localhost` does **not** point to your development PC.
-- **`10.0.2.2` (Android Emulator)**: Special virtual router alias provided by QEMU that routes directly to `127.0.0.1` on your host PC. This is the default base URL for the `live` debug flavor.
-- **`adb reverse` (Physical USB Device — Recommended)**: Maps device port 8080 to PC port 8080 over USB:
+#### Особенности сетей Android:
+- **`localhost` (`127.0.0.1`)**: Указывает на loopback-интерфейс *самого Android-устройства*. Из эмулятора или физического телефона `localhost` **не имеет доступа** к вашему компьютеру.
+- **`10.0.2.2` (Эмулятор Android)**: Специальный псевдоним виртуального маршрутизатора QEMU, проксирующий трафик на `127.0.0.1` хостового компьютера. Это базовый адрес по умолчанию для `liveDebug`.
+- **`adb reverse` (Физическое устройство по USB — Рекомендуется)**: Перенаправляет порт 8080 с телефона на компьютер:
   ```bash
   adb reverse tcp:8080 tcp:8080
   ./gradlew :app:installLiveDebug -PBFF_BASE_URL="http://127.0.0.1:8080/"
   ```
-- **LAN IP (Wi-Fi Device)**: Connects directly to host machine on local Wi-Fi:
+- **LAN IP (Подключение по общей сети Wi-Fi)**: Подключение напрямую по локальному IP-адресу хоста:
   ```bash
   ./gradlew :app:installLiveDebug -PBFF_BASE_URL="http://192.168.1.100:8080/"
   ```
 
 ---
 
-## 🔒 Security Architecture & Threat Model
+## 🔒 Безопасность и модель угроз
 
 <details>
-<summary><b>Click to expand security threat model and mitigation details</b></summary>
+<summary><b>Развернуть подробное описание модели угроз и механизмов защиты</b></summary>
 
-### Why Client Credentials Must Never Live in Mobile APKs
-Reverse-engineering an Android APK with tools like `jadx` or `apktool` trivially recovers embedded API keys and secrets. Packaging Twitch/IGDB OAuth2 Client Credentials inside the mobile app allows unauthorized third parties to extract the credentials, exhaust rate limits, or abuse quotas.
+### Почему клиентские секреты категорически запрещено хранить в APK
+Декомпиляция Android APK утилитами `jadx` или `apktool` позволяет извлечь любые зашитые строковые константы и токены за считанные секунды. Наличие Twitch/IGDB OAuth2 Client Credentials в открытом коде клиентского приложения приведёт к компрометации квоты и блокировке аккаунта.
 
-### BFF Security Mitigations
-1. **OAuth2 Token Isolation**: The mobile client never receives or handles OAuth2 tokens. The BFF exchanges credentials via HTTP POST (`application/x-www-form-urlencoded`), stores tokens in memory using an `AtomicReference`, and invalidates them automatically upon upstream 401 responses.
-2. **Monotonic Rate Limiter**: Upstream IGDB has a hard limit of 4 requests/second. The custom `SmoothRateLimiter` enforces a strict 300 ms interval between requests ($\le 3.33\text{ req/s}$), mathematically preventing burst accumulation at second boundaries.
-3. **Single-Flight Cache**: If 10 clients request the same search query simultaneously, the Caffeine cache uses `CompletableDeferred` inside a `SupervisorScope` so only **one** request reaches IGDB. Downstream client cancellations do not cancel the leader calculation.
-4. **APICalypse Injection Guard**: User search queries are validated against Unicode NFC normalization and character allowlists (`SearchQueryValidator`) before being interpolated into IGDB query strings.
-5. **Ingress Peer Validation**: The BFF verifies the direct TCP socket peer (`local.remoteHost`) against an allowlist of trusted proxies before honoring the `X-Forwarded-For` header, preventing IP-spoofing attacks.
-6. **Zero Leakage**: All logs redact sensitive parameters, query strings, and auth tokens. Public error responses are normalized to a sanitized `ErrorResponse` model.
+### Архитектурные решения безопасности BFF
+1. **Изоляция OAuth2**: Клиентское приложение не работает с OAuth2. BFF выполняет POST-запрос формы `application/x-www-form-urlencoded`, хранит токен в оперативной памяти с использованием `AtomicReference` и автоматически инвалидирует его при получении ответа 401.
+2. **Монотонный Rate Limiter**: IGDB накладывает жёсткое ограничение в 4 req/s. Кастомный `SmoothRateLimiter` резервирует интервал в 300 мс между запросами ($\le 3.33\text{ req/s}$), математически предотвращая всплески (bursts) на стыке скользящих секунд.
+3. **Single-Flight кэширование**: При одновременном поступлении нескольких одинаковых запросов кэш на базе Caffeine использует `CompletableDeferred` внутри изолированного `SupervisorScope`. До IGDB доходит ровно **один** запрос, а внезапный обрыв соединения клиентом не отменяет операцию загрузки.
+4. **Защита от APICalypse-инъекций**: Поисковые строки пользователей нормализуются в Unicode NFC и фильтруются строгим белым списком символов (`SearchQueryValidator`) перед подстановкой в синтаксис запросов IGDB.
+5. **Проверка пира Ingress**: BFF проверяет непосредственный сокет-адрес (`local.remoteHost`) по белому списку доверенных прокси перед тем, как доверять заголовку `X-Forwarded-For`, блокируя подмену IP-адресов.
+6. **Гигиена логов**: Все токены и пользовательские поисковые строки исключены из логов. Публичные ошибки нормализуются в унифицированный безопасный объект `ErrorResponse`.
 
 </details>
 
 ---
 
-## 💾 Offline-First Architecture & Room SSOT
+## 💾 Оффлайн-архитектура и Room SSOT
 
-The application guarantees complete offline functionality through Room Database (SSOT):
+Приложение гарантирует стабильную работу без подключения к сети благодаря локальной базе данных Room:
 
-- **Data Boundary**: The UI observes repository-provided `Flow<List<Game>>` and `Flow<PagingData<Game>>`. Room entities remain encapsulated in the data layer and are mapped to clean domain models (`Game`) at the repository boundary.
-- **Reactive Cache Observation**: Remote network calls never return data directly to the UI. Network responses update Room tables; Room invalidation trackers emit updated data through Flow.
-- **Relational Integrity**: User library entries (`library_entries`) reference catalog games (`games`) with `ForeignKey.RESTRICT`. When catalog search caches expire, user-tracked library entries are permanently protected from cascade deletion.
-- **Schema Evolution**: Current database schema is `v6`. Database migrations `1→2→3→4→5→6` are fully implemented and verified via automated `MigrationTest` suites.
+- **Границы слоёв**: UI подписывается на потоки данных репозитория `Flow<List<Game>>` и `Flow<PagingData<Game>>`. Сущности Room (`GameEntity`, `SearchResultCrossRef`) инкапсулированы внутри data-модуля и маппятся в чистые доменные модели (`Game`) на выходе из репозитория.
+- **Реактивное обновление**: Сетевые ответы никогда не отдаются напрямую на уровень представления. Они атомарно сохраняются в таблицы Room, после чего трекеры инвалидации базы данных инициируют новую эмиссию во `Flow`.
+- **Реляционная целостность**: Записи библиотеки (`library_entries`) ссылаются на каталог игр (`games`) с внешним ключом `ForeignKey.RESTRICT`. При устаревании и очистке поискового кэша пользовательские сохранённые игры защищены от каскадного удаления.
+- **Эволюция базы данных**: Текущая версия схемы — `v6`. Миграции `1→2→3→4→5→6` полностью реализованы и протестированы автотестами `MigrationTest`.
 
 ---
 
-## 🧠 Personalized Recommendations Engine
+## 🧠 Персонализированный рекомендательный движок
 
 <details>
-<summary><b>Click to expand recommendation heuristic algorithm details</b></summary>
+<summary><b>Развернуть алгоритм эвристического скоринга рекомендаций</b></summary>
 
-The recommendation engine operates entirely on-device, providing transparent and privacy-preserving recommendations without external tracking servers:
+Рекомендательный модуль функционирует полностью на устройстве, обеспечивая приватность пользовательских данных без отправки телеметрии на внешние серверы:
 
-1. **Signal Extraction**: Reads user library entries and assigns affinity weights based on status:
-   - Favorite: `+3.0`
-   - Playing: `+2.5`
-   - Completed: `+2.0`
-   - Wishlist: `+1.5`
-   - Dropped: `-2.0`
-   - Rating multiplier: `(userRating - 5) / 2.5`
-2. **Profile Generation**: Aggregates normalized preference vectors across genres, themes, and developer companies.
-3. **Candidate Scoring**: Unowned catalog games are scored using:
-   $$\text{Score} = (\text{GenreAffinity} \times 0.4) + (\text{ThemeAffinity} \times 0.3) + (\text{CompanyAffinity} \times 0.2) + (\text{RatingScore} \times 0.1)$$
-4. **Explainability Engine**: Every recommendation item generates clear, human-readable rationale tags:
-   - *"Because you loved RPGs"*
-   - *"From the creators of Witcher 3"*
-   - *"Top rated in Sci-Fi"*
+1. **Сбор сигналов**: Анализируются записи библиотеки пользователя и присваиваются веса по статусам:
+   - Избранное: `+3.0`
+   - Играю: `+2.5`
+   - Пройдено: `+2.0`
+   - В планах: `+1.5`
+   - Брошено: `-2.0`
+   - Модификатор оценки: `(userRating - 5) / 2.5`
+2. **Формирование профиля**: Строится нормализованный вектор предпочтений пользователя по жанрам, темам и компаниям-разработчикам.
+3. **Скоринг кандидатов**: Игры из каталога, отсутствующие в библиотеке пользователя, ранжируются по формуле:
+   $$\text{Score} = (\text{Жанры} \times 0.4) + (\text{Темы} \times 0.3) + (\text{Разработчики} \times 0.2) + (\text{Рейтинг} \times 0.1)$$
+4. **Объяснимость**: Для каждой рекомендуемой игры формируются человекопонятные теги обоснования:
+   - *«Потому что вы играли в Cyberpunk 2077»*
+   - *«От создателей Ведьмак 3»*
+   - *«Высокий рейтинг в жанре RPG»*
 
 </details>
 
 ---
 
-## 🧪 Testing Strategy & CI/CD Pipelines
+## 🧪 Тестирование и CI/CD
 
-The codebase enforces a rigorous quality bar verified through automated GitHub Actions workflows:
+Качество кода контролируется автоматическими пайплайнами GitHub Actions на каждый PR и коммит в `main`:
 
-### Automated CI Pipeline (3 Parallel Jobs)
-1. **Backend Quality**: `:backend:detekt` → `:backend:check` → `:backend:build` → `git diff --exit-code`.
-2. **Android Quality & Assembly**: `:app:detekt` → `testDemoDebugUnitTest` → `assembleDemoDebug` → `assembleLiveDebug` → `:app:verifyReleaseArtifacts` (R8 verification).
-3. **Connected Instrumentation**: `:app:connectedDemoDebugAndroidTest` on an API 30 emulator (Room DAO suites, `MigrationTest`, `OfflineAcceptanceTest`, and Compose UI tests).
+### Автоматический CI-пайплайн (3 параллельных джоба)
+1. **Качество бэкенда**: `:backend:detekt` $\rightarrow$ `:backend:check` $\rightarrow$ `:backend:build` $\rightarrow$ `git diff --exit-code`.
+2. **Качество и сборка Android**: `:app:detekt` $\rightarrow$ `testDemoDebugUnitTest` $\rightarrow$ `assembleDemoDebug` $\rightarrow$ `assembleLiveDebug` $\rightarrow$ `:app:verifyReleaseArtifacts` (верификация R8).
+3. **Инструментальные тесты**: `:app:connectedDemoDebugAndroidTest` на эмуляторе API 30 (тесты DAO Room, `MigrationTest`, `OfflineAcceptanceTest`, тесты Compose UI).
 
-### Quality Verification Commands
+### Команды локальной проверки качества
 
-- **POSIX (Linux / macOS)**:
+- **Linux / macOS**:
   ```bash
-  ./gradlew :app:detekt :backend:detekt     # Static analysis (both tasks pass with no findings)
-  ./gradlew testDemoDebugUnitTest           # Android unit tests
-  ./gradlew :backend:check                  # Backend unit & integration tests
+  ./gradlew :app:detekt :backend:detekt     # Статический анализ (обе задачи выполняются без замечаний)
+  ./gradlew testDemoDebugUnitTest           # Unit-тесты Android
+  ./gradlew :backend:check                  # Модульные и интеграционные тесты бэкенда
   ```
 
 - **Windows (PowerShell / CMD)**:
@@ -310,52 +310,52 @@ The codebase enforces a rigorous quality bar verified through automated GitHub A
 
 ---
 
-## 🔔 Interactive Verification Demos
+## 🔔 Интерактивные сценарии проверки
 
-### 1. Deterministic Test Notification Demo
-To verify the notification delivery and deep linking pipeline:
+### 1. Детерминированное тестовое уведомление
+Для проверки доставки локальных уведомлений и навигации по deep link:
 
-1. Grant notification permission (required on Android 13+ / API 33+):
+1. Выдайте разрешение на уведомления (требуется на Android 13+ / API 33+):
    ```bash
    adb shell pm grant io.github.typenil.gametracker.demo.debug android.permission.POST_NOTIFICATIONS
    ```
-2. Trigger the deterministic test notification:
+2. Отправьте тестовый интент:
    ```bash
    adb shell am start -W \
      -n io.github.typenil.gametracker.demo.debug/io.github.typenil.gametracker.MainActivity \
      -a io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION \
-     --el gameId 1020 \
-     --es gameName "Doom (2016)"
+     --el gameId 1942 \
+     --es gameName "The Witcher 3: Wild Hunt"
    ```
-3. A notification appears in the system tray. Tapping it triggers deep link `gametracker://game/1020` and navigates directly to Game Details.
+3. В шторке уведомлений появится карточка релиза. Нажатие на неё инициирует переход по deep link `gametracker://game/1942` сразу на экран игры.
 
-### 2. Direct Deep-Link Navigation
-Launch the application directly into a specific game details screen:
+### 2. Прямой переход по Deep Link
+Открытие конкретной игры по ссылке:
 ```bash
-adb shell am start -W -a android.intent.action.VIEW -d "gametracker://game/1020" io.github.typenil.gametracker.demo.debug
+adb shell am start -W -a android.intent.action.VIEW -d "gametracker://game/1942" io.github.typenil.gametracker.demo.debug
 ```
 
-### 3. Background WorkManager Scheduling
-In the **Settings** screen, tapping **"Check releases now"** triggers `triggerImmediateCheck()`, exercising background worker constraints, network checks, and Room deduplication.
+### 3. Фоновая проверка через WorkManager
+На экране **Настройки** кнопка **«Проверить релизы сейчас»** запускает метод `triggerImmediateCheck()`, тестируя ограничения фонового воркера, доступность сети и дедупликацию в Room.
 
 ---
 
-## ⚖️ Engineering Trade-offs & Deliberate Non-Goals
+## ⚖️ Инженерные компромиссы и границы проекта
 
-- **Package-by-Feature inside `:app` over Premature Multi-Module (ADR-010)**:  
-  Maintaining 0 coupling and clean package boundaries (`core/model`, `core/database`, `core/data`, `feature/*`) inside `:app` achieves modularity benefits without the 5–8 second Gradle configuration penalty and KSP code generation overhead of 10+ separate Gradle modules.
-- **Caffeine In-Memory Cache over Redis**:  
-  For a single-instance BFF service, Caffeine provides zero-overhead, in-process LRU/W-TinyLFU caching without external infrastructure dependencies.
-- **Heuristic Recommendations over ML Models**:  
-  Transparent, deterministic, on-device scoring preserves user privacy, requires zero external server inference, and produces explainable rationale tags.
-- **Intent-based Video Playback over Embedded Player**:  
-  Delegating YouTube trailers to native video apps via Android Intent avoids bundling heavyweight WebView/Player libraries, saving binary size and memory.
-- **Local Privacy over Cloud Sync**:  
-  User library data, hours played, and personal notes remain 100% on-device in Room SQLite.
+- **Архитектура Package-by-Feature внутри `:app` вместо оверинжиниринга модулей (ADR-010)**:  
+  Сохранение чистого разделения пакетов (`core/model`, `core/database`, `core/data`, `feature/*`) с нулевой связностью внутри `:app` обеспечивает все преимущества модульности, исключая 5–8-секундный штраф Gradle на конфигурацию 10+ модулей и генерацию кода KSP.
+- **Локальный кэш Caffeine вместо Redis**:  
+  Для одноинстансного BFF-сервиса Caffeine обеспечивает максимальную скорость работы в памяти процесса без накладных расходов на внешнюю инфраструктуру.
+- **Эвристический рекомендательный алгоритм вместо тяжёлых ML-моделей**:  
+  Прозрачный и детерминированный скоринг на клиенте гарантирует приватность пользователя, мгновенный расчёт и не требует содержания внешних ML-серверов.
+- **Запуск трейлеров через системный Intent вместо встроенного плеера**:  
+  Делегирование воспроизведения видео нативному приложению YouTube через Intent экономит память устройства и избавляет от необходимости подключать тяжёлые WebView/видеоплееры.
+- **Локальная приватность вместо облачной синхронизации**:  
+  Все данные библиотеки пользователя, часы и заметки хранятся строго локально на устройстве в Room SQLite.
 
 ---
 
-## 📄 Attribution & License
+## 📄 Атрибуция и лицензия
 
-- **Game Data**: Game information, covers, and metadata are provided by [IGDB.com](https://www.igdb.com) and Twitch under the IGDB Terms of Service.
-- **License**: This project is licensed under the [MIT License](LICENSE).
+- **Данные каталога**: Метаданные, обложки и скриншоты игр предоставлены сервисом [IGDB.com](https://www.igdb.com) и Twitch в соответствии с условиями использования IGDB API.
+- **Лицензия**: Проект распространяется под открытой лицензией [MIT License](LICENSE).
