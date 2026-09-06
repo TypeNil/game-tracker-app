@@ -68,6 +68,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.designsystem.theme.topLevelBottomInset
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 
@@ -292,7 +293,10 @@ fun LibraryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = topLevelBottomInset(),
+                )
         ) {
             PrimaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,
@@ -421,12 +425,7 @@ fun LibraryScreen(
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(
-                                    start = GtDimens.Gutter,
-                                    end = GtDimens.Gutter,
-                                    top = GtDimens.Gutter,
-                                    bottom = GtDimens.Gutter + GtDimens.BottomBarHeight,
-                                ),
+                                contentPadding = PaddingValues(GtDimens.Gutter),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxSize(),
                             ) {

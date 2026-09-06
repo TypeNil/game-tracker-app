@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import io.github.typenil.gametracker.core.data.paging.GameQueryKey
 import io.github.typenil.gametracker.core.data.paging.DiscoverRailKeys
 import io.github.typenil.gametracker.core.data.repository.DefaultGameRepository
+import io.github.typenil.gametracker.core.data.repository.GameDetailsPreviewCache
+import io.github.typenil.gametracker.core.data.repository.PreviewQuality
 import io.github.typenil.gametracker.core.database.dao.GameDao
 import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
@@ -802,5 +804,62 @@ class GameRepositoryTest {
             assertEquals(listOf("Zelda", "Witcher"), history)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `refreshGameDetails failed transaction does not publish to preview cache`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val previewCache = GameDetailsPreviewCache()
+        val failingTransactionRunner = object : TransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                throw IOException("Disk I/O failure during commit")
+            }
+        }
+        val repository = DefaultGameRepository(
+            remoteDataSource = remoteDataSource,
+            gameDao = gameDao,
+            gameDetailsDao = gameDetailsDao,
+            searchDao = searchDao,
+            searchHistoryDao = searchHistoryDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = failingTransactionRunner,
+            ioDispatcher = testDispatcher,
+            nowEpochSeconds = { TEST_NOW_SECONDS },
+            previewCache = previewCache
+        )
+        coEvery { remoteDataSource.getGameDetails(1L) } returns sampleDetailsDto
+
+        val result = repository.refreshGameDetails(1L)
+
+        assertTrue(result is AppResult.Error)
+        assertNull(previewCache.get(1L))
+    }
+
+    @Test
+    fun `getGameDetailsFlow caches hydrated details and similar games when Room emits`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val previewCache = GameDetailsPreviewCache()
+        val repository = DefaultGameRepository(
+            remoteDataSource = remoteDataSource,
+            gameDao = gameDao,
+            gameDetailsDao = gameDetailsDao,
+            searchDao = searchDao,
+            searchHistoryDao = searchHistoryDao,
+            remoteKeyDao = remoteKeyDao,
+            transactionRunner = passThroughTransactionRunner,
+            ioDispatcher = testDispatcher,
+            nowEpochSeconds = { TEST_NOW_SECONDS },
+            previewCache = previewCache
+        )
+        every { gameDetailsDao.getGameDetailsFlow(1L) } returns flowOf(sampleDetailsEntity)
+
+        repository.getGameDetailsFlow(1L).test {
+            val details = awaitItem()
+            assertNotNull(details)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(PreviewQuality.HYDRATED, previewCache.getQuality(1L))
+        assertEquals(sampleDetailsEntity.name, previewCache.get(1L)?.name)
     }
 }

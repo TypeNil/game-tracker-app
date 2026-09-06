@@ -58,10 +58,6 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
-
-    fun onGameClick(game: LibraryGame) {
-        gameRepository.recordPreview(game.game)
-    }
     private companion object {
         const val MAX_PENDING_DETAIL_IDS = 16
     }

@@ -17,43 +17,70 @@ import javax.inject.Singleton
  * Uses a pure Kotlin/Java LRU [LinkedHashMap] with synchronized access for thread safety
  * across background Flow mapping threads and the Main thread, without Android framework test stubs.
  */
+enum class PreviewQuality {
+    CATALOG,
+    HYDRATED,
+}
+
+private data class Entry(
+    val details: GameDetails,
+    val quality: PreviewQuality,
+)
+
+@Suppress("TooManyFunctions")
 @Singleton
 class GameDetailsPreviewCache @Inject constructor() {
 
     private val lock = Any()
-    private val map = object : LinkedHashMap<Long, GameDetails>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, GameDetails>?): Boolean {
+    private val map = object : LinkedHashMap<Long, Entry>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Entry>?): Boolean {
             return size > MAX_ENTRIES
         }
     }
 
-    fun put(game: Game) {
-        synchronized(lock) {
-            map[game.id] = game.toDetailsPreview()
-        }
+    fun putPreview(game: Game) {
+        put(game.toDetailsPreview(), PreviewQuality.CATALOG)
     }
 
-    fun put(details: GameDetails) {
-        synchronized(lock) {
-            map[details.id] = details
-        }
-    }
-    fun put(candidate: RecommendationCandidate) {
-        synchronized(lock) {
-            map[candidate.gameId] = candidate.toDetailsPreview()
-        }
+    fun putPreview(candidate: RecommendationCandidate) {
+        put(candidate.toDetailsPreview(), PreviewQuality.CATALOG)
     }
 
-    fun put(summary: GameSummary) {
-        synchronized(lock) {
-            map[summary.id] = summary.toDetailsPreview()
-        }
+    fun putPreview(summary: GameSummary) {
+        put(summary.toDetailsPreview(), PreviewQuality.CATALOG)
     }
 
+    fun putPreview(details: GameDetails) {
+        put(details, PreviewQuality.CATALOG)
+    }
+
+    fun putHydrated(details: GameDetails) {
+        put(details, PreviewQuality.HYDRATED)
+    }
+
+    fun put(game: Game) = putPreview(game)
+    fun put(candidate: RecommendationCandidate) = putPreview(candidate)
+    fun put(summary: GameSummary) = putPreview(summary)
+    fun put(details: GameDetails) = putPreview(details)
+
+    private fun put(details: GameDetails, quality: PreviewQuality) {
+        synchronized(lock) {
+            val existing = map[details.id]
+            if (existing == null || quality >= existing.quality) {
+                map[details.id] = Entry(details, quality)
+            }
+        }
+    }
 
     fun get(id: Long): GameDetails? {
         return synchronized(lock) {
-            map[id]
+            map[id]?.details
+        }
+    }
+
+    fun getQuality(id: Long): PreviewQuality? {
+        return synchronized(lock) {
+            map[id]?.quality
         }
     }
 

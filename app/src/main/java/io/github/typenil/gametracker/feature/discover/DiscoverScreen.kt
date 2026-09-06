@@ -60,6 +60,7 @@ import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommend
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.GameCard
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.designsystem.theme.topLevelBottomInset
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
@@ -123,9 +124,13 @@ fun DiscoverScreen(
             )
         },
     ) { innerPadding ->
+        val contentModifier = Modifier.padding(
+            top = innerPadding.calculateTopPadding(),
+            bottom = topLevelBottomInset()
+        )
         when {
-            uiState.isInitialLoading -> DiscoverLoadingState(Modifier.padding(innerPadding))
-            uiState.error != null && !uiState.hasContent -> DiscoverErrorState(uiState.error, onRetry, Modifier.padding(innerPadding))
+            uiState.isInitialLoading -> DiscoverLoadingState(contentModifier)
+            uiState.error != null && !uiState.hasContent -> DiscoverErrorState(uiState.error, onRetry, contentModifier)
             else -> DiscoverContent(
                 uiState = uiState,
                 onGameClick = onGameClick,
@@ -136,10 +141,9 @@ fun DiscoverScreen(
                 onSelectRail = onSelectRail,
                 onLoadMoreForYou = onLoadMoreForYou,
                 onRetryForYou = onRetryForYou,
-
                 onLibraryAction = onLibraryAction,
                 scrollToTopTrigger = scrollToTopTrigger,
-                modifier = Modifier.padding(innerPadding),
+                modifier = contentModifier,
             )
         }
     }
@@ -329,12 +333,7 @@ private fun ForYouFeed(
         LazyColumn(
             state = listState,
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = GtDimens.Gutter,
-                end = GtDimens.Gutter,
-                top = GtDimens.Gutter,
-                bottom = GtDimens.Gutter + GtDimens.BottomBarHeight
-            ),
+            contentPadding = PaddingValues(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
@@ -494,12 +493,7 @@ private fun ChartsFeed(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = GtDimens.Gutter,
-                    end = GtDimens.Gutter,
-                    top = GtDimens.Gutter,
-                    bottom = GtDimens.Gutter + GtDimens.BottomBarHeight
-                ),
+                contentPadding = PaddingValues(GtDimens.Gutter),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(currentRailState.games, key = { "${currentRailState.rail.type}:${it.id}" }) { game ->

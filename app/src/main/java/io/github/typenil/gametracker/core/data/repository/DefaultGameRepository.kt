@@ -579,8 +579,17 @@ class DefaultGameRepository internal constructor(
             gameDao.getGameByIdFlow(id)
         ) { details, game ->
             when {
-                details != null -> details.toDomain().also(previewCache::put)
-                game != null -> game.toDomain().toDetailsSkeleton().also(previewCache::put)
+                details != null -> {
+                    val domainDetails = details.toDomain()
+                    previewCache.putHydrated(domainDetails)
+                    domainDetails.similarGames.forEach(previewCache::putPreview)
+                    domainDetails
+                }
+                game != null -> {
+                    val skeleton = game.toDomain().toDetailsSkeleton()
+                    previewCache.putPreview(skeleton)
+                    skeleton
+                }
                 else -> null
             }
         }.flowOn(ioDispatcher)
@@ -605,8 +614,6 @@ class DefaultGameRepository internal constructor(
                 if (!force && isFresh) return@runSuspendCatching
 
                 val remoteDetails = remoteDataSource.getGameDetails(id = id).toDomain()
-                previewCache.put(remoteDetails)
-                remoteDetails.similarGames.forEach(previewCache::put)
                 val nowSeconds = nowEpochSeconds()
                 transactionRunner {
                     // Parent-first: the slim catalog row must exist before anything may
@@ -614,6 +621,8 @@ class DefaultGameRepository internal constructor(
                     gameDao.upsertGame(remoteDetails.toCatalogGame().toEntity(nowSeconds))
                     gameDetailsDao.upsertDetails(remoteDetails.toEntity(nowSeconds))
                 }
+                previewCache.putHydrated(remoteDetails)
+                remoteDetails.similarGames.forEach(previewCache::putPreview)
 
                 runSuspendCatching {
                     clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
