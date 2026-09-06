@@ -411,12 +411,95 @@ class GameDetailsViewModelTest {
 
         // Network recovers
         networkStatus.value = NetworkStatus.Available
-
         // ONLY the active screen refreshes, the covered screen does NOT refresh
         assertEquals(
             listOf(100L to false, 200L to false, 200L to true),
             fakeGameRepository.refreshCalls
         )
+
+        // When covered screen is popped back to top and restarted:
+        coveredViewModel.onScreenStarted()
+        assertEquals(
+            listOf(100L to false, 200L to false, 200L to true, 100L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `coveredEntry_recoversWhenRestartedAfterOfflineReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 100L,
+            networkMonitor = networkMonitor,
+        )
+
+        // 1. Entry starts while offline
+        viewModel.onScreenStarted()
+        assertEquals(listOf(100L to false), fakeGameRepository.refreshCalls)
+
+        // 2. Entry becomes covered (stopped)
+        viewModel.onScreenStopped()
+
+        // 3. Network recovers while entry is covered in the back stack
+        networkStatus.value = NetworkStatus.Available
+
+        // Reconnect observer was inactive, so no hidden refresh occurred while covered
+        assertEquals(listOf(100L to false), fakeGameRepository.refreshCalls)
+
+        // 4. User navigates back: entry starts again
+        viewModel.onScreenStarted()
+
+        // Entry discovers network is Available and was unhydrated -> forced recovery refresh!
+        assertEquals(
+            listOf(100L to false, 100L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `hydratedCoveredEntry_doesNotReloadImagesWhenRestartedAfterOfflineReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 100L,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+
+            // 1. Entry starts, then becomes covered
+            viewModel.onScreenStarted()
+            viewModel.onScreenStopped()
+
+            // 2. Network recovers while covered
+            networkStatus.value = NetworkStatus.Available
+
+            // 3. User navigates back: entry starts again
+            viewModel.onScreenStarted()
+
+            // Already hydrated and no refresh failure: must NOT trigger unnecessary forced refresh
+            assertEquals(listOf(100L to false), fakeGameRepository.refreshCalls)
+            // Nor should it bump image reload token on simple screen restart
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
     }
     @Test
     fun `initialNonForcedRefresh_doesNotIncrementImageReloadToken`() = runTest {

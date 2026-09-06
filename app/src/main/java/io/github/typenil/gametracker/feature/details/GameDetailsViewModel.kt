@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.connectivity.reconnects
 import javax.inject.Inject
 @Suppress("TooManyFunctions")
@@ -54,14 +55,30 @@ class GameDetailsViewModel internal constructor(
     )
 
     private val screenStarted = MutableStateFlow(false)
+    private var checkRecoveryOnNextStart = false
     private val _flags = MutableStateFlow(DetailsInternalFlags())
     private val initialPreview: GameDetails? = gameRepository.getInitialGameDetails(gameId)
 
     fun onScreenStarted() {
         screenStarted.value = true
+
+        val shouldCheck = checkRecoveryOnNextStart
+        checkRecoveryOnNextStart = false
+
+        if (
+            shouldCheck &&
+            networkMonitor?.status?.value == NetworkStatus.Available
+        ) {
+            viewModelScope.launch {
+                recoverAfterConnectivityChange(
+                    reloadImagesWhenHydrated = false,
+                )
+            }
+        }
     }
 
     fun onScreenStopped() {
+        checkRecoveryOnNextStart = true
         screenStarted.value = false
     }
 
@@ -311,6 +328,22 @@ class GameDetailsViewModel internal constructor(
         }
     }
 
+    private suspend fun recoverAfterConnectivityChange(
+        reloadImagesWhenHydrated: Boolean,
+    ) {
+        refreshJob?.join()
+
+        val shouldRecover =
+            !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
+                _flags.value.lastDetailsRefreshFailed
+
+        if (shouldRecover) {
+            refreshDetails(force = true)
+        } else if (reloadImagesWhenHydrated) {
+            incrementImageReloadToken()
+        }
+    }
+
     private fun observeNetworkReconnect() {
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
@@ -319,15 +352,9 @@ class GameDetailsViewModel internal constructor(
                     if (started) monitor.status.reconnects() else emptyFlow()
                 }
                 .collect {
-                    refreshJob?.join()
-                    val shouldRecover =
-                        !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
-                            _flags.value.lastDetailsRefreshFailed
-                    if (shouldRecover) {
-                        refreshDetails(force = true)
-                    } else {
-                        incrementImageReloadToken()
-                    }
+                    recoverAfterConnectivityChange(
+                        reloadImagesWhenHydrated = true,
+                    )
                 }
         }
     }
