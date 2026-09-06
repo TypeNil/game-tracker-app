@@ -64,7 +64,6 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -183,28 +182,50 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
-        val outputDir = buildDirectory.dir("outputs/apk").get().asFile
         listOf("demo", "live").forEach { flavor ->
-            val releaseDir = File(outputDir, "$flavor/release")
+            val variantName = "${flavor}Release"
+            val mappingFile = buildDirectory
+                .file("outputs/mapping/$variantName/mapping.txt")
+                .get()
+                .asFile
+
+            check(mappingFile.isFile && mappingFile.length() > 0L) {
+                "Missing R8 mapping output for $variantName at ${mappingFile.path}"
+            }
+
+            val releaseDir = buildDirectory.dir("outputs/apk/$flavor/release").get().asFile
             val apks = releaseDir.listFiles { _, name -> name.endsWith(".apk") }
                 ?: emptyArray()
+
             check(apks.isNotEmpty()) {
                 "No release APK found in ${releaseDir.path}"
             }
+
             apks.forEach { apk ->
                 ZipFile(apk).use { zip ->
                     val dexEntries = zip.entries().asSequence()
                         .filter { it.name.startsWith("classes") && it.name.endsWith(".dex") }
                         .toList()
+
                     check(dexEntries.isNotEmpty()) {
-                        "Release APK ${apk.name} does not contain any DEX classes!"
+                        "Release APK ${apk.name} does not contain DEX"
                     }
-                    val manifestEntry = zip.getEntry("AndroidManifest.xml")
-                    check(manifestEntry != null) {
-                        "Release APK ${apk.name} is missing AndroidManifest.xml!"
+
+                    val containsTestAction = dexEntries.any { entry ->
+                        zip.getInputStream(entry).use { input ->
+                            String(input.readBytes(), Charsets.ISO_8859_1)
+                                .contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION")
+                        }
+                    }
+                    check(!containsTestAction) {
+                        "Release APK ${apk.name} still contains the test-notification action"
+                    }
+
+                    check(zip.getEntry("AndroidManifest.xml") != null) {
+                        "Release APK ${apk.name} is missing AndroidManifest.xml"
                     }
                 }
-                println("Verified release artifact: ${apk.name} (${apk.length()} bytes)")
+                println("Verified release artifact: ${apk.name} (${apk.length()} bytes, R8 mapping: ${mappingFile.length()} bytes)")
             }
         }
     }
