@@ -266,4 +266,6 @@
     <!-- Release Notification Manual Check -->
     <string name="settings_notifications_check_now">Check Releases Now</string>
     <string name="settings_notifications_check_triggered">Checking tracked game releases in background…</string>
+    <string name="settings_notifications_send_test">Send Test Notification</string>
+    <string name="settings_notifications_test_sent">Test notification sent! Check your notification drawer.</string>
 </resources>

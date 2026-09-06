@@ -44,7 +44,10 @@ import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
 import androidx.compose.material.icons.filled.Refresh
-
+import androidx.compose.material.icons.filled.Notifications
+import io.github.typenil.gametracker.core.model.NotificationEventType
+import io.github.typenil.gametracker.core.model.ReleaseEvent
+import io.github.typenil.gametracker.core.notification.SystemReleaseNotifier
 @Composable
 fun SettingsRoute(
     onBackClick: () -> Unit,
@@ -62,6 +65,20 @@ fun SettingsRoute(
                 )
             } catch (_: ActivityNotFoundException) {
                 Toast.makeText(context, R.string.settings_notifications_open_error, Toast.LENGTH_SHORT).show()
+            }
+        },
+        onSendTestNotification = {
+            val notifier = SystemReleaseNotifier(context)
+            val posted = notifier.postReleaseNotification(
+                ReleaseEvent(
+                    gameId = 1942L,
+                    gameName = "The Witcher 3: Wild Hunt",
+                    eventType = NotificationEventType.RELEASE_TODAY,
+                    releaseDateEpochSeconds = System.currentTimeMillis() / 1000
+                )
+            )
+            if (posted) {
+                Toast.makeText(context, R.string.settings_notifications_test_sent, Toast.LENGTH_SHORT).show()
             }
         },
         onCheckReleasesNow = {
@@ -98,6 +115,7 @@ fun SettingsScreen(
     onOpenIgdb: () -> Unit,
     onOpenGitHub: () -> Unit = {},
     onCheckReleasesNow: () -> Unit = {},
+    onSendTestNotification: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -175,6 +193,19 @@ fun SettingsScreen(
                         }
                     }
                     if (hasNotificationPermission) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = onSendTestNotification,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(R.string.settings_notifications_send_test))
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         OutlinedButton(
                             onClick = onCheckReleasesNow,
