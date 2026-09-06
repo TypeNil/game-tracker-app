@@ -108,6 +108,13 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         return retryableError
     }
 
+    /**
+     * Deduplicates and dispatches release events.
+     * Delivery contract is at-least-once: notifications use deterministic IDs derived from
+     * (gameId, eventType) and `setOnlyAlertOnce(true)`. If process death occurs between dispatch
+     * and Room recording, subsequent retry updates the existing notification in place without
+     * re-alerting the user with repeated sound or vibration.
+     */
     private suspend fun dispatchAndRecordEvents(
         events: List<ReleaseEvent>,
         nowEpochSeconds: Long

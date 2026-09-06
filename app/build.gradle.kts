@@ -210,17 +210,26 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
                     check(dexEntries.isNotEmpty()) {
                         "Release APK ${apk.name} does not contain DEX"
                     }
+                    val hasSignature = zip.entries().asSequence().any {
+                        it.name.startsWith("META-INF/") && (
+                            it.name.endsWith(".RSA") || it.name.endsWith(".DSA") ||
+                            it.name.endsWith(".EC") || it.name.endsWith(".SF")
+                        )
+                    }
+                    check(!hasSignature) {
+                        "Release APK ${apk.name} must be unsigned, but signature entries were found in META-INF"
+                    }
 
                     val containsTestAction = dexEntries.any { entry ->
                         zip.getInputStream(entry).use { input ->
-                            String(input.readBytes(), Charsets.ISO_8859_1)
-                                .contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION")
+                            val dexString = String(input.readBytes(), Charsets.ISO_8859_1)
+                            dexString.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION") ||
+                                dexString.contains("settings_notifications_test_sent")
                         }
                     }
                     check(!containsTestAction) {
-                        "Release APK ${apk.name} still contains the test-notification action"
+                        "Release APK ${apk.name} still contains test-notification action or callback code"
                     }
-
                     check(zip.getEntry("AndroidManifest.xml") != null) {
                         "Release APK ${apk.name} is missing AndroidManifest.xml"
                     }

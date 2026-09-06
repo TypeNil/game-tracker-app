@@ -23,12 +23,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import android.os.SystemClock
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -39,14 +41,19 @@ import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import kotlinx.coroutines.delay
 
 const val NETWORK_CONNECTIVITY_PILL_TAG = "network_connectivity_pill"
-const val NETWORK_RECOVERY_DEBOUNCE_MILLIS = 200L
-private const val RESTORED_DISPLAY_DURATION_MILLIS = 2500L
+const val NETWORK_OFFLINE_DEBOUNCE_MILLIS = 1_500L
+private const val RESTORED_DISPLAY_DURATION_MILLIS = 2_500L
 
 enum class PillMode {
     Hidden,
     Offline,
     Restored
 }
+
+private val PillModeSaver = Saver<PillMode, String>(
+    save = { it.name },
+    restore = { name -> runCatching { PillMode.valueOf(name) }.getOrDefault(PillMode.Hidden) }
+)
 
 /**
  * Non-intrusive top indicator showing device network transitions.
@@ -63,27 +70,38 @@ fun NetworkConnectivityPill(
     isOfflinePillEnabled: Boolean = true,
 ) {
     var previousStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
-    var mode by remember { mutableStateOf(PillMode.Hidden) }
-    var displayedMode by remember { mutableStateOf(PillMode.Offline) }
+    var mode by rememberSaveable(stateSaver = PillModeSaver) { mutableStateOf(PillMode.Hidden) }
+    var displayedMode by rememberSaveable(stateSaver = PillModeSaver) { mutableStateOf(PillMode.Offline) }
+    var restoredUntilMillis by rememberSaveable { mutableLongStateOf(0L) }
     if (mode != PillMode.Hidden) {
         displayedMode = mode
     }
     val offlinePillEnabled by rememberUpdatedState(isOfflinePillEnabled)
     LaunchedEffect(networkStatus) {
+        val now = SystemClock.elapsedRealtime()
+        if (mode == PillMode.Restored && networkStatus == NetworkStatus.Available && restoredUntilMillis > now) {
+            delay(restoredUntilMillis - now)
+            if (mode == PillMode.Restored) {
+                mode = PillMode.Hidden
+            }
+            return@LaunchedEffect
+        }
+
         val recovered = previousStatus == NetworkStatus.Unavailable &&
             networkStatus == NetworkStatus.Available
         previousStatus = networkStatus
 
         when {
             recovered -> {
-                delay(NETWORK_RECOVERY_DEBOUNCE_MILLIS)
                 mode = PillMode.Restored
+                restoredUntilMillis = SystemClock.elapsedRealtime() + RESTORED_DISPLAY_DURATION_MILLIS
                 delay(RESTORED_DISPLAY_DURATION_MILLIS)
                 if (mode == PillMode.Restored) {
                     mode = PillMode.Hidden
                 }
             }
             networkStatus == NetworkStatus.Unavailable -> {
+                delay(NETWORK_OFFLINE_DEBOUNCE_MILLIS)
                 mode = if (offlinePillEnabled) PillMode.Offline else PillMode.Hidden
             }
             else -> mode = PillMode.Hidden
@@ -92,7 +110,11 @@ fun NetworkConnectivityPill(
 
     LaunchedEffect(isOfflinePillEnabled) {
         if (networkStatus == NetworkStatus.Unavailable) {
-            mode = if (isOfflinePillEnabled) PillMode.Offline else PillMode.Hidden
+            if (!isOfflinePillEnabled && mode == PillMode.Offline) {
+                mode = PillMode.Hidden
+            } else if (isOfflinePillEnabled && mode == PillMode.Hidden && previousStatus == NetworkStatus.Unavailable) {
+                mode = PillMode.Offline
+            }
         }
     }
 
