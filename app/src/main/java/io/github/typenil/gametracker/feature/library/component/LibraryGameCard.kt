@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -109,6 +111,7 @@ const val LIBRARY_CARD_HOURS_TEST_TAG = "library_card_hours"
 const val LIBRARY_CARD_HOURS_TEXT_TEST_TAG = "library_card_hours_text"
 const val LIBRARY_CARD_ADDED_TEXT_TEST_TAG = "library_card_added_text"
 const val LIBRARY_CARD_BANNER_TEST_TAG = "library_card_banner"
+const val LIBRARY_CARD_NOTES_TEST_TAG = "library_card_notes"
 
 const val LIBRARY_CARD_CLICK_TARGET_TEST_TAG = "library_card_click_target"
 internal fun resolveLibraryBannerUrl(
@@ -143,6 +146,7 @@ fun LibraryGameCard(
     onFavoriteClick: () -> Unit = {},
     onStatusSelected: (LibraryStatus) -> Unit = {},
     onHoursClick: () -> Unit = {},
+    onNotesClick: () -> Unit = {},
 ) {
     val game = libraryGame.game
     val entry = libraryGame.entry
@@ -407,6 +411,59 @@ fun LibraryGameCard(
                         }
                     }
                 }
+            val notes = entry.userNotes
+            if (!notes.isNullOrBlank()) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                )
+                LibraryNotesPreview(
+                    notes = notes,
+                    onClick = onNotesClick,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryNotesPreview(
+    notes: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f),
+        modifier = modifier.testTag(LIBRARY_CARD_NOTES_TEST_TAG),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Notes,
+                contentDescription = stringResource(R.string.library_personal_notes),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(MetaIconSize),
+            )
+            Text(
+                text = notes,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(MetaChevronSize),
+            )
         }
     }
 }

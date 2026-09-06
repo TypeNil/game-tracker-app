@@ -606,6 +606,54 @@ class LibraryViewModelTest {
         }
     }
 
+    @Test
+    fun onSaveLibraryEntry_callsUpsertUserEdits() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onSaveLibraryEntry(
+            gameId = 42L,
+            status = LibraryStatus.COMPLETED,
+            userRating = 8,
+            hoursPlayed = 35,
+            userNotes = "Great game, finished DLC",
+            isFavorite = true,
+        )
+
+        assertEquals(42L, fakeLibraryRepository.lastUpsertGameId)
+        assertEquals(LibraryStatus.COMPLETED, fakeLibraryRepository.lastUpsertStatus)
+        assertEquals(8, fakeLibraryRepository.lastUpsertRating)
+        assertEquals(35, fakeLibraryRepository.lastUpsertHours)
+        assertEquals("Great game, finished DLC", fakeLibraryRepository.lastUpsertNotes)
+        assertEquals(true, fakeLibraryRepository.lastUpsertFavorite)
+    }
+
+    @Test
+    fun onRemoveFromLibrary_callsRemoveGameFromLibrary() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onRemoveFromLibrary(gameId = 42L)
+
+        assertEquals(42L, fakeLibraryRepository.lastRemovedGameId)
+    }
+
+    @Test
+    fun onSaveLibraryEntry_error_exposesUserMessage() = runTest {
+        val viewModel = createViewModel()
+        fakeLibraryRepository.upsertResult = AppResult.Error(AppError.UnknownError(null))
+
+        viewModel.uiState.test {
+            assertNull(awaitItem().userMessageRes)
+            viewModel.onSaveLibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.COMPLETED,
+                userRating = null,
+                hoursPlayed = 0,
+                userNotes = null,
+                isFavorite = false,
+            )
+            assertEquals(R.string.error_library_update_failed, awaitItem().userMessageRes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
@@ -633,6 +681,14 @@ class LibraryViewModelTest {
         var lastStatus: LibraryStatus? = null
         var setStatusResult: AppResult<Unit> = AppResult.Success(Unit)
 
+        var lastUpsertGameId: Long? = null
+        var lastUpsertStatus: LibraryStatus? = null
+        var lastUpsertRating: Int? = null
+        var lastUpsertHours: Int? = null
+        var lastUpsertNotes: String? = null
+        var lastUpsertFavorite: Boolean? = null
+        var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
+
         override suspend fun upsertUserEdits(
             gameId: Long,
             status: LibraryStatus,
@@ -640,7 +696,15 @@ class LibraryViewModelTest {
             hoursPlayed: Int,
             userNotes: String?,
             isFavorite: Boolean,
-        ): AppResult<Unit> = AppResult.Success(Unit)
+        ): AppResult<Unit> {
+            lastUpsertGameId = gameId
+            lastUpsertStatus = status
+            lastUpsertRating = userRating
+            lastUpsertHours = hoursPlayed
+            lastUpsertNotes = userNotes
+            lastUpsertFavorite = isFavorite
+            return upsertResult
+        }
 
         override suspend fun toggleFavorite(gameId: Long): AppResult<Unit> {
             lastToggleGameId = gameId
@@ -661,6 +725,12 @@ class LibraryViewModelTest {
             delayUpdateHours?.await()
             return updateHoursResult
         }
-        override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)
+        var lastRemovedGameId: Long? = null
+        var removeResult: AppResult<Unit> = AppResult.Success(Unit)
+
+        override suspend fun removeGameFromLibrary(gameId: Long): AppResult<Unit> {
+            lastRemovedGameId = gameId
+            return removeResult
+        }
     }
 }

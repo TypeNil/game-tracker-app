@@ -68,6 +68,8 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.designsystem.component.FeedSkeleton
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 
+import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
@@ -97,6 +99,8 @@ fun LibraryRoute(
         onHoursUpdated = viewModel::onHoursUpdated,
         onHoursSaveHandled = viewModel::onHoursSaveHandled,
         onCardVisible = viewModel::onCardVisible,
+        onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
+        onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
         modifier = modifier
     )
 }
@@ -119,10 +123,20 @@ fun LibraryScreen(
     onHoursSaveHandled: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     onCardVisible: (LibraryGame) -> Unit = {},
+    onSaveLibraryEntry: (
+        gameId: Long,
+        status: LibraryStatus,
+        rating: Int?,
+        hours: Int,
+        notes: String?,
+        isFavorite: Boolean,
+    ) -> Unit = { _, _, _, _, _, _ -> },
+    onRemoveFromLibrary: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var editingEntry by remember { mutableStateOf<LibraryEntry?>(null) }
     val pagerState = rememberPagerState(
         initialPage = uiState.selectedTab.ordinal,
         pageCount = { LibraryTab.entries.size },
@@ -407,6 +421,9 @@ fun LibraryScreen(
                                         onHoursClick = {
                                             editingHoursGameId = item.game.id
                                         },
+                                        onNotesClick = {
+                                            editingEntry = item.entry
+                                        },
                                         modifier = Modifier.animateItem(),
                                     )
                                 }
@@ -436,6 +453,29 @@ fun LibraryScreen(
                 onHoursUpdated(targetGame.game.id, hours)
             },
             isSaving = isSaving,
+        )
+    }
+
+    val currentEditing = editingEntry
+    if (currentEditing != null) {
+        EditLibrarySheet(
+            initialEntry = currentEditing,
+            onDismiss = { editingEntry = null },
+            onSave = { status, rating, hours, notes, favorite ->
+                onSaveLibraryEntry(
+                    currentEditing.gameId,
+                    status,
+                    rating,
+                    hours,
+                    notes,
+                    favorite,
+                )
+                editingEntry = null
+            },
+            onRemove = {
+                onRemoveFromLibrary(currentEditing.gameId)
+                editingEntry = null
+            },
         )
     }
 }

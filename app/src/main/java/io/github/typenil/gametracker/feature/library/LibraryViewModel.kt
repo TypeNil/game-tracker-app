@@ -205,6 +205,44 @@ class LibraryViewModel @Inject constructor(
         _hoursSaveState.value = HoursSaveState.Idle
     }
 
+    fun onSaveLibraryEntry(
+        gameId: Long,
+        status: LibraryStatus,
+        userRating: Int?,
+        hoursPlayed: Int,
+        userNotes: String?,
+        isFavorite: Boolean,
+    ) {
+        viewModelScope.launch {
+            when (
+                libraryRepository.upsertUserEdits(
+                    gameId = gameId,
+                    status = status,
+                    userRating = userRating,
+                    hoursPlayed = hoursPlayed,
+                    userNotes = userNotes,
+                    isFavorite = isFavorite,
+                )
+            ) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> {
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
+    fun onRemoveFromLibrary(gameId: Long) {
+        viewModelScope.launch {
+            when (libraryRepository.removeGameFromLibrary(gameId)) {
+                is AppResult.Success -> Unit
+                is AppResult.Error -> {
+                    _userMessageRes.value = R.string.error_library_update_failed
+                }
+            }
+        }
+    }
+
     fun onUserMessageShown() {
         _userMessageRes.value = null
     }

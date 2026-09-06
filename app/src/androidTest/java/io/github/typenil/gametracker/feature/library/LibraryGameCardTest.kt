@@ -36,6 +36,7 @@ import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_FAVO
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEXT_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_HOURS_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_STATUS_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_NOTES_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LibraryGameCard
 import io.github.typenil.gametracker.feature.library.component.resolveLibraryBannerUrl
 import org.junit.Assert.assertEquals
@@ -709,6 +710,49 @@ class LibraryGameCardTest {
         )
     }
 
+    @Test
+    fun card_withUserNotes_displaysNotesPreview_andClickTriggersCallback() {
+        var notesClicked = false
+        val game = libraryGame(
+            name = "Hades",
+            status = LibraryStatus.PLAYING,
+            userNotes = "Reached Elysium on heat 5",
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = game,
+                    onClick = {},
+                    onNotesClick = { notesClicked = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reached Elysium on heat 5").assertIsDisplayed()
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).performClick()
+        assertTrue(notesClicked)
+    }
+
+    @Test
+    fun card_withoutUserNotes_doesNotDisplayNotesPreview() {
+        val game = libraryGame(
+            name = "Hades",
+            status = LibraryStatus.PLAYING,
+            userNotes = null,
+        )
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryGameCard(
+                    libraryGame = game,
+                    onClick = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_CARD_NOTES_TEST_TAG).assertDoesNotExist()
+    }
+
     private fun libraryGame(
         name: String,
         status: LibraryStatus = LibraryStatus.PLAYING,
@@ -717,6 +761,7 @@ class LibraryGameCardTest {
         rating: Double? = null,
         genres: List<String> = emptyList(),
         developerName: String? = null,
+        userNotes: String? = null,
     ): LibraryGame = LibraryGame(
         game = Game(id = 1L, name = name, rating = rating, genres = genres),
         entry = LibraryEntry(
@@ -726,6 +771,7 @@ class LibraryGameCardTest {
             addedAtEpochSeconds = 1_700_000_000L,
             updatedAtEpochSeconds = 1_700_000_000L,
             hoursPlayed = hoursPlayed,
+            userNotes = userNotes,
         ),
         developerName = developerName,
     )
