@@ -62,8 +62,11 @@ fun AppNavHost(
         }
     }
 
-    val networkStatus = networkMonitor?.status?.collectAsStateWithLifecycle()?.value
-        ?: NetworkStatus.Unknown
+    val networkStatus by if (networkMonitor != null) {
+        networkMonitor.status.collectAsStateWithLifecycle()
+    } else {
+        remember { mutableStateOf(NetworkStatus.Unknown) }
+    }
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
     var scrollToTopDiscoverTrigger by remember { mutableStateOf(0L) }

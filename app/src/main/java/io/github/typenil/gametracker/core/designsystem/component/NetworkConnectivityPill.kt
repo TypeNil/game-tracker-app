@@ -64,7 +64,6 @@ fun NetworkConnectivityPill(
     var previousStatus by rememberSaveable { mutableStateOf(NetworkStatus.Unknown) }
     var mode by remember { mutableStateOf(PillMode.Hidden) }
     val offlinePillEnabled by rememberUpdatedState(isOfflinePillEnabled)
-
     LaunchedEffect(networkStatus) {
         val recovered = previousStatus == NetworkStatus.Unavailable &&
             networkStatus == NetworkStatus.Available
