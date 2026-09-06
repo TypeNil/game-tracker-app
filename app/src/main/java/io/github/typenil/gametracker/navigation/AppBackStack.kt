@@ -26,11 +26,7 @@ class GameTrackerAppState(
         @Composable get() = navController.currentBackStackEntryAsState().value?.destination
 
     val isTopLevelDestination: Boolean
-        @Composable get() {
-            val destination = currentDestination
-            return destination?.hasRoute<DiscoverKey>() == true ||
-                destination?.hasRoute<LibraryKey>() == true
-        }
+        @Composable get() = currentDestination.isTopLevelDestination()
 
     fun navigateToDiscover() {
         navController.navigate(DiscoverKey) {
@@ -76,4 +72,12 @@ fun rememberGameTrackerAppState(
     return remember(navController) {
         GameTrackerAppState(navController = navController)
     }
+}
+
+/**
+ * Determines whether a destination is one of the top-level bottom navigation tabs.
+ */
+fun NavDestination?.isTopLevelDestination(): Boolean {
+    if (this == null) return false
+    return hasRoute<DiscoverKey>() || hasRoute<LibraryKey>()
 }

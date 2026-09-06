@@ -10,10 +10,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hasRoute
-import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
-import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 
 /**
  * Material 3 Motion specifications and transition transitions for root navigation destinations.
@@ -33,14 +29,6 @@ internal object AppNavigationMotion {
 
     // Parallax depth offset factor for the receding background screen
     const val PARALLAX_RECEDE_FACTOR = 0.15f
-}
-
-/**
- * Determines whether a destination is one of the top-level bottom navigation tabs.
- */
-internal fun NavDestination?.isTopLevelDestination(): Boolean {
-    if (this == null) return false
-    return hasRoute<DiscoverKey>() || hasRoute<LibraryKey>()
 }
 
 /**
