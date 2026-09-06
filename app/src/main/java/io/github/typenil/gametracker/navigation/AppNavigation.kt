@@ -3,17 +3,22 @@ package io.github.typenil.gametracker.navigation
 import android.content.Intent
 import androidx.activity.compose.LocalActivity
 import androidx.core.app.OnNewIntentProvider
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -24,6 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.util.Consumer
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import io.github.typenil.gametracker.R
@@ -70,60 +78,15 @@ fun AppNavHost(
     var scrollToTopDiscoverTrigger by remember { mutableStateOf(0L) }
     val isOfflinePillEnabled = currentDestination?.hasRoute<LibraryKey>() != true &&
         currentDestination?.hasRoute<SettingsKey>() != true
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (isTopLevelDestination) {
-                NavigationBar {
-                    val isDiscoverSelected = currentDestination?.hasRoute<DiscoverKey>() == true
-                    NavigationBarItem(
-                        selected = isDiscoverSelected,
-                        onClick = {
-                            if (isDiscoverSelected) {
-                                scrollToTopDiscoverTrigger = System.currentTimeMillis()
-                            } else {
-                                appState.navigateToDiscover()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Explore,
-                                contentDescription = stringResource(R.string.nav_discover)
-                            )
-                        },
-                        label = { Text(stringResource(R.string.nav_discover)) }
-                    )
-
-                    val isLibrarySelected = currentDestination?.hasRoute<LibraryKey>() == true
-                    NavigationBarItem(
-                        selected = isLibrarySelected,
-                        onClick = {
-                            if (!isLibrarySelected) {
-                                appState.navigateToLibrary()
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.CollectionsBookmark,
-                                contentDescription = stringResource(R.string.nav_library)
-                            )
-                        },
-                        label = { Text(stringResource(R.string.nav_library)) }
-                    )
-                }
-            }
-        },
+    Box(
         modifier = modifier.fillMaxSize()
-) { innerPadding ->
-        Box(
+    ) {
+        NavHost(
+            navController = appState.navController,
+            startDestination = DiscoverKey,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            NavHost(
-                navController = appState.navController,
-                startDestination = DiscoverKey,
-                modifier = Modifier.fillMaxSize(),
+                .testTag("app-nav-viewport"),
             enterTransition = { appNavEnterTransition() },
             exitTransition = { appNavExitTransition() },
             popEnterTransition = { appNavPopEnterTransition() },
@@ -155,11 +118,92 @@ fun AppNavHost(
             )
         }
 
-
-            NetworkConnectivityPill(
-                networkStatus = networkStatus,
-                isOfflinePillEnabled = isOfflinePillEnabled,
+        AnimatedVisibility(
+            visible = isTopLevelDestination,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(
+                    durationMillis = AppNavigationMotion.DURATION_ENTER_MS,
+                    easing = AppNavigationMotion.EmphasizedDecelerateEasing
+                )
+            ) + fadeIn(
+                animationSpec = tween(
+                    durationMillis = AppNavigationMotion.DURATION_FADE_IN_MS,
+                    easing = LinearOutSlowInEasing
+                )
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(
+                    durationMillis = AppNavigationMotion.DURATION_EXIT_MS,
+                    easing = AppNavigationMotion.EmphasizedAccelerateEasing
+                )
+            ) + fadeOut(
+                animationSpec = tween(
+                    durationMillis = AppNavigationMotion.DURATION_FADE_OUT_MS,
+                    easing = FastOutLinearInEasing
+                )
+            )
+        ) {
+            AppBottomNavigationBar(
+                currentDestination = currentDestination,
+                onNavigateToDiscover = appState::navigateToDiscover,
+                onNavigateToLibrary = appState::navigateToLibrary,
+                onScrollToTopDiscover = { scrollToTopDiscoverTrigger = System.currentTimeMillis() },
             )
         }
+
+        NetworkConnectivityPill(
+            networkStatus = networkStatus,
+            isOfflinePillEnabled = isOfflinePillEnabled,
+        )
+    }
+}
+
+@Composable
+private fun AppBottomNavigationBar(
+    currentDestination: NavDestination?,
+    onNavigateToDiscover: () -> Unit,
+    onNavigateToLibrary: () -> Unit,
+    onScrollToTopDiscover: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    NavigationBar(modifier = modifier) {
+        val isDiscoverSelected = currentDestination?.hasRoute<DiscoverKey>() == true
+        NavigationBarItem(
+            selected = isDiscoverSelected,
+            onClick = {
+                if (isDiscoverSelected) {
+                    onScrollToTopDiscover()
+                } else {
+                    onNavigateToDiscover()
+                }
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Explore,
+                    contentDescription = stringResource(R.string.nav_discover)
+                )
+            },
+            label = { Text(stringResource(R.string.nav_discover)) }
+        )
+
+        val isLibrarySelected = currentDestination?.hasRoute<LibraryKey>() == true
+        NavigationBarItem(
+            selected = isLibrarySelected,
+            onClick = {
+                if (!isLibrarySelected) {
+                    onNavigateToLibrary()
+                }
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.CollectionsBookmark,
+                    contentDescription = stringResource(R.string.nav_library)
+                )
+            },
+            label = { Text(stringResource(R.string.nav_library)) }
+        )
     }
 }

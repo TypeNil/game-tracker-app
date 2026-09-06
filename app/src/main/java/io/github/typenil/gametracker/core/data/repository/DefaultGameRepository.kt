@@ -56,7 +56,8 @@ class DefaultGameRepository internal constructor(
     private val remoteKeyDao: RemoteKeyDao,
     private val transactionRunner: TransactionRunner,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val nowEpochSeconds: () -> Long
+    private val nowEpochSeconds: () -> Long,
+    private val previewCache: GameDetailsPreviewCache = GameDetailsPreviewCache()
 ) : GameRepository {
     @Inject
     constructor(
@@ -67,7 +68,8 @@ class DefaultGameRepository internal constructor(
         searchHistoryDao: SearchHistoryDao,
         remoteKeyDao: RemoteKeyDao,
         transactionRunner: TransactionRunner,
-        @IoDispatcher ioDispatcher: CoroutineDispatcher
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        previewCache: GameDetailsPreviewCache
     ) : this(
         remoteDataSource = remoteDataSource,
         gameDao = gameDao,
@@ -77,18 +79,29 @@ class DefaultGameRepository internal constructor(
         remoteKeyDao = remoteKeyDao,
         transactionRunner = transactionRunner,
         ioDispatcher = ioDispatcher,
-        nowEpochSeconds = { System.currentTimeMillis() / 1000 }
+        nowEpochSeconds = { System.currentTimeMillis() / 1000 },
+        previewCache = previewCache
     )
+
+    private fun rememberPreview(game: Game): Game {
+        previewCache.putPreview(game)
+        return game
+    }
+
+    private fun rememberPreviews(games: List<Game>): List<Game> {
+        games.forEach(previewCache::putPreview)
+        return games
+    }
 
     override fun getTopRatedGamesFlow(): Flow<List<Game>> {
         return searchDao.getSearchResultsFlow(GameQueryKey.KEY_DISCOVER_TOP_RATED)
-            .map { it.toDomain() }
+            .map { rememberPreviews(it.toDomain()) }
             .flowOn(ioDispatcher)
     }
 
     override fun getTrendingGamesFlow(): Flow<List<Game>> {
         return searchDao.getSearchResultsFlow(GameQueryKey.KEY_DISCOVER_TRENDING)
-            .map { it.toDomain() }
+            .map { rememberPreviews(it.toDomain()) }
             .flowOn(ioDispatcher)
     }
 
@@ -119,7 +132,7 @@ class DefaultGameRepository internal constructor(
             ),
             remoteMediator = mediator,
             pagingSourceFactory = { searchDao.getSearchResultsPagingSource(queryKey) }
-        ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
+        ).flow.map { pagingData -> pagingData.map { rememberPreview(it.toDomain()) } }
     }
 
     override suspend fun refreshTopRatedGames(limit: Int, offset: Int): AppResult<Unit> {
@@ -230,7 +243,7 @@ class DefaultGameRepository internal constructor(
     }
     override fun getPopularGamesFlow(type: String): Flow<List<Game>> {
         return searchDao.getSearchResultsFlow(GameQueryKey.popular(type))
-            .map { it.toDomain() }
+            .map { rememberPreviews(it.toDomain()) }
             .flowOn(ioDispatcher)
     }
 
@@ -290,8 +303,10 @@ class DefaultGameRepository internal constructor(
                 remoteDataSource.getRecommendationCandidatesPage(
                     genres, themes, platforms, exclude, similarTo, limit, offset, sort,
                 ).let { page ->
+                    val domainItems = page.items.map { it.toDomain() }
+                    domainItems.forEach(previewCache::putPreview)
                     io.github.typenil.gametracker.core.model.RecommendationCandidatePage(
-                        items = page.items.map { it.toDomain() },
+                        items = domainItems,
                         nextOffset = page.nextOffset,
                         endReached = page.endReached,
                     )
@@ -321,7 +336,7 @@ class DefaultGameRepository internal constructor(
                     exclude = exclude,
                     similarTo = similarTo,
                     limit = limit,
-                ).map { it.toDomain() }
+                ).map { it.toDomain().also(previewCache::putPreview) }
             }.fold(
                 onSuccess = { AppResult.Success(it) },
                 onFailure = { AppResult.Error(it.toAppError()) }
@@ -336,7 +351,7 @@ class DefaultGameRepository internal constructor(
         }
         val cacheKey = GameQueryKey.fromDomain(query).key
         return searchDao.getSearchResultsFlow(cacheKey)
-            .map { it.toDomain() }
+            .map { rememberPreviews(it.toDomain()) }
             .flowOn(ioDispatcher)
     }
 
@@ -389,7 +404,7 @@ class DefaultGameRepository internal constructor(
             ),
             remoteMediator = mediator,
             pagingSourceFactory = { searchDao.getSearchResultsPagingSource(queryKey) }
-        ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
+        ).flow.map { pagingData -> pagingData.map { rememberPreview(it.toDomain()) } }
     }
 
     @Suppress("LongMethod")
@@ -543,6 +558,18 @@ class DefaultGameRepository internal constructor(
         }
     }
 
+    override fun recordPreview(game: Game) {
+        previewCache.putPreview(game)
+    }
+
+    override fun recordPreview(details: GameDetails) {
+        previewCache.putPreview(details)
+    }
+
+    override fun getInitialGameDetails(id: Long): GameDetails? {
+        return previewCache.get(id)
+    }
+
     override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> {
         // Full details row wins; otherwise the catalog row renders a skeleton, so a
         // first open offline still shows the header the user just saw on a list.
@@ -552,8 +579,17 @@ class DefaultGameRepository internal constructor(
             gameDao.getGameByIdFlow(id)
         ) { details, game ->
             when {
-                details != null -> details.toDomain()
-                game != null -> game.toDomain().toDetailsSkeleton()
+                details != null -> {
+                    val domainDetails = details.toDomain()
+                    previewCache.putHydrated(domainDetails)
+                    domainDetails.similarGames.forEach(previewCache::putPreview)
+                    domainDetails
+                }
+                game != null -> {
+                    val skeleton = game.toDomain().toDetailsSkeleton()
+                    previewCache.putPreview(skeleton)
+                    skeleton
+                }
                 else -> null
             }
         }.flowOn(ioDispatcher)
@@ -585,6 +621,8 @@ class DefaultGameRepository internal constructor(
                     gameDao.upsertGame(remoteDetails.toCatalogGame().toEntity(nowSeconds))
                     gameDetailsDao.upsertDetails(remoteDetails.toEntity(nowSeconds))
                 }
+                previewCache.putHydrated(remoteDetails)
+                remoteDetails.similarGames.forEach(previewCache::putPreview)
 
                 runSuspendCatching {
                     clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
@@ -625,18 +663,7 @@ class DefaultGameRepository internal constructor(
  * else empty/null. rating is the critic rating the catalog already stores —
  * the UI falls back to it while the aggregate is unknown.
  */
-private fun Game.toDetailsSkeleton(): GameDetails {
-    return GameDetails(
-        id = id,
-        name = name,
-        coverUrl = coverUrl,
-        rating = rating,
-        releaseDateEpochSeconds = releaseDateEpochSeconds,
-        summary = summary,
-        genres = genres,
-        platforms = platforms
-    )
-}
+private fun Game.toDetailsSkeleton(): GameDetails = toDetailsPreview()
 
 /**
  * Slim catalog projection of details. Copies the critic `rating`, NEVER

@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.data.repository.toDetailsPreview
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,6 +42,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class GameDetailsViewModelTest {
 
     @get:Rule
@@ -82,7 +85,7 @@ class GameDetailsViewModelTest {
             gameRepository = fakeGameRepository,
             libraryRepository = fakeLibraryRepository,
             gameId = gameId
-        )
+        ).apply { onScreenStarted() }
     }
 
     @Test
@@ -121,6 +124,65 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun `warmPreview_isPresentBeforeUpstreamRuns`() = runTest(
+        StandardTestDispatcher(),
+    ) {
+        fakeGameRepository.initialPreview = catalogSkeleton
+        fakeGameRepository.detailsFlow.value = null
+
+        val viewModel = createViewModel()
+
+        assertEquals(catalogSkeleton, viewModel.uiState.value.game)
+        assertFalse(viewModel.uiState.value.isInitialLoading)
+    }
+
+    @Test
+    fun `warmPreview_retainedWhileFirstRoomEmissionIsNullAndLoading`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        fakeGameRepository.delayRefresh = gate
+        fakeGameRepository.initialPreview = catalogSkeleton
+        fakeGameRepository.detailsFlow.value = null
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals(catalogSkeleton, state.game)
+            assertTrue(state.isLoading)
+
+            fakeGameRepository.detailsFlow.value = hydratedDetails
+            fakeGameRepository.hydratedFlow.value = true
+            gate.complete(Unit)
+            var updated = awaitItem()
+            while (updated.isLoading) {
+                updated = awaitItem()
+            }
+            assertEquals(hydratedDetails, updated.game)
+            assertFalse(updated.isLoading)
+            assertTrue(updated.isHydrated)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `warmPreview_clearedOnRefreshFailureWhenNoPersistedData`() = runTest {
+        fakeGameRepository.initialPreview = catalogSkeleton
+        fakeGameRepository.detailsFlow.value = null
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertNull("Failed refresh without Room data clears preview to reveal error", state.game)
+            assertEquals(AppError.NetworkError, state.error)
+            assertFalse(state.isLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     @Test
     fun `error without cache surfaces error state and retry forces network`() = runTest {
@@ -171,6 +233,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -197,6 +260,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -223,6 +287,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -255,6 +320,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -290,6 +356,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
@@ -307,6 +374,132 @@ class GameDetailsViewModelTest {
 
         // Details refresh must not be triggered by unrelated library error
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+    }
+
+    @Test
+    fun `onlyStartedStackEntryRefreshesOnReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        // Covered screen in back stack: started then stopped
+        val coveredViewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 100L,
+            networkMonitor = networkMonitor,
+        )
+        coveredViewModel.onScreenStarted()
+        coveredViewModel.onScreenStopped()
+
+        // Active top screen: started
+        val activeViewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 200L,
+            networkMonitor = networkMonitor,
+        )
+        activeViewModel.onScreenStarted()
+
+        assertEquals(
+            listOf(100L to false, 200L to false),
+            fakeGameRepository.refreshCalls
+        )
+
+        // Network recovers
+        networkStatus.value = NetworkStatus.Available
+        // ONLY the active screen refreshes, the covered screen does NOT refresh
+        assertEquals(
+            listOf(100L to false, 200L to false, 200L to true),
+            fakeGameRepository.refreshCalls
+        )
+
+        // When covered screen is popped back to top and restarted:
+        coveredViewModel.onScreenStarted()
+        assertEquals(
+            listOf(100L to false, 200L to false, 200L to true, 100L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `coveredEntry_recoversWhenRestartedAfterOfflineReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 100L,
+            networkMonitor = networkMonitor,
+        )
+
+        // 1. Entry starts while offline
+        viewModel.onScreenStarted()
+        assertEquals(listOf(100L to false), fakeGameRepository.refreshCalls)
+
+        // 2. Entry becomes covered (stopped)
+        viewModel.onScreenStopped()
+
+        // 3. Network recovers while entry is covered in the back stack
+        networkStatus.value = NetworkStatus.Available
+
+        // Reconnect observer was inactive, so no hidden refresh occurred while covered
+        assertEquals(listOf(100L to false), fakeGameRepository.refreshCalls)
+
+        // 4. User navigates back: entry starts again
+        viewModel.onScreenStarted()
+
+        // Entry discovers network is Available and was unhydrated -> forced recovery refresh!
+        assertEquals(
+            listOf(100L to false, 100L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `hydratedCoveredEntry_doesNotReloadImagesWhenRestartedAfterOfflineReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 100L,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+
+            // 1. Entry starts, then becomes covered
+            viewModel.onScreenStarted()
+            viewModel.onScreenStopped()
+
+            // 2. Network recovers while covered
+            networkStatus.value = NetworkStatus.Available
+
+            // 3. User navigates back: entry starts again
+            viewModel.onScreenStarted()
+
+            // Already hydrated and no refresh failure: must NOT trigger unnecessary forced refresh
+            assertEquals(listOf(100L to false), fakeGameRepository.refreshCalls)
+            // Nor should it bump image reload token on simple screen restart
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
     }
     @Test
     fun `initialNonForcedRefresh_doesNotIncrementImageReloadToken`() = runTest {
@@ -337,6 +530,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         viewModel.uiState.test {
             val initial = awaitItem()
@@ -365,6 +559,7 @@ class GameDetailsViewModelTest {
             gameId = 1942L,
             networkMonitor = networkMonitor,
         )
+        viewModel.onScreenStarted()
 
         viewModel.uiState.test {
             val initial = awaitItem()
@@ -439,7 +634,7 @@ class GameDetailsViewModelTest {
     }
 
     @Test
-    fun `state survives re-subscription after back-stack pop navigation`() = runTest {
+    fun `state is retained when resubscribed within sharing timeout`() = runTest {
         fakeGameRepository.detailsFlow.value = hydratedDetails
         fakeGameRepository.hydratedFlow.value = true
         val viewModel = createViewModel()
@@ -450,8 +645,8 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        // Return from a stacked similar-game details screen: the Lazily pipeline
-        // stayed alive, so the first emission is the retained content, not Loading.
+        // Re-subscription occurs within WhileSubscribed(5_000), so StateFlow returns
+        // the retained content without exposing a transient Loading state.
         viewModel.uiState.test {
             val retained = awaitItem()
             assertNotNull("Content must be retained across re-subscription", retained.game)
@@ -702,6 +897,15 @@ class GameDetailsViewModelTest {
         val refreshCalls = mutableListOf<Pair<Long, Boolean>>()
         var refreshResult: AppResult<Unit> = AppResult.Success(Unit)
         var delayRefresh: CompletableDeferred<Unit>? = null
+
+        var initialPreview: GameDetails? = null
+        override fun getInitialGameDetails(id: Long): GameDetails? = initialPreview
+        override fun recordPreview(details: GameDetails) {
+            initialPreview = details
+        }
+        override fun recordPreview(game: Game) {
+            initialPreview = game.toDetailsPreview()
+        }
 
         override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> = detailsFlow
 

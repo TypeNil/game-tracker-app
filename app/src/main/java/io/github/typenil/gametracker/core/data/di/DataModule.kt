@@ -10,6 +10,7 @@ import io.github.typenil.gametracker.core.data.repository.DefaultLibraryReposito
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import java.time.Clock
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -21,11 +22,13 @@ abstract class DataModule {
     }
 
     @Binds
+    @Singleton
     abstract fun bindGameRepository(
         impl: DefaultGameRepository
     ): GameRepository
 
     @Binds
+    @Singleton
     abstract fun bindLibraryRepository(
         impl: DefaultLibraryRepository
     ): LibraryRepository

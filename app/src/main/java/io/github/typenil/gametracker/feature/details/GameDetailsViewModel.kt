@@ -12,6 +12,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.feature.details.navigation.GameDetailsKey
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -19,14 +20,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.connectivity.reconnects
 import javax.inject.Inject
 @Suppress("TooManyFunctions")
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GameDetailsViewModel internal constructor(
     private val gameRepository: GameRepository,
@@ -48,13 +54,37 @@ class GameDetailsViewModel internal constructor(
         networkMonitor,
     )
 
+    private val screenStarted = MutableStateFlow(false)
+    private var checkRecoveryOnNextStart = false
     private val _flags = MutableStateFlow(DetailsInternalFlags())
+    private val initialPreview: GameDetails? = gameRepository.getInitialGameDetails(gameId)
+
+    fun onScreenStarted() {
+        screenStarted.value = true
+
+        val shouldCheck = checkRecoveryOnNextStart
+        checkRecoveryOnNextStart = false
+
+        if (
+            shouldCheck &&
+            networkMonitor?.status?.value == NetworkStatus.Available
+        ) {
+            viewModelScope.launch {
+                recoverAfterConnectivityChange(
+                    reloadImagesWhenHydrated = false,
+                )
+            }
+        }
+    }
+
+    fun onScreenStopped() {
+        checkRecoveryOnNextStart = true
+        screenStarted.value = false
+    }
 
     /**
-     * Lazily (not WhileSubscribed): this screen pushes another copy of itself onto
-     * the back stack via similar games; a 5s sharing timeout would tear the pipeline
-     * down while covered and re-run it on pop. Refresh is init-triggered and TTL-gated
-     * in the repository, so a warm upstream never re-fetches on return.
+     * WhileSubscribed(5_000): stops collecting Room and library pipelines when covered
+     * in the back stack, avoiding redundant work while another destination is active.
      */
     val uiState: StateFlow<GameDetailsUiState> = combine(
         gameRepository.getGameDetailsFlow(gameId),
@@ -71,17 +101,18 @@ class GameDetailsViewModel internal constructor(
             is AppResult.Success -> null
         }
         val error = flags.message?.first
+        val displayedGame = game ?: if (flags.isLoading) initialPreview else null
         GameDetailsUiState(
-            game = game,
+            game = displayedGame,
             libraryEntry = libraryEntry,
-            isHydrated = isHydrated,
+            isHydrated = isHydrated && game != null,
             isLoading = flags.isLoading,
             isRefreshing = flags.isRefreshing,
             isEditingLibrary = flags.isEditingLibrary,
             isLibrarySubmitting = flags.isSubmitting,
-            error = if (game != null) null else error,
+            error = if (displayedGame != null) null else error,
             libraryLoadError = libraryLoadError,
-            userMessageRes = if (game != null && error != null) {
+            userMessageRes = if (displayedGame != null && error != null) {
                 flags.message?.second ?: R.string.error_refresh_failed
             } else {
                 flags.message?.second
@@ -90,8 +121,11 @@ class GameDetailsViewModel internal constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
-        initialValue = GameDetailsUiState(isLoading = true)
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = GameDetailsUiState(
+            game = initialPreview,
+            isLoading = initialPreview == null
+        )
     )
 
     private var refreshJob: Job? = null
@@ -270,12 +304,16 @@ class GameDetailsViewModel internal constructor(
     private fun observeEviction() {
         viewModelScope.launch {
             var wasHydrated = false
-            gameRepository.isGameDetailsHydratedFlow(gameId).collect { hydrated ->
-                if (wasHydrated && !hydrated) {
-                    refreshDetails(force = true)
+            screenStarted
+                .flatMapLatest { started ->
+                    if (started) gameRepository.isGameDetailsHydratedFlow(gameId) else emptyFlow()
                 }
-                wasHydrated = hydrated
-            }
+                .collect { hydrated ->
+                    if (wasHydrated && !hydrated) {
+                        refreshDetails(force = true)
+                    }
+                    wasHydrated = hydrated
+                }
         }
     }
 
@@ -290,20 +328,34 @@ class GameDetailsViewModel internal constructor(
         }
     }
 
+    private suspend fun recoverAfterConnectivityChange(
+        reloadImagesWhenHydrated: Boolean,
+    ) {
+        refreshJob?.join()
+
+        val shouldRecover =
+            !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
+                _flags.value.lastDetailsRefreshFailed
+
+        if (shouldRecover) {
+            refreshDetails(force = true)
+        } else if (reloadImagesWhenHydrated) {
+            incrementImageReloadToken()
+        }
+    }
+
     private fun observeNetworkReconnect() {
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
-            monitor.status.reconnects().collect {
-                refreshJob?.join()
-                val shouldRecover =
-                    !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
-                        _flags.value.lastDetailsRefreshFailed
-                if (shouldRecover) {
-                    refreshDetails(force = true)
-                } else {
-                    incrementImageReloadToken()
+            screenStarted
+                .flatMapLatest { started ->
+                    if (started) monitor.status.reconnects() else emptyFlow()
                 }
-            }
+                .collect {
+                    recoverAfterConnectivityChange(
+                        reloadImagesWhenHydrated = true,
+                    )
+                }
         }
     }
 

@@ -76,6 +76,9 @@ interface GameRepository {
     fun getRecentSearchQueriesFlow(limit: Int = 10): Flow<List<String>>
     suspend fun deleteSearchQuery(query: String): AppResult<Unit>
     suspend fun clearSearchHistory(): AppResult<Unit>
+    fun recordPreview(game: Game) {}
+    fun recordPreview(details: GameDetails) {}
+    fun getInitialGameDetails(id: Long): GameDetails? = null
     fun getGameDetailsFlow(id: Long): Flow<GameDetails?>
     fun isGameDetailsHydratedFlow(id: Long): Flow<Boolean>
     suspend fun refreshGameDetails(id: Long, force: Boolean = false): AppResult<Unit>

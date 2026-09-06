@@ -367,7 +367,6 @@ fun SearchScreen(
             onDismiss = { isFilterSheetOpen = false },
             onApply = { appliedFilters ->
                 onApplyFilters(appliedFilters)
-                isFilterSheetOpen = false
             },
         )
     }

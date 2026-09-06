@@ -34,12 +34,17 @@ class DefaultLibraryRepository @Inject constructor(
     private val transactionRunner: TransactionRunner,
     private val signalCollector: RoomRecommendationSignalCollector,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val previewCache: GameDetailsPreviewCache = GameDetailsPreviewCache(),
 ) : LibraryRepository {
 
 
     override fun getLibraryGamesFlow(): Flow<AppResult<List<LibraryGame>>> =
         libraryDao.getPopulatedLibraryEntriesFlow()
-            .map { list -> list.map { it.toDomain() } }
+            .map { list ->
+                list.map { entry ->
+                    entry.toDomain().also { previewCache.putPreview(it.game) }
+                }
+            }
             .asAppResult()
             .flowOn(ioDispatcher)
 

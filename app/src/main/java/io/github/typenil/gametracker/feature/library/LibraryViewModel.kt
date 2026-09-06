@@ -32,6 +32,7 @@ class LibraryViewModel @Inject constructor(
     private var hydrationJob: Job? = null
 
     fun onCardVisible(game: LibraryGame) {
+        gameRepository.recordPreview(game.game)
         if (!game.bannerUrl.isNullOrBlank()) return
 
         val gameId = game.game.id
