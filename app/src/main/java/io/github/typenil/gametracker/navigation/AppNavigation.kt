@@ -108,7 +108,11 @@ fun AppNavHost(
         NavHost(
             navController = appState.navController,
             startDestination = DiscoverKey,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { appNavEnterTransition() },
+            exitTransition = { appNavExitTransition() },
+            popEnterTransition = { appNavPopEnterTransition() },
+            popExitTransition = { appNavPopExitTransition() }
         ) {
             discoverEntry(
                 onGameClick = appState::navigateToGameDetails,
