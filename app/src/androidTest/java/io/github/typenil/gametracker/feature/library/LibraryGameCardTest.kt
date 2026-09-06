@@ -233,7 +233,11 @@ class LibraryGameCardTest {
 
     @Test
     fun card_withMaxHours_dateAndHoursAreFullyDisplayedWithoutTruncation() {
-        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(1_700_000_000L)
+        val testLocale = composeTestRule.activity.resources.configuration.locales[0]
+        val expectedDate = io.github.typenil.gametracker.feature.library.component.formatLibraryAddedDate(
+            epochSeconds = 1_700_000_000L,
+            locale = testLocale,
+        )
         composeTestRule.setContent {
             GameTrackerTheme {
                 LibraryGameCard(
@@ -674,11 +678,17 @@ class LibraryGameCardTest {
         val statusWidth = statusBounds.right - statusBounds.left
         val hoursWidth = hoursBounds.right - hoursBounds.left
         val addedWidth = addedBounds.right - addedBounds.left
-        assertTrue("Status width should be positive", statusWidth > 0.dp)
-        assertTrue("Hours width should be positive", hoursWidth > 0.dp)
-        assertTrue("Added width should be positive", addedWidth > 0.dp)
-        assertTrue("Hours should be to the right of status", hoursBounds.left > statusBounds.right)
-        assertTrue("Added date should be to the right of hours", addedBounds.left > hoursBounds.right)
+        // Narrow metadata uses a wrapping FlowRow: longer locales (e.g. a Russian
+        // MEDIUM date) flow onto the next line instead of overlapping or truncating.
+        // Assert exactly that contract: no pairwise overlap, everything in bounds,
+        // reading order preserved (date at or below the hours line).
+        assertNoOverlap(statusBounds, hoursBounds, "Status and hours")
+        assertNoOverlap(hoursBounds, addedBounds, "Hours and added date")
+        assertNoOverlap(statusBounds, addedBounds, "Status and added date")
+        assertTrue(
+            "Added date should be to the right of or below hours",
+            addedBounds.left > hoursBounds.right || addedBounds.top >= hoursBounds.bottom,
+        )
         assertTrue("Status right ${statusBounds.right} should be <= 320dp", statusBounds.right <= 320.dp)
         assertTrue("Hours right ${hoursBounds.right} should be <= 320dp", hoursBounds.right <= 320.dp)
         assertTrue("Added right ${addedBounds.right} should be <= 320dp", addedBounds.right <= 320.dp)
@@ -693,6 +703,18 @@ class LibraryGameCardTest {
         assertNotEllipsized(
             composeTestRule.onNodeWithTag(LIBRARY_CARD_ADDED_TEXT_TEST_TAG, useUnmergedTree = true),
         )
+    }
+
+    private fun assertNoOverlap(
+        first: androidx.compose.ui.unit.DpRect,
+        second: androidx.compose.ui.unit.DpRect,
+        names: String,
+    ) {
+        val separated = first.right <= second.left ||
+            second.right <= first.left ||
+            first.bottom <= second.top ||
+            second.bottom <= first.top
+        assertTrue("$names overlap: $first vs $second", separated)
     }
 
     private fun assertNotEllipsized(

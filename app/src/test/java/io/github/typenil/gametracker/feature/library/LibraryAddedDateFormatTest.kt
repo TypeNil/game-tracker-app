@@ -8,17 +8,29 @@ import java.util.Locale
 
 class LibraryAddedDateFormatTest {
 
+    private val ruLocale = Locale.forLanguageTag("ru-RU")
+
     @Test
-    fun formatLibraryAddedDate_staysEnglishWhenDeviceLocaleIsRussian() {
-        val previous = Locale.getDefault()
-        try {
-            Locale.setDefault(Locale.forLanguageTag("ru-RU"))
-            assertEquals(
-                "Nov 14, 2023",
-                formatLibraryAddedDate(1_700_000_000L, ZoneOffset.UTC),
-            )
-        } finally {
-            Locale.setDefault(previous)
-        }
+    fun formatLibraryAddedDate_usesRequestedLocale() {
+        assertEquals(
+            "14 нояб. 2023 г.",
+            formatLibraryAddedDate(
+                epochSeconds = 1_700_000_000L,
+                zoneId = ZoneOffset.UTC,
+                locale = ruLocale,
+            ),
+        )
+    }
+
+    @Test
+    fun formatLibraryAddedDate_preservesCalendarDateAcrossLocale() {
+        assertEquals(
+            "Nov 14, 2023",
+            formatLibraryAddedDate(
+                epochSeconds = 1_700_000_000L,
+                zoneId = ZoneOffset.UTC,
+                locale = Locale.US,
+            ),
+        )
     }
 }

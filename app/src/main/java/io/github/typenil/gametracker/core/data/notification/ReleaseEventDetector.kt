@@ -3,7 +3,6 @@ package io.github.typenil.gametracker.core.data.notification
 import io.github.typenil.gametracker.core.model.NotificationEventType
 import io.github.typenil.gametracker.core.model.ReleaseEvent
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
@@ -47,8 +46,8 @@ object ReleaseEventDetector {
 
         // 2. Check for RELEASE_TODAY and RELEASE_SOON
         if (currentReleaseDate != null) {
-            val today = LocalDate.ofInstant(Instant.ofEpochSecond(nowEpochSeconds), zoneId)
-            val releaseDate = LocalDate.ofInstant(Instant.ofEpochSecond(currentReleaseDate), zoneId)
+            val today = Instant.ofEpochSecond(nowEpochSeconds).atZone(zoneId).toLocalDate()
+            val releaseDate = Instant.ofEpochSecond(currentReleaseDate).atZone(zoneId).toLocalDate()
             val daysUntilRelease = ChronoUnit.DAYS.between(today, releaseDate)
 
             when {
