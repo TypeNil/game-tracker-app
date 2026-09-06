@@ -51,12 +51,30 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Validate production BFF endpoint
+        env:
+          BFF_BASE_URL: ${{ vars.PRODUCTION_BFF_BASE_URL }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          from urllib.parse import urlsplit
+
+          value = os.environ.get("BFF_BASE_URL", "")
+          host = (urlsplit(value).hostname or "").lower().rstrip(".")
+
+          if not host or host == "invalid" or host.endswith(".invalid"):
+              print("::error::PRODUCTION_BFF_BASE_URL must not use the reserved .invalid domain")
+              sys.exit(1)
+          PY
+
       - name: Restore release keystore
         env:
           RELEASE_KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
         run: |
           printf '%s' "$RELEASE_KEYSTORE_B64" \
             | base64 --decode > "$RUNNER_TEMP/release.jks"
+
       # demoRelease is an unsigned, non-distributable R8 fixture: never built here,
       # never signed, never uploaded. Only the live variant ships.
       - name: Build signed live release

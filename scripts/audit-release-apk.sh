@@ -15,14 +15,16 @@ HIGH_SIGNAL='twitch[_-]?client[_-]?secret|client[_-]?secret|api[_-]?key|apikey|\
 GENERIC='Authorization|Bearer'
 
 match_high_signal() {
-    # $1: directory to scan. Exit 0 prints matches; exit 1 (via return 0) means
-    # clean. Scanner errors (>1) propagate as failures, never as clean results.
+    # $1: directory to scan. Prints MATCHING FILE PATHS only, never matching
+    # lines: a detected secret must not be copied into CI logs. Exit 0 with
+    # output = finding; silent return 0 = clean. Scanner errors (>1) propagate
+    # as failures, never as clean results.
     local root="$1"
     local output
     local status
 
     set +e
-    output="$(grep -r -n -i -E "$HIGH_SIGNAL" "$root" 2>&1)"
+    output="$(grep -r -l -i -E "$HIGH_SIGNAL" "$root" 2>&1)"
     status=$?
     set -e
 
@@ -35,9 +37,10 @@ match_high_signal() {
             ;;
     esac
 }
+
 report_generic() {
-    # Informational only: these legitimately occur in OkHttp/Retrofit.
-    grep -r -n -E "$GENERIC" "$1" | head -20 || true
+    # Informational only (filenames): these legitimately occur in OkHttp/Retrofit.
+    grep -r -l -E "$GENERIC" "$1" | head -20 || true
 }
 
 
@@ -45,7 +48,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT
     mkdir -p "$TMP/app"
-    echo 'twitch_client_secret = "canary"' > "$TMP/app/Canary.smali"
+    echo 'twitch_client_secret = "must-not-appear-in-output"' > "$TMP/app/Canary.smali"
     echo 'https://staging.example.com/v1/games' > "$TMP/app/Endpoint.smali"
     echo 'Authorization: Bearer xyz' > "$TMP/app/OkHttp.smali"
     if [[ -z "$(match_high_signal "$TMP/app")" ]]; then
@@ -53,11 +56,20 @@ if [[ "${1:-}" == "--self-test" ]]; then
         exit 1
     fi
     echo "self-test: canary detected"
-    if ! match_high_signal "$TMP/app" | grep -q "staging.example"; then
+    if ! match_high_signal "$TMP/app" | grep -q 'Endpoint.smali'; then
         echo "SELF-TEST FAILED: staging marker not detected"
         exit 1
     fi
     echo "self-test: staging marker detected"
+    if match_high_signal "$TMP/app" 2>&1 | grep -q 'must-not-appear-in-output'; then
+        echo "SELF-TEST FAILED: secret value leaked into output"
+        exit 1
+    fi
+    if ! match_high_signal "$TMP/app" 2>&1 | grep -q 'Canary.smali'; then
+        echo "SELF-TEST FAILED: affected filename not reported"
+        exit 1
+    fi
+    echo "self-test: filenames reported, values redacted"
     report_generic "$TMP/app" > /dev/null
     echo "self-test: generic terms reported without failing"
     mkdir -p "$TMP/locked/inner"
