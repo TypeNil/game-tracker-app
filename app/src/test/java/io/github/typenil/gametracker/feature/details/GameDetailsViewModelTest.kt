@@ -2,6 +2,10 @@ package io.github.typenil.gametracker.feature.details
 
 import app.cash.turbine.test
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
+import io.mockk.every
+import io.mockk.mockk
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
@@ -151,6 +155,230 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `network reconnect triggers forced refresh when game is not hydrated`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        networkStatus.value = NetworkStatus.Available
+
+        assertEquals(
+            listOf(1942L to false, 1942L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `network reconnect does not trigger refresh when already hydrated without error`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        networkStatus.value = NetworkStatus.Available
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+    }
+
+    @Test
+    fun `reconnectDuringFailedInFlightRefresh_retriesAfterRefreshCompletes`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val gate = CompletableDeferred<Unit>()
+        fakeGameRepository.delayRefresh = gate
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        // Network recovers while initial refresh is still in-flight
+        networkStatus.value = NetworkStatus.Available
+
+        // Complete initial refresh with failure
+        gate.complete(Unit)
+
+        // Observe network reconnect joins the in-flight job and retries after failure
+        assertEquals(
+            listOf(1942L to false, 1942L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `dismissedRefreshError_stillRecoversOnReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        // Consumable UI message is dismissed by the user
+        viewModel.onUserMessageShown()
+
+        // Next refresh will succeed
+        fakeGameRepository.refreshResult = AppResult.Success(Unit)
+
+        // Reconnect happens
+        networkStatus.value = NetworkStatus.Available
+
+        // Durable lastDetailsRefreshFailed still triggers recovery even after message was dismissed
+        assertEquals(
+            listOf(1942L to false, 1942L to true),
+            fakeGameRepository.refreshCalls
+        )
+    }
+
+    @Test
+    fun `libraryError_doesNotTriggerDetailsRefreshOnReconnect`() = runTest {
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        fakeLibraryRepository.saveResult = AppResult.Error(AppError.NetworkError)
+
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+
+        // Trigger a library mutation error
+        viewModel.onSaveLibraryEntry(
+            status = LibraryStatus.PLAYING,
+            userRating = 9,
+            hoursPlayed = 10,
+            userNotes = "Notes",
+            isFavorite = false
+        )
+
+        // Network recovers
+        networkStatus.value = NetworkStatus.Available
+
+        // Details refresh must not be triggered by unrelated library error
+        assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
+    }
+    @Test
+    fun `initialNonForcedRefresh_doesNotIncrementImageReloadToken`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `hydratedReconnect_incrementsImageReloadTokenExactlyOnce`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+
+            networkStatus.value = NetworkStatus.Available
+
+            val updated = awaitItem()
+            assertEquals(1L, updated.imageReloadToken)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `unhydratedReconnectWithForcedRefresh_incrementsImageReloadTokenExactlyOnce`() = runTest {
+        fakeGameRepository.detailsFlow.value = catalogSkeleton
+        fakeGameRepository.hydratedFlow.value = false
+
+        val networkStatus = MutableStateFlow(NetworkStatus.Unavailable)
+        val networkMonitor: NetworkMonitor = mockk {
+            every { status } returns networkStatus
+        }
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+            networkMonitor = networkMonitor,
+        )
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertEquals(0L, initial.imageReloadToken)
+
+            networkStatus.value = NetworkStatus.Available
+
+            val updated = awaitItem()
+            assertEquals(1L, updated.imageReloadToken)
+            assertEquals(listOf(1942L to false, 1942L to true), fakeGameRepository.refreshCalls)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     @Test
     fun `pull-to-refresh shows isRefreshing and forces network refresh`() = runTest {

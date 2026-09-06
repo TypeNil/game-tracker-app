@@ -17,6 +17,8 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
 
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.reconnects
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
@@ -46,6 +48,7 @@ class DiscoverViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
     private val librarySeeder: LibrarySeeder,
+    private val networkMonitor: NetworkMonitor? = null,
 ) : ViewModel() {
 
     private val selectedTab = MutableStateFlow(DiscoverTab.FOR_YOU)
@@ -187,6 +190,7 @@ class DiscoverViewModel @Inject constructor(
             refreshTrending()
             refreshRail(DiscoverRail.entries.first(), append = false)
         }
+        observeNetworkReconnect()
     }
     fun selectTab(tab: DiscoverTab) {
         selectedTab.value = tab
@@ -677,6 +681,37 @@ class DiscoverViewModel @Inject constructor(
         val userMessageRes: Int?,
         val library: LibraryUi,
     )
+
+    private fun observeNetworkReconnect() {
+        val monitor = networkMonitor ?: return
+        viewModelScope.launch {
+            monitor.status.reconnects().collect {
+                if (error.value != null) {
+                    // Includes trending refresh and recommendation rebuilding.
+                    retry()
+                    hydrateJob?.join()
+                } else {
+                    when {
+                        pendingForYouRetry != null -> {
+                            retryForYou()
+                            forYouRetryJob?.join()
+                            forYouJob?.join()
+                        }
+
+                        recommendations.value.isEmpty() && !isColdStart.value -> {
+                            rebuildRecommendations(rotate = false)
+                        }
+                    }
+                }
+
+                railStates.value
+                    .filter { it.error != null }
+                    .forEach { failedRail ->
+                        loadMoreRail(failedRail.rail)
+                    }
+            }
+        }
+    }
 }
 
 private val FOR_YOU_SORT_MODES = listOf("follows", "hypes", "first_release_date")

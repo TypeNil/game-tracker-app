@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -15,11 +17,15 @@ import java.util.concurrent.TimeUnit
 object ReleaseNotificationScheduler {
 
     const val WORK_NAME = "release_notification_check"
+    const val IMMEDIATE_WORK_NAME = "release_notification_immediate_check"
     const val REPEAT_INTERVAL_HOURS = 12L
     const val FLEX_INTERVAL_HOURS = 2L
     const val BACKOFF_DELAY_MINUTES = 15L
 
-    fun schedulePeriodicCheck(context: Context) {
+    fun schedulePeriodicCheck(
+        context: Context,
+        workManager: WorkManager = WorkManager.getInstance(context)
+    ) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -38,9 +44,28 @@ object ReleaseNotificationScheduler {
             )
             .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        workManager.enqueueUniquePeriodicWork(
             WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+    }
+
+    fun triggerImmediateCheck(
+        context: Context,
+        workManager: WorkManager = WorkManager.getInstance(context)
+    ) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val workRequest = OneTimeWorkRequestBuilder<ReleaseNotificationWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        workManager.enqueueUniqueWork(
+            IMMEDIATE_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
             workRequest
         )
     }

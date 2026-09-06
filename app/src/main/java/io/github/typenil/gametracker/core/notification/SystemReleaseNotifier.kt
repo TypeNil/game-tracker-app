@@ -83,6 +83,7 @@ class SystemReleaseNotifier @Inject constructor(
             .setContentText(body)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .build()

@@ -23,24 +23,29 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.reconnects
 import javax.inject.Inject
-
+@Suppress("TooManyFunctions")
 @HiltViewModel
-class GameDetailsViewModel(
+class GameDetailsViewModel internal constructor(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
-    val gameId: Long
+    val gameId: Long,
+    private val networkMonitor: NetworkMonitor? = null,
 ) : ViewModel() {
 
     @Inject
     constructor(
         gameRepository: GameRepository,
         libraryRepository: LibraryRepository,
-        savedStateHandle: SavedStateHandle
+        savedStateHandle: SavedStateHandle,
+        networkMonitor: NetworkMonitor,
     ) : this(
         gameRepository,
         libraryRepository,
-        savedStateHandle.toRoute<GameDetailsKey>().gameId
+        savedStateHandle.toRoute<GameDetailsKey>().gameId,
+        networkMonitor,
     )
 
     private val _flags = MutableStateFlow(DetailsInternalFlags())
@@ -80,7 +85,8 @@ class GameDetailsViewModel(
                 flags.message?.second ?: R.string.error_refresh_failed
             } else {
                 flags.message?.second
-            }
+            },
+            imageReloadToken = flags.imageReloadToken,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -94,6 +100,7 @@ class GameDetailsViewModel(
     init {
         refreshDetails(force = false)
         observeEviction()
+        observeNetworkReconnect()
     }
 
     /** Pull-to-refresh. */
@@ -225,14 +232,30 @@ class GameDetailsViewModel(
 
             try {
                 when (val result = gameRepository.refreshGameDetails(gameId, force = force)) {
-                    is AppResult.Success -> _flags.update { it.copy(message = null) }
-                    is AppResult.Error -> _flags.update { it.copy(message = result.error to null) }
+                    is AppResult.Success -> _flags.update {
+                        it.copy(
+                            message = null,
+                            lastDetailsRefreshFailed = false,
+                        )
+                    }
+                    is AppResult.Error -> _flags.update {
+                        it.copy(
+                            message = result.error to null,
+                            lastDetailsRefreshFailed = true,
+                        )
+                    }
                 }
             } finally {
-                if (isUserPullRefresh) {
-                    _flags.update { it.copy(isRefreshing = false) }
-                } else {
-                    _flags.update { it.copy(isLoading = false) }
+                _flags.update { current ->
+                    current.copy(
+                        isRefreshing = false,
+                        isLoading = if (isUserPullRefresh) current.isLoading else false,
+                        imageReloadToken = if (force) {
+                            current.imageReloadToken + 1
+                        } else {
+                            current.imageReloadToken
+                        },
+                    )
                 }
             }
         }
@@ -256,12 +279,42 @@ class GameDetailsViewModel(
         }
     }
 
+    /**
+     * Reconnect guard: when device connectivity transitions Unavailable -> Available,
+     * automatically refetch full details if the current state is unhydrated (skeleton)
+     * or the previous refresh completed with an error.
+     */
+    private fun incrementImageReloadToken() {
+        _flags.update {
+            it.copy(imageReloadToken = it.imageReloadToken + 1)
+        }
+    }
+
+    private fun observeNetworkReconnect() {
+        val monitor = networkMonitor ?: return
+        viewModelScope.launch {
+            monitor.status.reconnects().collect {
+                refreshJob?.join()
+                val shouldRecover =
+                    !gameRepository.isGameDetailsHydratedFlow(gameId).first() ||
+                        _flags.value.lastDetailsRefreshFailed
+                if (shouldRecover) {
+                    refreshDetails(force = true)
+                } else {
+                    incrementImageReloadToken()
+                }
+            }
+        }
+    }
+
     private data class DetailsInternalFlags(
         val isLoading: Boolean = true,
         val isRefreshing: Boolean = false,
         val isEditingLibrary: Boolean = false,
         val isSubmitting: Boolean = false,
-        val message: Pair<AppError?, Int?>? = null
+        val message: Pair<AppError?, Int?>? = null,
+        val lastDetailsRefreshFailed: Boolean = false,
+        val imageReloadToken: Long = 0L,
     )
 
 

@@ -82,6 +82,21 @@ jobs:
       - name: Assemble Live Debug APK
         run: ./gradlew assembleLiveDebug --stacktrace
 
+      - name: Assemble & Verify Release APKs (R8 Minification)
+        run: ./gradlew :app:verifyReleaseArtifacts --stacktrace
+
+      - name: Assert Release APKs are Unsigned
+        shell: bash
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          for apk in app/build/outputs/apk/demo/release/*.apk app/build/outputs/apk/live/release/*.apk; do
+            if "$APKSIGNER" verify "$apk" 2>/dev/null; then
+              echo "::error::$apk is signed, expected unsigned release artifact"
+              exit 1
+            fi
+            echo "Confirmed unsigned: $apk"
+          done
+
       - name: Verify Clean Working Tree
         run: git diff --exit-code
 

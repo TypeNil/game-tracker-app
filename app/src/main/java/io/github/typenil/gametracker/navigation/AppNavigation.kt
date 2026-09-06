@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.core.app.OnNewIntentProvider
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -35,13 +36,18 @@ import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.library.navigation.libraryEntry
 import io.github.typenil.gametracker.feature.search.navigation.searchEntry
 import io.github.typenil.gametracker.feature.settings.navigation.settingsEntry
-
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
+import io.github.typenil.gametracker.core.designsystem.component.NetworkConnectivityPill
+import io.github.typenil.gametracker.feature.settings.navigation.SettingsKey
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 /**
  * Root Navigation Host coordinating destinations, bottom navigation, deep links, and transitions.
  */
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier,
+    networkMonitor: NetworkMonitor? = null,
     appState: GameTrackerAppState = rememberGameTrackerAppState()
 ) {
     val activity = LocalActivity.current ?: (LocalContext.current as? ComponentActivity)
@@ -56,10 +62,16 @@ fun AppNavHost(
         }
     }
 
+    val networkStatus by if (networkMonitor != null) {
+        networkMonitor.status.collectAsStateWithLifecycle()
+    } else {
+        remember { mutableStateOf(NetworkStatus.Unknown) }
+    }
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
     var scrollToTopDiscoverTrigger by remember { mutableStateOf(0L) }
-
+    val isOfflinePillEnabled = currentDestination?.hasRoute<LibraryKey>() != true &&
+        currentDestination?.hasRoute<SettingsKey>() != true
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -104,11 +116,16 @@ fun AppNavHost(
             }
         },
         modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
-        NavHost(
-            navController = appState.navController,
-            startDestination = DiscoverKey,
-            modifier = Modifier.padding(innerPadding),
+) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            NavHost(
+                navController = appState.navController,
+                startDestination = DiscoverKey,
+                modifier = Modifier.fillMaxSize(),
             enterTransition = { appNavEnterTransition() },
             exitTransition = { appNavExitTransition() },
             popEnterTransition = { appNavPopEnterTransition() },
@@ -137,6 +154,13 @@ fun AppNavHost(
 
             settingsEntry(
                 onBackClick = appState::navigateBack
+            )
+        }
+
+
+            NetworkConnectivityPill(
+                networkStatus = networkStatus,
+                isOfflinePillEnabled = isOfflinePillEnabled,
             )
         }
     }

@@ -142,6 +142,18 @@ class NetworkMonitorTest {
         callbackSlot.captured.onLost(network)
         assertEquals(NetworkStatus.Unavailable, monitor.status.value)
     }
+    @Test
+    fun `onLost when activeNetwork still references the lost network emits Unavailable`() {
+        activeNetworkWith(capabilities(internet = true, validated = true))
+        val monitor = NetworkMonitor(context)
+        assertEquals(NetworkStatus.Available, monitor.status.value)
+
+        // Race condition on physical devices: activeNetwork still returns the same network instance being lost
+        every { connectivityManager.activeNetwork } returns network
+        callbackSlot.captured.onLost(network)
+        assertEquals(NetworkStatus.Unavailable, monitor.status.value)
+    }
+
 
     @Test
     fun `reconnects emits exactly on Unavailable to Available edges`() = runTest {

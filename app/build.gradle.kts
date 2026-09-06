@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -41,7 +42,6 @@ android {
             useSupportLibrary = true
         }
     }
-
     flavorDimensions += "environment"
     productFlavors {
         create("demo") {
@@ -172,6 +172,76 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.work.testing)
 
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+abstract class VerifyReleaseArtifactsTask : DefaultTask() {
+    @get:Internal
+    abstract val buildDirectory: DirectoryProperty
+
+    @TaskAction
+    fun verify() {
+        listOf("demo", "live").forEach { flavor ->
+            val variantName = "${flavor}Release"
+            val mappingFile = buildDirectory
+                .file("outputs/mapping/$variantName/mapping.txt")
+                .get()
+                .asFile
+
+            check(mappingFile.isFile && mappingFile.length() > 0L) {
+                "Missing R8 mapping output for $variantName at ${mappingFile.path}"
+            }
+
+            val releaseDir = buildDirectory.dir("outputs/apk/$flavor/release").get().asFile
+            val apks = releaseDir.listFiles { _, name -> name.endsWith(".apk") }
+                ?: emptyArray()
+
+            check(apks.isNotEmpty()) {
+                "No release APK found in ${releaseDir.path}"
+            }
+
+            apks.forEach { apk ->
+                ZipFile(apk).use { zip ->
+                    val dexEntries = zip.entries().asSequence()
+                        .filter { it.name.startsWith("classes") && it.name.endsWith(".dex") }
+                        .toList()
+
+                    check(dexEntries.isNotEmpty()) {
+                        "Release APK ${apk.name} does not contain DEX"
+                    }
+                    val hasSignature = zip.entries().asSequence().any {
+                        it.name.startsWith("META-INF/") && (
+                            it.name.endsWith(".RSA") || it.name.endsWith(".DSA") ||
+                            it.name.endsWith(".EC") || it.name.endsWith(".SF")
+                        )
+                    }
+                    check(!hasSignature) {
+                        "Release APK ${apk.name} must be unsigned, but signature entries were found in META-INF"
+                    }
+
+                    val containsTestAction = dexEntries.any { entry ->
+                        zip.getInputStream(entry).use { input ->
+                            val dexString = String(input.readBytes(), Charsets.ISO_8859_1)
+                            dexString.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION")
+                        }
+                    }
+                    check(!containsTestAction) {
+                        "Release APK ${apk.name} still contains ACTION_TEST_NOTIFICATION marker"
+                    }
+                    check(zip.getEntry("AndroidManifest.xml") != null) {
+                        "Release APK ${apk.name} is missing AndroidManifest.xml"
+                    }
+                }
+                println("Verified release artifact: ${apk.name} (${apk.length()} bytes, R8 mapping: ${mappingFile.length()} bytes)")
+            }
+        }
+    }
+}
+
+tasks.register<VerifyReleaseArtifactsTask>("verifyReleaseArtifacts") {
+    group = "verification"
+    description = "Inspects demoRelease and liveRelease APKs to verify R8 minification and artifact integrity."
+    dependsOn("assembleDemoRelease", "assembleLiveRelease")
+    buildDirectory.set(layout.buildDirectory)
 }

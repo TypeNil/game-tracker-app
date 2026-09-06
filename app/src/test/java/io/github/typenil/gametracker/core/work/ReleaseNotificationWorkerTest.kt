@@ -17,7 +17,10 @@ import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.github.typenil.gametracker.core.database.entity.NotificationEventEntity
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -259,5 +262,58 @@ class ReleaseNotificationWorkerTest {
 
         assertEquals(Result.success(), result)
         coVerify(exactly = 1) { notificationEventDao.deleteOldEvents(any()) }
+    }
+
+    @Test
+    fun doWork_concurrentWorkers_areSerializedByMutexAndDoNotDoubleNotify() = runTest(testDispatcher) {
+        val todayEpoch = Instant.now().epochSecond
+        val recordedEvents = mutableSetOf<String>()
+        val gate = CompletableDeferred<Unit>()
+
+        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } coAnswers {
+            gate.await()
+            AppResult.Success(Unit)
+        }
+        coEvery { notificationEventDao.hasEvent(any()) } answers {
+            recordedEvents.contains(firstArg<String>())
+        }
+        coEvery { notificationEventDao.upsertEvent(any()) } answers {
+            recordedEvents.add(firstArg<NotificationEventEntity>().eventKey)
+            1L
+        }
+
+        val worker2 = ReleaseNotificationWorker(
+            appContext = context,
+            workerParams = workerParams,
+            libraryDao = libraryDao,
+            gameDao = gameDao,
+            gameDetailsDao = gameDetailsDao,
+            notificationEventDao = notificationEventDao,
+            gameRepository = gameRepository,
+            releaseNotifier = releaseNotifier,
+            ioDispatcher = testDispatcher
+        )
+
+        val job1 = launch { worker.doWork() }
+        val job2 = launch { worker2.doWork() }
+
+        testScheduler.runCurrent()
+
+        // Worker 1 holds mutex and waits on gate. Worker 2 must be suspended on mutex.
+        coVerify(exactly = 1) { gameRepository.refreshGameDetails(10L, force = true) }
+
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        job1.join()
+        job2.join()
+
+        // Serialized execution ensures worker 2 sees hasEvent == true, preventing double notification
+        coVerify(exactly = 1) { releaseNotifier.postReleaseNotification(any()) }
     }
 }

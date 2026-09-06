@@ -21,6 +21,8 @@ import io.github.typenil.gametracker.core.model.ReleaseEvent
 import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 
 /**
@@ -39,7 +41,11 @@ class ReleaseNotificationWorker @AssistedInject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(appContext, workerParams) {
 
-    override suspend fun doWork(): Result = withContext(ioDispatcher) {
+    override suspend fun doWork(): Result = executionMutex.withLock {
+        performReleaseCheck()
+    }
+
+    private suspend fun performReleaseCheck(): Result = withContext(ioDispatcher) {
         val nowEpochSeconds = Instant.now().epochSecond
         val retentionThreshold = nowEpochSeconds - RETENTION_DAYS * SECONDS_PER_DAY
         notificationEventDao.deleteOldEvents(retentionThreshold)
@@ -102,6 +108,12 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         return retryableError
     }
 
+    /**
+     * Deduplicates and dispatches release events.
+     * Delivery contract is at-least-once: notifications use deterministic IDs derived from
+     * (gameId, eventType) and `setOnlyAlertOnce(true)`. When the previous notification remains active,
+     * retry updates it without alerting again. If it was removed, at-least-once delivery may alert again.
+     */
     private suspend fun dispatchAndRecordEvents(
         events: List<ReleaseEvent>,
         nowEpochSeconds: Long
@@ -139,6 +151,8 @@ class ReleaseNotificationWorker @AssistedInject constructor(
     }
 
     companion object {
+        private val executionMutex = Mutex()
+
         const val MAX_RETRIES = 3
         const val RETENTION_DAYS = 90L
         const val SECONDS_PER_DAY = 86_400L

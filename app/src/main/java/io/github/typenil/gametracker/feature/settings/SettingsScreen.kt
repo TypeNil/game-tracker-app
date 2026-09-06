@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -40,7 +42,9 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
-
+import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Notifications
 @Composable
 fun SettingsRoute(
     onBackClick: () -> Unit,
@@ -59,6 +63,13 @@ fun SettingsRoute(
             } catch (_: ActivityNotFoundException) {
                 Toast.makeText(context, R.string.settings_notifications_open_error, Toast.LENGTH_SHORT).show()
             }
+        },
+        onSendTestNotification = {
+            DebugNotificationActions.send(context)
+        },
+        onCheckReleasesNow = {
+            ReleaseNotificationScheduler.triggerImmediateCheck(context)
+            Toast.makeText(context, R.string.settings_notifications_check_triggered, Toast.LENGTH_SHORT).show()
         },
         onBackClick = onBackClick,
         onOpenIgdb = {
@@ -89,6 +100,9 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     onOpenIgdb: () -> Unit,
     onOpenGitHub: () -> Unit = {},
+    onCheckReleasesNow: () -> Unit = {},
+    onSendTestNotification: () -> Unit = {},
+    isSendTestNotificationVisible: Boolean = DebugNotificationActions.isVisible,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -163,6 +177,36 @@ fun SettingsScreen(
                             OutlinedButton(onClick = onManageNotifications) {
                                 Text(text = stringResource(R.string.settings_notifications_manage))
                             }
+                        }
+                    }
+                    if (hasNotificationPermission) {
+                        if (DebugNotificationActions.isVisible && isSendTestNotificationVisible) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = onSendTestNotification,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = stringResource(R.string.settings_notifications_send_test))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = onCheckReleasesNow,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(R.string.settings_notifications_check_now))
                         }
                     }
                 }

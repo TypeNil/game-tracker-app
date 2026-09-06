@@ -65,9 +65,14 @@ class NetworkMonitor @Inject constructor(
         }
 
         override fun onLost(network: Network) {
-            // A lost network is not necessarily global offline: the default route may have
-            // handed over to another transport. Recompute instead of assuming Unavailable.
-            recomputeDefaultNetwork()
+            // If the active network is null or matches the network being torn down,
+            // no replacement default route exists yet.
+            val currentActive = connectivityManager.activeNetwork
+            if (currentActive == null || currentActive == network) {
+                mutableStatus.value = NetworkStatus.Unavailable
+            } else {
+                recomputeDefaultNetwork()
+            }
         }
     }
 
