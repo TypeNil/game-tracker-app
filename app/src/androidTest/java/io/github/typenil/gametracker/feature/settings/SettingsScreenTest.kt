@@ -94,7 +94,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun notificationsEnabled_releaseKeepsCheckNowAndHidesTestNotification() {
+    fun testNotificationHidden_keepsCheckNowVisible() {
         composeTestRule.setContent {
             GameTrackerTheme {
                 SettingsScreen(
@@ -118,6 +118,32 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText(sendTestLabel).assertDoesNotExist()
     }
 
+    @Test
+    fun releaseBuild_trueOverrideStillHidesTestNotification() {
+        org.junit.Assume.assumeFalse(
+            "Release-only test; skipped in debug builds where BuildConfig.DEBUG is true",
+            io.github.typenil.gametracker.BuildConfig.DEBUG
+        )
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = true,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    onOpenGitHub = {},
+                    onCheckReleasesNow = {},
+                    onSendTestNotification = {},
+                    isSendTestNotificationVisible = true
+                )
+            }
+        }
+
+        val sendTestLabel = composeTestRule.activity.getString(R.string.settings_notifications_send_test)
+        composeTestRule.onNodeWithText(sendTestLabel).assertDoesNotExist()
+    }
     @Test
     fun notificationsEnabled_debugShowsBothCheckNowAndTestNotification_andInvokesSendTestOnly() {
         var checkNowClicked = false

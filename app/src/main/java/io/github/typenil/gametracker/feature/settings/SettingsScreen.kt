@@ -68,17 +68,19 @@ fun SettingsRoute(
             }
         },
         onSendTestNotification = {
-            val notifier = SystemReleaseNotifier(context)
-            val posted = notifier.postReleaseNotification(
-                ReleaseEvent(
-                    gameId = 1942L,
-                    gameName = "The Witcher 3: Wild Hunt",
-                    eventType = NotificationEventType.RELEASE_TODAY,
-                    releaseDateEpochSeconds = System.currentTimeMillis() / 1000
+            if (BuildConfig.DEBUG) {
+                val notifier = SystemReleaseNotifier(context)
+                val posted = notifier.postReleaseNotification(
+                    ReleaseEvent(
+                        gameId = 1942L,
+                        gameName = "The Witcher 3: Wild Hunt",
+                        eventType = NotificationEventType.RELEASE_TODAY,
+                        releaseDateEpochSeconds = System.currentTimeMillis() / 1000
+                    )
                 )
-            )
-            if (posted) {
-                Toast.makeText(context, R.string.settings_notifications_test_sent, Toast.LENGTH_SHORT).show()
+                if (posted) {
+                    Toast.makeText(context, R.string.settings_notifications_test_sent, Toast.LENGTH_SHORT).show()
+                }
             }
         },
         onCheckReleasesNow = {
@@ -194,7 +196,7 @@ fun SettingsScreen(
                         }
                     }
                     if (hasNotificationPermission) {
-                        if (isSendTestNotificationVisible) {
+                        if (BuildConfig.DEBUG && isSendTestNotificationVisible) {
                             Spacer(modifier = Modifier.height(4.dp))
                             OutlinedButton(
                                 onClick = onSendTestNotification,
