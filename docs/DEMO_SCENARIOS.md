@@ -66,17 +66,32 @@ adb shell dumpsys jobscheduler | grep -i gametracker
 
 ---
 
-## 4. Оффлайн-режим (Airplane Mode)
+## 4. Оффлайн-проверки: Demo-автономность и Room SSOT Recovery
 
-Проверка архитектуры **Room Single Source of Truth (SSOT)**:
+### Сценарий 4.1: Автономность `demo` флейвора
+1. Установите и запустите demo-сборку (`io.github.typenil.gametracker.demo.debug`).
+2. Переведите устройство в «Режим полёта» (Airplane Mode) с отключением Wi-Fi и мобильного интернета.
+3. Пройдите по экранам Discover, Поиск, Карточка игры и Библиотека:
+   - Встроенные фикстуры и изображения функционируют полностью автономно без обращений к сети.
+   - Пользовательские статусы, оценки и заметки сохраняются в локальную базу данных SQLite.
 
-1. Запустите приложение и откройте ленту **Discover** или выполните поиск игры.
-2. Переведите устройство в **«Режим полёта»** (отключите Wi-Fi и мобильный интернет).
-3. Полностью закройте приложение через диспетчер задач и откройте снова:
-   - Каталог Discover, результаты поиска, карточки ранее просмотренных игр и личная библиотека загружаются моментально из SQLite.
-   - Вместо пустого экрана или сбоя приложение отображает аккуратный статус-индикатор оффлайн-режима в верхнем баре.
-   - Все локальные операции библиотеки (редактирование статуса, заметок, часов) доступны для редактирования без сети.
-
+### Сценарий 4.2: Room SSOT Recovery (`live` флейвор с реальным BFF)
+Сценарий доказывает, что экран восстанавливает данные именно из транзакционного кэша Room SQLite, а не из памяти процесса:
+1. Запустите локальный Ktor BFF и приложение `liveDebug`:
+   ```bash
+   ./gradlew :app:installLiveDebug -PBFF_BASE_URL="http://127.0.0.1:8080/"
+   ```
+2. Выполните поиск игры (например, `Witcher`) и откройте детальную карточку, чтобы данные сохранились в Room.
+3. Остановите локальный сервис Ktor BFF (Ctrl+C) или переведите телефон в Airplane Mode.
+4. Принудительно завершите процесс приложения:
+   ```bash
+   adb shell am force-stop io.github.typenil.gametracker.debug
+   ```
+5. Запустите приложение повторно:
+   ```bash
+   adb shell monkey -p io.github.typenil.gametracker.debug -c android.intent.category.LAUNCHER 1
+   ```
+6. **Результат**: Список игр и карточка восстанавливаются моментально из Room SSOT. В верхнем баре отображается аккуратный статус отсутствия подключения к BFF без сбоев интерфейса и пустых экранов.
 ---
 
 ## 5. Решение проблем с установкой и подписью
@@ -91,11 +106,15 @@ Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package ... signatures do 
 Выполните полную чистую переустановку:
 
 ```bash
-# Для demo-версии:
+# Вариант А: Если вы устанавливаете скачанный официальный Release asset:
 adb uninstall io.github.typenil.gametracker.demo.debug
-adb install -r app-demo-debug.apk
+adb install -r app-demo.apk
 
-# Для live-версии:
+# Вариант Б: Если вы устанавливаете локальную сборку из Gradle:
+adb uninstall io.github.typenil.gametracker.demo.debug
+adb install -r app/build/outputs/apk/demo/debug/app-demo-debug.apk
+
+# Для локальной live-сборки:
 adb uninstall io.github.typenil.gametracker.debug
-adb install -r app-live-debug.apk
+adb install -r app/build/outputs/apk/live/debug/app-live-debug.apk
 ```

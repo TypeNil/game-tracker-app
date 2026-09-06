@@ -80,7 +80,7 @@ sequenceDiagram
     alt Требуется подгрузка данных из сети
         Room->>Mediator: load(LoadType.REFRESH / APPEND)
         Mediator->>BFF: GET /v1/games/search?q=Witcher&offset=0
-        Note over BFF: Проверка кэша Caffeine<br/>SmoothRateLimiter (300 мс)<br/>CAS-токен OAuth2
+        Note over BFF: Проверка кэша Caffeine<br/>SmoothRateLimiter (300 мс)<br/>OAuth2 Token State
         BFF->>IGDB: POST /v4/games (APICalypse)
         IGDB-->>BFF: 200 OK (JSON массив игр)
         BFF-->>Mediator: 200 OK (GameDto список)
@@ -116,7 +116,7 @@ sequenceDiagram
 
 | Уровень | Тип модели | Расположение | Особенности |
 | :--- | :--- | :--- | :--- |
-| **Network** | `*Dto` | `core/network/model` | Сериализуемые DTO (`kotlinx.serialization`). Содержат сырые типы API IGDB, nullable поля, специфичные для транспорта структуры. Не протекают в репозитории и UI. |
+| **Network** | `*Dto` | `core/network/model` | Сериализуемые DTO (`kotlinx.serialization`). Содержат сырые типы API IGDB, nullable поля, специфичные для транспорта структуры. Инкапсулированы внутри network/data implementation и не экспонируются через публичные контракты репозиториев в UI/ViewModel. |
 | **Database** | `*Entity`, `*CrossRef` | `core/database/model` | Аннотации Room (`@Entity`, `@PrimaryKey`, `@ForeignKey`, `@Index`). Оптимизированы для реляционного хранения в SQLite. Не содержат UI-логики. |
 | **Domain** | Чистые Kotlin-модели | `core/model` | Доменные классы (`Game`, `LibraryEntry`, `ReleaseEvent`). Не содержат зависимостей от Android SDK, Room или Retrofit. Потребляются экранами и ViewModels. |
 
@@ -160,6 +160,6 @@ app/src/main/java/io/github/typenil/gametracker/
 └── navigation/         # AppNavHost, типизированные маршруты Navigation 2.8+
 ```
 
-### Преимущества выбранного подхода:
-1. **Быстрая сборка**: Исключаются накладные расходы Gradle на конфигурацию десятка модулей и повторную генерацию кода KSP для каждого модуля.
-2. **Готовность к масштабированию**: Директории полностью изолированы по своим обязанностям и при росте команды могут быть механически вынесены в отдельные Gradle-модули без изменения кодовой базы.
+### Особенности и компромиссы выбранного подхода:
+1. **Эффективность сборки**: Единый модуль `:app` ускоряет инкрементальную компиляцию и исключает накладные расходы Gradle на конфигурацию десятка подпроектов.
+2. **Границы слоёв**: Разделение ответственности поддерживается соглашениями о структуре пакетов, чистыми интерфейсами и code review. Поскольку компилятор в рамках единого модуля не изолирует package-private видимость между слоями, дисциплина границ соблюдается строгими архитектурными правилами проекта (ADR-001, ADR-010).
