@@ -233,6 +233,10 @@ class DiscoverViewModel @Inject constructor(
         userMessageRes.value = null
     }
 
+    fun onGameClick(game: Game) {
+        gameRepository.recordPreview(game)
+    }
+
     fun onLibraryCardAction(game: Game) {
         when (val snapshot = librarySnapshot.value) {
             LibrarySnapshot.Loading, is LibrarySnapshot.Failed -> return

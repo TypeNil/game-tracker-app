@@ -12,6 +12,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.feature.details.navigation.GameDetailsKey
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -49,6 +50,8 @@ class GameDetailsViewModel internal constructor(
     )
 
     private val _flags = MutableStateFlow(DetailsInternalFlags())
+    private val initialPreview: GameDetails? = gameRepository.getInitialGameDetails(gameId)
+
 
     /**
      * Lazily (not WhileSubscribed): this screen pushes another copy of itself onto
@@ -71,17 +74,18 @@ class GameDetailsViewModel internal constructor(
             is AppResult.Success -> null
         }
         val error = flags.message?.first
+        val displayedGame = game ?: if (flags.isLoading) initialPreview else null
         GameDetailsUiState(
-            game = game,
+            game = displayedGame,
             libraryEntry = libraryEntry,
-            isHydrated = isHydrated,
+            isHydrated = isHydrated && game != null,
             isLoading = flags.isLoading,
             isRefreshing = flags.isRefreshing,
             isEditingLibrary = flags.isEditingLibrary,
             isLibrarySubmitting = flags.isSubmitting,
-            error = if (game != null) null else error,
+            error = if (displayedGame != null) null else error,
             libraryLoadError = libraryLoadError,
-            userMessageRes = if (game != null && error != null) {
+            userMessageRes = if (displayedGame != null && error != null) {
                 flags.message?.second ?: R.string.error_refresh_failed
             } else {
                 flags.message?.second
@@ -91,7 +95,10 @@ class GameDetailsViewModel internal constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Lazily,
-        initialValue = GameDetailsUiState(isLoading = true)
+        initialValue = GameDetailsUiState(
+            game = initialPreview,
+            isLoading = initialPreview == null
+        )
     )
 
     private var refreshJob: Job? = null

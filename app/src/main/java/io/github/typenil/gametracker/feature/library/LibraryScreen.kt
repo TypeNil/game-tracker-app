@@ -421,7 +421,12 @@ fun LibraryScreen(
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(GtDimens.Gutter),
+                                contentPadding = PaddingValues(
+                                    start = GtDimens.Gutter,
+                                    end = GtDimens.Gutter,
+                                    top = GtDimens.Gutter,
+                                    bottom = GtDimens.Gutter + GtDimens.BottomBarHeight,
+                                ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxSize(),
                             ) {

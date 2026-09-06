@@ -1,5 +1,7 @@
 package io.github.typenil.gametracker.navigation
 
+import androidx.compose.ui.unit.dp
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import android.net.Uri
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestinationBuilder
@@ -88,5 +90,11 @@ class AppNavigationMotionTest {
         // Parallax factor should be subtle (between 10% and 25%)
         assertTrue(AppNavigationMotion.PARALLAX_RECEDE_FACTOR in 0.10f..0.25f)
         assertEquals(0.15f, AppNavigationMotion.PARALLAX_RECEDE_FACTOR, 0.001f)
+    }
+
+    @Test
+    fun bottomBarOverlayConstants_adhereToMaterial3Spec() {
+        assertEquals(80.dp, GtDimens.BottomBarHeight)
+        assertTrue(GtDimens.BottomBarHeight > GtDimens.Gutter)
     }
 }

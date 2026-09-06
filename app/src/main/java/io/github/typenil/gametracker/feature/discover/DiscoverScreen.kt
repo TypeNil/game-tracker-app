@@ -329,7 +329,12 @@ private fun ForYouFeed(
         LazyColumn(
             state = listState,
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = GtDimens.Gutter, vertical = GtDimens.Gutter),
+            contentPadding = PaddingValues(
+                start = GtDimens.Gutter,
+                end = GtDimens.Gutter,
+                top = GtDimens.Gutter,
+                bottom = GtDimens.Gutter + GtDimens.BottomBarHeight
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
@@ -489,7 +494,12 @@ private fun ChartsFeed(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = GtDimens.Gutter, vertical = GtDimens.Gutter),
+                contentPadding = PaddingValues(
+                    start = GtDimens.Gutter,
+                    end = GtDimens.Gutter,
+                    top = GtDimens.Gutter,
+                    bottom = GtDimens.Gutter + GtDimens.BottomBarHeight
+                ),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(currentRailState.games, key = { "${currentRailState.rail.type}:${it.id}" }) { game ->

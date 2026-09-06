@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.data.repository.toDetailsPreview
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -121,6 +123,65 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun `warmPreview_isPresentBeforeUpstreamRuns`() = runTest(
+        StandardTestDispatcher(),
+    ) {
+        fakeGameRepository.initialPreview = catalogSkeleton
+        fakeGameRepository.detailsFlow.value = null
+
+        val viewModel = createViewModel()
+
+        assertEquals(catalogSkeleton, viewModel.uiState.value.game)
+        assertFalse(viewModel.uiState.value.isInitialLoading)
+    }
+
+    @Test
+    fun `warmPreview_retainedWhileFirstRoomEmissionIsNullAndLoading`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        fakeGameRepository.delayRefresh = gate
+        fakeGameRepository.initialPreview = catalogSkeleton
+        fakeGameRepository.detailsFlow.value = null
+        fakeGameRepository.hydratedFlow.value = false
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals(catalogSkeleton, state.game)
+            assertTrue(state.isLoading)
+
+            fakeGameRepository.detailsFlow.value = hydratedDetails
+            fakeGameRepository.hydratedFlow.value = true
+            gate.complete(Unit)
+            var updated = awaitItem()
+            while (updated.isLoading) {
+                updated = awaitItem()
+            }
+            assertEquals(hydratedDetails, updated.game)
+            assertFalse(updated.isLoading)
+            assertTrue(updated.isHydrated)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `warmPreview_clearedOnRefreshFailureWhenNoPersistedData`() = runTest {
+        fakeGameRepository.initialPreview = catalogSkeleton
+        fakeGameRepository.detailsFlow.value = null
+        fakeGameRepository.refreshResult = AppResult.Error(AppError.NetworkError)
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertNull("Failed refresh without Room data clears preview to reveal error", state.game)
+            assertEquals(AppError.NetworkError, state.error)
+            assertFalse(state.isLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
 
     @Test
     fun `error without cache surfaces error state and retry forces network`() = runTest {
@@ -702,6 +763,15 @@ class GameDetailsViewModelTest {
         val refreshCalls = mutableListOf<Pair<Long, Boolean>>()
         var refreshResult: AppResult<Unit> = AppResult.Success(Unit)
         var delayRefresh: CompletableDeferred<Unit>? = null
+
+        var initialPreview: GameDetails? = null
+        override fun getInitialGameDetails(id: Long): GameDetails? = initialPreview
+        override fun recordPreview(details: GameDetails) {
+            initialPreview = details
+        }
+        override fun recordPreview(game: Game) {
+            initialPreview = game.toDetailsPreview()
+        }
 
         override fun getGameDetailsFlow(id: Long): Flow<GameDetails?> = detailsFlow
 
