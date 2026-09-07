@@ -21,7 +21,7 @@ interface GameRepository {
         limit: Int = 20,
         offset: Int = 0,
         append: Boolean = false,
-    ): AppResult<Unit>
+    ): AppResult<PageContinuation>
     suspend fun refreshPopular(
         type: String,
         limit: Int = 20,

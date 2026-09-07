@@ -86,6 +86,7 @@ class DiscoverViewModel @Inject constructor(
     private var hydrateJob: Job? = null
     private var appendJob: Job? = null
     private var trendingEndReached = false
+    private var trendingNextOffset: Int? = 0
 
     val uiState: StateFlow<DiscoverUiState> = combine(
         selectedTab,
@@ -409,18 +410,18 @@ class DiscoverViewModel @Inject constructor(
         appendJob = viewModelScope.launch {
             trendingMutex.withLock {
                 if (trendingEndReached || refreshing.value) return@withLock
-                val offset = gameRepository.getTrendingGamesFlow().first().size
-                if (offset == 0 || offset >= TRENDING_CAP) {
-                    trendingEndReached = offset >= TRENDING_CAP
+                val offset = trendingNextOffset ?: return@withLock
+                if (offset >= TRENDING_CAP) {
+                    trendingEndReached = true
                     return@withLock
                 }
                 val pageSize = minOf(TRENDING_PAGE, TRENDING_CAP - offset)
                 when (val result = gameRepository.refreshTrendingGames(pageSize, offset, append = true)) {
                     is AppResult.Success -> {
-                        val newSize = gameRepository.getTrendingGamesFlow().first().size
-                        if (newSize <= offset || newSize >= TRENDING_CAP || newSize - offset < pageSize) {
-                            trendingEndReached = true
-                        }
+                        val continuation = result.data
+                        trendingNextOffset = continuation.nextOffset
+                        val localSize = gameRepository.getTrendingGamesFlow().first().size
+                        trendingEndReached = continuation.endReached || localSize >= TRENDING_CAP
                     }
                     is AppResult.Error -> userMessageRes.value = R.string.error_refresh_failed
                 }
@@ -490,11 +491,14 @@ class DiscoverViewModel @Inject constructor(
     private suspend fun refreshTrending() {
         trendingMutex.withLock {
             trendingEndReached = false
+            trendingNextOffset = 0
             when (val result = gameRepository.refreshTrendingGames()) {
                 is AppResult.Success -> {
                     error.value = null
+                    val continuation = result.data
+                    trendingNextOffset = continuation.nextOffset
                     val size = gameRepository.getTrendingGamesFlow().first().size
-                    if (size < TRENDING_PAGE || size >= TRENDING_CAP) trendingEndReached = true
+                    trendingEndReached = continuation.endReached || size >= TRENDING_CAP
                 }
                 is AppResult.Error -> {
                     error.value = result.error

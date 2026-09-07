@@ -921,8 +921,8 @@ class SearchScreenTest {
 
         override fun getTrendingGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
 
-        override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<Unit> {
-            return AppResult.Success(Unit)
+        override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<PageContinuation> {
+            return AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
         }
 
         override suspend fun refreshPopular(

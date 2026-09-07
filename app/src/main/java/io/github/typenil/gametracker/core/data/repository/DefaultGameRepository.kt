@@ -185,7 +185,11 @@ class DefaultGameRepository internal constructor(
         }
     }
 
-    override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<Unit> {
+    override suspend fun refreshTrendingGames(
+        limit: Int,
+        offset: Int,
+        append: Boolean,
+    ): AppResult<PageContinuation> {
         return withContext(ioDispatcher) {
             runSuspendCatching {
                 val remoteGames = remoteDataSource.getTrendingGames(limit = limit, offset = offset).toDomain()
@@ -193,17 +197,21 @@ class DefaultGameRepository internal constructor(
                 persistRailPage(
                     queryKey = GameQueryKey.KEY_DISCOVER_TRENDING,
                     originalRemote = remoteGames,
-                    limit = limit,
-                    offset = offset,
                     append = append,
                     nowSeconds = nowSeconds,
-                )
-                runSuspendCatching {
-                    clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
+                    continuation = rawPageContinuation(
+                        size = remoteGames.size,
+                        limit = limit,
+                        offset = offset,
+                    ),
+                ).also {
+                    runSuspendCatching {
+                        clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
+                    }
                 }
             }.fold(
-                onSuccess = { AppResult.Success(Unit) },
-                onFailure = { AppResult.Error(it.toAppError()) }
+                onSuccess = { AppResult.Success(it) },
+                onFailure = { AppResult.Error(it.toAppError()) },
             )
         }
     }
@@ -225,10 +233,12 @@ class DefaultGameRepository internal constructor(
                 persistRailPage(
                     queryKey = GameQueryKey.popular(type),
                     originalRemote = page.items.toDomain(),
-                    limit = limit,
-                    offset = offset,
                     append = append,
                     nowSeconds = nowEpochSeconds(),
+                    continuation = PageContinuation(
+                        nextOffset = page.nextOffset,
+                        endReached = page.endReached,
+                    ),
                 )
             }.fold(
                 onSuccess = { AppResult.Success(it) },
@@ -238,21 +248,18 @@ class DefaultGameRepository internal constructor(
     }
 
     /**
-     * Same persist contract as [GamesRemoteMediator]: server cursor advances by the raw
-     * response size; local positions are dense COUNT(*) ordinals after filtering ids
-     * already in the window. Append never deletes prior rows.
+     * Same persist contract as [GamesRemoteMediator] for local ordinals: append filters
+     * ids already in the window; positions are dense COUNT(*) after insert.
+     * Continuation is supplied by the caller — Popular uses the BFF page cursor
+     * (primitive window, not hydrated item count); Trending uses raw response size.
      */
     private suspend fun persistRailPage(
         queryKey: String,
         originalRemote: List<Game>,
-        limit: Int,
-        offset: Int,
         append: Boolean,
         nowSeconds: Long,
+        continuation: PageContinuation,
     ): PageContinuation {
-        val isEndOfList = originalRemote.size < limit ||
-            (offset + originalRemote.size) > GameQueryKey.MAX_BFF_OFFSET
-        val nextOffset = if (isEndOfList) null else offset + originalRemote.size
         val pageGames = originalRemote.distinctBy { it.id }
         transactionRunner {
             gameDao.upsertGames(pageGames.map { it.toEntity(nowSeconds) })
@@ -297,12 +304,20 @@ class DefaultGameRepository internal constructor(
                 RemoteKeyEntity(
                     queryKey = queryKey,
                     prevOffset = null,
-                    nextOffset = nextOffset,
+                    nextOffset = continuation.nextOffset,
                     lastUpdatedEpochSeconds = nowSeconds,
                 )
             )
         }
-        return PageContinuation(nextOffset = nextOffset, endReached = isEndOfList)
+        return continuation
+    }
+
+    private fun rawPageContinuation(size: Int, limit: Int, offset: Int): PageContinuation {
+        val endReached = size < limit || (offset + size) > GameQueryKey.MAX_BFF_OFFSET
+        return PageContinuation(
+            nextOffset = if (endReached) null else offset + size,
+            endReached = endReached,
+        )
     }
 
 

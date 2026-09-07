@@ -22,6 +22,7 @@ import io.github.typenil.gametracker.core.network.datasource.BffRemoteDataSource
 import io.github.typenil.gametracker.core.network.model.CompanyDto
 import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
+import io.github.typenil.gametracker.core.network.model.GamePageDto
 import io.github.typenil.gametracker.core.network.model.ReleaseDateDto
 import io.github.typenil.gametracker.core.network.model.SimilarGameDto
 import io.github.typenil.gametracker.core.network.model.VideoDto
@@ -258,7 +259,7 @@ class GameRepositoryTest {
     fun `refreshPopular appends rail page without deleting prior positions`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher, nowEpochSeconds = { TEST_NOW_SECONDS })
-        val page = io.github.typenil.gametracker.core.network.model.GamePageDto(
+        val page = GamePageDto(
             items = listOf(sampleGameDto.copy(id = 2L, name = "Second")),
             nextOffset = 40,
             endReached = false,
@@ -269,14 +270,14 @@ class GameRepositoryTest {
 
         assertTrue(result is AppResult.Success)
         val continuation = (result as AppResult.Success).data
-        assertEquals(null, continuation.nextOffset)
-        assertEquals(true, continuation.endReached)
+        assertEquals(40, continuation.nextOffset)
+        assertEquals(false, continuation.endReached)
 
         coVerify(exactly = 0) { searchDao.deleteSearchResultsForQuery(GameQueryKey.popular("playing")) }
         coVerify(exactly = 0) {
             searchDao.deleteSearchResultsFromPosition(any(), any())
         }
-        coVerify(exactly = 1) { remoteKeyDao.upsert(match { it.nextOffset == null }) }
+        coVerify(exactly = 1) { remoteKeyDao.upsert(match { it.nextOffset == 40 }) }
     }
 
     @Test
@@ -296,9 +297,13 @@ class GameRepositoryTest {
             gameDto(5L, "E"),
         )
 
-        assertTrue(repository.refreshTrendingGames(limit = 3, offset = 0, append = false) is AppResult.Success)
-        assertTrue(repository.refreshTrendingGames(limit = 3, offset = 3, append = true) is AppResult.Success)
+        val first = repository.refreshTrendingGames(limit = 3, offset = 0, append = false)
+        val second = repository.refreshTrendingGames(limit = 3, offset = 3, append = true)
 
+        assertTrue(first is AppResult.Success)
+        assertTrue(second is AppResult.Success)
+        assertEquals(3, (first as AppResult.Success).data.nextOffset)
+        assertEquals(6, (second as AppResult.Success).data.nextOffset)
         assertEquals(listOf(1L, 2L, 3L, 4L, 5L), window.map { it.gameId })
         assertEquals((0..4).toList(), window.map { it.position })
         assertEquals(3, keys[0].nextOffset)
@@ -309,35 +314,51 @@ class GameRepositoryTest {
     }
 
     @Test
-    fun `refreshPopular append filters existing ids and continues by raw response size`() = runTest {
+    fun `refreshPopular append filters existing ids and preserves BFF continuation`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher, nowEpochSeconds = { TEST_NOW_SECONDS })
         val queryKey = GameQueryKey.popular("playing")
         val window = stubDenseSearchWindow(queryKey)
         coEvery { remoteDataSource.getPopularPage("playing", 3, 0) } returns
-            io.github.typenil.gametracker.core.network.model.GamePageDto(
+            GamePageDto(
                 items = listOf(gameDto(1L, "A"), gameDto(2L, "B"), gameDto(3L, "C")),
                 nextOffset = 99,
                 endReached = false,
             )
-        coEvery { remoteDataSource.getPopularPage("playing", 3, 3) } returns
-            io.github.typenil.gametracker.core.network.model.GamePageDto(
+        coEvery { remoteDataSource.getPopularPage("playing", 3, 99) } returns
+            GamePageDto(
                 items = listOf(gameDto(3L, "C"), gameDto(4L, "D"), gameDto(5L, "E")),
                 nextOffset = 99,
                 endReached = false,
             )
 
         val first = repository.refreshPopular("playing", 3, 0, append = false)
-        val second = repository.refreshPopular("playing", 3, 3, append = true)
+        val second = repository.refreshPopular("playing", 3, 99, append = true)
 
         assertTrue(first is AppResult.Success)
         assertTrue(second is AppResult.Success)
-        assertEquals(3, (first as AppResult.Success).data.nextOffset)
-        assertEquals(6, (second as AppResult.Success).data.nextOffset)
+        assertEquals(99, (first as AppResult.Success).data.nextOffset)
+        assertEquals(99, (second as AppResult.Success).data.nextOffset)
         assertEquals(false, second.data.endReached)
         assertEquals(listOf(1L, 2L, 3L, 4L, 5L), window.map { it.gameId })
         assertEquals((0..4).toList(), window.map { it.position })
         coVerify(exactly = 0) { searchDao.deleteSearchResultsFromPosition(queryKey, any()) }
+    }
+
+    @Test
+    fun `refreshPopular preserves BFF continuation when hydrated items are fewer than limit`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher, nowEpochSeconds = { TEST_NOW_SECONDS })
+        val items = (1L..19L).map { gameDto(it, "G$it") }
+        coEvery { remoteDataSource.getPopularPage("playing", 20, 0) } returns
+            GamePageDto(items = items, nextOffset = 20, endReached = false)
+
+        val result = repository.refreshPopular("playing", 20, 0, append = false)
+
+        assertTrue(result is AppResult.Success)
+        val continuation = (result as AppResult.Success).data
+        assertEquals(20, continuation.nextOffset)
+        assertEquals(false, continuation.endReached)
     }
 
 

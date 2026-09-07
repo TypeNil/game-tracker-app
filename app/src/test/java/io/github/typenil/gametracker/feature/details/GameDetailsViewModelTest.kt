@@ -928,8 +928,8 @@ class GameDetailsViewModelTest {
 
         override fun getTrendingGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
 
-        override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<Unit> =
-            AppResult.Success(Unit)
+        override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<PageContinuation> =
+            AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
 
         override suspend fun refreshPopular(
             type: String,
