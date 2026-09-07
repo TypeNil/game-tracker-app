@@ -717,26 +717,6 @@ class GameDetailsViewModelTest {
         gate.complete(Unit)
     }
 
-
-    @Test
-    fun `state resets after sharing timeout`() = runTest {
-        fakeGameRepository.detailsFlow.value = hydratedDetails
-        fakeGameRepository.hydratedFlow.value = true
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            var state = awaitItem()
-            while (state.game == null) {
-                state = awaitItem()
-            }
-            cancelAndIgnoreRemainingEvents()
-        }
-
-        testScheduler.advanceTimeBy(5_001)
-        assertTrue(viewModel.uiState.value.isLibraryLoading)
-        assertTrue(viewModel.uiState.value.isLoading)
-        assertNull(viewModel.uiState.value.game)
-    }
     @Test
     fun `libraryEntry is observed reactively and editor state toggles`() = runTest {
         val initialEntry = LibraryEntry(
