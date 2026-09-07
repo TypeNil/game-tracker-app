@@ -44,6 +44,9 @@ class DebugBffUrlStore @Inject constructor(
     init {
         val persisted = prefs.getString(KEY_URL, null)
         val initialUrl = persisted?.toDebugBffOriginOrNull()?.toHttpUrlOrNull()
+        if (persisted != null && initialUrl == null) {
+            prefs.edit().remove(KEY_URL).apply()
+        }
         urlRef = AtomicReference(initialUrl)
     }
 

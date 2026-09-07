@@ -45,12 +45,9 @@ fun main() {
  * Supports injecting [customDeps] for isolated unit and integration testing.
  */
 fun Application.module(customDeps: BffDependencies? = null) {
-    val deps = customDeps ?: try {
-        BffDependencies.createProduction(environment.config)
-    } catch (e: IllegalArgumentException) {
-        logger.warn("Failed to initialize production dependencies: {}", e.message)
-        throw e
-    }
+    // BffDependencies.createProduction already emits the sanitized missing-credentials
+    // warning; a second logging layer here would duplicate operational output.
+    val deps = customDeps ?: BffDependencies.createProduction(environment.config)
 
     // Unconditional resource cleanup registration on application stop
     monitor.subscribe(ApplicationStopped) {

@@ -46,10 +46,12 @@ class DebugBffUrlStoreTest {
 
         val store = DebugBffUrlStore(createContext(prefs))
         assertNull("Store must seed null when persisted URL is not a root origin", store.currentUrl())
+        assertNull("Corrupt origin must be removed from prefs", prefs.getString(DebugBffUrlStore.KEY_URL, null))
 
         prefs.edit().putString(DebugBffUrlStore.KEY_URL, "corrupt-data").apply()
         val corruptStore = DebugBffUrlStore(createContext(prefs))
         assertNull("Store must seed null when persisted URL is corrupt", corruptStore.currentUrl())
+        assertNull("Corrupt value must be removed from prefs", prefs.getString(DebugBffUrlStore.KEY_URL, null))
     }
 
     @Test

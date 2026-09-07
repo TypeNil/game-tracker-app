@@ -11,8 +11,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
+import dagger.hilt.android.EntryPointAccessors
+import io.github.typenil.gametracker.core.network.DebugBffUrlStore
+import io.github.typenil.gametracker.core.network.DebugNetworkGraphEntryPoint
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -198,7 +203,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun debugBffUrl_releaseAbsent() {
+    fun debugBffUrl_hiddenWhenNotVisible() {
         composeTestRule.setContent {
             GameTrackerTheme {
                 SettingsScreen(
@@ -322,5 +327,56 @@ class SettingsScreenTest {
         composeTestRule.runOnIdle {
             assertEquals("http://localhost:8080", changedValue)
         }
+    }
+
+    @After
+    fun tearDown() {
+        graphStore().setUrl(urlString = null)
+    }
+
+    @Test
+    fun debugBffUrl_routeSaveValidUrl_updatesHiltStore() {
+        graphStore().setUrl(urlString = null)
+        composeTestRule.setContent {
+            GameTrackerTheme { SettingsRoute(onBackClick = {}) }
+        }
+
+        val label = composeTestRule.activity.getString(R.string.settings_debug_bff_label)
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        composeTestRule.onNodeWithText(label).performScrollTo().performTextInput(OVERRIDE_HOST)
+        composeTestRule.onNodeWithText(save).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals("$OVERRIDE_HOST/", graphStore().currentUrl().toString())
+        }
+    }
+
+    @Test
+    fun debugBffUrl_routeInvalidUrl_showsErrorAndKeepsStoreEmpty() {
+        graphStore().setUrl(urlString = null)
+        composeTestRule.setContent {
+            GameTrackerTheme { SettingsRoute(onBackClick = {}) }
+        }
+
+        val label = composeTestRule.activity.getString(R.string.settings_debug_bff_label)
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        val error = composeTestRule.activity.getString(R.string.settings_debug_bff_invalid_url)
+        composeTestRule.onNodeWithText(label).performScrollTo().performTextInput("notaurl")
+        composeTestRule.onNodeWithText(save).performScrollTo().performClick()
+
+        composeTestRule.onNodeWithText(error).assertIsDisplayed()
+        composeTestRule.runOnIdle {
+            assertNull(graphStore().currentUrl())
+        }
+    }
+
+    private fun graphStore(): DebugBffUrlStore =
+        EntryPointAccessors.fromApplication(
+            composeTestRule.activity.application,
+            DebugNetworkGraphEntryPoint::class.java,
+        ).debugBffUrlStore()
+
+    private companion object {
+        const val OVERRIDE_HOST = "http://192.168.1.200:8888"
     }
 }

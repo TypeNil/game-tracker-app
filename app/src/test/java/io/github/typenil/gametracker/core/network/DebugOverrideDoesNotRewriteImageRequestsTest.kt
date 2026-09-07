@@ -63,8 +63,29 @@ class DebugOverrideDoesNotRewriteImageRequestsTest {
         assertEquals(443, capturedImageUrl?.port)
         assertEquals("/igdb/image/upload/t_cover_big/co1r7f.jpg", capturedImageUrl?.encodedPath)
     }
+
+    @Test
+    fun `same api client picks up override set after construction`() {
+        val overrideUrl = "http://192.168.1.200:8888/".toHttpUrl()
+        val store: DebugBffUrlStore = mockk {
+            every { currentUrl() } returns null andThen overrideUrl
+        }
+        val transport = NetworkModule.buildTransportHttpClient()
+        val apiClient = NetworkModule.buildApiHttpClient(
+            transport = transport,
+            bffInterceptors = setOf(DebugBaseUrlInterceptor(store)),
+            enableLogging = false,
+        )
+
+        val before = apiClient.executeAndCaptureUrl(API_PATH, "application/json")
+        val after = apiClient.executeAndCaptureUrl(API_PATH, "application/json")
+
+        assertEquals("localhost", before?.host)
+        assertEquals("192.168.1.200", after?.host)
+    }
     private companion object {
         const val HTTP_OK = 200
+        const val API_PATH = "http://localhost:8080/api/v1/games"
     }
 
     private fun OkHttpClient.executeAndCaptureUrl(url: String, mediaType: String): HttpUrl? {

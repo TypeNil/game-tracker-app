@@ -698,7 +698,7 @@ class DiscoverViewModel @Inject constructor(
     }
 }
 
-data class ForYouPageInput(
+internal data class ForYouPageInput(
     val currentRecommendations: List<DiscoverRecommendation>,
     val inLibraryIds: Set<Long>,
     val page: RecommendationCandidatePage,
@@ -707,7 +707,7 @@ data class ForYouPageInput(
     val sortModeCount: Int,
 )
 
-data class ForYouTransition(
+internal data class ForYouTransition(
     val recommendations: List<DiscoverRecommendation>,
     val nextOffset: Int?,
     val nextSortIndex: Int,
