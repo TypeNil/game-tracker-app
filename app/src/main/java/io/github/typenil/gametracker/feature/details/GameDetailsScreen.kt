@@ -2,32 +2,20 @@ package io.github.typenil.gametracker.feature.details
 
 import android.content.ActivityNotFoundException
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerInputScope
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,7 +24,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,7 +32,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -53,27 +39,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -84,7 +61,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -92,25 +68,20 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -121,8 +92,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -130,13 +99,9 @@ import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
-import io.github.typenil.gametracker.core.designsystem.component.RatingBadge
 import io.github.typenil.gametracker.core.designsystem.component.rememberImageModel
-import io.github.typenil.gametracker.core.designsystem.component.TagChip
-import io.github.typenil.gametracker.core.designsystem.component.OverflowTagChip
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
-import io.github.typenil.gametracker.core.designsystem.component.formatPlatformDisplayName
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.GameDetails
@@ -146,11 +111,13 @@ import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.details.component.GameModesBottomSheet
-import io.github.typenil.gametracker.feature.details.component.GameVideoCard
+import io.github.typenil.gametracker.feature.details.component.GameDetailsFactsRow
+import io.github.typenil.gametracker.feature.details.component.GameDetailsHeader
+import io.github.typenil.gametracker.feature.details.component.VideosSection
+import io.github.typenil.gametracker.feature.details.viewer.ScreenshotViewerDialog
 import io.github.typenil.gametracker.feature.details.component.PlatformsBottomSheet
 import io.github.typenil.gametracker.feature.details.component.TagsBottomSheet
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.IntrinsicSize
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -160,20 +127,17 @@ import kotlinx.coroutines.launch
 /** Standard horizontal gutter for details sections. */
 private val DETAILS_GUTTER = GtDimens.Gutter
 
-/** Enlarged portrait cover width in the details header. */
-private val HEADER_COVER_WIDTH = 124.dp
-
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
 internal const val SCREENSHOT_ASPECT_RATIO = 16f / 9f
 
-private const val ARTWORK_ALPHA = 0.72f
-private const val ARTWORK_SCRIM_ALPHA = 0.15f
+/** Enlarged portrait cover width in the details header. */
+private val HEADER_COVER_WIDTH = 124.dp
+
 private const val TITLE_DOCK_SCALE_MIN = 0.92f
-private const val TITLE_DOCK_SCALE_DELTA = 0.08f
+internal const val TITLE_DOCK_SCALE_DELTA = 0.08f
 private const val APP_BAR_SCRIM_MAX_ALPHA = 0.45f
-private const val TRANSFORM_ORIGIN_CENTER_Y = 0.5f
+internal const val TRANSFORM_ORIGIN_CENTER_Y = 0.5f
 private const val TITLE_A11Y_MIN_ALPHA = 0.05f
-private const val TITLE_A11Y_MAX_ALPHA = 0.95f
 private val TITLE_DOCK_TRANSLATION_RANGE = 12.dp
 private val APP_BAR_BG_SCROLL_THRESHOLD = 120.dp
 private val TITLE_HANDOFF_START_OFFSET = 90.dp
@@ -182,9 +146,8 @@ private val TITLE_HANDOFF_END_OFFSET = 150.dp
 
 /** Collapsed About summary line count before the arrow toggle reveals the rest. */
 private const val ABOUT_COLLAPSED_LINES = 2
-
-/** Videos visible before the "Show all" toggle (BFF caps the list at five). */
-private const val VIDEOS_COLLAPSED_COUNT = 2
+internal const val ARROW_EXPANDED_ROTATION = 180f
+internal const val ARROW_COLLAPSED_ROTATION = 0f
 
 /** Reference CTA fill for Add to Library. */
 private val LibraryCta = Color(0xFF4E3DCA)
@@ -662,161 +625,7 @@ private fun GameDetailsContent(
 }
 
 @Composable
-private fun GameDetailsHeader(
-    game: GameDetails,
-    contentTopPadding: Dp,
-    onTagsOverflowClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    titleHandoffProgress: () -> Float = { 0f },
-    titleTranslationRangePx: Float = 0f,
-    imageReloadToken: Long = 0L,
-) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        if (!game.artworkUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = rememberImageModel(game.artworkUrl, imageReloadToken),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                alpha = ARTWORK_ALPHA,
-                modifier = Modifier.matchParentSize(),
-            )
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.background.copy(alpha = ARTWORK_SCRIM_ALPHA),
-                                MaterialTheme.colorScheme.background
-                            )
-                        )
-                    )
-            )
-        }
-        Column(
-            modifier = Modifier.padding(
-                top = contentTopPadding,
-                start = DETAILS_GUTTER,
-                end = DETAILS_GUTTER,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(HEADER_COVER_WIDTH)
-                        .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Image,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(48.dp),
-                    )
-                    if (!game.coverUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = rememberImageModel(game.coverUrl, imageReloadToken),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = game.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .graphicsLayer {
-                                val progress = titleHandoffProgress()
-                                alpha = (1f - progress).coerceIn(0f, 1f)
-                                translationY = -titleTranslationRangePx * progress
-                                scaleX = 1f - TITLE_DOCK_SCALE_DELTA * progress
-                                scaleY = 1f - TITLE_DOCK_SCALE_DELTA * progress
-                                transformOrigin = TransformOrigin(0f, TRANSFORM_ORIGIN_CENTER_Y)
-                            }
-                            .semantics {
-                                if (titleHandoffProgress() > TITLE_A11Y_MAX_ALPHA) {
-                                    hideFromAccessibility()
-                                }
-                            },
-                    )
-                    // Aggregate rating with vote count; falls back to the critic rating the
-                    // catalog already carries while the details row is still hydrating.
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RatingBadge(rating = game.totalRating ?: game.rating)
-                        if (game.totalRatingCount != null) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(
-                                    R.string.details_votes_count_format,
-                                    game.totalRatingCount,
-                                ),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false),
-                            )
-                        }
-                    }
-
-                    game.companiesLine()?.let { line ->
-                        Text(
-                            text = line,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-
-                    val tagPreview = remember(game.genres, game.themes) {
-                        formatHeaderTagPreview(game.genres, game.themes)
-                    }
-                    if (tagPreview.previewTags.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            tagPreview.previewTags.forEach { tag ->
-                                TagChip(
-                                    text = tag,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-                            }
-                            if (tagPreview.overflowCount > 0) {
-                                val totalCount = tagPreview.previewTags.size + tagPreview.overflowCount
-                                val overflowDesc = stringResource(R.string.details_more_tags_desc, totalCount)
-                                OverflowTagChip(
-                                    text = stringResource(R.string.details_more_count, tagPreview.overflowCount),
-                                    onClick = onTagsOverflowClick,
-                                    contentDescription = overflowDesc,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-@Composable
-private fun DetailsSection(
+internal fun DetailsSection(
     title: String,
     modifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier,
@@ -833,284 +642,6 @@ private fun DetailsSection(
     }
 }
 
-/** Two-column summary cards; a lone leftover card spans the full row. */
-@Composable
-private fun GameDetailsFactsRow(
-    game: GameDetails,
-    onPlatformsClick: () -> Unit,
-    onGameModesClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val unknownDate = stringResource(R.string.details_date_unknown)
-    val firstRelease = game.releaseDates.firstOrNull()
-    val datedRelease = firstRelease?.takeIf {
-        it.dateEpochSeconds != null || it.year != null
-    }
-    val releaseText = datedRelease?.displayDate(unknownDate)
-        ?: game.releaseDateEpochSeconds?.let { epoch ->
-            GameReleaseDate(
-                platform = "",
-                dateEpochSeconds = epoch,
-            ).displayDate(unknownDate)
-        }
-        ?: unknownDate.takeIf { firstRelease != null }
-    val mainHours = game.timeToBeatMainSeconds?.toDisplayHours()
-    val topology = remember(releaseText, game.gameModes, game.platforms, mainHours) {
-        resolveFactsTopology(
-            hasRelease = releaseText != null,
-            hasModes = game.gameModes.isNotEmpty(),
-            hasPlatforms = game.platforms.isNotEmpty(),
-            hasTime = mainHours != null,
-        )
-    }
-    val cards = buildList {
-        if (releaseText != null) {
-            add(
-                FactCardData(
-                    testTag = "release",
-                    icon = Icons.Filled.Event,
-                    title = stringResource(R.string.details_card_release),
-                    value = releaseText,
-                    sub = firstRelease
-                        ?.platform
-                        ?.let(::formatPlatformDisplayName)
-                        ?.takeIf(String::isNotBlank),
-                )
-            )
-        }
-        if (game.gameModes.isNotEmpty()) {
-            val modesPreview = formatGameModesPreview(game.gameModes)
-            val isClickable = game.gameModes.size > 1
-            val subText = if (modesPreview.overflowCount > 0) {
-                stringResource(R.string.details_more_count, modesPreview.overflowCount)
-            } else {
-                null
-            }
-            val a11yDesc = if (isClickable) {
-                stringResource(R.string.details_modes_more_desc, game.gameModes.size)
-            } else {
-                null
-            }
-            add(
-                FactCardData(
-                    testTag = "modes",
-                    icon = Icons.Filled.VideogameAsset,
-                    title = stringResource(R.string.details_section_modes),
-                    value = modesPreview.previewText,
-                    sub = subText,
-                    isClickable = isClickable,
-                    onClick = if (isClickable) onGameModesClick else null,
-                    contentDescription = a11yDesc,
-                )
-            )
-        }
-        if (game.platforms.isNotEmpty()) {
-            val platformsLimit = if (topology.platformsFullWidth) {
-                PLATFORMS_PREVIEW_LIMIT_FULL
-            } else {
-                PLATFORMS_PREVIEW_LIMIT_HALF
-            }
-            val platformsPreview = formatPlatformsPreview(
-                platforms = game.platforms,
-                limit = platformsLimit,
-            )
-            val isClickable = game.platforms.size > 1 || game.releaseDates.size > 1
-            val subText = if (platformsPreview.overflowCount > 0) {
-                stringResource(R.string.details_more_count, platformsPreview.overflowCount)
-            } else {
-                null
-            }
-            val a11yDesc = if (isClickable) {
-                stringResource(R.string.details_platforms_more_desc, game.platforms.size)
-            } else {
-                null
-            }
-            add(
-                FactCardData(
-                    testTag = "platforms",
-                    icon = Icons.Filled.Devices,
-                    title = stringResource(R.string.details_section_platforms),
-                    value = platformsPreview.previewText,
-                    sub = subText,
-                    isClickable = isClickable,
-                    onClick = if (isClickable) onPlatformsClick else null,
-                    contentDescription = a11yDesc,
-                    valueMaxLines = if (topology.platformsFullWidth) 2 else 1,
-                )
-            )
-        }
-        if (mainHours != null) {
-            add(
-                FactCardData(
-                    testTag = "time",
-                    icon = Icons.Filled.Schedule,
-                    title = stringResource(R.string.details_card_time_to_beat),
-                    value = stringResource(R.string.details_time_hours_format, mainHours),
-                    sub = game.timeToBeatCompleteSeconds?.let { complete ->
-                        stringResource(
-                            R.string.details_time_complete_format,
-                            complete.toDisplayHours()
-                        )
-                    },
-                )
-            )
-        }
-    }
-
-    Column(
-        modifier = modifier.padding(horizontal = DETAILS_GUTTER),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        cards.chunked(2).forEach { row ->
-            if (row.size == 1) {
-                // A lone leftover card spans the row so the grid never shows a
-                // visually empty half (e.g. [Release][Modes] / [Platforms....]).
-                val card = row.first()
-                FactCard(
-                    icon = card.icon,
-                    title = card.title,
-                    value = card.value,
-                    sub = card.sub,
-                    isClickable = card.isClickable,
-                    onClick = card.onClick,
-                    contentDescription = card.contentDescription,
-                    valueMaxLines = card.valueMaxLines,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("details-fact-card-${card.testTag}"),
-                )
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    row.forEach { card ->
-                        FactCard(
-                            icon = card.icon,
-                            title = card.title,
-                            value = card.value,
-                            sub = card.sub,
-                            isClickable = card.isClickable,
-                            onClick = card.onClick,
-                            contentDescription = card.contentDescription,
-                            valueMaxLines = card.valueMaxLines,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .testTag("details-fact-card-${card.testTag}"),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private data class FactCardData(
-    val testTag: String,
-    val icon: ImageVector,
-    val title: String,
-    val value: String,
-    val sub: String? = null,
-    val isClickable: Boolean = false,
-    val onClick: (() -> Unit)? = null,
-    val contentDescription: String? = null,
-    val valueMaxLines: Int = 1,
-)
-
-/** Seconds in half an hour and in an hour, for rounding beats to whole hours. */
-private const val HALF_HOUR_SECONDS = 1_800L
-private const val HOUR_SECONDS = 3_600L
-
-/** Rounds epoch seconds to whole display hours. */
-private fun Long.toDisplayHours(): Long = (this + HALF_HOUR_SECONDS) / HOUR_SECONDS
-
-@Composable
-private fun FactCard(
-    icon: ImageVector,
-    title: String,
-    value: String,
-    sub: String? = null,
-    modifier: Modifier = Modifier,
-    isClickable: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    contentDescription: String? = null,
-    valueMaxLines: Int = 1,
-) {
-    val clickModifier = if (onClick != null) {
-        modifier.clickable(onClick = onClick, role = Role.Button)
-    } else {
-        modifier
-    }
-    val surfaceModifier = if (contentDescription != null) {
-        clickModifier.semantics { this.contentDescription = contentDescription }
-    } else {
-        clickModifier
-    }
-    Surface(
-        modifier = surfaceModifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f, fill = false),
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (isClickable) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(12.dp),
-                    )
-                }
-            }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = valueMaxLines,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (sub != null) {
-                Text(
-                    text = sub,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (isClickable) FontWeight.Medium else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
 
 /** Collapsed About card: 2-line summary with an in-card header and arrow toggle. */
 @Composable
@@ -1249,35 +780,6 @@ private fun GameDetailsErrorState(
     }
 }
 
-@Composable
-private fun GameDetails.companiesLine(): String? {
-    val developers = companies.filter { it.isDeveloper }.map { it.name }
-    val publishers = companies.filter { it.isPublisher }.map { it.name }
-    val others = companies
-        .filterNot { it.isDeveloper || it.isPublisher }
-        .map { it.name }
-
-    val parts = buildList {
-        when {
-            developers.isNotEmpty() && developers == publishers ->
-                add(stringResource(R.string.details_developed_and_published_format, developers.joinToString()))
-            else -> {
-                if (developers.isNotEmpty()) {
-                    add(stringResource(R.string.details_developed_by_format, developers.joinToString()))
-                }
-                if (publishers.isNotEmpty()) {
-                    add(stringResource(R.string.details_published_by_format, publishers.joinToString()))
-                }
-            }
-        }
-        // Porting/supporting studios (both flags false) are still credited,
-        // appended as plain names so they never hide behind dev/pub lines.
-        if (others.isNotEmpty()) {
-            add(others.joinToString())
-        }
-    }
-    return parts.joinToString(" · ").takeIf { it.isNotBlank() }
-}
 
 internal fun GameReleaseDate.displayDate(
     unknown: String,
@@ -1291,235 +793,6 @@ internal fun GameReleaseDate.displayDate(
     else -> unknown
 }
 
-private const val MIN_ZOOM = 1f
-private const val MAX_ZOOM = 4f
-private const val DOUBLE_TAP_ZOOM = 2.5f
-private const val ZOOM_EPSILON = 0.01f
-internal fun calculateScreenshotPanBounds(
-    containerWidthPx: Float,
-    containerHeightPx: Float,
-    scale: Float,
-    contentAspectRatio: Float = SCREENSHOT_ASPECT_RATIO,
-): Offset {
-    val fittedWidthPx = minOf(
-        containerWidthPx,
-        containerHeightPx * contentAspectRatio,
-    )
-    val fittedHeightPx = fittedWidthPx / contentAspectRatio
-
-    return Offset(
-        x = ((fittedWidthPx * scale - containerWidthPx) / 2f).coerceAtLeast(0f),
-        y = ((fittedHeightPx * scale - containerHeightPx) / 2f).coerceAtLeast(0f),
-    )
-}
-
-
-private suspend fun PointerInputScope.detectOwnedZoomPanGestures(
-    currentScale: () -> Float,
-    onGesture: (pan: Offset, zoom: Float) -> Unit,
-) {
-    awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
-        var ownsGesture = false
-
-        do {
-            val event = awaitPointerEvent()
-            val pressedPointers = event.changes.count { it.pressed }
-
-            if (!ownsGesture) {
-                ownsGesture =
-                    currentScale() > MIN_ZOOM + ZOOM_EPSILON ||
-                    pressedPointers >= 2
-            }
-
-            if (ownsGesture) {
-                onGesture(
-                    event.calculatePan(),
-                    event.calculateZoom(),
-                )
-                event.changes.forEach { change ->
-                    if (change.positionChanged()) change.consume()
-                }
-            }
-        } while (event.changes.any { it.pressed })
-    }
-}
-
-@Composable
-private fun ZoomableScreenshotImage(
-    model: String,
-    contentDescription: String,
-    isCurrentPage: Boolean,
-    onScaleChanged: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    imageReloadToken: Long = 0L,
-) {
-    var scale by rememberSaveable(model) { mutableFloatStateOf(1f) }
-    var offsetX by rememberSaveable(model) { mutableFloatStateOf(0f) }
-    var offsetY by rememberSaveable(model) { mutableFloatStateOf(0f) }
-    var contentAspectRatio by rememberSaveable(model) { mutableFloatStateOf(SCREENSHOT_ASPECT_RATIO) }
-    LaunchedEffect(isCurrentPage) {
-        if (!isCurrentPage) {
-            scale = 1f
-            offsetX = 0f
-            offsetY = 0f
-            onScaleChanged(1f)
-        }
-    }
-
-    BoxWithConstraints(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        val widthPx = constraints.maxWidth.toFloat()
-        val heightPx = constraints.maxHeight.toFloat()
-
-        AsyncImage(
-            model = rememberImageModel(model, imageReloadToken),
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Fit,
-            onSuccess = { state ->
-                val size = state.painter.intrinsicSize
-                if (size.width > 0f && size.height > 0f) {
-                    contentAspectRatio = size.width / size.height
-                }
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(model) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            if (scale > MIN_ZOOM + ZOOM_EPSILON) {
-                                scale = 1f
-                                offsetX = 0f
-                                offsetY = 0f
-                            } else {
-                                scale = DOUBLE_TAP_ZOOM
-                                offsetX = 0f
-                                offsetY = 0f
-                            }
-                            onScaleChanged(scale)
-                        },
-                    )
-                }
-                .pointerInput(model, widthPx, heightPx) {
-                    detectOwnedZoomPanGestures(
-                        currentScale = { scale },
-                    ) { pan, zoom ->
-                        val newScale = (scale * zoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
-                        val bounds = calculateScreenshotPanBounds(
-                            containerWidthPx = widthPx,
-                            containerHeightPx = heightPx,
-                            scale = newScale,
-                            contentAspectRatio = contentAspectRatio,
-                        )
-
-                        scale = newScale
-                        offsetX = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
-                            (offsetX + pan.x).coerceIn(-bounds.x, bounds.x)
-                        } else {
-                            0f
-                        }
-                        offsetY = if (newScale > MIN_ZOOM + ZOOM_EPSILON) {
-                            (offsetY + pan.y).coerceIn(-bounds.y, bounds.y)
-                        } else {
-                            0f
-                        }
-                        onScaleChanged(newScale)
-                    }
-                }
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offsetX
-                    translationY = offsetY
-                },
-        )
-    }
-}
-
-@Composable
-private fun ScreenshotViewerDialog(
-    screenshots: List<String>,
-    initialIndex: Int,
-    onDismissRequest: () -> Unit,
-    onPageChanged: (Int) -> Unit,
-    imageReloadToken: Long = 0L,
-) {
-    if (screenshots.isEmpty()) return
-    val pagerState = rememberPagerState(
-        initialPage = initialIndex.coerceIn(0, screenshots.lastIndex),
-        pageCount = { screenshots.size },
-    )
-    var activeScale by remember { mutableStateOf(1f) }
-
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }.collect {
-            activeScale = 1f
-            onPageChanged(it)
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = activeScale <= MIN_ZOOM + ZOOM_EPSILON,
-                modifier = Modifier.fillMaxSize(),
-            ) { page ->
-                ZoomableScreenshotImage(
-                    model = screenshots[page],
-                    contentDescription = stringResource(
-                        R.string.details_viewer_page_format,
-                        page + 1,
-                        screenshots.size,
-                    ),
-                    isCurrentPage = pagerState.currentPage == page,
-                    onScaleChanged = { newScale ->
-                        if (pagerState.currentPage == page) {
-                            activeScale = newScale
-                        }
-                    },
-                    imageReloadToken = imageReloadToken,
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(
-                        R.string.details_viewer_page_format,
-                        pagerState.currentPage + 1,
-                        screenshots.size
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-                IconButton(onClick = onDismissRequest) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.details_viewer_close_desc),
-                        tint = Color.White
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun LibraryUnavailableCard(
@@ -1775,88 +1048,3 @@ private fun SkeletonBlock(modifier: Modifier = Modifier) {
 /** Placeholder bar proportions for the details header skeleton. */
 private const val SKELETON_TITLE_FRACTION = 0.7f
 private const val SKELETON_SUBTITLE_FRACTION = 0.4f
-private const val ARROW_EXPANDED_ROTATION = 180f
-private const val ARROW_COLLAPSED_ROTATION = 0f
-
-/**
- * Videos list: at least [VIDEOS_COLLAPSED_COUNT] (when available); a toggle
- * reveals the rest because the BFF caps the payload at five videos.
- */
-@Composable
-private fun VideosSection(
-    videos: List<GameVideo>,
-    onVideoClick: (GameVideo) -> Unit,
-    modifier: Modifier = Modifier,
-    imageReloadToken: Long = 0L,
-) {
-    var expanded by rememberSaveable(videos.map(GameVideo::videoId)) { mutableStateOf(false) }
-    val hasToggle = videos.size > VIDEOS_COLLAPSED_COUNT
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) ARROW_EXPANDED_ROTATION else ARROW_COLLAPSED_ROTATION,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "videosArrowRotation",
-    )
-
-    DetailsSection(
-        title = stringResource(R.string.details_section_videos),
-        modifier = modifier,
-    ) {
-        Column {
-            videos.forEachIndexed { index, video ->
-                if (!hasToggle || index < VIDEOS_COLLAPSED_COUNT) {
-                    GameVideoCard(
-                        video = video,
-                        onClick = { onVideoClick(video) },
-                        imageReloadToken = imageReloadToken,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                } else {
-                    AnimatedVisibility(
-                        visible = expanded,
-                        enter = expandVertically(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                        ) + fadeIn(),
-                        exit = shrinkVertically(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                        ) + fadeOut(),
-                    ) {
-                        GameVideoCard(
-                            video = video,
-                            onClick = { onVideoClick(video) },
-                            imageReloadToken = imageReloadToken,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                    }
-                }
-            }
-            if (hasToggle) {
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(
-                        text = if (expanded) {
-                            stringResource(R.string.details_videos_show_less)
-                        } else {
-                            stringResource(R.string.details_videos_show_all, videos.size)
-                        },
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.ExpandMore,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .graphicsLayer { rotationZ = arrowRotation },
-                    )
-                }
-            }
-        }
-    }
-}
