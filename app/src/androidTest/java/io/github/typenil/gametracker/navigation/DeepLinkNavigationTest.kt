@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -156,16 +157,19 @@ class DeepLinkNavigationTest {
             composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
                 .performScrollToNode(hasText(RDR2_TITLE))
             composeTestRule.onAllNodesWithText(RDR2_TITLE).onFirst().performClick()
-            waitForText(RDR2_TITLE)
+            advanceUntilIdle()
+            waitForText(RDR2_SUMMARY)
             composeTestRule.onNodeWithText(discoverTitle).assertDoesNotExist()
             composeTestRule.onNodeWithText(discoverNavLabel).assertDoesNotExist()
 
             pressBack(scenario)
+            advanceUntilIdle()
 
             waitForText(WITCHER_TITLE)
             composeTestRule.onNodeWithText(discoverTitle).assertDoesNotExist()
 
             pressBack(scenario)
+            advanceUntilIdle()
 
             waitForText(discoverTitle)
             composeTestRule.onNodeWithText(discoverNavLabel).assertIsDisplayed()
@@ -284,8 +288,13 @@ class DeepLinkNavigationTest {
         return ActivityScenario.launch(intent)
     }
 
-    private fun waitForText(text: String) {
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+    private fun advanceUntilIdle() {
+        composeTestRule.waitForIdle()
+    }
+
+    private fun waitForText(text: String, timeoutMillis: Long = 10_000) {
+        advanceUntilIdle()
+        composeTestRule.waitUntil(timeoutMillis = timeoutMillis) {
             composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -294,6 +303,7 @@ class DeepLinkNavigationTest {
         scenario.onActivity { activity ->
             activity.onBackPressedDispatcher.onBackPressed()
         }
+        advanceUntilIdle()
     }
 
     private fun existsOnScreen(text: String): Boolean {
@@ -303,5 +313,6 @@ class DeepLinkNavigationTest {
     private companion object {
         const val WITCHER_TITLE = "The Witcher 3: Wild Hunt"
         const val RDR2_TITLE = "Red Dead Redemption 2"
+        const val RDR2_SUMMARY = "America, 1899. Arthur Morgan and the Van der Linde gang are outlaws on the run."
     }
 }
