@@ -23,6 +23,7 @@ buildOutput/
 
 # Local configuration file (sdk path, bff url, secrets)
 local.properties
+.env
 
 # Android Studio / IntelliJ IDEA
 .idea/
