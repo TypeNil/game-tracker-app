@@ -190,48 +190,14 @@ class DefaultGameRepository internal constructor(
             runSuspendCatching {
                 val remoteGames = remoteDataSource.getTrendingGames(limit = limit, offset = offset).toDomain()
                 val nowSeconds = nowEpochSeconds()
-                val queryKey = GameQueryKey.KEY_DISCOVER_TRENDING
-                val isEndOfList = remoteGames.size < limit || (offset + remoteGames.size) > GameQueryKey.MAX_BFF_OFFSET
-                val nextOffset = if (isEndOfList) null else offset + remoteGames.size
-                val distinctGames = remoteGames.distinctBy { it.id }
-
-                transactionRunner {
-                    gameDao.upsertGames(distinctGames.map { it.toEntity(nowSeconds) })
-                    val existingQuery = searchDao.getSearchQuery(queryKey)
-                    val resultCount = if (append) {
-                        (existingQuery?.resultCount ?: 0) + distinctGames.size
-                    } else {
-                        distinctGames.size
-                    }
-                    searchDao.upsertSearchQuery(
-                        SearchQueryEntity(
-                            query = queryKey,
-                            createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
-                            lastQueriedAtEpochSeconds = nowSeconds,
-                            resultCount = resultCount
-                        )
-                    )
-                    if (!append) {
-                        searchDao.deleteSearchResultsForQuery(queryKey)
-                    }
-                    val crossRefs = distinctGames.mapIndexed { index, game ->
-                        SearchResultCrossRef(
-                            query = queryKey,
-                            gameId = game.id,
-                            position = offset + index
-                        )
-                    }
-                    searchDao.insertSearchResults(crossRefs)
-                    remoteKeyDao.upsert(
-                        RemoteKeyEntity(
-                            queryKey = queryKey,
-                            prevOffset = null,
-                            nextOffset = nextOffset,
-                            lastUpdatedEpochSeconds = nowSeconds
-                        )
-                    )
-                }
-
+                persistRailPage(
+                    queryKey = GameQueryKey.KEY_DISCOVER_TRENDING,
+                    originalRemote = remoteGames,
+                    limit = limit,
+                    offset = offset,
+                    append = append,
+                    nowSeconds = nowSeconds,
+                )
                 runSuspendCatching {
                     clearStaleCache(nowSeconds - GameQueryKey.GAME_STALE_TTL_SECONDS)
                 }
@@ -256,36 +222,89 @@ class DefaultGameRepository internal constructor(
         return withContext(ioDispatcher) {
             runSuspendCatching {
                 val page = remoteDataSource.getPopularPage(type, limit, offset)
-                val now = nowEpochSeconds()
-                val queryKey = GameQueryKey.popular(type)
-                val games = page.items.toDomain().distinctBy { it.id }
-                transactionRunner {
-                    gameDao.upsertGames(games.map { it.toEntity(now) })
-                    val existing = searchDao.getSearchQuery(queryKey)
-                    searchDao.upsertSearchQuery(
-                        SearchQueryEntity(
-                            query = queryKey,
-                            createdAtEpochSeconds = existing?.createdAtEpochSeconds ?: now,
-                            lastQueriedAtEpochSeconds = now,
-                            resultCount = if (append) (existing?.resultCount ?: 0) + games.size else games.size,
-                        )
-                    )
-                    if (!append) searchDao.deleteSearchResultsForQuery(queryKey)
-                    else searchDao.deleteSearchResultsFromPosition(queryKey, offset)
-                    searchDao.insertSearchResults(games.mapIndexed { index, game ->
-                        SearchResultCrossRef(queryKey, game.id, offset + index)
-                    })
-                    remoteKeyDao.upsert(
-                        RemoteKeyEntity(queryKey, null, page.nextOffset, now)
-                    )
-                }
-                PageContinuation(nextOffset = page.nextOffset, endReached = page.endReached)
+                persistRailPage(
+                    queryKey = GameQueryKey.popular(type),
+                    originalRemote = page.items.toDomain(),
+                    limit = limit,
+                    offset = offset,
+                    append = append,
+                    nowSeconds = nowEpochSeconds(),
+                )
             }.fold(
                 onSuccess = { AppResult.Success(it) },
                 onFailure = { AppResult.Error(it.toAppError()) },
             )
         }
     }
+
+    /**
+     * Same persist contract as [GamesRemoteMediator]: server cursor advances by the raw
+     * response size; local positions are dense COUNT(*) ordinals after filtering ids
+     * already in the window. Append never deletes prior rows.
+     */
+    private suspend fun persistRailPage(
+        queryKey: String,
+        originalRemote: List<Game>,
+        limit: Int,
+        offset: Int,
+        append: Boolean,
+        nowSeconds: Long,
+    ): PageContinuation {
+        val isEndOfList = originalRemote.size < limit ||
+            (offset + originalRemote.size) > GameQueryKey.MAX_BFF_OFFSET
+        val nextOffset = if (isEndOfList) null else offset + originalRemote.size
+        val pageGames = originalRemote.distinctBy { it.id }
+        transactionRunner {
+            gameDao.upsertGames(pageGames.map { it.toEntity(nowSeconds) })
+            val existingQuery = searchDao.getSearchQuery(queryKey)
+            val preInsertCount = searchDao.countSearchResultsForQuery(queryKey)
+            searchDao.upsertSearchQuery(
+                SearchQueryEntity(
+                    query = queryKey,
+                    createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
+                    lastQueriedAtEpochSeconds = nowSeconds,
+                    resultCount = if (append) preInsertCount else 0,
+                )
+            )
+            if (!append) {
+                searchDao.deleteSearchResultsForQuery(queryKey)
+            }
+            val persistedIds = if (append) {
+                searchDao.getSearchResultGameIds(queryKey).toSet()
+            } else {
+                emptySet()
+            }
+            val newGames = pageGames.filterNot { it.id in persistedIds }
+            val localStart = if (append) preInsertCount else 0
+            searchDao.insertSearchResults(
+                newGames.mapIndexed { index, game ->
+                    SearchResultCrossRef(
+                        query = queryKey,
+                        gameId = game.id,
+                        position = localStart + index,
+                    )
+                },
+            )
+            searchDao.upsertSearchQuery(
+                SearchQueryEntity(
+                    query = queryKey,
+                    createdAtEpochSeconds = existingQuery?.createdAtEpochSeconds ?: nowSeconds,
+                    lastQueriedAtEpochSeconds = nowSeconds,
+                    resultCount = searchDao.countSearchResultsForQuery(queryKey),
+                )
+            )
+            remoteKeyDao.upsert(
+                RemoteKeyEntity(
+                    queryKey = queryKey,
+                    prevOffset = null,
+                    nextOffset = nextOffset,
+                    lastUpdatedEpochSeconds = nowSeconds,
+                )
+            )
+        }
+        return PageContinuation(nextOffset = nextOffset, endReached = isEndOfList)
+    }
+
 
 
     override suspend fun getRecommendationCandidatesPage(
