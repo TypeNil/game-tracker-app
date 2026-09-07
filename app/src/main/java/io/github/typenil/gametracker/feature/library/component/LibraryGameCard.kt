@@ -485,7 +485,11 @@ private fun LibraryHoursControl(
         modifier = modifier
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.library_hours_played),
+                onClick = onClick,
+            )
             .testTag(LIBRARY_CARD_HOURS_TEST_TAG)
             .padding(horizontal = 2.dp),
     ) {
@@ -569,7 +573,10 @@ private fun LibraryStatusControl(
             modifier = Modifier
                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable { expanded = true }
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = changeStatus,
+                ) { expanded = true }
                 .testTag(LIBRARY_CARD_STATUS_TEST_TAG)
                 .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically,

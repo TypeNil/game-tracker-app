@@ -1,9 +1,6 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">GameTracker</string>
     <string name="discover_title">Поиск игр</string>
-    <string name="discover_for_you">Для вас</string>
-    <string name="discover_trending">В тренде</string>
-    <string name="discover_trending_empty">Сейчас нет игр в тренде</string>
     <string name="discover_loading">Загружаем рекомендации…</string>
     <string name="reason_genre">Потому что вам нравится: %1$s</string>
     <string name="reason_theme">Подходит вашим играм: %1$s</string>
@@ -30,8 +27,6 @@
     <string name="error_refresh_failed">Не удалось обновить каталог. Показаны сохранённые данные.</string>
     <string name="search_hint">Ищите игры по названию…</string>
     <string name="search_clear_desc">Очистить запрос</string>
-    <string name="search_idle_title">Поиск видеоигр</string>
-    <string name="search_idle_subtitle">Введите название выше или используйте фильтры ниже</string>
     <string name="search_empty_results_format">По запросу «%1$s» ничего не найдено</string>
     <string name="search_empty_action">Очистить поиск</string>
     <string name="search_loading_games">Ищем игры…</string>
@@ -66,7 +61,6 @@
     <string name="search_filters_title">Фильтры</string>
     <string name="search_filters_count_format">Фильтры (%1$d)</string>
     <string name="search_filters_button_desc">Открыть фильтры поиска</string>
-    <string name="search_sort_button_desc">Изменить сортировку, текущая: %1$s</string>
     <string name="search_filter_reset">Сбросить</string>
     <string name="search_filter_reset_all">Сбросить все фильтры</string>
     <string name="search_filter_apply">Применить</string>
@@ -92,12 +86,11 @@
         <item quantity="many">Показано %1$d загруженных результатов</item>
         <item quantity="other">Показано %1$d загруженных результата</item>
     </plurals>
-    <string name="search_results_count_partial_format">Показаны первые %1$d результатов</string>
+    <string name="search_results_count_partial_format" tools:ignore="PluralsCandidate">Показаны первые %1$d результатов</string>
     <string name="search_recent_title">Недавние запросы</string>
     <string name="search_recent_clear_all">Очистить всё</string>
     <string name="search_recent_remove_desc">Убрать «%1$s» из недавних</string>
     <string name="error_history_delete_failed">Не удалось удалить историю поиска</string>
-    <string name="search_presets_title">Быстрые подборки</string>
     <string name="search_empty_filters_title">Под фильтры ничего не подошло</string>
     <string name="search_empty_filters_subtitle">Попробуйте ослабить фильтры или изменить критерии</string>
     <string name="search_empty_filters_action">Сбросить фильтры</string>
@@ -124,20 +117,19 @@
     <string name="details_section_genres">Жанры</string>
     <string name="details_section_themes">Темы</string>
     <string name="details_platforms_and_releases">Платформы и даты выхода</string>
-    <string name="details_more_count">+ещё %1$d</string>
-    <string name="details_more_tags_desc">Показать все жанры и темы (%1$d)</string>
-    <string name="details_platforms_more_desc">Показать все платформы и даты выхода (%1$d)</string>
-    <string name="details_modes_more_desc">Показать все режимы игры (%1$d)</string>
+    <string name="details_more_count" tools:ignore="PluralsCandidate">+ещё %1$d</string>
+    <string name="details_more_tags_desc" tools:ignore="PluralsCandidate">Показать все жанры и темы (%1$d)</string>
+    <string name="details_platforms_more_desc" tools:ignore="PluralsCandidate">Показать все платформы и даты выхода (%1$d)</string>
+    <string name="details_modes_more_desc" tools:ignore="PluralsCandidate">Показать все режимы игры (%1$d)</string>
     <string name="details_card_release">Выход</string>
     <string name="details_card_time_to_beat">Время прохождения</string>
     <string name="details_time_hours_format">≈%1$d ч</string>
     <string name="details_time_complete_format">100%%: %1$d ч</string>
-    <string name="details_votes_count_format">Голосов: %1$d</string>
+    <string name="details_votes_count_format" tools:ignore="PluralsCandidate">Голосов: %1$d</string>
     <string name="details_developed_by_format">Разработчик: %1$s</string>
     <string name="details_published_by_format">Издатель: %1$s</string>
     <string name="details_developed_and_published_format">Разработка и издание: %1$s</string>
     <string name="details_screenshot_desc">Скриншот из игры</string>
-    <string name="details_similar_game_desc_format">Открыть страницу «%1$s»</string>
     <string name="details_viewer_close_desc">Закрыть просмотр скриншотов</string>
     <string name="details_viewer_page_format">%1$d / %2$d</string>
 
@@ -174,13 +166,11 @@
     <!-- Details Library Action & Sheet -->
     <string name="library_add_to_library">В библиотеку</string>
     <string name="library_in_library">В библиотеке</string>
-    <string name="library_add_to_library_subtitle">Отслеживайте прогресс, ставьте оценки и пишите заметки</string>
     <string name="library_edit_entry_title">Редактировать запись</string>
     <string name="library_status_label">Статус</string>
     <string name="library_my_rating">Моя оценка (1–10)</string>
     <string name="library_clear_rating">Очистить</string>
     <string name="library_hours_played">Часов сыграно</string>
-    <string name="library_hours_format">%1$d ч</string>
     <string name="library_hours_short">%1$d ч</string>
     <string name="library_change_status">Сменить статус: %1$s</string>
     <string name="library_added">Добавлено</string>
@@ -206,10 +196,9 @@
     <string name="library_remove_confirm_message">Игра будет навсегда удалена из библиотеки вместе с часами, оценкой и заметками.</string>
     <string name="library_remove_confirm_action">Удалить</string>
     <string name="library_retained_hours">Сохранённый прогресс: %1$d ч</string>
-    <string name="library_has_notes">Есть заметки</string>
     <string name="library_rating_format">%1$d/10</string>
     <string name="library_close">Закрыть</string>
-    <string name="library_rating_out_of_ten">%1$d из 10</string>
+    <string name="library_rating_out_of_ten" tools:ignore="PluralsCandidate">%1$d из 10</string>
     <string name="library_edit_action_desc">Редактировать запись</string>
     <string name="game_card_add_to_wishlist">В желаемое</string>
     <string name="game_card_edit_library">В библиотеке: %1$s. Редактировать</string>
@@ -242,13 +231,11 @@
     <string name="settings_notifications_open_error">Не удалось открыть настройки уведомлений.</string>
     <string name="settings_notifications_enabled">Уведомления включены</string>
     <string name="settings_notifications_disabled">Уведомления выключены</string>
-    <string name="settings_notifications_permission_rationale">Включите уведомления, чтобы следить за датами выхода игр из вишлиста и библиотеки.</string>
     <string name="discover_popular_now">Популярное</string>
     <string name="discover_playing_now">Сейчас играют</string>
     <string name="discover_wanted_now">Хотят сыграть</string>
     <string name="discover_upcoming">Скоро выйдут</string>
     <string name="discover_watched_now">Сейчас смотрят</string>
-    <string name="scroll_to_top_desc">Наверх</string>
     <string name="discover_tab_for_you">Для вас</string>
     <string name="discover_tab_charts">Популярное и чарты</string>
     <string name="discover_cold_start_title">Пока нет рекомендаций</string>

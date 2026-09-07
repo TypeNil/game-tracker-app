@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -75,7 +76,7 @@ fun AppNavHost(
     }
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
-    var scrollToTopDiscoverTrigger by remember { mutableStateOf(0L) }
+    var scrollToTopDiscoverTrigger by remember { mutableLongStateOf(0L) }
     val isOfflinePillEnabled = currentDestination?.hasRoute<LibraryKey>() != true &&
         currentDestination?.hasRoute<SettingsKey>() != true
     Box(

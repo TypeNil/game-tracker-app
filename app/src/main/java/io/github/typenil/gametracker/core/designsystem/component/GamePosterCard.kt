@@ -77,7 +77,7 @@ fun GamePosterCard(
                 if (imageModel != null) {
                     AsyncImage(
                         model = imageModel,
-                        contentDescription = game.name,
+                        contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )

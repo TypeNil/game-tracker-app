@@ -120,6 +120,17 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    lint {
+        abortOnError = true
+
+        // Promote accessibility checks that currently pass to error severity so
+        // future accessibility regressions fail the build.
+        error += listOf(
+            "ContentDescription",
+            "ClickableViewAccessibility",
+        )
+    }
 }
 // Execution-time guard: a liveRelease baked against an emulator loopback or plain http
 // URL installs fine but is offline on real devices. Wired into preLiveReleaseBuild so it
