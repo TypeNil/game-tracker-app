@@ -307,6 +307,7 @@ fun GameDetailsScreen(
                 game = game,
                 libraryEntry = uiState.libraryEntry,
                 libraryLoadError = uiState.libraryLoadError,
+                isLibraryLoading = uiState.isLibraryLoading,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onRefresh,
                 onGameClick = onGameClick,
@@ -450,6 +451,7 @@ private fun GameDetailsContent(
     game: GameDetails?,
     libraryEntry: LibraryEntry?,
     libraryLoadError: AppError?,
+    isLibraryLoading: Boolean,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onGameClick: (Long) -> Unit,
@@ -509,6 +511,7 @@ private fun GameDetailsContent(
                     } else {
                         LibraryStatusCard(
                             libraryEntry = libraryEntry,
+                            isLibraryLoading = isLibraryLoading,
                             onEditClicked = onEditLibraryClicked,
                             modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
                         )
@@ -818,29 +821,50 @@ private fun LibraryUnavailableCard(
         )
     }
 }
-
-
 @Composable
 private fun LibraryStatusCard(
     libraryEntry: LibraryEntry?,
+    isLibraryLoading: Boolean,
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    AnimatedContent(
-        targetState = libraryEntry,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
-        label = "LibraryStatusCard",
-        modifier = modifier.fillMaxWidth(),
-    ) { entry ->
-        if (entry == null) {
-            AddToLibraryButton(onClick = onEditClicked)
-        } else {
-            InLibraryCard(
-                status = stringResource(entry.status.displayNameRes()),
-                onClick = onEditClicked,
-            )
+    if (isLibraryLoading) {
+        LibraryStatusPlaceholder(modifier = modifier.fillMaxWidth())
+    } else {
+        AnimatedContent(
+            targetState = libraryEntry,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "LibraryStatusCard",
+            modifier = modifier.fillMaxWidth(),
+        ) { entry ->
+            if (entry == null) {
+                AddToLibraryButton(onClick = onEditClicked)
+            } else {
+                InLibraryCard(
+                    status = stringResource(entry.status.displayNameRes()),
+                    onClick = onEditClicked,
+                )
+            }
         }
     }
+}
+
+/**
+ * Neutral placeholder shown only on the very first frames, while the Room
+ * library flow has not emitted yet (UiState.isLibraryLoading == true).
+ * Matches the CTA geometry (AddToLibraryButton 56dp / InLibraryCard 60dp)
+ * so the resolved button swaps in without layout shift or a misleading
+ * "Add to library" affordance for an already-added game.
+ */
+@Composable
+private fun LibraryStatusPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .height(58.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .testTag("library-status-placeholder"),
+    )
 }
 
 @Composable

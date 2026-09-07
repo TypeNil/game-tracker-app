@@ -43,6 +43,31 @@ class EditLibrarySheetTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun newEntry_defaultsToWishlist_andSavesWishlist() {
+        var savedStatus: LibraryStatus? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { status, _, _, _, _ -> savedStatus = status },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        val wishlistText = composeTestRule.activity.getString(R.string.library_status_wishlist)
+        composeTestRule.onNodeWithText(wishlistText).assertIsSelected()
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(LibraryStatus.WISHLIST, savedStatus)
+    }
+
+    @Test
     fun statusSelection_updatesSelectedStatus() {
         var savedStatus: LibraryStatus? = null
 
@@ -209,8 +234,10 @@ class EditLibrarySheetTest {
             }
         }
 
-        // Initially PLAYING -> hours section is visible. Click "+5h"
+        // Initially WISHLIST -> hours section hidden. Switch to Playing first.
+        val playingText = composeTestRule.activity.getString(R.string.library_status_playing)
         val quickAdd5h = composeTestRule.activity.getString(R.string.library_quick_add_5h)
+        composeTestRule.onNodeWithText(playingText).performClick()
         composeTestRule.onNodeWithText(quickAdd5h).performClick()
 
         // Switch to Wishlist -> hours section hides, retained progress notice appears

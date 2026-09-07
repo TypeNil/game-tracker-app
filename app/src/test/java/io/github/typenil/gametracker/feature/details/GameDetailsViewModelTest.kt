@@ -91,6 +91,17 @@ class GameDetailsViewModelTest {
     }
 
     @Test
+    fun `initial state keeps library action neutral until Room emits`() = runTest {
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+        )
+
+        assertTrue(viewModel.uiState.value.isLibraryLoading)
+    }
+
+    @Test
     fun `init triggers non-forced refresh and emits hydrated details`() = runTest {
         fakeGameRepository.detailsFlow.value = hydratedDetails
         fakeGameRepository.hydratedFlow.value = true
@@ -647,8 +658,8 @@ class GameDetailsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        // Re-subscription occurs within WhileSubscribed(5_000), so StateFlow returns
-        // the retained content without exposing a transient Loading state.
+        // SharingStarted.Lazily keeps the upstream alive after unsubscribe, so
+        // StateFlow returns the retained content without a transient Loading state.
         viewModel.uiState.test {
             val retained = awaitItem()
             assertNotNull("Content must be retained across re-subscription", retained.game)

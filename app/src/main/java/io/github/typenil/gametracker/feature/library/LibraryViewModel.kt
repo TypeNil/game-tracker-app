@@ -138,7 +138,10 @@ class LibraryViewModel @Inject constructor(
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        // Lazily: keeps collecting Room while the tab is hidden so the replayed
+        // state stays fresh; WhileSubscribed's stale replay cache would re-run
+        // status/hours card animations on every return from Details.
+        started = SharingStarted.Lazily,
         initialValue = LibraryUiState(isLoading = true)
     )
 
