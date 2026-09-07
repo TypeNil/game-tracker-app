@@ -8,7 +8,7 @@ plugins {
 }
 
 application {
-    mainClass.set("com.gametracker.backend.ApplicationKt")
+    mainClass.set("io.github.typenil.gametracker.backend.ApplicationKt")
 }
 
 tasks.withType<JavaExec> {

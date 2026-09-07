@@ -10,5 +10,5 @@
     </root>
 
     <logger name="io.ktor" level="INFO"/>
-    <logger name="com.gametracker.backend" level="DEBUG"/>
+    <logger name="io.github.typenil.gametracker.backend" level="DEBUG"/>
 </configuration>

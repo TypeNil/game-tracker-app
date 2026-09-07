@@ -1,0 +1,59 @@
+package io.github.typenil.gametracker.backend.application
+
+import io.github.typenil.gametracker.backend.auth.IgdbTokenManager
+import io.github.typenil.gametracker.backend.auth.IgdbTokenManagerImpl
+import io.github.typenil.gametracker.backend.cache.BffCache
+import io.github.typenil.gametracker.backend.igdb.IgdbHttpClientFactory
+import io.github.typenil.gametracker.backend.igdb.IgdbService
+import io.github.typenil.gametracker.backend.igdb.SmoothRateLimiter
+import io.ktor.client.HttpClient
+import io.ktor.server.config.ApplicationConfig
+import org.slf4j.LoggerFactory
+import java.util.concurrent.atomic.AtomicBoolean
+
+class BffDependencies(
+    val igdbConfig: IgdbConfig,
+    val httpClient: HttpClient,
+    val tokenManager: IgdbTokenManager,
+    val igdbService: IgdbService,
+    val cache: BffCache,
+    val ownsHttpClient: Boolean
+) : AutoCloseable {
+
+    private val logger = LoggerFactory.getLogger("BffDependencies")
+    private val isClosed = AtomicBoolean(false)
+
+    override fun close() {
+        if (isClosed.compareAndSet(false, true)) {
+            logger.info("Disposing BffDependencies (ownsHttpClient={})...", ownsHttpClient)
+            cache.close()
+            if (ownsHttpClient) {
+                httpClient.close()
+            }
+        }
+    }
+
+    companion object {
+        fun createProduction(config: ApplicationConfig): BffDependencies {
+            val igdbConfig = IgdbConfigImpl(config)
+            require(igdbConfig.isConfigured) {
+                "IGDB credentials are missing! Please provide IGDB_CLIENT_ID and IGDB_CLIENT_SECRET."
+            }
+
+            val client = IgdbHttpClientFactory.create()
+            val tokenManager = IgdbTokenManagerImpl(igdbConfig, client)
+            val rateLimiter = SmoothRateLimiter()
+            val igdbService = IgdbService(client, tokenManager, igdbConfig, rateLimiter)
+            val cache = BffCache()
+
+            return BffDependencies(
+                igdbConfig = igdbConfig,
+                httpClient = client,
+                tokenManager = tokenManager,
+                igdbService = igdbService,
+                cache = cache,
+                ownsHttpClient = true
+            )
+        }
+    }
+}
