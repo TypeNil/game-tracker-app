@@ -98,6 +98,21 @@ class LibraryViewModelTest {
     private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
 
     @Test
+    fun `ui state resets to loading after subscription timeout`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertEquals(listOf(hades), awaitItem().filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        testScheduler.advanceTimeBy(5_001)
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.allGames.isEmpty())
+    }
+
+    @Test
     fun `onCardVisible deduplicates in-flight requests and permits later retry`() = runTest {
         val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
         val callCount = java.util.concurrent.atomic.AtomicInteger(0)

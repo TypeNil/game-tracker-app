@@ -646,6 +646,14 @@ class GameDetailsScreenTest {
             composeTestRule.activity.getString(R.string.error_library_load_failed),
         ).assertIsDisplayed()
     }
+
+    @Test
+    fun nullGameRendersHeaderSkeletonInsteadOfSpinner() {
+        setContent(GameDetailsUiState(game = null, isLoading = true))
+
+        composeTestRule.onNodeWithTag("details-skeleton").assertIsDisplayed()
+    }
+
     @Test
     fun libraryLoading_toExistingEntry_doesNotAnimateThroughAddToLibrary() {
         var uiState by mutableStateOf(

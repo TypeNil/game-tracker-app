@@ -83,12 +83,15 @@ class GameDetailsViewModel internal constructor(
         screenStarted.value = false
     }
 
-/**
- * Lazily: the upstream keeps running while the screen sits in the back stack,
- * so Room invalidation (e.g. the Library tab editing this game's entry) keeps
- * the replayed state fresh. With WhileSubscribed the replay cache would go
- * stale while hidden and flash outdated status transitions on return.
- */
+    /**
+     * Keep the upstream active briefly for back-stack returns, then reset the replay
+     * cache so a later return starts from the same neutral state as a new entry.
+     */
+    private val uiStateSharing = SharingStarted.WhileSubscribed(
+        stopTimeoutMillis = 5_000,
+        replayExpirationMillis = 0,
+    )
+
     val uiState: StateFlow<GameDetailsUiState> = combine(
         gameRepository.getGameDetailsFlow(gameId),
         gameRepository.isGameDetailsHydratedFlow(gameId),
@@ -127,7 +130,7 @@ class GameDetailsViewModel internal constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
+        started = uiStateSharing,
         initialValue = GameDetailsUiState(
             game = initialPreview,
             isLoading = initialPreview == null,
