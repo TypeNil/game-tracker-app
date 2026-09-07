@@ -5,15 +5,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Ограничитель частоты вызовов с гарантированным равномерным интервалом (Smooth Rate Limiter).
+ * Rate limiter with a guaranteed uniform interval (smooth rate limiting).
  *
- * Гарантирует, что между последовательными запросами к IGDB API проходит не менее [intervalNanos] наносекунд.
- * При [intervalNanos] = 300_000_000L (300 мс) максимальная пропускная способность составляет 3.33 req/s,
- * что строго ниже жесткого лимита IGDB (4 req/s) и полностью исключает всплески в любом скользящем 1-секундном окне.
+ * Guarantees at least [intervalNanos] nanoseconds between consecutive requests to the IGDB API.
+ * With [intervalNanos] = 300_000_000L (300 ms) the maximum throughput is 3.33 req/s,
+ * strictly below the hard IGDB limit (4 req/s), excluding any burst in any sliding 1-second window.
  *
- * @param intervalNanos Минимальный интервал между запросами в наносекундах (по умолчанию 300 мс).
- * @param timeSource Источник монотонного времени в наносекундах (внедряется для детерминированного тестирования).
- * @param delayFn Функция задержки (внедряется для тестирования без реального ожидания).
+ * @param timeSource Monotonic time source in nanoseconds (injected for deterministic testing).
+ * @param delayFn Suspension function (injected to test without real waiting).
  */
 class SmoothRateLimiter(
     val intervalNanos: Long = DEFAULT_INTERVAL_NANOS,
@@ -24,8 +23,9 @@ class SmoothRateLimiter(
     private var lastAllowedNanos: Long = 0L
 
     /**
-     * Запрашивает разрешение на выполнение запроса. При необходимости приостанавливает корутину.
-     * Если корутина отменяется во время ожидания, `lastAllowedNanos` не обновляется, а мьютекс корректно освобождается.
+     * Grants permission for the next request, suspending the coroutine if needed.
+     * If the coroutine is cancelled while waiting, `lastAllowedNanos` is not advanced
+     * and the mutex is released correctly.
      */
     suspend fun acquire() {
         mutex.withLock {

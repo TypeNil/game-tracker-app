@@ -1,6 +1,6 @@
 # Архитектура GameTracker
 
-Техническое руководство по архитектуре, модели данных, реактивным потокам и границам подсистем мобильного приложения GameTracker (`:app`) и companion-сервиса `:backend`.
+Техническое руководство по архитектуре, модели данных, реактивным потокам и границам подсистем мобильного приложения GameTracker (`:app`) и BFF `:backend`.
 
 ---
 
@@ -34,14 +34,14 @@ graph TB
         FakeClient["FakeBffDataSource<br/>(demo flavor, offline)"]
     end
 
-    subgraph Backend ["Companion BFF Microservice (:backend)"]
-        Ktor["Ktor 3 Netty Service<br/>(OAuth2 CAS, RateLimiter, Caffeine)"]
+    subgraph Backend ["Ktor BFF (:backend)"]
+        Ktor["Ktor 3 Netty Service<br/>(OAuth2 client credentials, RateLimiter, Caffeine)"]
         IGDB[("Upstream IGDB API v4<br/>(Twitch Developer Portal)")]
     end
 
     Compose -->|Пользовательские события| VM
     VM -->|UiState / PagingData| Compose
-    VM -->|Вызовы UseCase / Repository| Repo
+    VM -->|Вызовы Repository| Repo
     Repo -->|Flow&lt;List&lt;Game&gt;&gt; / Flow&lt;PagingData&gt;| VM
     Repo -->|Транзакции и чтение| RoomDB
     Mediator -->|Пакетная запись| RoomDB
@@ -73,7 +73,7 @@ sequenceDiagram
     User->>Screen: Ввод поискового запроса ("Witcher")
     Screen->>VM: onQueryChange("Witcher")
     Note over VM: Дебаунс 300 мс во Flow<br/>Отмена предыдущего запроса
-    VM->>Repo: searchGamesPaged("Witcher")
+    VM->>Repo: getPagedSearchResults("Witcher")
     Repo->>Room: Создание LimitOffsetPagingSource
     Room-->>Screen: Эмиссия закэшированных результатов (если есть)
 
@@ -117,7 +117,7 @@ sequenceDiagram
 | Уровень | Тип модели | Расположение | Особенности |
 | :--- | :--- | :--- | :--- |
 | **Network** | `*Dto` | `core/network/model` | Сериализуемые DTO (`kotlinx.serialization`). Содержат сырые типы API IGDB, nullable поля, специфичные для транспорта структуры. Инкапсулированы внутри network/data implementation и не экспонируются через публичные контракты репозиториев в UI/ViewModel. |
-| **Database** | `*Entity`, `*CrossRef` | `core/database/model` | Аннотации Room (`@Entity`, `@PrimaryKey`, `@ForeignKey`, `@Index`). Оптимизированы для реляционного хранения в SQLite. Не содержат UI-логики. |
+| **Database** | `*Entity`, `*CrossRef` | `core/database/entity` | Аннотации Room (`@Entity`, `@PrimaryKey`, `@ForeignKey`, `@Index`). Оптимизированы для реляционного хранения в SQLite. Не содержат UI-логики. |
 | **Domain** | Чистые Kotlin-модели | `core/model` | Доменные классы (`Game`, `LibraryEntry`, `ReleaseEvent`). Не содержат зависимостей от Android SDK, Room или Retrofit. Потребляются экранами и ViewModels. |
 
 Репозитории в `core/data` выполняют функции двустороннего маппинга:
@@ -139,7 +139,7 @@ sequenceDiagram
 
 ## 6. Организация кода и границы модулей
 
-В соответствии с решением **ADR-010**, проект использует структуру **Package-by-Feature / Package-by-Layer** внутри основного модуля `:app`:
+Проект использует структуру **Package-by-Feature / Package-by-Layer** внутри основного модуля `:app`:
 
 ```
 app/src/main/java/io/github/typenil/gametracker/
@@ -153,8 +153,7 @@ app/src/main/java/io/github/typenil/gametracker/
 ├── feature/
 │   ├── discover/       # Экран рекомендаций, чарты, предстоящие релизы
 │   ├── search/         # Поиск по каталогу в реальном времени с чипами фильтрации
-│   ├── details/        # Детальная карточка игры, галерея, похожие игры
-│   ├── viewer/         # Полноэкранный просмотрщик скриншотов с арбитражем жестов
+│   ├── details/        # Детальная карточка игры, галерея, похожие игры, просмотрщик скриншотов
 │   ├── library/        # Библиотека пользователя, трекинг часов, заметки, статусы
 │   └── settings/       # Настройки приложения, уведомления, о проекте
 └── navigation/         # AppNavHost, типизированные маршруты Navigation 2.8+
@@ -162,4 +161,4 @@ app/src/main/java/io/github/typenil/gametracker/
 
 ### Особенности и компромиссы выбранного подхода:
 1. **Эффективность сборки**: Единый модуль `:app` ускоряет инкрементальную компиляцию и исключает накладные расходы Gradle на конфигурацию десятка подпроектов.
-2. **Границы слоёв**: Разделение ответственности поддерживается соглашениями о структуре пакетов, чистыми интерфейсами и code review. Поскольку компилятор в рамках единого модуля не изолирует package-private видимость между слоями, дисциплина границ соблюдается строгими архитектурными правилами проекта (ADR-001, ADR-010).
+2. **Границы слоёв**: Разделение ответственности поддерживается соглашениями о структуре пакетов, чистыми интерфейсами и code review. Поскольку компилятор в рамках единого модуля не изолирует package-private видимость между слоями, дисциплина границ соблюдается архитектурными правилами проекта.

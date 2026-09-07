@@ -16,9 +16,6 @@ import javax.inject.Inject
 
 private const val TRACE_APPLICATION_ON_CREATE = "GameTracker.Application.onCreate"
 
-/**
- * Root Application class triggering Hilt code generation and dependency container initialization.
- */
 @HiltAndroidApp
 class GameTrackerApplication : Application(), Configuration.Provider {
 

@@ -124,7 +124,7 @@ class BffCacheTest {
         assertTrue(result1.exceptionOrNull() is IllegalStateException)
         assertEquals(1, attemptCount)
 
-        // Следующий запрос должен выполнить вычисление заново и завершиться успехом
+        // The next request must recompute and end successfully
         val recoveryResult = cache.getOrPut("failing_key", CachePolicy.SEARCH) {
             attemptCount++
             "recovered_value"

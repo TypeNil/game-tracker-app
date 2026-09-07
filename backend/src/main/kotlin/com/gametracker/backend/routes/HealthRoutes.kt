@@ -42,11 +42,7 @@ data class CacheRegionStatsDto(
     val evictionCount: Long,
 )
 
-/**
- * Эндпоинты проверки жизнеспособности (Liveness) и готовности (Readiness).
- */
 fun Route.healthRoutes(config: IgdbConfig, cache: BffCache) {
-    // Liveness probe: сервис запущен и отвечает
     get("/health") {
         call.respond(
             HealthStatusDto(
@@ -67,7 +63,6 @@ fun Route.healthRoutes(config: IgdbConfig, cache: BffCache) {
         )
     }
 
-    // Readiness probe: конфигурация валидна и сервис готов обслуживать клиентов
     get("/health/ready") {
         if (config.isConfigured) {
             call.respond(

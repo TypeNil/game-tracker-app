@@ -41,13 +41,13 @@ fun main() {
 }
 
 /**
- * Основной модуль конфигурации Ktor.
- * Поддерживает внедрение [customDeps] для изолированного модульного и интеграционного тестирования.
+ * Main Ktor module configuration.
+ * Supports injecting [customDeps] for isolated unit and integration testing.
  */
 fun Application.module(customDeps: BffDependencies? = null) {
     val deps = customDeps ?: BffDependencies.createProduction(environment.config)
 
-    // Безусловная регистрация очистки ресурсов при остановке приложения
+    // Unconditional resource cleanup registration on application stop
     monitor.subscribe(ApplicationStopped) {
         logger.info("Application stopped. Closing dependencies...")
         deps.close()
@@ -95,16 +95,16 @@ fun Application.module(customDeps: BffDependencies? = null) {
 }
 
 /**
- * Разрешает реальный IP-адрес клиента с защитой от IP-спуфинга.
+ * Resolves the real client IP with anti-spoofing protection.
  *
- * Политика безопасности прокси:
- * - Если [isProxyEnabled] == false (прямое развертывание), заголовки X-Forwarded-* игнорируются,
- *   и возвращается [ApplicationCall.request.local.remoteHost].
- * - Если [isProxyEnabled] == true (развертывание за reverse proxy):
- *   проверяется непосредственный транспортный пир ([ApplicationCall.request.local.remoteHost]).
- *   Только если он точно совпадает (exact string match) со значением из [trustedHosts] (e.g. "127.0.0.1", "10.0.0.2"),
- *   используется адрес из заголовка [ApplicationCall.request.origin.remoteHost].
- *   Если прямой пир не в списке доверенных, возвращается его непосредственный IP для исключения подделки заголовков.
+ * Proxy security policy:
+ * - If [isProxyEnabled] == false (direct deployment), X-Forwarded-* headers are ignored
+ *   and [ApplicationCall.request.local.remoteHost] is returned.
+ * - If [isProxyEnabled] == true (deployment behind a reverse proxy):
+ *   the direct transport peer ([ApplicationCall.request.local.remoteHost]) is checked.
+ *   Only if it exactly matches a value in [trustedHosts] (e.g. "127.0.0.1", "10.0.0.2")
+ *   is the address from the [ApplicationCall.request.origin.remoteHost] header used.
+ *   If the direct peer is not trusted, its own IP is returned, so untrusted headers cannot forge it.
  */
 fun resolveClientIp(
     call: ApplicationCall,
@@ -119,7 +119,7 @@ fun resolveClientIp(
     return if (directPeer in trustedHosts) {
         call.request.origin.remoteHost
     } else {
-        // Прямой клиент пытается подделать X-Forwarded-For: используем его реальный IP
+        // The direct client may be spoofing X-Forwarded-For: use its real IP
         directPeer
     }
 }

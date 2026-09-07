@@ -41,11 +41,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
 private const val SEARCH_HISTORY_KEEP_ENTRIES = 100
 
-/**
- * Default implementation of [GameRepository] with Room database Single Source of Truth (SSOT).
- */
 @Suppress("TooManyFunctions")
 class DefaultGameRepository internal constructor(
     private val remoteDataSource: BffRemoteDataSource,

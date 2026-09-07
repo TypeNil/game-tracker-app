@@ -17,9 +17,6 @@ import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 
-/**
- * Maps a domain [Game] model to a Room [GameEntity].
- */
 fun Game.toEntity(
     cachedAtEpochSeconds: Long = System.currentTimeMillis() / 1000
 ): GameEntity {
@@ -36,9 +33,6 @@ fun Game.toEntity(
     )
 }
 
-/**
- * Maps a Room [GameEntity] to a pure domain [Game] model.
- */
 fun GameEntity.toDomain(): Game {
     return Game(
         id = this.id,
@@ -52,16 +46,10 @@ fun GameEntity.toDomain(): Game {
     )
 }
 
-/**
- * Maps a list of [GameEntity] instances to a list of domain [Game] models.
- */
 fun List<GameEntity>.toDomain(): List<Game> {
     return this.map { it.toDomain() }
 }
 
-/**
- * Maps a domain [GameDetails] model to a Room [GameDetailsEntity].
- */
 fun GameDetails.toEntity(
     cachedAtEpochSeconds: Long = System.currentTimeMillis() / 1000
 ): GameDetailsEntity {
@@ -104,9 +92,6 @@ fun GameDetails.toEntity(
     )
 }
 
-/**
- * Maps a Room [GameDetailsEntity] to a pure domain [GameDetails] model.
- */
 fun GameDetailsEntity.toDomain(): GameDetails {
     return GameDetails(
         id = this.gameId,
@@ -146,9 +131,6 @@ fun GameDetailsEntity.toDomain(): GameDetails {
     )
 }
 
-/**
- * Maps a domain [LibraryEntry] to a Room [LibraryEntryEntity].
- */
 fun LibraryEntry.toEntity(): LibraryEntryEntity {
     return LibraryEntryEntity(
         gameId = this.gameId,
@@ -162,9 +144,6 @@ fun LibraryEntry.toEntity(): LibraryEntryEntity {
     )
 }
 
-/**
- * Maps a Room [LibraryEntryEntity] to a pure domain [LibraryEntry] model.
- */
 fun LibraryEntryEntity.toDomain(): LibraryEntry {
     return LibraryEntry(
         gameId = this.gameId,
@@ -178,9 +157,6 @@ fun LibraryEntryEntity.toDomain(): LibraryEntry {
     )
 }
 
-/**
- * Maps a Room [PopulatedLibraryGameEntity] to a domain [LibraryGame].
- */
 fun PopulatedLibraryGameEntity.toDomain(): LibraryGame {
     val detailsRow = details.firstOrNull()
     return LibraryGame(

@@ -1,9 +1,5 @@
 package com.gametracker.backend.application
 
-/**
- * Конфигурация сервера Ktor BFF.
- * Считывает порт и окружение из переменных среды или конфигурационного файла.
- */
 data class ServerConfig(
     val port: Int = System.getenv("PORT")?.toIntOrNull() ?: DEFAULT_PORT,
     val host: String = System.getenv("HOST") ?: DEFAULT_HOST,

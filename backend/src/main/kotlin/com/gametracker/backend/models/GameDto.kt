@@ -22,9 +22,9 @@ data class IgdbCover(
 )
 
 /**
- * Nullable-расширение named-справочника (themes, game_modes, platform у release_dates).
- * Не переиспользует [IgdbNamedItem]: обязательное `name` означало бы, что один
- * вложенный объект без name валит декод всего List<IgdbGame> (маскируясь под 502).
+ * Nullable variant of the named lookup entities (themes, game_modes, platform in release_dates).
+ * Deliberately not reusing [IgdbNamedItem]: a mandatory `name` would mean that a single
+ * nested object without name fails the whole List<IgdbGame> decode (surfacing as a 502).
  */
 @Serializable
 data class IgdbNamedExpansion(
@@ -47,7 +47,7 @@ data class IgdbArtwork(
     val imageId: String? = null
 )
 
-/** IGDB game_time_to_beats: средние времена прохождения в секундах. */
+/** IGDB game_time_to_beats: average playthrough times in seconds. */
 @Serializable
 data class IgdbGameTimeToBeats(
     val id: Long? = null,
@@ -81,7 +81,7 @@ data class IgdbInvolvedCompany(
     val publisher: Boolean? = null
 )
 
-/** Обложка похожей игры — выделенный тип с полностью optional-полями. */
+/** Cover of a similar game — a dedicated type with all-optional fields. */
 @Serializable
 data class IgdbSimilarCover(
     val id: Long? = null,
@@ -114,9 +114,9 @@ data class IgdbGame(
     val firstReleaseDate: Long? = null,
     val genres: List<IgdbNamedItem>? = null,
     val platforms: List<IgdbNamedItem>? = null,
-    // Details-only expansions: списковые запросы эти поля не запрашивают,
-    // поэтому там они декодируются в null. IGDB опускает отсутствующие
-    // sub-объекты целиком (не пишет null-литералы), что совместимо с дефолтами.
+    // Details-only expansions: list queries do not request these fields,
+    // so there they decode to null. IGDB omits missing sub-objects entirely
+    // (no null literals), which is compatible with the defaults.
     val url: String? = null,
     @SerialName("total_rating")
     val totalRating: Double? = null,
@@ -180,9 +180,9 @@ data class SimilarGameDto(
 )
 
 /**
- * Ответ GET /v1/games/{id}. Первые восемь полей повторяют контракт спискового
- * [GameDto] без переименований; остальные — details-only. rating — критический
- * рейтинг IGDB (как в списках), totalRating — агрегированный (критики+игроки).
+ * Response of GET /v1/games/{id}. The first eight fields mirror the list [GameDto]
+ * contract without renames; the rest are details-only. rating is the critical IGDB
+ * rating (as in lists); totalRating is the aggregated one (critics+players).
  */
 @Serializable
 data class GameDetailsDto(
@@ -209,8 +209,8 @@ data class GameDetailsDto(
     val timeToBeatCompleteSeconds: Long? = null
 )
 
-// Apicalypse не умеет лимитить sub-запросы: IGDB отдаёт все связанные сущности,
-// поэтому трим делается на стороне BFF до отдачи клиенту.
+// Apicalypse cannot limit sub-queries: IGDB returns all related entities,
+// so trimming happens on the BFF side before responding to the client.
 internal const val IMAGE_SIZE_COVER_BIG = "t_cover_big"
 private const val IMAGE_SIZE_720P = "t_720p"
 private const val MAX_SCREENSHOTS = 8
@@ -249,7 +249,7 @@ private fun List<IgdbReleaseDate>?.toReleaseDateList(): List<GameReleaseDateDto>
                 year = releaseDate.y
             )
         }
-        // Записи с точной датой выигрывают дедупликацию по (platform, year)
+        // Entries with an exact date win the (platform, year) dedup
         .sortedByDescending { it.dateEpochSeconds != null }
         .distinctBy { it.platform to it.year }
         .sortedBy { it.releaseSortKey() }

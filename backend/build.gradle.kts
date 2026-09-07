@@ -36,7 +36,7 @@ dependencies {
     implementation(libs.ktor.server.forwarded.header)
     implementation(libs.ktor.serialization.kotlinx.json)
 
-    // Ktor Client (для вызовов к IGDB API)
+    // Ktor Client (IGDB API calls)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)

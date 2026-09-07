@@ -20,9 +20,7 @@ import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
 import io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
-/**
- * Main Room Database for GameTracker application (SSOT).
- */
+
 @Database(
     entities = [
         GameEntity::class,

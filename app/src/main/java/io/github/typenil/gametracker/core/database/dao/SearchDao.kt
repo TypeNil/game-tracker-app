@@ -11,9 +11,6 @@ import io.github.typenil.gametracker.core.database.entity.SearchQueryEntity
 import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object for search queries and server-ranked search results.
- */
 @Dao
 @Suppress("TooManyFunctions")
 interface SearchDao {
