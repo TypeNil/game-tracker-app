@@ -6,10 +6,10 @@ import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.PageContinuation
 
 import io.github.typenil.gametracker.core.model.GameDetails
+import io.github.typenil.gametracker.core.model.GameSearchQuery
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 
 @Suppress("TooManyFunctions")
 interface GameRepository {
@@ -27,11 +27,9 @@ interface GameRepository {
         limit: Int = 20,
         offset: Int = 0,
         append: Boolean = false,
-    ): AppResult<PageContinuation> = AppResult.Success(
-        PageContinuation(nextOffset = null, endReached = true),
-    )
+    ): AppResult<PageContinuation>
 
-    fun getPopularGamesFlow(type: String): Flow<List<Game>> = flowOf(emptyList())
+    fun getPopularGamesFlow(type: String): Flow<List<Game>>
     suspend fun getRecommendationCandidates(
         genres: List<String> = emptyList(),
         themes: List<String> = emptyList(),
@@ -49,30 +47,28 @@ interface GameRepository {
         limit: Int = 30,
         offset: Int = 0,
         sort: String = "follows",
-    ): AppResult<RecommendationCandidatePage> = AppResult.Success(
-        RecommendationCandidatePage(emptyList(), null, true),
-    )
-    fun getSearchResultsFlow(query: io.github.typenil.gametracker.core.model.GameSearchQuery): Flow<List<Game>>
+    ): AppResult<RecommendationCandidatePage>
+    fun getSearchResultsFlow(query: GameSearchQuery): Flow<List<Game>>
     fun getSearchResultsFlow(query: String): Flow<List<Game>> =
-        getSearchResultsFlow(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query))
+        getSearchResultsFlow(GameSearchQuery(query = query))
     fun getPagedSearchResults(
-        query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+        query: GameSearchQuery,
         pageSize: Int = 20,
     ): Flow<PagingData<Game>>
     fun getPagedSearchResults(query: String, pageSize: Int = 20): Flow<PagingData<Game>> =
-        getPagedSearchResults(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), pageSize)
+        getPagedSearchResults(GameSearchQuery(query = query), pageSize)
     /**
      * Records a user-issued search in the recent-queries history (normalized, trimmed to a bound).
      * Blank queries are user intent without a searchable term and are never recorded.
      */
     suspend fun recordSearchHistory(rawQuery: String): AppResult<Unit>
     suspend fun searchGames(
-        query: io.github.typenil.gametracker.core.model.GameSearchQuery,
+        query: GameSearchQuery,
         limit: Int = 20,
         force: Boolean = false,
     ): AppResult<Unit>
     suspend fun searchGames(query: String, limit: Int = 20, force: Boolean = false): AppResult<Unit> =
-        searchGames(io.github.typenil.gametracker.core.model.GameSearchQuery(query = query), limit, force)
+        searchGames(GameSearchQuery(query = query), limit, force)
     fun getRecentSearchQueriesFlow(limit: Int = 10): Flow<List<String>>
     suspend fun deleteSearchQuery(query: String): AppResult<Unit>
     suspend fun clearSearchHistory(): AppResult<Unit>
