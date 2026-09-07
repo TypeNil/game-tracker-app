@@ -6,9 +6,6 @@ import androidx.room.Upsert
 import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object for cached enriched game details.
- */
 @Dao
 interface GameDetailsDao {
 

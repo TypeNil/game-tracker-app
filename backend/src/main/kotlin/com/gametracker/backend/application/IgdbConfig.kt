@@ -12,7 +12,7 @@ interface IgdbConfig {
 }
 
 /**
- * Загрузка свойств из local.properties в текущем каталоге или родительском каталоге проекта.
+ * Loads properties from local.properties in the current directory or the parent project directory.
  */
 fun loadDefaultLocalProperties(): Properties {
     val props = Properties()
@@ -26,11 +26,10 @@ fun loadDefaultLocalProperties(): Properties {
 }
 
 /**
- * Конфигурация для доступа к IGDB API.
- * Строгий порядок разрешения параметров:
- * 1. Непустая явная конфигурация Ktor (application.conf / sysprops / test config)
- * 2. Переменные окружения процесса (IGDB_CLIENT_ID / IGDB_CLIENT_SECRET)
- * 3. Локальный файл разработчика local.properties (fallback)
+ * IGDB API access configuration with strict parameter resolution order:
+ * 1. Non-blank explicit Ktor config (application.conf / sysprops / test config)
+ * 2. Process environment variables (IGDB_CLIENT_ID / IGDB_CLIENT_SECRET)
+ * 3. Local developer file local.properties (fallback)
  */
 class IgdbConfigImpl(
     config: ApplicationConfig,

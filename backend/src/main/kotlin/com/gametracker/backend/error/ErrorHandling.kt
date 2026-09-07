@@ -13,9 +13,6 @@ import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("ErrorHandling")
 
-/**
- * Централизованная обработка исключений в Ktor через плагин StatusPages.
- */
 fun Application.configureErrorHandling() {
     install(StatusPages) {
         configureUpstreamExceptionHandlers()
@@ -97,7 +94,7 @@ private fun StatusPagesConfig.configureDirectStatusHandlers() {
 private fun StatusPagesConfig.configureFallbackExceptionHandler() {
     exception<Throwable> { call, cause ->
         if (cause is CancellationException) {
-            // Строгое соблюдение Structured Concurrency: CancellationException не подавляется
+            // Strict structured-concurrency compliance: CancellationException is never swallowed
             throw cause
         }
         logger.error("Unhandled internal server error on {}", call.request.local.uri, cause)

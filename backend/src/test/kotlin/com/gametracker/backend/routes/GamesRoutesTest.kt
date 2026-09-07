@@ -328,9 +328,9 @@ class GamesRoutesTest {
     }
 
     /**
-     * Полный details-ответ, повторяющий структуру реального IGDB-ответа для
-     * id 1942 (live-верифицировано 2026-08-22). Списки сверх лимитов, записи
-     * без ключевых полей и дубли (platform, year) проверяют трим/скип/дедуп.
+     * Full details payload mirroring a real IGDB response for id 1942
+     * (live-verified 2026-08-22). Over-limit lists, rows missing key fields,
+     * and (platform, year) duplicates exercise trim/skip/dedup.
      */
     private fun detailsIgdbJson(): String {
         val screenshots = (1..9).joinToString(",") { """{"id": $it, "image_id": "sc$it"}""" }
@@ -419,7 +419,7 @@ class GamesRoutesTest {
             assertEquals(5451L, game.totalRatingCount)
             assertEquals("https://www.igdb.com/games/the-witcher-3-wild-hunt", game.url)
 
-            // Неполные строки (theme без name, company без name) пропускаются
+            // Incomplete rows (theme without name, company without name) are skipped
             assertEquals(listOf("Fantasy", "Open world"), game.themes)
             assertEquals(listOf("Single player", "Multiplayer"), game.gameModes)
             assertEquals(3, game.companies.size)
@@ -431,7 +431,7 @@ class GamesRoutesTest {
             assertEquals(false, game.companies[2].isDeveloper)
             assertEquals(false, game.companies[2].isPublisher)
 
-            // Дедуп по (platform, year): запись с точной датой выигрывает у бездатой
+            // Dedup by (platform, year): the dated row wins over the dateless one
             assertEquals(2, game.releaseDates.size)
             assertEquals("PC", game.releaseDates[0].platform)
             assertEquals(1431993600L, game.releaseDates[0].dateEpochSeconds)
@@ -440,14 +440,14 @@ class GamesRoutesTest {
             assertEquals("Nintendo Switch", game.releaseDates[1].platform)
             assertEquals(1611792000L, game.releaseDates[1].dateEpochSeconds)
 
-            // Серверные тримы: 9 -> 8 скриншотов, 7 -> 5 видео, 11 -> 10 похожих
+            // Server-side trims: 9 -> 8 screenshots, 7 -> 5 videos, 11 -> 10 similar
             assertEquals(8, game.screenshots.size)
             assertEquals("https://images.igdb.com/igdb/image/upload/t_720p/sc1.jpg", game.screenshots[0])
             assertEquals(5, game.videos.size)
             assertEquals("vid1", game.videos[0].videoId)
             assertEquals("Trailer 1", game.videos[0].name)
             assertEquals(10, game.similarGames.size)
-            // Similar без id (невозможна навигация) пропускается вместе с тримом
+            // Similar without id (navigation impossible) is skipped along with the trim
             assertTrue(game.similarGames.none { it.name == "Broken Similar" })
             assertEquals(2001L, game.similarGames[0].id)
             assertEquals("https://images.igdb.com/igdb/image/upload/t_cover_big/co1.jpg", game.similarGames[0].coverUrl)
@@ -455,7 +455,7 @@ class GamesRoutesTest {
             assertEquals(listOf("PC"), game.similarGames[0].platforms)
             // Fallback totalRating ?: rating
             assertEquals(85.0, game.similarGames[1].totalRating!!, 0.01)
-            // Artwork без image_id пропускается; времена прохождения приходят отдельным endpoint.
+            // Artwork without image_id is skipped; playtimes come from a separate endpoint.
             assertEquals("https://images.igdb.com/igdb/image/upload/t_720p/art1.jpg", game.artworkUrl)
             assertEquals(183600L, game.timeToBeatMainSeconds)
             assertEquals(622800L, game.timeToBeatCompleteSeconds)
@@ -507,8 +507,8 @@ class GamesRoutesTest {
         cache.close()
     }
     /**
-     * Реальная форма sparse-ответа IGDB (live id 87388 PapiHop): отсутствующие
-     * сущности IGDB опускает целиком — ни cover, ни списков, ни null-литералов.
+     * Real shape of a sparse IGDB response (live id 87388 PapiHop): missing
+     * entities are omitted entirely by IGDB — no cover, no lists, no null literals.
      */
     @Test
     fun `game details tolerates sparse IGDB payload without cover and nested collections`() =

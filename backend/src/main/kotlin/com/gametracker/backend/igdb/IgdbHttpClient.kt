@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory
 private const val TIMEOUT_MILLIS = 10_000L
 
 /**
- * Фабрика HTTP-клиента для взаимодействия с Twitch OAuth2 и IGDB v4 API.
- * Настраивает таймауты, сериализацию и логирование без дублирующих внешних плагинов повторов.
+ * HTTP client factory for Twitch OAuth2 and the IGDB v4 API.
+ * Configures timeouts, serialization and logging without duplicate external retry plugins.
  */
 object IgdbHttpClientFactory {
     private val clientLogger = LoggerFactory.getLogger("IgdbHttpClient")

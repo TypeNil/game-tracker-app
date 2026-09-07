@@ -5,9 +5,6 @@ import androidx.room.Query
 import androidx.room.Upsert
 import io.github.typenil.gametracker.core.database.entity.NotificationEventEntity
 
-/**
- * Data Access Object for recorded notification events and deduplication.
- */
 @Dao
 interface NotificationEventDao {
 
