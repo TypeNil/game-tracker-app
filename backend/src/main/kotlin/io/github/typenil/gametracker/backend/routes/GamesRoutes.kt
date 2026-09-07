@@ -36,6 +36,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
     rateLimit(RateLimitName("api_v1")) {
         route("/v1") {
             get("/discover/top-rated") {
+                requireKnownQueryParams(call, topRatedQueryParams)
                 val request = TopRatedRequest(
                     parseIntegerParam(call.request.queryParameters["limit"], "limit"),
                     parseIntegerParam(call.request.queryParameters["offset"], "offset"),
@@ -48,6 +49,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             }
 
             get("/discover/trending") {
+                requireKnownQueryParams(call, trendingQueryParams)
                 val request = TrendingRequest(
                     limitParam = parseIntegerParam(call.request.queryParameters["limit"], "limit"),
                     offsetParam = parseIntegerParam(call.request.queryParameters["offset"], "offset"),
@@ -60,6 +62,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             }
 
             get("/discover/popular/page") {
+                requireKnownQueryParams(call, popularPageQueryParams)
                 val request = PopularityRailRequest(
                     typeParam = call.request.queryParameters["type"],
                     limitParam = parseIntegerParam(call.request.queryParameters["limit"], "limit"),
@@ -78,6 +81,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             }
 
             get("/games/search") {
+                requireKnownQueryParams(call, searchQueryParams)
                 val query = call.request.queryParameters["q"]
                 val genres = call.request.queryParameters["genres"]
                 val platforms = call.request.queryParameters["platforms"]
@@ -113,6 +117,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             }
 
             get("/games/{id}") {
+                requireKnownQueryParams(call, gameDetailsQueryParams)
                 val id = parseLongParam(call.parameters["id"], "id")
                 val request = GameDetailsRequest(id)
                 logger.info("Fetching game details (id={})", id)
@@ -149,6 +154,7 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
 
 private fun Route.recommendationCandidatesRoute(igdbService: IgdbService, cache: BffCache) {
     get("/recommendations/candidates") {
+        requireKnownQueryParams(call, recommendationsCandidatesQueryParams)
         val request = recommendationRequest(call)
         if (!request.hasTags && request.similarTo.isEmpty()) {
             call.respond<List<RecommendationCandidateDto>>(emptyList())
@@ -163,6 +169,7 @@ private fun Route.recommendationCandidatesRoute(igdbService: IgdbService, cache:
 
 private fun Route.pagedRecommendationCandidatesRoute(igdbService: IgdbService, cache: BffCache) {
     get("/recommendations/candidates/page") {
+        requireKnownQueryParams(call, recommendationsCandidatesPageQueryParams)
         val request = recommendationRequest(call)
         if (!request.hasTags && request.similarTo.isEmpty()) {
             call.respond(RecommendationCandidatePageDto())

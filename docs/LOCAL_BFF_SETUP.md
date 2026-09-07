@@ -60,7 +60,12 @@ curl http://127.0.0.1:8080/health
 
 Ожидаемый ответ:
 ```json
-{"status":"ok","version":"1.0.0"}
+{
+  "status": "UP",
+  "service": "GameTracker-BFF",
+  "version": "1.0.0",
+  "timestamp": 1741300000000
+}
 ```
 
 ---
