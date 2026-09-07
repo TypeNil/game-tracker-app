@@ -6,7 +6,6 @@ import org.junit.Test
 
 class RecommendationFeedTest {
 
-    private val now = 1_700_000_000L
     private val feedWeights = RankerWeights(
         genreOverlap = 1f,
         themeOverlap = 0f,
@@ -14,7 +13,6 @@ class RecommendationFeedTest {
         similarBoost = 0f,
         rating = 0.4f,
         negativePenalty = 1f,
-        recency = 0f,
     )
 
     @Test
@@ -74,7 +72,6 @@ class RecommendationFeedTest {
             similarBoost = 0f,
             rating = 1f,
             negativePenalty = 0f,
-            recency = 0f,
         )
         val lowVotes = cand(1, genres = listOf("RPG"), rating = 100.0, ratingCount = 0)
         val highVotes = cand(2, genres = listOf("RPG"), rating = 75.0, ratingCount = 1000)
@@ -116,7 +113,6 @@ class RecommendationFeedTest {
             similarBoost = 1.5f,
             rating = 0f,
             negativePenalty = 0f,
-            recency = 0f,
         )
         val (profile, ranked) = feed(
             signals = listOf(
@@ -139,7 +135,7 @@ class RecommendationFeedTest {
         weights: RankerWeights = feedWeights,
     ): Pair<RecommendationProfile, List<RankedRecommendation>> {
         val profile = RecommendationProfileBuilder.build(signals, coldStartGenres = coldStartGenres)
-        return profile to RecommendationRanker.rank(profile, candidates, now, weights)
+        return profile to RecommendationRanker.rank(profile, candidates, weights)
     }
 
     private fun cand(

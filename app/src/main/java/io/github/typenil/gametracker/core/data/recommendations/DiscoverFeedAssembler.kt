@@ -49,12 +49,11 @@ object DiscoverFeedAssembler {
         profile: RecommendationProfile,
         candidates: List<RecommendationCandidate>,
         trending: List<Game>,
-        nowEpochSeconds: Long,
         inLibraryIds: Set<Long> = emptySet(),
         shownIds: Set<Long> = emptySet(),
         pageSize: Int = FOR_YOU_PAGE_SIZE,
     ): DiscoverFeed {
-        val ranked = RecommendationRanker.rank(profile, candidates, nowEpochSeconds)
+        val ranked = RecommendationRanker.rank(profile, candidates)
         val eligible = ranked.mapNotNull { item ->
             if (item.candidate.gameId in inLibraryIds) return@mapNotNull null
             DiscoverRecommendation(

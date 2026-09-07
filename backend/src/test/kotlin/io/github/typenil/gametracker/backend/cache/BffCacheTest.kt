@@ -200,4 +200,67 @@ class BffCacheTest {
         assertEquals(0L, search.evictionCount)
         cache.close()
     }
+
+    @Test
+    fun `all CachePolicy regions expire entries after their configured TTL`() = runTest {
+        val fakeTicker = FakeTicker()
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(ticker = fakeTicker, cacheScope = testScope)
+
+        for (policy in CachePolicy.entries) {
+            var computeCount = 0
+            val key = "ttl_test_${policy.name}"
+
+            val val1 = cache.getOrPut(key, policy) {
+                computeCount++
+                "initial_${policy.name}"
+            }
+            assertEquals("initial_${policy.name}", val1)
+            assertEquals(1, computeCount)
+
+            // Before TTL expires: 1 minute before TTL
+            fakeTicker.advanceMinutes(policy.ttlMinutes - 1)
+            val valHit = cache.getOrPut(key, policy) {
+                computeCount++
+                "should_not_compute"
+            }
+            assertEquals("initial_${policy.name}", valHit)
+            assertEquals(1, computeCount)
+
+            // After TTL expires: 2 more minutes (total = ttlMinutes + 1)
+            fakeTicker.advanceMinutes(2)
+            val valRefreshed = cache.getOrPut(key, policy) {
+                computeCount++
+                "refreshed_${policy.name}"
+            }
+            assertEquals("refreshed_${policy.name}", valRefreshed)
+            assertEquals(2, computeCount)
+        }
+
+        cache.close()
+    }
+
+    @Test
+    fun `cache regions enforce entry-count limit of MAX_CACHE_SIZE`() = runTest {
+        val testScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val cache = BffCache(cacheScope = testScope)
+
+        val totalInserts = 1_050
+        for (i in 1..totalInserts) {
+            cache.getOrPut("key_$i", CachePolicy.SEARCH) { "val_$i" }
+        }
+
+        cache.cleanUp()
+
+        val searchStats = cache.snapshot().single { it.policy == "SEARCH" }
+        assertTrue(
+            "Estimated size (${searchStats.estimatedSize}) must be <= MAX_CACHE_SIZE ($MAX_CACHE_SIZE)",
+            searchStats.estimatedSize <= MAX_CACHE_SIZE
+        )
+        assertTrue(
+            "Eviction count (${searchStats.evictionCount}) must be >= 50",
+            searchStats.evictionCount >= (totalInserts - MAX_CACHE_SIZE)
+        )
+        cache.close()
+    }
 }

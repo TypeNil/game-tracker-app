@@ -34,11 +34,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +63,13 @@ fun SettingsRoute(
 ) {
     val context = LocalContext.current
     val notificationPermissionState = rememberNotificationPermissionState()
+    var debugBffUrl by rememberSaveable {
+        mutableStateOf(DebugBffUrlActions.currentUrl(context))
+    }
+    var debugBffUrlError by rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    val debugBffInvalidError = stringResource(R.string.settings_debug_bff_invalid_url)
     SettingsScreen(
         hasNotificationPermission = notificationPermissionState.hasPermission,
         onRequestPermission = { notificationPermissionState.requestPermission() },
@@ -77,6 +89,35 @@ fun SettingsRoute(
             ReleaseNotificationScheduler.triggerImmediateCheck(context)
             Toast.makeText(context, R.string.settings_notifications_check_triggered, Toast.LENGTH_SHORT).show()
         },
+        debugBffUrl = debugBffUrl,
+        debugBffUrlError = debugBffUrlError,
+        isDebugBffUrlVisible = DebugBffUrlActions.isVisible,
+        onDebugBffUrlChange = { newUrl ->
+            debugBffUrl = newUrl
+            debugBffUrlError = null
+        },
+        onSaveDebugBffUrl = {
+            val invalidError = debugBffInvalidError
+            val origin = DebugBffUrlActions.toDebugBffOriginOrNull(debugBffUrl)
+            if (origin == null) {
+                debugBffUrlError = invalidError
+            } else {
+                val success = DebugBffUrlActions.setUrl(context, origin)
+                if (success) {
+                    debugBffUrl = origin
+                    debugBffUrlError = null
+                    Toast.makeText(context, R.string.settings_debug_bff_saved, Toast.LENGTH_SHORT).show()
+                } else {
+                    debugBffUrlError = invalidError
+                }
+            }
+        },
+        onResetDebugBffUrl = {
+            DebugBffUrlActions.resetUrl(context)
+            debugBffUrl = ""
+            debugBffUrlError = null
+            Toast.makeText(context, R.string.settings_debug_bff_reset_done, Toast.LENGTH_SHORT).show()
+        },
         onBackClick = onBackClick,
         onOpenIgdb = {
             try {
@@ -94,7 +135,6 @@ fun SettingsRoute(
         },
         modifier = modifier
     )
-
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,6 +149,12 @@ fun SettingsScreen(
     onCheckReleasesNow: () -> Unit = {},
     onSendTestNotification: () -> Unit = {},
     isSendTestNotificationVisible: Boolean = DebugNotificationActions.isVisible,
+    debugBffUrl: String = "",
+    debugBffUrlError: String? = null,
+    isDebugBffUrlVisible: Boolean = DebugBffUrlActions.isVisible,
+    onDebugBffUrlChange: (String) -> Unit = {},
+    onSaveDebugBffUrl: () -> Unit = {},
+    onResetDebugBffUrl: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -247,6 +293,63 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(text = stringResource(R.string.settings_notifications_check_now))
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (DebugBffUrlActions.isVisible && isDebugBffUrlVisible) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(GtDimens.Gutter),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = stringResource(R.string.settings_debug_bff_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_debug_bff_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = debugBffUrl,
+                            onValueChange = onDebugBffUrlChange,
+                            label = { Text(stringResource(R.string.settings_debug_bff_label)) },
+                            placeholder = { Text("http://10.0.2.2:8080") },
+                            isError = debugBffUrlError != null,
+                            supportingText = debugBffUrlError?.let { errorText ->
+                                { Text(text = errorText) }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onSaveDebugBffUrl,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(text = stringResource(R.string.settings_debug_bff_save))
+                            }
+                            OutlinedButton(
+                                onClick = onResetDebugBffUrl,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(text = stringResource(R.string.settings_debug_bff_reset))
                             }
                         }
                     }

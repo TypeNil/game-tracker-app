@@ -11,6 +11,9 @@ interface IgdbConfig {
         get() = clientId.isNotBlank() && clientSecret.isNotBlank()
 }
 
+const val IGDB_CREDENTIALS_MISSING_MESSAGE =
+    "IGDB credentials are missing! Resolution order: Ktor config > env > local.properties."
+
 /**
  * Loads properties from local.properties in the current directory or the parent project directory.
  */

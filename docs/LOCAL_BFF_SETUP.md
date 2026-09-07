@@ -68,6 +68,58 @@ curl http://127.0.0.1:8080/health
 }
 ```
 
+### Мониторинг кэша и лимиты памяти (/health/cache)
+
+Кэширование ответов IGDB реализовано на базе Caffeine (`BffCache`). Каждый регион кэша ограничен лимитом в 1 000 записей (`MAX_CACHE_SIZE`) и управляется политикой TTL (`CachePolicy`):
+- `POPULAR`: 60 минут (списки популярных игр)
+- `SEARCH`: 15 минут (поисковые запросы)
+- `GAME_DETAILS`: 120 минут (детальные данные об игре)
+- `RECOMMEND`: 15 минут (кандидаты персональных рекомендаций)
+
+Лимит задан строго по количеству записей (entry-count limit). Фактический объем heap зависит от структуры ответов IGDB и размера графа объектов, поэтому он не декларируется фиктивными статическими оценками, а замеряется эмпирически под максимальной нагрузкой.
+
+Для инспекции текущего размера регионов кэша, счетчиков попаданий, промахов и вытеснений выполните:
+
+```bash
+curl http://127.0.0.1:8080/health/cache
+```
+
+Ожидаемый ответ:
+```json
+{
+  "regions": [
+    {
+      "policy": "POPULAR",
+      "estimatedSize": 1,
+      "hitCount": 10,
+      "missCount": 1,
+      "evictionCount": 0
+    },
+    {
+      "policy": "SEARCH",
+      "estimatedSize": 4,
+      "hitCount": 15,
+      "missCount": 4,
+      "evictionCount": 0
+    },
+    {
+      "policy": "GAME_DETAILS",
+      "estimatedSize": 12,
+      "hitCount": 45,
+      "missCount": 12,
+      "evictionCount": 0
+    },
+    {
+      "policy": "RECOMMEND",
+      "estimatedSize": 2,
+      "hitCount": 8,
+      "missCount": 2,
+      "evictionCount": 0
+    }
+  ]
+}
+```
+
 ---
 
 ## 4. Сетевая топология и привязка адресов (Host Binding)
@@ -148,7 +200,7 @@ curl http://127.0.0.1:8080/health
 
 | Симптом | Причина | Решение |
 | :--- | :--- | :--- |
-| `IGDB credentials are missing` | Не установлены переменные `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Задайте переменные окружения в текущей сессии шелла перед запуском `:backend:run`. |
+| `IGDB credentials are missing` | Не найдены учетные данные IGDB при проверке порядка разрешения (`Ktor config` > `env IGDB_CLIENT_ID/SECRET` > `local.properties`) | Задайте переменные окружения `IGDB_CLIENT_ID` и `IGDB_CLIENT_SECRET` или добавьте их в `local.properties`. |
 | `Failed to connect to /127.0.0.1:8080` на физическом телефоне | Телефон пытается подключиться к своему внутреннему loopback | Выполните `adb reverse tcp:8080 tcp:8080` по USB. |
 | Ошибка сетевого тайм-аута при подключении по LAN IP | Брандмауэр хоста блокирует порт 8080 | Откройте порт 8080 в Windows Defender Firewall / ufw или переключитесь на `adb reverse`. |
 | Ошибки 429 Too Many Requests от IGDB | Превышение лимита запросов аккаунта | BFF автоматически сглаживает запросы через `SmoothRateLimiter`, однако не выполняйте параллельных запросов в обход BFF. |

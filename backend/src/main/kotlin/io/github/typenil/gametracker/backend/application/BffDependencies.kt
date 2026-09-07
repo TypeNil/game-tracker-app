@@ -34,12 +34,18 @@ class BffDependencies(
     }
 
     companion object {
-        fun createProduction(config: ApplicationConfig): BffDependencies {
-            val igdbConfig = IgdbConfigImpl(config)
-            require(igdbConfig.isConfigured) {
-                "IGDB credentials are missing! Please provide IGDB_CLIENT_ID and IGDB_CLIENT_SECRET."
-            }
+        private val logger = LoggerFactory.getLogger("BffDependencies")
 
+        fun createProduction(
+            config: ApplicationConfig,
+            igdbConfig: IgdbConfig = IgdbConfigImpl(config)
+        ): BffDependencies {
+            if (!igdbConfig.isConfigured) {
+                logger.warn(IGDB_CREDENTIALS_MISSING_MESSAGE)
+            }
+            require(igdbConfig.isConfigured) {
+                IGDB_CREDENTIALS_MISSING_MESSAGE
+            }
             val client = IgdbHttpClientFactory.create()
             val tokenManager = IgdbTokenManagerImpl(igdbConfig, client)
             val rateLimiter = SmoothRateLimiter()

@@ -12,7 +12,6 @@ import org.junit.Test
 
 class DiscoverFeedAssemblerTest {
 
-    private val now = 1_780_000_000L
 
     @Test
     fun assemble_coldStart_keepsTrendingAndDropsExcluded() {
@@ -25,7 +24,7 @@ class DiscoverFeedAssemblerTest {
         )
         val trending = listOf(game(1L, "A"), game(2L, "Excluded"), game(3L, "C"))
 
-        val feed = DiscoverFeedAssembler.assemble(profile, emptyList(), trending, now)
+        val feed = DiscoverFeedAssembler.assemble(profile, emptyList(), trending)
 
         assertTrue(feed.recommendations.isEmpty())
         assertEquals(listOf(1L, 3L), feed.trending.map { it.id })
@@ -43,7 +42,7 @@ class DiscoverFeedAssemblerTest {
         val candidates = listOf(candidate(10L, "Rec", genres = listOf("RPG")))
         val trending = listOf(game(10L, "Rec"), game(11L, "Trend"))
 
-        val feed = DiscoverFeedAssembler.assemble(profile, candidates, trending, now)
+        val feed = DiscoverFeedAssembler.assemble(profile, candidates, trending)
 
         assertEquals(listOf(10L), feed.recommendations.map { it.game.id })
         assertEquals(listOf(11L), feed.trending.map { it.id })
@@ -69,7 +68,6 @@ class DiscoverFeedAssemblerTest {
             profile,
             candidates,
             trending = emptyList(),
-            nowEpochSeconds = now,
             inLibraryIds = setOf(10L),
         )
 
@@ -107,13 +105,12 @@ class DiscoverFeedAssemblerTest {
         )
 
         val first = DiscoverFeedAssembler.assemble(
-            profile, candidates, emptyList(), now, pageSize = 2,
+            profile, candidates, emptyList(), pageSize = 2,
         )
         val second = DiscoverFeedAssembler.assemble(
             profile,
             candidates,
             emptyList(),
-            now,
             shownIds = first.recommendations.map { it.game.id }.toSet(),
             pageSize = 2,
         )
@@ -121,7 +118,6 @@ class DiscoverFeedAssemblerTest {
             profile,
             candidates,
             emptyList(),
-            now,
             shownIds = (first.recommendations + second.recommendations).map { it.game.id }.toSet(),
             pageSize = 2,
         )
@@ -145,7 +141,6 @@ class DiscoverFeedAssemblerTest {
             profile = profile,
             candidates = candidates,
             trending = emptyList(),
-            nowEpochSeconds = now,
         )
         assertEquals(DiscoverFeedAssembler.FOR_YOU_PAGE_SIZE, feed.recommendations.size)
         assertEquals(

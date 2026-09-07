@@ -406,6 +406,118 @@ class DiscoverViewModelTest {
         }
     }
 
+    @Test
+    fun append_removesFromVisibleTrending() = runTest {
+        val trendingGame = Game(id = 11L, name = "Trending Game")
+        trendingFlow.value = listOf(trendingGame)
+
+        val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
+        val c2 = RecommendationCandidate(11L, "Trending Game", genres = listOf("RPG"), rating = 88.0, ratingCount = 150L)
+
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
+            RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))
+        ))
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = args[6] as Int
+            val items = if (offset == 0) listOf(c1) else listOf(c2)
+            AppResult.Success(RecommendationCandidatePage(items = items, nextOffset = offset + 20, endReached = false))
+        }
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            var item = awaitItem()
+            var triggeredAppend = false
+            while (true) {
+                val recIds = item.recommendations.map { it.game.id }.toSet()
+                val trendingIds = item.trending.map { it.id }.toSet()
+                assertTrue(
+                    "Turbine no-dual-visibility: game cannot appear in both recommendations and trending",
+                    recIds.intersect(trendingIds).isEmpty(),
+                )
+                if (item.recommendations.any { it.game.id == 11L } && item.trending.none { it.id == 11L }) {
+                    break
+                }
+                val feedSettled = !item.isLoading && item.trending.isNotEmpty()
+                val readyToAppend = !triggeredAppend && feedSettled && item.recommendations.size == 1
+                if (readyToAppend) {
+                    triggeredAppend = true
+                    viewModel.loadMoreForYou()
+                }
+                item = awaitItem()
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun rotate_prefersUnseen() = runTest {
+        val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
+        val c2 = RecommendationCandidate(102L, "Rec 102", genres = listOf("RPG"), rating = 88.0, ratingCount = 150L)
+        val c3 = RecommendationCandidate(103L, "Rec 103", genres = listOf("RPG"), rating = 85.0, ratingCount = 100L)
+
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
+            RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))
+        ))
+
+        var fetchCount = 0
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            fetchCount++
+            val items = if (fetchCount == 1) listOf(c1, c2) else listOf(c1, c2, c3)
+            AppResult.Success(RecommendationCandidatePage(items = items, nextOffset = 20, endReached = false))
+        }
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val initial = awaitItemUntil { it.recommendations.size == 2 && !it.isLoading }
+            assertEquals(listOf(101L, 102L), initial.recommendations.map { it.game.id })
+
+            viewModel.refresh()
+
+            val rotated = awaitItemUntil { !it.isRefreshing && it.recommendations.any { rec -> rec.game.id == 103L } }
+            assertEquals(listOf(103L), rotated.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun rotate_allShown_fallback() = runTest {
+        val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
+        val c2 = RecommendationCandidate(102L, "Rec 102", genres = listOf("RPG"), rating = 88.0, ratingCount = 150L)
+
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
+            RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))
+        ))
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns AppResult.Success(RecommendationCandidatePage(items = listOf(c1, c2), nextOffset = 20, endReached = false))
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val initial = awaitItemUntil { it.recommendations.size == 2 && !it.isLoading }
+            assertEquals(listOf(101L, 102L), initial.recommendations.map { it.game.id })
+
+            // Rotation re-fetches with history = {101, 102}; every eligible candidate
+            // was shown, so the assembler falls back to the eligible set instead
+            // of emitting an empty feed. The transient isRefreshing flag is not
+            // asserted: StateFlow conflates it when content is identical.
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            val refreshed = viewModel.uiState.value
+            assertFalse(refreshed.isRefreshing)
+            assertEquals(listOf(101L, 102L), refreshed.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+        // Rotation path executed: initial build + one rebuild fetch.
+        coVerify(exactly = 2) {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        }
+    }
+
 
     @Test
     fun addToWishlist_whenEntryExistsButUiMapEmpty_doesNotOverwriteStatus() = runTest {

@@ -6,5 +6,4 @@ sealed interface RecommendationReason {
     data class PlatformOverlap(val tags: List<String>) : RecommendationReason
     data object SimilarGame : RecommendationReason
     data object HighRating : RecommendationReason
-    data object RecentRelease : RecommendationReason
 }

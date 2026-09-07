@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-private const val MAX_CACHE_SIZE = 1_000L
+internal const val MAX_CACHE_SIZE = 1_000L
 
 /**
  * Thread-safe async cache with thundering-herd protection (single-flight).
@@ -139,6 +139,13 @@ class BffCache(
             pendingComputations.clear()
         }
     }
+    internal fun cleanUp() {
+        popularCache.cleanUp()
+        searchCache.cleanUp()
+        gameDetailsCache.cleanUp()
+        recommendCache.cleanUp()
+    }
+
 
     data class CacheKey(val policy: CachePolicy, val key: String)
 }

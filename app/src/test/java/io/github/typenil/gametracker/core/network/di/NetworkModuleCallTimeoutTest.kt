@@ -18,7 +18,7 @@ class NetworkModuleCallTimeoutTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         server.start()
 
-        val client = NetworkModule.buildOkHttpClient(callTimeoutSeconds = 1)
+        val client = NetworkModule.buildTransportHttpClient(callTimeoutSeconds = 1)
         val request = Request.Builder().url(server.url("/")).build()
 
         val startNanos = System.nanoTime()

@@ -32,13 +32,12 @@ class RecommendationExplainerTest {
                 similarBoost = 1f,
                 bayesianRating = 0.8f,
                 negativePenalty = 0f,
-                recency = 0f,
             ),
         )
         val reasons = RecommendationExplainer.explain(
             ranked,
             profile,
-            RankerWeights(genreOverlap = 1f, similarBoost = 1.5f, rating = 0.4f, recency = 0f),
+            RankerWeights(genreOverlap = 1f, similarBoost = 1.5f, rating = 0.4f),
         )
         assertEquals(2, reasons.size)
         assertEquals(RecommendationReason.SimilarGame, reasons[0])
@@ -57,7 +56,7 @@ class RecommendationExplainerTest {
         val ranked = RankedRecommendation(
             candidate = RecommendationCandidate(gameId = 1, name = "G", genres = listOf("Sports")),
             score = -1f,
-            factors = RecommendationFactors(0f, 0f, 0f, 0f, 0f, negativePenalty = -1f, recency = 0f),
+            factors = RecommendationFactors(0f, 0f, 0f, 0f, 0f, negativePenalty = -1f),
         )
         assertTrue(RecommendationExplainer.explain(ranked, profile).isEmpty())
     }

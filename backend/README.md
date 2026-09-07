@@ -35,4 +35,9 @@ Windows (PowerShell / Command Prompt):
 curl http://127.0.0.1:8080/health
 ```
 
+Inspect Caffeine cache metrics and region sizes:
+```bash
+curl http://127.0.0.1:8080/health/cache
+```
+
 For complete local configuration, mobile emulator routing, and USB physical device (`adb reverse`) instructions, see [LOCAL_BFF_SETUP.md](../docs/LOCAL_BFF_SETUP.md).
