@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.feature.details
 
+import io.github.typenil.gametracker.feature.details.viewer.calculateScreenshotPanBounds
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
