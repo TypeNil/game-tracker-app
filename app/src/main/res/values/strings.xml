@@ -1,9 +1,6 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">GameTracker</string>
     <string name="discover_title">Discover Games</string>
-    <string name="discover_for_you">For you</string>
-    <string name="discover_trending">Trending</string>
-    <string name="discover_trending_empty">No trending games right now</string>
     <string name="discover_loading">Loading recommendations…</string>
     <string name="reason_genre">Because you like %1$s</string>
     <string name="reason_theme">Matches your %1$s games</string>
@@ -30,8 +27,6 @@
     <string name="error_refresh_failed">Could not refresh catalog. Showing cached data.</string>
     <string name="search_hint">Search games by title…</string>
     <string name="search_clear_desc">Clear search query</string>
-    <string name="search_idle_title">Search Video Games</string>
-    <string name="search_idle_subtitle">Type a title above or browse with filters below</string>
     <string name="search_empty_results_format">No games found for \"%1$s\"</string>
     <string name="search_empty_action">Clear search</string>
     <string name="search_loading_games">Searching games…</string>
@@ -66,7 +61,6 @@
     <string name="search_filters_title">Filters</string>
     <string name="search_filters_count_format">Filters (%1$d)</string>
     <string name="search_filters_button_desc">Open search filters</string>
-    <string name="search_sort_button_desc">Change sorting, current: %1$s</string>
     <string name="search_filter_reset">Reset</string>
     <string name="search_filter_reset_all">Reset all filters</string>
     <string name="search_filter_apply">Apply</string>
@@ -88,12 +82,12 @@
         <item quantity="one">Showing %1$d loaded result</item>
         <item quantity="other">Showing %1$d loaded results</item>
     </plurals>
-    <string name="search_results_count_partial_format">Showing first %1$d results</string>
+    <!-- Partial pagination indicator ("first N results"), fixed plural context -->
+    <string name="search_results_count_partial_format" tools:ignore="PluralsCandidate">Showing first %1$d results</string>
     <string name="search_recent_title">Recent Searches</string>
     <string name="search_recent_clear_all">Clear all</string>
     <string name="search_recent_remove_desc">Remove %1$s from recent searches</string>
     <string name="error_history_delete_failed">Failed to delete search history</string>
-    <string name="search_presets_title">Quick Presets</string>
     <string name="search_empty_filters_title">No games match selected filters</string>
     <string name="search_empty_filters_subtitle">Try clearing some filters or changing your criteria</string>
     <string name="search_empty_filters_action">Reset filters</string>
@@ -120,20 +114,20 @@
     <string name="details_section_genres">Genres</string>
     <string name="details_section_themes">Themes</string>
     <string name="details_platforms_and_releases">Platforms &amp; Release Dates</string>
-    <string name="details_more_count">+%1$d more</string>
-    <string name="details_more_tags_desc">Show all %1$d genres and themes</string>
-    <string name="details_platforms_more_desc">Show all %1$d platforms and release dates</string>
-    <string name="details_modes_more_desc">Show all %1$d game modes</string>
+    <!-- Overflow badge and sheet descriptions, only shown when multiple items overflow -->
+    <string name="details_more_count" tools:ignore="PluralsCandidate">+%1$d more</string>
+    <string name="details_more_tags_desc" tools:ignore="PluralsCandidate">Show all %1$d genres and themes</string>
+    <string name="details_platforms_more_desc" tools:ignore="PluralsCandidate">Show all %1$d platforms and release dates</string>
+    <string name="details_modes_more_desc" tools:ignore="PluralsCandidate">Show all %1$d game modes</string>
     <string name="details_card_release">Release</string>
     <string name="details_card_time_to_beat">Time to Beat</string>
     <string name="details_time_hours_format">≈%1$d h</string>
     <string name="details_time_complete_format">100%%: %1$d h</string>
-    <string name="details_votes_count_format">%1$d votes</string>
+    <string name="details_votes_count_format" tools:ignore="PluralsCandidate">%1$d votes</string>
     <string name="details_developed_by_format">Developed by %1$s</string>
     <string name="details_published_by_format">Published by %1$s</string>
     <string name="details_developed_and_published_format">Developed &amp; published by %1$s</string>
     <string name="details_screenshot_desc">In-game screenshot</string>
-    <string name="details_similar_game_desc_format">Open details for %1$s</string>
     <string name="details_viewer_close_desc">Close screenshot viewer</string>
     <string name="details_viewer_page_format">%1$d / %2$d</string>
 
@@ -170,13 +164,11 @@
     <!-- Details Library Action & Sheet -->
     <string name="library_add_to_library">Add to Library</string>
     <string name="library_in_library">In Library</string>
-    <string name="library_add_to_library_subtitle">Track your progress, rate, and take notes</string>
     <string name="library_edit_entry_title">Edit in Library</string>
     <string name="library_status_label">Status</string>
     <string name="library_my_rating">My Rating (1–10)</string>
     <string name="library_clear_rating">Clear</string>
     <string name="library_hours_played">Hours Played</string>
-    <string name="library_hours_format">%1$d hrs</string>
     <string name="library_hours_short">%1$dh</string>
     <string name="library_change_status">Change status: %1$s</string>
     <string name="library_added">Added</string>
@@ -202,10 +194,10 @@
     <string name="library_remove_confirm_message">This will permanently remove this game from your library, including all recorded hours, rating, and notes.</string>
     <string name="library_remove_confirm_action">Remove</string>
     <string name="library_retained_hours">Retained progress: %1$d hrs</string>
-    <string name="library_has_notes">Has notes</string>
     <string name="library_rating_format">%1$d/10</string>
     <string name="library_close">Close</string>
-    <string name="library_rating_out_of_ten">%1$d out of 10</string>
+    <!-- Scale ratio ("N out of 10"), not a plural item count -->
+    <string name="library_rating_out_of_ten" tools:ignore="PluralsCandidate">%1$d out of 10</string>
     <string name="library_edit_action_desc">Edit library entry</string>
     <string name="game_card_add_to_wishlist">Add to wishlist</string>
     <string name="game_card_edit_library">In library: %1$s. Edit entry</string>
@@ -239,13 +231,11 @@
     <string name="settings_notifications_open_error">Couldn\'t open system notification settings.</string>
     <string name="settings_notifications_enabled">Notifications Enabled</string>
     <string name="settings_notifications_disabled">Notifications Disabled</string>
-    <string name="settings_notifications_permission_rationale">Enable notifications to track release dates for your wishlist and library games.</string>
     <string name="discover_popular_now">Popular now</string>
     <string name="discover_playing_now">Playing now</string>
     <string name="discover_wanted_now">Wanted now</string>
     <string name="discover_upcoming">Upcoming</string>
     <string name="discover_watched_now">Watched now</string>
-    <string name="scroll_to_top_desc">Scroll to top</string>
     <string name="discover_tab_for_you">For you</string>
     <string name="discover_tab_charts">Popular &amp; Charts</string>
     <string name="discover_cold_start_title">No Recommendations Yet</string>

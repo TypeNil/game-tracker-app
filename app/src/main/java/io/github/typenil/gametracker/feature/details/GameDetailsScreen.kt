@@ -556,16 +556,20 @@ private fun GameDetailsContent(
                                     items = game.screenshots,
                                     key = { _, url -> url }
                                 ) { index, screenshot ->
+                                    val screenshotDesc = stringResource(R.string.details_screenshot_desc)
                                     AsyncImage(
                                         model = rememberImageModel(screenshot, imageReloadToken),
-                                        contentDescription = stringResource(R.string.details_screenshot_desc),
+                                        contentDescription = screenshotDesc,
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .width(260.dp)
                                             .aspectRatio(SCREENSHOT_ASPECT_RATIO)
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                            .clickable { selectedScreenshotIndex = index }
+                                            .clickable(
+                                                role = Role.Button,
+                                                onClickLabel = screenshotDesc,
+                                            ) { selectedScreenshotIndex = index }
                                     )
                                 }
                             }

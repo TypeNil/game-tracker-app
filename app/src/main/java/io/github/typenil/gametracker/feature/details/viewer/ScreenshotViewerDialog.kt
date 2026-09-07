@@ -19,7 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -46,7 +46,7 @@ internal fun ScreenshotViewerDialog(
         initialPage = initialIndex.coerceIn(0, screenshots.lastIndex),
         pageCount = { screenshots.size },
     )
-    var activeScale by remember { mutableStateOf(1f) }
+    var activeScale by remember { mutableFloatStateOf(1f) }
 
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect {

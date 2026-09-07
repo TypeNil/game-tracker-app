@@ -73,6 +73,9 @@ jobs:
       - name: Run Android Detekt Code Quality Checks
         run: ./gradlew :app:detekt --stacktrace
 
+      - name: Run Android Lint (Accessibility Enforcement)
+        run: ./gradlew :app:lintDemoDebug --stacktrace
+
       - name: Run Android Demo Unit Tests
         run: ./gradlew testDemoDebugUnitTest --stacktrace
 

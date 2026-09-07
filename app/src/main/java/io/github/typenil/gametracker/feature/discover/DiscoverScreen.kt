@@ -43,7 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -190,7 +190,7 @@ private fun DiscoverContent(
     )
     val pullState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
-    var lastHandledScrollToTopTrigger by rememberSaveable { mutableStateOf(scrollToTopTrigger) }
+    var lastHandledScrollToTopTrigger by rememberSaveable { mutableLongStateOf(scrollToTopTrigger) }
 
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0L && scrollToTopTrigger != lastHandledScrollToTopTrigger) {
