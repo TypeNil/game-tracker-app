@@ -84,9 +84,14 @@ class GameDetailsViewModel internal constructor(
     }
 
     /**
-     * WhileSubscribed(5_000): stops collecting Room and library pipelines when covered
-     * in the back stack, avoiding redundant work while another destination is active.
+     * Keep the upstream active briefly for back-stack returns, then reset the replay
+     * cache so a later return starts from the same neutral state as a new entry.
      */
+    private val uiStateSharing = SharingStarted.WhileSubscribed(
+        stopTimeoutMillis = 5_000,
+        replayExpirationMillis = 0,
+    )
+
     val uiState: StateFlow<GameDetailsUiState> = combine(
         gameRepository.getGameDetailsFlow(gameId),
         gameRepository.isGameDetailsHydratedFlow(gameId),
@@ -101,11 +106,14 @@ class GameDetailsViewModel internal constructor(
             is AppResult.Error -> libraryResult.error
             is AppResult.Success -> null
         }
+        // First upstream emission (incl. error) always resolves the button; only
+        // stateIn's initialValue keeps it in the placeholder state.
         val error = flags.message?.first
         val displayedGame = game ?: if (flags.isLoading) initialPreview else null
         GameDetailsUiState(
             game = displayedGame,
             libraryEntry = libraryEntry,
+            isLibraryLoading = false,
             isHydrated = isHydrated && game != null,
             isLoading = flags.isLoading,
             isRefreshing = flags.isRefreshing,
@@ -122,10 +130,13 @@ class GameDetailsViewModel internal constructor(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        started = uiStateSharing,
         initialValue = GameDetailsUiState(
             game = initialPreview,
-            isLoading = initialPreview == null
+            isLoading = initialPreview == null,
+            // Room hasn't emitted yet on the very first frame; keep the status
+            // button in a neutral placeholder instead of flashing "Add to library".
+            isLibraryLoading = true,
         )
     )
 

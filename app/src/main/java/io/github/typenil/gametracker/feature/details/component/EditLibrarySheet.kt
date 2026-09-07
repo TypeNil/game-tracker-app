@@ -251,7 +251,7 @@ internal fun EditLibrarySheetContent(
     val entryId = initialEntry?.gameId
 
     var selectedStatus by rememberSaveable(entryId) {
-        mutableStateOf(initialEntry?.status ?: LibraryStatus.PLAYING)
+        mutableStateOf(initialEntry?.status ?: LibraryStatus.WISHLIST)
     }
     var rating by rememberSaveable(entryId) {
         mutableStateOf<Int?>(initialEntry?.userRating)

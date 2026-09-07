@@ -91,6 +91,17 @@ class GameDetailsViewModelTest {
     }
 
     @Test
+    fun `initial state keeps library action neutral until Room emits`() = runTest {
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+        )
+
+        assertTrue(viewModel.uiState.value.isLibraryLoading)
+    }
+
+    @Test
     fun `init triggers non-forced refresh and emits hydrated details`() = runTest {
         fakeGameRepository.detailsFlow.value = hydratedDetails
         fakeGameRepository.hydratedFlow.value = true
@@ -109,6 +120,56 @@ class GameDetailsViewModelTest {
     }
 
     @Test
+    fun `library loading clears after first successful Room emission`() = runTest {
+        val firstEmission = CompletableDeferred<Unit>()
+        fakeLibraryRepository.entryResultFlow = flow {
+            firstEmission.await()
+            emit(AppResult.Success(null))
+        }
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+        )
+
+        viewModel.uiState.test {
+            assertTrue(awaitItem().isLibraryLoading)
+            firstEmission.complete(Unit)
+
+            val resolved = awaitItem()
+            assertFalse(resolved.isLibraryLoading)
+            assertNull(resolved.libraryEntry)
+            assertNull(resolved.libraryLoadError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `library loading clears after first Room error`() = runTest {
+        val firstEmission = CompletableDeferred<Unit>()
+        fakeLibraryRepository.entryResultFlow = flow {
+            firstEmission.await()
+            emit(AppResult.Error(AppError.UnknownError(null)))
+        }
+        val viewModel = GameDetailsViewModel(
+            gameRepository = fakeGameRepository,
+            libraryRepository = fakeLibraryRepository,
+            gameId = 1942L,
+        )
+
+        viewModel.uiState.test {
+            assertTrue(awaitItem().isLibraryLoading)
+            firstEmission.complete(Unit)
+
+            val resolved = awaitItem()
+            assertFalse(resolved.isLibraryLoading)
+            assertTrue(resolved.libraryLoadError is AppError.UnknownError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+
+    @Test
     fun `init over catalog skeleton does not set isRefreshing`() = runTest {
         val gate = CompletableDeferred<Unit>()
         fakeGameRepository.delayRefresh = gate
@@ -125,6 +186,27 @@ class GameDetailsViewModelTest {
             gate.complete(Unit)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `ui state resets to initial value after subscription timeout`() = runTest {
+        fakeGameRepository.detailsFlow.value = hydratedDetails
+        fakeGameRepository.hydratedFlow.value = true
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            var resolved = awaitItem()
+            while (resolved.game == null) {
+                resolved = awaitItem()
+            }
+            assertNotNull(resolved.game)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        testScheduler.advanceTimeBy(5_001)
+        assertTrue("Sharing timeout must restore the neutral initial state", viewModel.uiState.value.isLibraryLoading)
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertNull(viewModel.uiState.value.game)
     }
     @Test
     fun `warmPreview_isPresentBeforeUpstreamRuns`() = runTest(
@@ -633,28 +715,6 @@ class GameDetailsViewModelTest {
         assertEquals(listOf(1942L to false), fakeGameRepository.refreshCalls)
 
         gate.complete(Unit)
-    }
-
-    @Test
-    fun `state is retained when resubscribed within sharing timeout`() = runTest {
-        fakeGameRepository.detailsFlow.value = hydratedDetails
-        fakeGameRepository.hydratedFlow.value = true
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            val content = awaitItem()
-            assertNotNull(content.game)
-            cancelAndIgnoreRemainingEvents()
-        }
-
-        // Re-subscription occurs within WhileSubscribed(5_000), so StateFlow returns
-        // the retained content without exposing a transient Loading state.
-        viewModel.uiState.test {
-            val retained = awaitItem()
-            assertNotNull("Content must be retained across re-subscription", retained.game)
-            assertFalse(retained.isInitialLoading)
-            cancelAndIgnoreRemainingEvents()
-        }
     }
 
     @Test

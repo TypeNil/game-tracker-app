@@ -5,6 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.unit.Density
@@ -644,13 +647,80 @@ class GameDetailsScreenTest {
         ).assertIsDisplayed()
     }
 
-
-
     @Test
     fun nullGameRendersHeaderSkeletonInsteadOfSpinner() {
         setContent(GameDetailsUiState(game = null, isLoading = true))
 
         composeTestRule.onNodeWithTag("details-skeleton").assertIsDisplayed()
+    }
+
+    @Test
+    fun libraryLoading_toExistingEntry_doesNotAnimateThroughAddToLibrary() {
+        var uiState by mutableStateOf(
+            GameDetailsUiState(game = compactDetails, isLibraryLoading = true),
+        )
+        val existingEntry = LibraryEntry(
+            gameId = compactDetails.id,
+            status = LibraryStatus.PLAYING,
+            addedAtEpochSeconds = 0L,
+            updatedAtEpochSeconds = 0L,
+        )
+
+        composeTestRule.mainClock.autoAdvance = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                GameDetailsScreen(
+                    uiState = uiState,
+                    onGameClick = {},
+                    onBackClick = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onUserMessageShown = {},
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("library-status-placeholder").assertIsDisplayed()
+
+        composeTestRule.runOnIdle {
+            uiState = GameDetailsUiState(
+                game = compactDetails,
+                libraryEntry = existingEntry,
+                isLibraryLoading = false,
+            )
+        }
+        composeTestRule.mainClock.advanceTimeByFrame()
+
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_add_to_library),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_in_library),
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun libraryLoading_showsPlaceholderInsteadOfAddToLibraryFlash() {
+        // Warm-entry frame: game preview present, Room library flow not yet emitted.
+        // The status row must not render a clickable "Add to library" affordance.
+        setContent(GameDetailsUiState(game = compactDetails, isLibraryLoading = true))
+
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_add_to_library),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_in_library),
+        ).assertDoesNotExist()
+        composeTestRule.onNodeWithTag("library-status-placeholder").assertIsDisplayed()
+    }
+
+    @Test
+    fun libraryResolved_afterLoading_showsAddToLibraryForUnaddedGame() {
+        setContent(GameDetailsUiState(game = compactDetails, isLibraryLoading = false))
+
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.library_add_to_library),
+        ).assertIsDisplayed()
     }
 
     @Test

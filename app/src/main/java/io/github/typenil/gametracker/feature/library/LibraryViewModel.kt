@@ -138,7 +138,10 @@ class LibraryViewModel @Inject constructor(
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        started = SharingStarted.WhileSubscribed(
+            stopTimeoutMillis = 5_000,
+            replayExpirationMillis = 0,
+        ),
         initialValue = LibraryUiState(isLoading = true)
     )
 

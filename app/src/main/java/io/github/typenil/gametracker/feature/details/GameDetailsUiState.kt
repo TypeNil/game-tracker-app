@@ -17,6 +17,9 @@ import io.github.typenil.gametracker.core.model.LibraryEntry
 data class GameDetailsUiState(
     val game: GameDetails? = null,
     val libraryEntry: LibraryEntry? = null,
+    /** True until the Room library flow emits for the first time; guards the
+     *  status button against flashing "Add to library" for an already-added game. */
+    val isLibraryLoading: Boolean = false,
     val isHydrated: Boolean = false,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
