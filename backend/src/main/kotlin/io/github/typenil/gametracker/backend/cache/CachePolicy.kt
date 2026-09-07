@@ -1,20 +1,20 @@
 package io.github.typenil.gametracker.backend.cache
 
 /**
- * Политика кэширования для различных типов запросов BFF.
+ * Cache TTL policies for the different BFF request types.
  *
- * Обоснование параметров:
- * - [POPULAR]: TTL 60 минут. Топ-игры и списки открытий обновляются в IGDB относительно редко;
- *   1-часовой кэш защищает лимиты IGDB при высокой посещаемости главного экрана.
- * - [SEARCH]: TTL 15 минут. Обеспечивает баланс между актуальностью поисковой выдачи
- *   и подавлением повторной нагрузки при одинаковых поисковых запросах.
- * - [GAME_DETAILS]: TTL 120 минут. Детальная информация об играх (жанры, платформы, описания)
- *   практически неизменна после релиза.
- * - [RECOMMEND]: TTL 15 минут. Кандидатский пул зависит от тегов пользователя;
- *   короткий TTL как у поиска, чтобы не держать персональные ключи часами.
+ * Rationale:
+ * - [POPULAR]: 60 min TTL. Top games and discovery lists change infrequently in IGDB;
+ *   a 1-hour cache protects IGDB quota under heavy home-screen traffic.
+ * - [SEARCH]: 15 min TTL. Balances freshness of search results against absorbing
+ *   repeated load from identical search queries.
+ * - [GAME_DETAILS]: 120 min TTL. Detailed game info (genres, platforms, descriptions)
+ *   is practically immutable after release.
+ * - [RECOMMEND]: 15 min TTL. The candidate pool depends on the user's tags;
+ *   a search-like short TTL avoids keeping personal keys for hours.
  *
- * Каждый регион кэша ограничен 1 000 записями (MAX_CACHE_SIZE), что удерживает ориентировочный объем
- * используемой heap-памяти в пределах единиц мегабайт (исходя из среднего размера DTO ~1-3 КБ).
+ * Each cache region is capped at 1,000 entries (MAX_CACHE_SIZE), keeping the estimated
+ * heap footprint in the low megabytes (assuming an average DTO size of ~1-3 KB).
  */
 enum class CachePolicy(val ttlMinutes: Long) {
     POPULAR(ttlMinutes = 60),

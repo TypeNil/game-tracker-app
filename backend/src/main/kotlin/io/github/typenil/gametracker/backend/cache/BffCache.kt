@@ -17,13 +17,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 private const val MAX_CACHE_SIZE = 1_000L
 
 /**
- * Потокобезопасный асинхронный кэш с защитой от эффекта Thundering Herd (Single-Flight).
+ * Thread-safe async cache with thundering-herd protection (single-flight).
  *
- * Особенности:
- * - Все параллельные запросы с одинаковым [CacheKey] ожидают единого вычисления (single-flight).
- * - Вычисление выполняется в `cacheScope` приложения ([SupervisorJob]): отмена одного клиента не отменяет других подписчиков.
- * - При ошибке вычисления запись атомарно удаляется из очереди ожидающих, не отравляя кэш.
- * - Поддерживает внедрение Caffeine [Ticker] для детерминированного тестирования TTL.
+ * - All concurrent requests with the same [CacheKey] await a single computation.
+ * - Computations run in the application `cacheScope` ([SupervisorJob]): cancelling one
+ *   caller does not cancel the other waiters.
+ * - On computation failure the pending entry is removed atomically instead of poisoning the cache.
+ * - Supports injecting a Caffeine [Ticker] for deterministic TTL testing.
  */
 class BffCache(
     ticker: Ticker = Ticker.systemTicker(),

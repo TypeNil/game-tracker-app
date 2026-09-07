@@ -5,9 +5,6 @@ import androidx.room.Query
 import androidx.room.Upsert
 import io.github.typenil.gametracker.core.database.entity.RemoteKeyEntity
 
-/**
- * Data Access Object for Paging 3 RemoteMediator pagination state.
- */
 @Dao
 interface RemoteKeyDao {
 

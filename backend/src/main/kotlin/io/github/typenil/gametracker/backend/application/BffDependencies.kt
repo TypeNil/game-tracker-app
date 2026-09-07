@@ -11,9 +11,6 @@ import io.ktor.server.config.ApplicationConfig
 import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Контейнер внедрения зависимостей BFF с явным управлением жизненным циклом ресурсов.
- */
 class BffDependencies(
     val igdbConfig: IgdbConfig,
     val httpClient: HttpClient,

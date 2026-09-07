@@ -19,6 +19,8 @@ import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.PageContinuation
+import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -926,8 +928,30 @@ class GameDetailsViewModelTest {
 
         override fun getTrendingGamesFlow(): Flow<List<Game>> = flowOf(emptyList())
 
-        override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<Unit> =
-            AppResult.Success(Unit)
+        override suspend fun refreshTrendingGames(limit: Int, offset: Int, append: Boolean): AppResult<PageContinuation> =
+            AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
+
+        override suspend fun refreshPopular(
+            type: String,
+            limit: Int,
+            offset: Int,
+            append: Boolean,
+        ): AppResult<PageContinuation> =
+            AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
+
+        override fun getPopularGamesFlow(type: String): Flow<List<Game>> = flowOf(emptyList())
+
+        override suspend fun getRecommendationCandidatesPage(
+            genres: List<String>,
+            themes: List<String>,
+            platforms: List<String>,
+            exclude: Set<Long>,
+            similarTo: List<Long>,
+            limit: Int,
+            offset: Int,
+            sort: String,
+        ): AppResult<RecommendationCandidatePage> =
+            AppResult.Success(RecommendationCandidatePage(emptyList(), null, true))
 
 
         override suspend fun getRecommendationCandidates(

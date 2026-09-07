@@ -33,6 +33,9 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import org.junit.Test
 
 class DefaultLibraryRepositoryTest {
@@ -183,6 +186,140 @@ class DefaultLibraryRepositoryTest {
             LibraryNotes.codePointCount(captured.captured.userNotes!!),
         )
     }
+
+    @Test
+    fun saveLibraryEntry_whenExisting_preservesOriginalAddedAt() = runTest(testDispatcher) {
+        coEvery { gameDao.getGameById(42L) } returns parentGame(42L)
+        coEvery { libraryDao.getLibraryEntry(42L) } returns LibraryEntryEntity(
+            gameId = 42L,
+            status = LibraryStatus.WISHLIST,
+            addedAtEpochSeconds = 111L,
+            updatedAtEpochSeconds = 111L,
+        )
+        val captured = slot<LibraryEntryEntity>()
+        coEvery { libraryDao.upsertLibraryEntry(capture(captured)) } returns 1L
+
+        val result = repository.saveLibraryEntry(
+            LibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.COMPLETED,
+                userRating = 8,
+                hoursPlayed = 12,
+                addedAtEpochSeconds = 999L,
+                updatedAtEpochSeconds = 999L,
+            ),
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(111L, captured.captured.addedAtEpochSeconds)
+    }
+
+    @Test
+    fun saveLibraryEntry_whenNew_usesInjectedClock() = runTest(testDispatcher) {
+        val nowSeconds = 1_700_000_000L
+        val clocked = DefaultLibraryRepository(
+            libraryDao,
+            gameDao,
+            passThroughTransactionRunner,
+            signalCollector,
+            testDispatcher,
+            Clock.fixed(Instant.ofEpochSecond(nowSeconds), ZoneOffset.UTC),
+        )
+        coEvery { gameDao.getGameById(42L) } returns parentGame(42L)
+        coEvery { libraryDao.getLibraryEntry(42L) } returns null
+        val captured = slot<LibraryEntryEntity>()
+        coEvery { libraryDao.upsertLibraryEntry(capture(captured)) } returns 1L
+
+        val result = clocked.saveLibraryEntry(
+            LibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 0L,
+                updatedAtEpochSeconds = 0L,
+            ),
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(nowSeconds, captured.captured.addedAtEpochSeconds)
+        assertEquals(nowSeconds, captured.captured.updatedAtEpochSeconds)
+    }
+
+    @Test
+    fun saveLibraryEntry_parentCheckAndUpsertRunInsideTransaction() = runTest(testDispatcher) {
+        var inTransaction = false
+        var getInsideTransaction = false
+        var upsertInsideTransaction = false
+        val trackingRunner = object : TransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                inTransaction = true
+                try {
+                    return block()
+                } finally {
+                    inTransaction = false
+                }
+            }
+        }
+        val trackingRepository = DefaultLibraryRepository(
+            libraryDao,
+            gameDao,
+            trackingRunner,
+            signalCollector,
+            testDispatcher,
+        )
+        coEvery { gameDao.getGameById(42L) } answers {
+            getInsideTransaction = inTransaction
+            parentGame(42L)
+        }
+        coEvery { libraryDao.getLibraryEntry(42L) } returns null
+        coEvery { libraryDao.upsertLibraryEntry(any()) } answers {
+            upsertInsideTransaction = inTransaction
+            1L
+        }
+
+        val result = trackingRepository.saveLibraryEntry(
+            LibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 1L,
+                updatedAtEpochSeconds = 1L,
+            ),
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertTrue(getInsideTransaction)
+        assertTrue(upsertInsideTransaction)
+    }
+
+    @Test
+    fun saveLibraryEntry_clampsRatingHoursAndNotes() = runTest(testDispatcher) {
+        coEvery { gameDao.getGameById(42L) } returns parentGame(42L)
+        coEvery { libraryDao.getLibraryEntry(42L) } returns null
+        val captured = slot<LibraryEntryEntity>()
+        coEvery { libraryDao.upsertLibraryEntry(capture(captured)) } returns 1L
+        val tooLong = "x".repeat(LibraryNotes.MAX_CODE_POINTS + 8)
+
+        val result = repository.saveLibraryEntry(
+            LibraryEntry(
+                gameId = 42L,
+                status = LibraryStatus.PLAYING,
+                userRating = 99,
+                hoursPlayed = -4,
+                userNotes = tooLong,
+                addedAtEpochSeconds = 1L,
+                updatedAtEpochSeconds = 1L,
+            ),
+        )
+
+        assertTrue(result is AppResult.Success)
+        assertEquals(10, captured.captured.userRating)
+        assertEquals(0, captured.captured.hoursPlayed)
+        assertEquals(LibraryNotes.MAX_CODE_POINTS, LibraryNotes.codePointCount(captured.captured.userNotes!!))
+    }
+
+    private fun parentGame(id: Long) = GameEntity(
+        id, "G", null, null, null, null, emptyList(), emptyList(), 1L,
+    )
+
 
 
     @Test

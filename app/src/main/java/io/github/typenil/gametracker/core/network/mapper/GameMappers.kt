@@ -6,8 +6,8 @@ import io.github.typenil.gametracker.core.model.GameCompany
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import io.github.typenil.gametracker.core.model.GameSummary
-import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.GameVideo
+import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.network.model.ErrorResponseDto
 import io.github.typenil.gametracker.core.network.model.GameDetailsDto
 import io.github.typenil.gametracker.core.network.model.GameDto
@@ -23,9 +23,6 @@ private val json = Json {
     isLenient = true
 }
 
-/**
- * Maps a network [GameDto] to a pure domain [Game] model.
- */
 fun GameDto.toDomain(): Game {
     return Game(
         id = id,
@@ -39,9 +36,6 @@ fun GameDto.toDomain(): Game {
     )
 }
 
-/**
- * Maps a list of [GameDto]s to a list of domain [Game]s.
- */
 fun List<GameDto>.toDomain(): List<Game> = map { it.toDomain() }
 
 fun RecommendationCandidateDto.toDomain() = RecommendationCandidate(
@@ -59,7 +53,6 @@ fun RecommendationCandidateDto.toDomain() = RecommendationCandidate(
 )
 
 /**
- * Maps the enriched details [GameDetailsDto] to a pure domain [GameDetails] model.
  * Keeps both rating scales intact (critic `rating` vs aggregate `totalRating`).
  */
 fun GameDetailsDto.toDomain(): GameDetails {

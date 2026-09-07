@@ -108,11 +108,11 @@ private val IGDB_THEME_MAP: Map<String, Int> = mapOf(
 )
 
 /**
- * Поля для деталей игры. Списковые запросы остаются на [QUERY_FIELDS] — список должен
- * оставаться тощим, а details-ответ не должен менять URL-размер обложек списков.
- * Каждый ref запрашивается с полной цепочкой expansion (например,
- * similar_games.cover.image_id): неexpanded ref IGDB возвращает как int, и декод
- * вложенного объекта упадёт (маскируясь под 502).
+ * Fields for game details. List queries stay on [QUERY_FIELDS] — the list payload
+ * must remain lean, and the details response must not change the cover URL size used by lists.
+ * Every ref is requested with a full expansion chain (e.g.
+ * similar_games.cover.image_id): IGDB returns an unexpanded ref as an int, and decoding
+ * the nested object would fail (surfacing as a 502).
  */
 private const val DETAILS_FIELDS =
     "fields name, rating, total_rating, total_rating_count, url, summary, cover.url, cover.image_id, " +
@@ -124,9 +124,6 @@ private const val DETAILS_FIELDS =
         "similar_games.id, similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.rating, " +
         "similar_games.genres.name, similar_games.platforms.name, similar_games.platforms.abbreviation;\n"
 
-/**
- * Валидатор и канонический нормализатор поисковой строки.
- */
 object SearchQueryValidator {
     const val MIN_LENGTH = 1
     const val MAX_LENGTH = 100
@@ -143,8 +140,7 @@ object SearchQueryValidator {
         var i = 0
         while (i < normalized.length) {
             val cp = normalized.codePointAt(i)
-
-            // Единственные запреты: ISO control, кавычки и бэкслеши (Apicalypse literal), invisible format chars.
+            // Only forbidden: ISO control, quotes and backslashes (Apicalypse literal), invisible format chars.
             if (Character.isISOControl(cp) || cp == '"'.code || cp == '\\'.code) {
                 throw IllegalArgumentException("Search query contains illegal control characters or quotes")
             }
@@ -196,9 +192,6 @@ object SearchQueryValidator {
     }
 }
 
-/**
- * Разрешенные поля сортировки для запросов поиска и фильтрации каталога.
- */
 enum class SearchSortField(val igdbField: String, val direction: String) {
     RELEVANCE("", ""),
     RATING("rating", "desc"),
@@ -218,9 +211,7 @@ enum class SearchSortField(val igdbField: String, val direction: String) {
     }
 }
 
-/**
- * Каноническая модель запроса поиска и фильтрации игр.
- */
+
 class SearchRequest(
     rawQuery: String?,
     genresParam: String? = null,
@@ -352,9 +343,6 @@ class SearchRequest(
     }
 }
 
-/**
- * Каноническая модель запроса популярных игр с наивысшим рейтингом.
- */
 class TopRatedRequest(
     limitParam: Int? = null,
     offsetParam: Int? = null
@@ -569,9 +557,6 @@ class RecommendationCandidatesRequest(
     }
 }
 
-/**
- * Каноническая модель запроса детальной информации об игре.
- */
 class GameDetailsRequest(rawId: Long?) {
     val id: Long
 
@@ -583,14 +568,14 @@ class GameDetailsRequest(rawId: Long?) {
     }
 
     /**
-     * Версионированный ключ: BffCache хранит значения как Any, поэтому старые
-     * «тощие» записи кэша не должны десериализоваться под новый тип до истечения TTL.
+     * Versioned key: BffCache stores values as Any, so old lean cache entries
+     * must not deserialize under the new type before TTL expiry.
      */
     val cacheKey: String = "game_v2_$id"
 
     fun toApicalypseQuery(): String {
-        // Без фильтра cover != null: переход в details по похожей игре без обложки
-        // не должен отдавать 404 (списки по-прежнему фильтруют coverless-игры).
+        // No `cover != null` filter: navigating to details of a coverless similar game
+        // must not 404 (list queries keep filtering out coverless games).
         return "${DETAILS_FIELDS}where id = ($id);\nlimit 1;"
     }
 }

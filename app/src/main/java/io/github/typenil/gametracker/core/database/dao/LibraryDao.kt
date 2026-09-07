@@ -9,9 +9,6 @@ import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEn
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object for user game library records.
- */
 @Dao
 @Suppress("TooManyFunctions")
 interface LibraryDao {

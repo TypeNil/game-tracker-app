@@ -12,7 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import io.github.typenil.gametracker.feature.details.navigation.navigateToGameDetails
 import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
-import io.github.typenil.gametracker.feature.search.navigation.navigateToSearch
+import io.github.typenil.gametracker.feature.search.navigation.SearchKey
 import io.github.typenil.gametracker.feature.settings.navigation.SettingsKey
 
 /**
@@ -49,11 +49,23 @@ class GameTrackerAppState(
     }
 
     fun navigateToSearch() {
-        navController.navigateToSearch()
+        navController.navigate(SearchKey) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
     }
 
     fun navigateToSettings() {
-        navController.navigate(SettingsKey)
+        navController.navigate(SettingsKey) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
     }
 
     fun navigateToGameDetails(gameId: Long) {

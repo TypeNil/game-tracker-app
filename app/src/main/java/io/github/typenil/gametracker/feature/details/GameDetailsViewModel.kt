@@ -6,31 +6,32 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.connectivity.NetworkStatus
+import io.github.typenil.gametracker.core.connectivity.reconnects
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryStatus
-import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.feature.details.navigation.GameDetailsKey
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
-import io.github.typenil.gametracker.core.connectivity.NetworkStatus
-import io.github.typenil.gametracker.core.connectivity.reconnects
 import javax.inject.Inject
+
 @Suppress("TooManyFunctions")
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -179,28 +180,15 @@ class GameDetailsViewModel internal constructor(
         }
 
         mutateLibrary {
-            val now = System.currentTimeMillis() / 1000
-            val existing = when (val observed = libraryRepository.getLibraryEntryFlow(gameId).first()) {
-                is AppResult.Success -> observed.data
-                is AppResult.Error -> {
-                    _flags.update {
-                        it.copy(
-                            isEditingLibrary = true,
-                            message = observed.error to R.string.error_library_update_failed,
-                        )
-                    }
-                    return@mutateLibrary
-                }
-            }
             val entry = LibraryEntry(
                 gameId = gameId,
                 status = status,
                 userRating = userRating,
                 userNotes = userNotes?.trim()?.takeIf { it.isNotEmpty() },
                 isFavorite = isFavorite,
-                addedAtEpochSeconds = existing?.addedAtEpochSeconds ?: now,
-                updatedAtEpochSeconds = now,
-                hoursPlayed = hoursPlayed
+                addedAtEpochSeconds = 0L,
+                updatedAtEpochSeconds = 0L,
+                hoursPlayed = hoursPlayed,
             )
             when (val result = libraryRepository.saveLibraryEntry(entry)) {
                 is AppResult.Success -> {
@@ -210,7 +198,7 @@ class GameDetailsViewModel internal constructor(
                     _flags.update {
                         it.copy(
                             isEditingLibrary = true,
-                            message = result.error to R.string.error_library_update_failed
+                            message = result.error to R.string.error_library_update_failed,
                         )
                     }
                 }
@@ -317,11 +305,6 @@ class GameDetailsViewModel internal constructor(
         }
     }
 
-    /**
-     * Reconnect guard: when device connectivity transitions Unavailable -> Available,
-     * automatically refetch full details if the current state is unhydrated (skeleton)
-     * or the previous refresh completed with an error.
-     */
     private fun incrementImageReloadToken() {
         _flags.update {
             it.copy(imageReloadToken = it.imageReloadToken + 1)
@@ -344,6 +327,11 @@ class GameDetailsViewModel internal constructor(
         }
     }
 
+    /**
+     * Reconnect guard: when device connectivity transitions Unavailable -> Available,
+     * automatically refetch full details if the current state is unhydrated (skeleton)
+     * or the previous refresh completed with an error.
+     */
     private fun observeNetworkReconnect() {
         val monitor = networkMonitor ?: return
         viewModelScope.launch {

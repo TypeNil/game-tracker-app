@@ -18,6 +18,7 @@ import io.github.typenil.gametracker.core.model.LibraryNotes
 
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import java.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -34,6 +35,7 @@ class DefaultLibraryRepository @Inject constructor(
     private val transactionRunner: TransactionRunner,
     private val signalCollector: RoomRecommendationSignalCollector,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val clock: Clock = Clock.systemUTC(),
     private val previewCache: GameDetailsPreviewCache = GameDetailsPreviewCache(),
 ) : LibraryRepository {
 
@@ -87,23 +89,27 @@ class DefaultLibraryRepository @Inject constructor(
     override suspend fun saveLibraryEntry(entry: LibraryEntry): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {
-                val game = gameDao.getGameById(entry.gameId)
-                    ?: return@runSuspendCatching AppResult.Error(
-                        AppError.UnknownError(IllegalStateException("Parent game ${entry.gameId} must exist before updating library")),
-                    )
-                val now = System.currentTimeMillis() / 1000
-                val clampedRating = entry.userRating?.coerceIn(1, 10)
-                val clampedHours = entry.hoursPlayed.coerceAtLeast(0)
-                val sanitizedNotes = entry.userNotes?.let(LibraryNotes::clamp)
-
-                val entity = entry.copy(
-                    userRating = clampedRating,
-                    hoursPlayed = clampedHours,
-                    userNotes = sanitizedNotes,
-                    updatedAtEpochSeconds = now,
-                ).toEntity()
-                libraryDao.upsertLibraryEntry(entity)
-                AppResult.Success(Unit)
+                transactionRunner {
+                    gameDao.getGameById(entry.gameId)
+                        ?: return@transactionRunner AppResult.Error(
+                            AppError.UnknownError(
+                                IllegalStateException(
+                                    "Parent game ${entry.gameId} must exist before updating library",
+                                ),
+                            ),
+                        )
+                    val now = clock.instant().epochSecond
+                    val existing = libraryDao.getLibraryEntry(entry.gameId)
+                    val entity = entry.copy(
+                        userRating = entry.userRating?.coerceIn(1, 10),
+                        hoursPlayed = entry.hoursPlayed.coerceAtLeast(0),
+                        userNotes = entry.userNotes?.let(LibraryNotes::clamp),
+                        addedAtEpochSeconds = existing?.addedAtEpochSeconds ?: now,
+                        updatedAtEpochSeconds = now,
+                    ).toEntity()
+                    libraryDao.upsertLibraryEntry(entity)
+                    AppResult.Success(Unit)
+                }
             }.getOrElse { AppResult.Error(AppError.UnknownError(it)) }
         }
 

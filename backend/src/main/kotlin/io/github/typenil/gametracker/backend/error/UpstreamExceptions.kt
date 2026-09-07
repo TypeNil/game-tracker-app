@@ -1,23 +1,20 @@
 package io.github.typenil.gametracker.backend.error
 
-/**
- * Иерархия исключений для взаимодействия с внешними upstream-сервисами (Twitch OAuth2 и IGDB API).
- */
 sealed class UpstreamException(
     message: String,
     cause: Throwable? = null
 ) : RuntimeException(message, cause)
 
 /**
- * Превышена квота или лимит запросов upstream API (HTTP 429).
- * Содержит гарантированно валидированное значение [retryAfterSeconds] для передачи клиенту.
+ * Upstream API quota or request limit exceeded (HTTP 429).
+ * Carries a guaranteed-validated [retryAfterSeconds] value to pass to the client.
  */
 class UpstreamRateLimitException(
     val retryAfterSeconds: Long
 ) : UpstreamException("Upstream rate limit reached. Retry after $retryAfterSeconds seconds.")
 
 /**
- * Ошибка шлюза upstream: некорректный формат ответа, ошибка сериализации или upstream 502/4xx (HTTP 502).
+ * Upstream gateway error: malformed response format, serialization failure, or upstream 502/4xx (HTTP 502).
  */
 class UpstreamBadGatewayException(
     message: String,
@@ -25,7 +22,7 @@ class UpstreamBadGatewayException(
 ) : UpstreamException(message, cause)
 
 /**
- * Upstream-сервис временно недоступен или произошел сбой сетевого подключения (HTTP 503).
+ * Upstream service temporarily unavailable or network connection failure (HTTP 503).
  */
 class UpstreamServiceUnavailableException(
     message: String,
@@ -33,7 +30,7 @@ class UpstreamServiceUnavailableException(
 ) : UpstreamException(message, cause)
 
 /**
- * Истек таймаут ожидания соединения или ответа от upstream-сервиса (HTTP 504).
+ * Timed out waiting for the upstream service to connect or respond (HTTP 504).
  */
 class UpstreamTimeoutException(
     message: String,

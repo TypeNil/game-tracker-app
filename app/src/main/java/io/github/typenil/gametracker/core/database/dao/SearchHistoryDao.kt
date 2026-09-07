@@ -6,9 +6,6 @@ import androidx.room.Upsert
 import io.github.typenil.gametracker.core.database.entity.SearchHistoryEntity
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object for managing persistent user search history.
- */
 @Dao
 interface SearchHistoryDao {
 
