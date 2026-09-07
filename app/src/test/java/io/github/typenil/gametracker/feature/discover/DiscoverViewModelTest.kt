@@ -73,7 +73,7 @@ class DiscoverViewModelTest {
         coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(emptyList())
         coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
             trendingFlow.value = trendingGames
-            AppResult.Success(Unit)
+            AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
         }
         coEvery { gameRepository.refreshPopular(any(), any(), any(), any()) } returns AppResult.Success(
             PageContinuation(nextOffset = 20, endReached = false),
@@ -151,7 +151,7 @@ class DiscoverViewModelTest {
         val gate = CompletableDeferred<Unit>()
         coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
             gate.await()
-            AppResult.Success(Unit)
+            AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
         }
 
         viewModel.uiState.test {
@@ -211,7 +211,12 @@ class DiscoverViewModelTest {
             val offset = args[1] as Int
             val append = args[2] as Boolean
             trendingFlow.value = if (append && offset == 20) pageOne + pageTwo else pageOne
-            AppResult.Success(Unit)
+            AppResult.Success(
+                PageContinuation(
+                    nextOffset = if (append) 40 else 20,
+                    endReached = false,
+                ),
+            )
         }
 
 
@@ -226,6 +231,44 @@ class DiscoverViewModelTest {
         coVerify { gameRepository.refreshTrendingGames(20, 20, true) }
 
     }
+    @Test
+    fun loadMoreTrending_usesRawContinuationNotLocalCountAfterOverlap() = runTest {
+        val pageOne = (1L..3L).map { Game(id = it, name = "T$it") }
+        val denseAfterOverlap = (1L..5L).map { Game(id = it, name = "T$it") }
+        trendingFlow.value = pageOne
+        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
+            val offset = args[1] as Int
+            val append = args[2] as Boolean
+            when {
+                !append -> {
+                    trendingFlow.value = pageOne
+                    AppResult.Success(PageContinuation(nextOffset = 3, endReached = false))
+                }
+                append && offset == 3 -> {
+                    trendingFlow.value = denseAfterOverlap
+                    AppResult.Success(PageContinuation(nextOffset = 6, endReached = false))
+                }
+                append && offset == 6 -> {
+                    AppResult.Success(PageContinuation(nextOffset = 9, endReached = false))
+                }
+                else -> error("unexpected trending request offset=$offset append=$append")
+            }
+        }
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.trending.size == 3 && !it.isLoading }
+            viewModel.loadMoreTrending()
+            awaitItemUntil { it.trending.size == 5 }
+            viewModel.loadMoreTrending()
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { gameRepository.refreshTrendingGames(20, 3, true) }
+        coVerify { gameRepository.refreshTrendingGames(20, 6, true) }
+        coVerify(exactly = 0) { gameRepository.refreshTrendingGames(any(), 5, true) }
+    }
+
     @Test
     fun `ui state exposes rail sections without changing pull refresh flag`() = runTest {
         val viewModel = createViewModel()
@@ -912,7 +955,7 @@ class DiscoverViewModelTest {
             // Configure success for trending on reconnect
             coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
                 trendingFlow.value = trendingGames
-                AppResult.Success(Unit)
+                AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
             }
 
             // Network reconnects

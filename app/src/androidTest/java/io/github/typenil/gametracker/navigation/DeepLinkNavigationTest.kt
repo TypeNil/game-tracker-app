@@ -212,8 +212,72 @@ class DeepLinkNavigationTest {
         }
     }
 
+    @Test
+    fun malformedDeepLink_alphaGameId_doesNotCrashProcess() {
+        val discoverTitle = context.getString(R.string.discover_title)
+        launchDeepLink("gametracker://game/abc").use { scenario ->
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            waitForText(discoverTitle)
+            composeTestRule.onNodeWithText(discoverTitle).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun invalidNumericDeepLink_negativeId_showsErrorStateWithoutCrash() {
+        val retryButton = context.getString(R.string.retry_button)
+        launchDeepLink("gametracker://game/-1").use { scenario ->
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            waitForText(retryButton)
+            composeTestRule.onNodeWithText(retryButton).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun invalidNumericDeepLink_zeroId_showsErrorStateWithoutCrash() {
+        val retryButton = context.getString(R.string.retry_button)
+        launchDeepLink("gametracker://game/0").use { scenario ->
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            waitForText(retryButton)
+            composeTestRule.onNodeWithText(retryButton).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun extraPathSegments_doNotCrashProcess() {
+        val discoverTitle = context.getString(R.string.discover_title)
+        launchDeepLink("gametracker://game/1942/extra").use { scenario ->
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            waitForText(discoverTitle)
+            composeTestRule.onNodeWithText(discoverTitle).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun queryParameters_doNotBypassIdParsing_andOpenDetails() {
+        val targetTitle = WITCHER_TITLE
+        launchDeepLink("gametracker://game/1942?ref=external&utm_source=test").use { scenario ->
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            waitForText(targetTitle)
+            composeTestRule.onAllNodesWithText(targetTitle)[0].assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun queryParametersOnMalformedPath_doNotCrashProcess() {
+        val discoverTitle = context.getString(R.string.discover_title)
+        launchDeepLink("gametracker://game/abc?ref=external").use { scenario ->
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+            waitForText(discoverTitle)
+            composeTestRule.onNodeWithText(discoverTitle).assertIsDisplayed()
+        }
+    }
+
     private fun launchDetailsDeepLink(gameId: Long = 1942L): ActivityScenario<MainActivity> {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("gametracker://game/$gameId")).apply {
+        return launchDeepLink("gametracker://game/$gameId")
+    }
+
+    private fun launchDeepLink(uriString: String): ActivityScenario<MainActivity> {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uriString)).apply {
             setClass(context, MainActivity::class.java)
             setPackage(BuildConfig.APPLICATION_ID)
         }

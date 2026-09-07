@@ -180,28 +180,15 @@ class GameDetailsViewModel internal constructor(
         }
 
         mutateLibrary {
-            val now = System.currentTimeMillis() / 1000
-            val existing = when (val observed = libraryRepository.getLibraryEntryFlow(gameId).first()) {
-                is AppResult.Success -> observed.data
-                is AppResult.Error -> {
-                    _flags.update {
-                        it.copy(
-                            isEditingLibrary = true,
-                            message = observed.error to R.string.error_library_update_failed,
-                        )
-                    }
-                    return@mutateLibrary
-                }
-            }
             val entry = LibraryEntry(
                 gameId = gameId,
                 status = status,
                 userRating = userRating,
                 userNotes = userNotes?.trim()?.takeIf { it.isNotEmpty() },
                 isFavorite = isFavorite,
-                addedAtEpochSeconds = existing?.addedAtEpochSeconds ?: now,
-                updatedAtEpochSeconds = now,
-                hoursPlayed = hoursPlayed
+                addedAtEpochSeconds = 0L,
+                updatedAtEpochSeconds = 0L,
+                hoursPlayed = hoursPlayed,
             )
             when (val result = libraryRepository.saveLibraryEntry(entry)) {
                 is AppResult.Success -> {
@@ -211,7 +198,7 @@ class GameDetailsViewModel internal constructor(
                     _flags.update {
                         it.copy(
                             isEditingLibrary = true,
-                            message = result.error to R.string.error_library_update_failed
+                            message = result.error to R.string.error_library_update_failed,
                         )
                     }
                 }
