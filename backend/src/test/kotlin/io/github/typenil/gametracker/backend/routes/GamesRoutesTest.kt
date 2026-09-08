@@ -743,7 +743,7 @@ class GamesRoutesTest {
     @Test
     fun `recommendation candidates request accepts page parameters`() {
         val request = RecommendationCandidatesRequest(
-            genresParam = "RPG",
+            genresParam = listOf("RPG"),
             limitParam = 10,
             offsetParam = 20,
             sortParam = "follows",

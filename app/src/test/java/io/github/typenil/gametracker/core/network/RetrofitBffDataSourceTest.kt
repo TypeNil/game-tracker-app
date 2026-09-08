@@ -191,8 +191,8 @@ class RetrofitBffDataSourceTest {
         assertEquals("GET", recordedRequest.method)
         assertEquals("/v1/games/search", recordedRequest.requestUrl?.encodedPath)
         assertEquals("Elden", recordedRequest.requestUrl?.queryParameter("q"))
-        assertEquals("RPG,Adventure", recordedRequest.requestUrl?.queryParameter("genres"))
-        assertEquals("PC,PS5", recordedRequest.requestUrl?.queryParameter("platforms"))
+        assertEquals(listOf("RPG", "Adventure"), recordedRequest.requestUrl?.queryParameterValues("genres"))
+        assertEquals(listOf("PC (Microsoft Windows)", "PS5"), recordedRequest.requestUrl?.queryParameterValues("platforms"))
         assertEquals("85", recordedRequest.requestUrl?.queryParameter("minRating"))
         assertEquals("2020", recordedRequest.requestUrl?.queryParameter("minYear"))
         assertEquals("2024", recordedRequest.requestUrl?.queryParameter("maxYear"))
@@ -345,7 +345,7 @@ class RetrofitBffDataSourceTest {
     }
 
     @Test
-    fun getRecommendationCandidates_sendsCsvQueryAndParsesThemes() = runTest {
+    fun getRecommendationCandidates_sendsRepeatedQueryParamsAndParsesThemes() = runTest {
         val jsonPayload = """
             [
                 {
@@ -371,9 +371,9 @@ class RetrofitBffDataSourceTest {
         )
 
         val pool = dataSource.getRecommendationCandidates(
-            genres = listOf("RPG"),
-            themes = emptyList(),
-            platforms = emptyList(),
+            genres = listOf("RPG", "Adventure"),
+            themes = listOf("Fantasy", "4X (explore, expand, exploit, and exterminate)"),
+            platforms = listOf("PC", "PS5"),
             exclude = setOf(1L),
             similarTo = listOf(1942L),
             limit = 30,
@@ -381,11 +381,13 @@ class RetrofitBffDataSourceTest {
         val recorded = mockWebServer.takeRequest()
         assertEquals("GET", recorded.method)
         assertEquals("/v1/recommendations/candidates", recorded.requestUrl?.encodedPath)
-        assertEquals("RPG", recorded.requestUrl?.queryParameter("genres"))
+        assertEquals(listOf("RPG", "Adventure"), recorded.requestUrl?.queryParameterValues("genres"))
+        val expectedThemes = listOf("Fantasy", "4X (explore, expand, exploit, and exterminate)")
+        assertEquals(expectedThemes, recorded.requestUrl?.queryParameterValues("themes"))
+        assertEquals(listOf("PC (Microsoft Windows)", "PS5"), recorded.requestUrl?.queryParameterValues("platforms"))
         assertEquals("1", recorded.requestUrl?.queryParameter("exclude"))
         assertEquals("1942", recorded.requestUrl?.queryParameter("similarTo"))
         assertEquals("30", recorded.requestUrl?.queryParameter("limit"))
-        assertNull(recorded.requestUrl?.queryParameter("themes"))
         assertEquals(1, pool.size)
         assertEquals(listOf("Fantasy"), pool[0].themes)
         assertEquals(listOf(1942L), pool[0].similarToGameIds)

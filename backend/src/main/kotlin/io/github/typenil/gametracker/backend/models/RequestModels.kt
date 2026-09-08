@@ -44,7 +44,7 @@ private const val CANDIDATE_FIELDS =
 
 private val TAG_PUNCTUATION = setOf(
     '-', '_', ':', '\'', '!', '?', '.', '&', '+',
-    '(', ')', '[', ']', '/', '|',
+    '(', ')', '[', ']', '/', '|', ',',
 )
 
 private fun encodePart(value: String): String = "${value.length}:$value"
@@ -214,8 +214,8 @@ enum class SearchSortField(val igdbField: String, val direction: String) {
 
 class SearchRequest(
     rawQuery: String?,
-    genresParam: String? = null,
-    platformsParam: String? = null,
+    genresParam: List<String>? = null,
+    platformsParam: List<String>? = null,
     minRatingParam: Int? = null,
     minYearParam: Int? = null,
     maxYearParam: Int? = null,
@@ -226,6 +226,8 @@ class SearchRequest(
     val canonicalQuery: String? = rawQuery?.let { SearchQueryValidator.validateAndNormalize(it) }
     val genres: List<String> = parseTags(genresParam, "genres", MAX_GENRES)
     val platforms: List<String> = parseTags(platformsParam, "platforms", MAX_PLATFORMS)
+        .map(::canonicalPlatformName)
+        .distinct()
     val minRating: Int? = minRatingParam?.coerceIn(0, 100)
     val minYear: Int? = minYearParam?.also { require(it in MIN_YEAR..MAX_YEAR) { "minYear must be between $MIN_YEAR and $MAX_YEAR" } }
     val maxYear: Int? = maxYearParam?.also { require(it in MIN_YEAR..MAX_YEAR) { "maxYear must be between $MIN_YEAR and $MAX_YEAR" } }
@@ -324,9 +326,9 @@ class SearchRequest(
         const val MIN_YEAR = 1950
         const val MAX_YEAR = 2100
 
-        private fun parseTags(raw: String?, label: String, max: Int): List<String> {
-            if (raw.isNullOrBlank()) return emptyList()
-            val tags = raw.split(',')
+        private fun parseTags(raw: List<String>?, label: String, max: Int): List<String> {
+            if (raw.isNullOrEmpty()) return emptyList()
+            val tags = raw
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .map(TagNameValidator::validate)
@@ -421,9 +423,9 @@ class PopularityRailRequest(
  * Canonical model for a paged recommendation candidate request.
  */
 class RecommendationCandidatesRequest(
-    genresParam: String? = null,
-    themesParam: String? = null,
-    platformsParam: String? = null,
+    genresParam: List<String>? = null,
+    themesParam: List<String>? = null,
+    platformsParam: List<String>? = null,
     excludeParam: String? = null,
     similarToParam: String? = null,
     limitParam: Int? = null,
@@ -433,6 +435,8 @@ class RecommendationCandidatesRequest(
     val genres: List<String> = parseTags(genresParam, "genres")
     val themes: List<String> = parseTags(themesParam, "themes")
     val platforms: List<String> = parseTags(platformsParam, "platforms")
+        .map(::canonicalPlatformName)
+        .distinct()
     val exclude: List<Long> = parseIds(excludeParam, "exclude", max = MAX_EXCLUDE)
     val similarTo: List<Long> = parseIds(similarToParam, "similarTo", max = MAX_SIMILAR_TO)
     val limit: Int = (limitParam ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
@@ -519,9 +523,9 @@ class RecommendationCandidatesRequest(
         const val MAX_EXCLUDE = 50
         const val MAX_SIMILAR_TO = 10
 
-        private fun parseTags(raw: String?, label: String): List<String> {
-            if (raw.isNullOrBlank()) return emptyList()
-            val tags = raw.split(',')
+        private fun parseTags(raw: List<String>?, label: String): List<String> {
+            if (raw.isNullOrEmpty()) return emptyList()
+            val tags = raw
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .map(TagNameValidator::validate)
@@ -553,7 +557,7 @@ class RecommendationCandidatesRequest(
         }
 
         private fun quotedList(values: List<String>): String =
-            values.joinToString(prefix = "(", postfix = ")") { "\"$it\"" }
+            values.joinToString(prefix = "(", postfix = ")") { "\"${escapeApicalypseLiteral(it)}\"" }
     }
 }
 

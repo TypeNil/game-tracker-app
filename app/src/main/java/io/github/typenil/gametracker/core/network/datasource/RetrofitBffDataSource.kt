@@ -9,6 +9,17 @@ import javax.inject.Inject
 /**
  * Production implementation of [BffRemoteDataSource] communicating with the Ktor BFF over HTTP.
  */
+private const val IGDB_PC_PLATFORM = "PC (Microsoft Windows)"
+
+private fun canonicalizePlatform(platform: String): String {
+    val trimmed = platform.trim()
+    return if (trimmed.equals("PC", ignoreCase = true) || trimmed.equals(IGDB_PC_PLATFORM, ignoreCase = true)) {
+        IGDB_PC_PLATFORM
+    } else {
+        trimmed
+    }
+}
+
 class RetrofitBffDataSource @Inject constructor(
     private val apiService: BffApiService
 ) : BffRemoteDataSource {
@@ -41,8 +52,8 @@ class RetrofitBffDataSource @Inject constructor(
     ): List<GameDto> {
         return apiService.searchGames(
             query = query?.takeIf { it.isNotBlank() },
-            genres = genres.csvOrNull(),
-            platforms = platforms.csvOrNull(),
+            genres = genres.takeIf { it.isNotEmpty() },
+            platforms = platforms.map(::canonicalizePlatform).takeIf { it.isNotEmpty() },
             minRating = minRating,
             minYear = minYear,
             maxYear = maxYear,
@@ -65,9 +76,9 @@ class RetrofitBffDataSource @Inject constructor(
         limit: Int,
     ): List<RecommendationCandidateDto> {
         return apiService.getRecommendationCandidates(
-            genres = genres.csvOrNull(),
-            themes = themes.csvOrNull(),
-            platforms = platforms.csvOrNull(),
+            genres = genres.takeIf { it.isNotEmpty() },
+            themes = themes.takeIf { it.isNotEmpty() },
+            platforms = platforms.map(::canonicalizePlatform).takeIf { it.isNotEmpty() },
             exclude = exclude.csvOrNull(),
             similarTo = similarTo.csvOrNull(),
             limit = limit,
@@ -84,9 +95,9 @@ class RetrofitBffDataSource @Inject constructor(
         sort: String,
     ): io.github.typenil.gametracker.core.network.model.RecommendationCandidatePageDto {
         return apiService.getRecommendationCandidatesPage(
-            genres = genres.csvOrNull(),
-            themes = themes.csvOrNull(),
-            platforms = platforms.csvOrNull(),
+            genres = genres.takeIf { it.isNotEmpty() },
+            themes = themes.takeIf { it.isNotEmpty() },
+            platforms = platforms.map(::canonicalizePlatform).takeIf { it.isNotEmpty() },
             exclude = exclude.csvOrNull(),
             similarTo = similarTo.csvOrNull(),
             limit = limit,
@@ -94,9 +105,6 @@ class RetrofitBffDataSource @Inject constructor(
             sort = sort,
         )
     }
-
-    private fun List<String>.csvOrNull(): String? =
-        takeIf { it.isNotEmpty() }?.joinToString(",")
 
     private fun Collection<Long>.csvOrNull(): String? =
         takeIf { it.isNotEmpty() }?.joinToString(",")

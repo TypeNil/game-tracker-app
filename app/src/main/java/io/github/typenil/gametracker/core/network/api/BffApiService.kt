@@ -33,8 +33,8 @@ interface BffApiService {
     @GET("v1/games/search")
     suspend fun searchGames(
         @Query("q") query: String? = null,
-        @Query("genres") genres: String? = null,
-        @Query("platforms") platforms: String? = null,
+        @Query("genres") genres: List<String>? = null,
+        @Query("platforms") platforms: List<String>? = null,
         @Query("minRating") minRating: Int? = null,
         @Query("minYear") minYear: Int? = null,
         @Query("maxYear") maxYear: Int? = null,
@@ -49,18 +49,18 @@ interface BffApiService {
 
     @GET("v1/recommendations/candidates")
     suspend fun getRecommendationCandidates(
-        @Query("genres") genres: String? = null,
-        @Query("themes") themes: String? = null,
-        @Query("platforms") platforms: String? = null,
+        @Query("genres") genres: List<String>? = null,
+        @Query("themes") themes: List<String>? = null,
+        @Query("platforms") platforms: List<String>? = null,
         @Query("exclude") exclude: String? = null,
         @Query("similarTo") similarTo: String? = null,
         @Query("limit") limit: Int? = null,
     ): List<RecommendationCandidateDto>
     @GET("v1/recommendations/candidates/page")
     suspend fun getRecommendationCandidatesPage(
-        @Query("genres") genres: String? = null,
-        @Query("themes") themes: String? = null,
-        @Query("platforms") platforms: String? = null,
+        @Query("genres") genres: List<String>? = null,
+        @Query("themes") themes: List<String>? = null,
+        @Query("platforms") platforms: List<String>? = null,
         @Query("exclude") exclude: String? = null,
         @Query("similarTo") similarTo: String? = null,
         @Query("limit") limit: Int? = null,
