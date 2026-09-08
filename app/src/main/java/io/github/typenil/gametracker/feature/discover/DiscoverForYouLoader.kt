@@ -27,6 +27,7 @@ private val FOR_YOU_SORT_MODES = listOf("follows", "hypes", "first_release_date"
 private const val CANDIDATE_PAGE_SIZE = 30
 private const val MAX_EXCLUDE_IDS = 50
 
+@Suppress("TooManyFunctions")
 internal class DiscoverForYouLoader(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
