@@ -98,7 +98,7 @@ class LibraryViewModelTest {
     private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
 
     @Test
-    fun `ui state resets to loading after subscription timeout`() = runTest {
+    fun `ui state keeps last snapshot after subscription timeout`() = runTest {
         fakeLibraryRepository.libraryGamesFlow.value = listOf(hades)
         val viewModel = createViewModel()
 
@@ -108,8 +108,8 @@ class LibraryViewModelTest {
         }
 
         testScheduler.advanceTimeBy(5_001)
-        assertTrue(viewModel.uiState.value.isLoading)
-        assertTrue(viewModel.uiState.value.allGames.isEmpty())
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals(listOf(hades), viewModel.uiState.value.allGames)
     }
 
     @Test

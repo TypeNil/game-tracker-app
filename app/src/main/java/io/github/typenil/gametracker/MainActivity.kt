@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
@@ -18,6 +19,7 @@ import io.github.typenil.gametracker.core.model.NotificationEventType
 import io.github.typenil.gametracker.core.model.ReleaseEvent
 import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import io.github.typenil.gametracker.navigation.AppNavHost
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -28,11 +30,19 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var releaseNotifier: ReleaseNotifier
+
+    @Inject
+    lateinit var splashHold: SplashHold
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.beginSection(TRACE_MAIN_ACTIVITY_ON_CREATE)
         try {
-            installSplashScreen()
+            val splashScreen = installSplashScreen()
             super.onCreate(savedInstanceState)
+            splashScreen.setKeepOnScreenCondition { splashHold.hold.value }
+            lifecycleScope.launch {
+                splashHold.releaseAtDeadline()
+            }
             enableEdgeToEdge()
             handleTestNotification(intent)
             setContent {
@@ -41,7 +51,10 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        AppNavHost(networkMonitor = networkMonitor)
+                        AppNavHost(
+                            networkMonitor = networkMonitor,
+                            onLeaveSplash = splashHold::release,
+                        )
                     }
                 }
             }

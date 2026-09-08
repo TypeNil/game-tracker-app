@@ -14,6 +14,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -30,6 +32,9 @@ import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.feature.details.component.EDIT_LIBRARY_NOTES_INPUT_TEST_TAG
 import io.github.typenil.gametracker.feature.details.component.EDIT_LIBRARY_SHEET_HEADER_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_NOTES_TEST_TAG
+import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_CARD_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_TEST_TAG
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -83,6 +88,31 @@ class LibraryScreenTest {
     )
 
     private val sampleGames = listOf(hades, eldenRing)
+
+    @Test
+    fun loading_showsLibraryCardSkeletonNotFeedSkeleton() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = LibraryUiState(isLoading = true),
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_SKELETON_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag(LIBRARY_SKELETON_CARD_TEST_TAG)
+            .onFirst()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertDoesNotExist()
+    }
 
     @Test
     fun libraryScreen_rendersTabsAndSelectedTabGames() {

@@ -41,6 +41,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -94,8 +97,18 @@ fun DiscoverScreen(
     onDismissEditLibrary: () -> Unit = {},
 
     scrollToTopTrigger: Long = 0L,
+    onReadyToDraw: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val currentOnReadyToDraw by rememberUpdatedState(onReadyToDraw)
+    var readySignaled by remember { mutableStateOf(false) }
+    if (!uiState.isInitialLoading && !readySignaled) {
+        SideEffect {
+            readySignaled = true
+            currentOnReadyToDraw()
+        }
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage = uiState.userMessageRes?.let { stringResource(it) }
     LaunchedEffect(userMessage) {

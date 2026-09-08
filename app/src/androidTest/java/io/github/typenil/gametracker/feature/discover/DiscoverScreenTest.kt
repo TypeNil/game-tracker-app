@@ -31,6 +31,7 @@ class DiscoverScreenTest {
     private fun setContent(
         uiState: DiscoverUiState,
         onLoadMoreRail: (DiscoverRail) -> Unit = {},
+        onReadyToDraw: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             GameTrackerTheme {
@@ -44,6 +45,7 @@ class DiscoverScreenTest {
                     onUserMessageShown = {},
                     onLoadMoreTrending = {},
                     onLoadMoreRail = onLoadMoreRail,
+                    onReadyToDraw = onReadyToDraw,
                 )
             }
         }
@@ -53,6 +55,26 @@ class DiscoverScreenTest {
     fun initialLoading_showsFeedSkeleton() {
         setContent(DiscoverUiState(isLoading = true))
         composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertIsDisplayed()
+    }
+
+    @Test
+    fun initialLoading_doesNotSignalReadyToDraw() {
+        var readyCount = 0
+        setContent(DiscoverUiState(isLoading = true), onReadyToDraw = { readyCount++ })
+        assertEquals(0, readyCount)
+    }
+
+    @Test
+    fun content_signalsReadyToDrawOnce() {
+        var readyCount = 0
+        setContent(
+            DiscoverUiState(
+                isLoading = false,
+                trending = listOf(Game(id = 1L, name = "Hades")),
+            ),
+            onReadyToDraw = { readyCount++ },
+        )
+        assertEquals(1, readyCount)
     }
 
     @Test

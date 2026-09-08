@@ -22,6 +22,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +56,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun AppNavHost(
     modifier: Modifier = Modifier,
     networkMonitor: NetworkMonitor? = null,
-    appState: GameTrackerAppState = rememberGameTrackerAppState()
+    appState: GameTrackerAppState = rememberGameTrackerAppState(),
+    onLeaveSplash: () -> Unit = {},
 ) {
     val activity = LocalActivity.current
     DisposableEffect(activity, appState.navController) {
@@ -77,6 +79,11 @@ fun AppNavHost(
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
     var scrollToTopDiscoverTrigger by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(currentDestination) {
+        if (currentDestination != null && currentDestination.hasRoute<DiscoverKey>() != true) {
+            onLeaveSplash()
+        }
+    }
     val isOfflinePillEnabled = currentDestination?.hasRoute<LibraryKey>() != true &&
         currentDestination?.hasRoute<SettingsKey>() != true
     Box(
@@ -98,6 +105,7 @@ fun AppNavHost(
                 onSearchClick = appState::navigateToSearch,
                 onAboutClick = appState::navigateToSettings,
                 scrollToTopTrigger = { scrollToTopDiscoverTrigger },
+                onReadyToDraw = onLeaveSplash,
             )
             libraryEntry(
                 onGameClick = appState::navigateToGameDetails,
