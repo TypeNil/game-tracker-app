@@ -23,14 +23,12 @@
 
 Готовый предсобранный **signed `demoRelease` APK** с автономными оффлайн-фикстурами (не требует ключей API и бэкенда). Package `io.github.typenil.gametracker.demo`, non-debuggable, R8. Это портфолио-сборка, не Play-релиз.
 
-Текущий GitHub Release `v1.0.0` ещё **debug** (`io.github.typenil.gametracker.demo.debug`). Signed `demoRelease` появится в `v1.0.1`.
-
 ```bash
-# 1. Скачайте демо-APK (v1.0.0 = debug, пока не опубликован v1.0.1)
-curl --fail --location --output app-demo.apk https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.0/GameTracker-v1.0.0-demo.apk
+# 1. Скачайте signed demo APK
+curl --fail --location --output app-demo.apk https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.1/GameTracker-v1.0.1-demo.apk
 
 # 2. Установите и запустите на подключенном устройстве или эмуляторе
-adb install -r app-demo.apk && adb shell monkey -p io.github.typenil.gametracker.demo.debug -c android.intent.category.LAUNCHER 1
+adb install -r app-demo.apk && adb shell monkey -p io.github.typenil.gametracker.demo -c android.intent.category.LAUNCHER 1
 ```
 
 *Сборка из исходников: `./gradlew :app:installDemoDebug`. Подпись demoRelease: [docs/DEMO_RELEASE_SIGNING.md](docs/DEMO_RELEASE_SIGNING.md).*
