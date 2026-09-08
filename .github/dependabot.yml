@@ -6,9 +6,30 @@ updates:
       interval: monthly
     open-pull-requests-limit: 5
     groups:
-      gradle-dependencies:
+      androidx:
         patterns:
-          - "*"
+          - "androidx.*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin.*"
+          - "com.google.devtools.ksp"
+      ktor:
+        patterns:
+          - "io.ktor.*"
+      gradle-wrapper:
+        patterns:
+          - "gradle-wrapper"
+    ignore:
+      - dependency-name: "androidx.room:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.squareup.retrofit2:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.squareup.okhttp3:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.jetbrains.kotlin:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.jetbrains.kotlin.*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
