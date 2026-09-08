@@ -62,7 +62,8 @@ keytool -exportcert -keystore demo-release.jks -alias demo-release | openssl dgs
 
 ```bash
 apksigner verify --print-certs app-demo-release.apk
-# Signer #1 certificate SHA-256 digest: <это значение>
+# V2 Signer: certificate SHA-256 digest: <это значение>
+# (older apksigner: Signer #1 certificate SHA-256 digest: ...)
 ```
 
 ## 4. GitHub Secrets и Variables
