@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Search, Game Details, Library, and Discover presentation code was split into focused components without changing behavior. Extracted Search/Details/Library helpers are `internal`; screen APIs stay public.
 - Docs now state recommendation transport (seed/exclude IDs and tags), memory-only For You, best-effort release notifications, Settings as a top-bar action, and the liveDebug cleartext allowlist for LAN HTTP.
 
+### Fixed
+- Pull-to-refresh on a selected Discover rail preserves other rails' pagination cursors and cancelled rail loads no longer stay stuck loading.
+
 ---
 
 ## [1.0.1] - 2026-09-08
