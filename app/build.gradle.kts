@@ -41,7 +41,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 2
-        versionName = "1.0.0"
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -62,16 +62,34 @@ android {
         }
     }
 
-    // Production signing credentials come ONLY from env (CI production environment).
-    // Without them release stays unsigned: PR CI and local builds are unaffected.
+    // Production (liveRelease) and portfolio (demoRelease) keys are independent.
+    // Credentials come ONLY from env; missing env leaves that variant unsigned so
+    // PR CI and local builds stay secret-free.
+    val demoKeystorePath = System.getenv("DEMO_KEYSTORE_PATH")
+    val releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+    require(
+        demoKeystorePath.isNullOrBlank() ||
+            releaseKeystorePath.isNullOrBlank() ||
+            demoKeystorePath != releaseKeystorePath,
+    ) {
+        "DEMO_KEYSTORE_PATH must not reuse the production keystore"
+    }
+
     signingConfigs {
         create("release") {
-            val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
-            if (!keystorePath.isNullOrBlank()) {
-                storeFile = file(keystorePath)
+            if (!releaseKeystorePath.isNullOrBlank()) {
+                storeFile = file(releaseKeystorePath)
                 storePassword = System.getenv("RELEASE_STORE_PASSWORD")
                 keyAlias = System.getenv("RELEASE_KEY_ALIAS")
                 keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+        create("demoRelease") {
+            if (!demoKeystorePath.isNullOrBlank()) {
+                storeFile = file(demoKeystorePath)
+                storePassword = System.getenv("DEMO_STORE_PASSWORD")
+                keyAlias = System.getenv("DEMO_KEY_ALIAS")
+                keyPassword = System.getenv("DEMO_KEY_PASSWORD")
             }
         }
     }
@@ -84,14 +102,11 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Signed only in the production release workflow; unsigned everywhere else.
-            if (!System.getenv("RELEASE_KEYSTORE_PATH").isNullOrBlank()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
         }
     }
 
@@ -132,6 +147,21 @@ android {
         )
     }
 }
+
+// Per-variant signing so demoRelease cannot inherit the production keystore.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        val dslSigning = when (variant.flavorName) {
+            "demo" -> android.signingConfigs.getByName("demoRelease")
+            "live" -> android.signingConfigs.getByName("release")
+            else -> null
+        }
+        if (dslSigning?.storeFile != null) {
+            variant.signingConfig.setConfig(dslSigning)
+        }
+    }
+}
+
 // Execution-time guard: a liveRelease baked against an emulator loopback or plain http
 // URL installs fine but is offline on real devices. Wired into preLiveReleaseBuild so it
 // cannot be bypassed via aggregate/alias tasks (:app:build, :app:assemble, :app:bundle,
@@ -344,8 +374,8 @@ tasks.register<VerifyReleaseArtifactsTask>("verifyReleaseArtifacts") {
     buildDirectory.set(layout.buildDirectory)
 }
 
-// Production-only verifier: demoRelease is an unsigned, non-distributable R8 fixture
-// and must never be built or signed with the production identity.
+// Production-only verifier: demoRelease must never be built or signed with the
+// production identity. Portfolio signing uses DEMO_* in portfolio-release.yml.
 tasks.register<VerifyReleaseArtifactsTask>("verifyLiveReleaseArtifacts") {
     group = "verification"
     description = "Inspects the liveRelease APK only (production workflow)."

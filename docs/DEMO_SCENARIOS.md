@@ -106,11 +106,14 @@ Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package ... signatures do 
 Выполните полную чистую переустановку:
 
 ```bash
-# Вариант А: Если вы устанавливаете скачанный официальный Release asset:
+# Вариант А: скачанный GitHub Release.
+# v1.0.0 = debug (`io.github.typenil.gametracker.demo.debug`).
+# v1.0.1+ = signed demoRelease (`io.github.typenil.gametracker.demo`).
 adb uninstall io.github.typenil.gametracker.demo.debug
+adb uninstall io.github.typenil.gametracker.demo
 adb install -r app-demo.apk
 
-# Вариант Б: Если вы устанавливаете локальную сборку из Gradle:
+# Вариант Б: локальная debug-сборка из Gradle:
 adb uninstall io.github.typenil.gametracker.demo.debug
 adb install -r app/build/outputs/apk/demo/debug/app-demo-debug.apk
 

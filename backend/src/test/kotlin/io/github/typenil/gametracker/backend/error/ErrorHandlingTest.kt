@@ -135,4 +135,11 @@ class ErrorHandlingTest {
         val isCustomErrorResponse = runCatching { response.body<ErrorResponse>() }.getOrNull()?.code == "INTERNAL_SERVER_ERROR"
         assertFalse(isCustomErrorResponse)
     }
+
+    @Test
+    fun `loggedRequestPath strips query string and leaves bare path unchanged`() {
+        assertEquals("/v1/games/search", loggedRequestPath("/v1/games/search?q=secret"))
+        assertEquals("/v1/games/search", loggedRequestPath("/v1/games/search"))
+        assertEquals("/v1/games/search", loggedRequestPath("/v1/games/search?"))
+    }
 }

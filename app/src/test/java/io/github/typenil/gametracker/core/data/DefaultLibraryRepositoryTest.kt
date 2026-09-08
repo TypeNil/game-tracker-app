@@ -358,6 +358,25 @@ class DefaultLibraryRepositoryTest {
     }
 
     @Test
+    fun setGameStatus_whenEntryExists_usesInjectedClock() = runTest(testDispatcher) {
+        val nowSeconds = 1_700_000_000L
+        val clocked = DefaultLibraryRepository(
+            libraryDao,
+            gameDao,
+            passThroughTransactionRunner,
+            signalCollector,
+            testDispatcher,
+            Clock.fixed(Instant.ofEpochSecond(nowSeconds), ZoneOffset.UTC),
+        )
+        coEvery { libraryDao.updateStatus(10L, LibraryStatus.PLAYING, nowSeconds) } returns 1
+
+        val result = clocked.setGameStatus(10L, LibraryStatus.PLAYING)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { libraryDao.updateStatus(10L, LibraryStatus.PLAYING, nowSeconds) }
+    }
+
+    @Test
     fun removeGameFromLibrary_deletesEntry() = runTest(testDispatcher) {
         coEvery { libraryDao.deleteLibraryEntry(10L) } returns 1
 
