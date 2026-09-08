@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.SplashHold
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
 import io.github.typenil.gametracker.core.connectivity.reconnects
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
@@ -34,6 +35,7 @@ class DiscoverViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val librarySeeder: LibrarySeeder,
     private val networkMonitor: NetworkMonitor? = null,
+    private val splashHold: SplashHold = SplashHold(),
 ) : ViewModel() {
 
     private val selectionManager = DiscoverSelectionManager()
@@ -113,6 +115,10 @@ class DiscoverViewModel @Inject constructor(
     )
 
     init {
+        viewModelScope.launch {
+            uiState.first { !it.isInitialLoading }
+            splashHold.release()
+        }
         viewModelScope.launch {
             try {
                 libraryRepository.getLibraryGamesFlow().collect { result ->

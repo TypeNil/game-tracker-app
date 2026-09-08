@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.feature.discover
 
 import app.cash.turbine.test
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.SplashHold
 
 import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
 import io.github.typenil.gametracker.core.data.repository.GameRepository
@@ -94,6 +95,22 @@ class DiscoverViewModelTest {
         coEvery { gameRepository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
     }
 
+    @Test
+    fun splashHold_releasesWhenInitialLoadingEnds() = runTest {
+        val splashHold = SplashHold()
+        assertTrue(splashHold.hold.value)
+        val viewModel = DiscoverViewModel(
+            gameRepository = gameRepository,
+            libraryRepository = libraryRepository,
+            librarySeeder = librarySeeder,
+            splashHold = splashHold,
+        )
+        viewModel.uiState.test {
+            awaitItemUntil { !it.isInitialLoading }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertFalse(splashHold.hold.value)
+    }
     @Test
     fun init_hydratesTrendingSilently_andDoesNotFlipRefreshing() = runTest {
         val viewModel = createViewModel()

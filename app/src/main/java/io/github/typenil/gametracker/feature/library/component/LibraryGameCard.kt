@@ -135,9 +135,9 @@ private fun Modifier.aspectRatioOrContent(aspectRatio: Float): Modifier = layout
 }
 
 /**
- * Full-width library row: cover, title, developer, tags, then a status control,
- * optional hours, and added date. Favorite and status are siblings of the
- * cover/title click target.
+ * Full-width library card: 16:9 hero banner with title overlay, then status,
+ * optional hours, added date, and optional notes. Favorite is a sibling of
+ * the banner click target.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
