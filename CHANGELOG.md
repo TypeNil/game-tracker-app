@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.0.1] - 2026-09-08
 
-Honesty and post-`v1.0.0` correctness. Tag `v1.0.1` from current `main` after demo signing secrets are in place; do not move `v1.0.0`.
+Signed portfolio `demoRelease` and post-`v1.0.0` correctness. Tag `v1.0.0` was not moved.
 
 ### Changed
 - Portfolio GitHub Release builds signed `demoRelease` (`io.github.typenil.gametracker.demo`, R8, resource shrinking) with a dedicated demo keystore. Production `liveRelease` keeps `RELEASE_*`.
@@ -26,6 +26,7 @@ Honesty and post-`v1.0.0` correctness. Tag `v1.0.1` from current `main` after de
 - Details transition stutter via preview cache and lifecycle gating (#69).
 - BFF `/v1` query allowlist and local setup docs (#75).
 - For You recommendations, networking, and debug BFF override (#78).
+- Portfolio-release cert pin parses `V2 Signer` `apksigner` output (#81).
 
 
 ## [1.0.0] - 2026-09-06
