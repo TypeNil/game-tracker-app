@@ -66,18 +66,23 @@ internal class DiscoverForYouLoader(
         get() = pendingForYouRetry != null
 
     fun loadMoreForYou() {
-        if (!canLoadMoreForYou()) return
+        if (!canStartLoadMoreForYou()) return
         val offset = forYouCurrentOffset ?: return
         forYouJob = scope.launch {
             forYouJobMutex.withLock {
-                if (!canLoadMoreForYou()) return@withLock
+                if (!canExecuteLoadMoreForYou()) return@withLock
                 executeLoadMoreForYou(offset)
             }
         }
     }
 
-    private fun canLoadMoreForYou(): Boolean {
-        if (forYouJob?.isActive == true || _forYouEndReached.value) return false
+    private fun canStartLoadMoreForYou(): Boolean {
+        if (forYouJob?.isActive == true) return false
+        return canExecuteLoadMoreForYou()
+    }
+
+    private fun canExecuteLoadMoreForYou(): Boolean {
+        if (_forYouEndReached.value) return false
         if (_forYouError.value != null) return false
         return !isRefreshing() && !_isColdStart.value
     }
@@ -103,15 +108,15 @@ internal class DiscoverForYouLoader(
             _isColdStart.value = true
             return null
         }
-        val inLibraryIds = signals.map { it.gameId }.toSet()
         val librarySeeds = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10)
         val currentSort = FOR_YOU_SORT_MODES.getOrElse(forYouSortIndex) { FOR_YOU_SORT_MODES.first() }
+        val excludeIds = signals.map { it.gameId }.take(MAX_EXCLUDE_IDS).toSet()
 
         return when (val result = gameRepository.getRecommendationCandidatesPage(
             genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
             themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
             platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
-            exclude = inLibraryIds.take(MAX_EXCLUDE_IDS).toSet(),
+            exclude = excludeIds,
             similarTo = librarySeeds,
             limit = CANDIDATE_PAGE_SIZE,
             offset = offset,
@@ -120,6 +125,8 @@ internal class DiscoverForYouLoader(
             is AppResult.Success -> {
                 pendingForYouRetry = null
                 _forYouError.value = null
+                val currentSignals = loadRecommendationSignals(ForYouRetry.Append) ?: return null
+                val inLibraryIds = currentSignals.map { it.gameId }.toSet()
                 val input = ForYouPageInput(
                     currentRecommendations = _recommendations.value,
                     inLibraryIds = inLibraryIds,
@@ -181,13 +188,21 @@ internal class DiscoverForYouLoader(
                     sort = currentSort,
                 )
             ) {
-                is AppResult.Success -> applyForYouPage(
-                    page = result.data,
-                    profile = profile,
-                    inLibraryIds = inLibraryIds,
-                    rotate = rotate,
-                    nextSortIndex = nextSortIndex,
-                )
+                is AppResult.Success -> {
+                    val hasItems = applyForYouPage(
+                        page = result.data,
+                        profile = profile,
+                        inLibraryIds = inLibraryIds,
+                        rotate = rotate,
+                        nextSortIndex = nextSortIndex,
+                    )
+                    if (!hasItems && !_forYouEndReached.value) {
+                        val nextOffset = forYouCurrentOffset
+                        if (nextOffset != null) {
+                            executeLoadMoreForYou(nextOffset)
+                        }
+                    }
+                }
                 is AppResult.Error -> exposeForYouFailure(result.error, retry)
             }
         }
@@ -221,18 +236,20 @@ internal class DiscoverForYouLoader(
         _hiddenFromTrending.value = profile.excludedGameIds
     }
 
-    private fun applyForYouPage(
+    private suspend fun applyForYouPage(
         page: RecommendationCandidatePage,
         profile: RecommendationProfile,
         inLibraryIds: Set<Long>,
         rotate: Boolean,
         nextSortIndex: Int,
-    ) {
+    ): Boolean {
         val shownIds = if (rotate) lastShownRecIds else emptySet()
+        val currentSignals = loadRecommendationSignals(ForYouRetry.Rebuild(rotate)) ?: return false
+        val currentInLibraryIds = currentSignals.map { it.gameId }.toSet()
         val feed = reduceForYouRebuild(
             profile = profile,
             page = page,
-            inLibraryIds = inLibraryIds,
+            inLibraryIds = currentInLibraryIds,
             historicShownIds = shownIds,
         )
         _isColdStart.value = false
@@ -256,8 +273,8 @@ internal class DiscoverForYouLoader(
         lastShownRecIds = recIds
         _hiddenFromTrending.value = recIds + profile.excludedGameIds
         _recommendations.value = feed.recommendations
+        return feed.recommendations.isNotEmpty()
     }
-
     suspend fun updateLibraryRecommendations(games: List<LibraryGame>) {
         rebuildMutex.withLock {
             val signals = when (val result = libraryRepository.getRecommendationSignals()) {

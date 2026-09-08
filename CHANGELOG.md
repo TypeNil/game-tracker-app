@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Pull-to-refresh on a selected Discover rail preserves other rails' pagination cursors and cancelled rail loads no longer stay stuck loading.
+- For You rebuild fills through empty filtered pages, append does not reinsert a game saved during the request, and queued loadMore no longer no-ops on its own job.
 
 ---
 

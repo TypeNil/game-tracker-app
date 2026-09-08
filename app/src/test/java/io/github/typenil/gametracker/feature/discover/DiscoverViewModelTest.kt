@@ -26,6 +26,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1209,6 +1213,124 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun `forYou rebuild empty first page continues to fill next offset until eligible candidate found`() = runTest {
+        val candidateInLibrary = RecommendationCandidate(
+            gameId = 1942L,
+            name = "In Library Game",
+            genres = listOf("RPG"),
+            rating = 90.0,
+            ratingCount = 200L,
+        )
+        val eligibleCandidate = RecommendationCandidate(
+            gameId = 2024L,
+            name = "Eligible Game",
+            genres = listOf("RPG"),
+            rating = 95.0,
+            ratingCount = 300L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = invocation.args[6] as Int
+            if (offset == 0) {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(candidateInLibrary),
+                        nextOffset = 30,
+                        endReached = false,
+                    ),
+                )
+            } else {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(eligibleCandidate),
+                        nextOffset = null,
+                        endReached = true,
+                    ),
+                )
+            }
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItemUntil { !it.isLoading }
+            assertEquals(listOf(2024L), state.recommendations.map { it.game.id })
+            assertFalse(state.forYouLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `forYou append does not reinsert candidate added to library while append request was in flight`() = runTest {
+        val initial = rpgCandidate(101L, "Initial Rec")
+        val appendCandidate = rpgCandidate(102L, "Append Rec")
+        stubFavoriteRpgSignals()
+        val appendDeferred = CompletableDeferred<AppResult<RecommendationCandidatePage>>()
+        stubCandidatePages { offset ->
+            when (offset) {
+                0 -> candidatePage(listOf(initial), nextOffset = 30, endReached = false)
+                30 -> appendDeferred.await()
+                else -> candidatePage(emptyList(), nextOffset = null, endReached = true)
+            }
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            viewModel.loadMoreForYou()
+            runCurrent()
+            stubFavoriteRpgSignals(
+                RecommendationSignal(102L, LibraryStatus.COMPLETED, isFavorite = false, genres = listOf("RPG")),
+            )
+            libraryFlow.value = listOf(
+                libraryGame(1942L, LibraryStatus.COMPLETED, "RPG Game"),
+                libraryGame(102L, LibraryStatus.COMPLETED, "Append Rec"),
+            )
+            advanceUntilIdle()
+            appendDeferred.complete(candidatePage(listOf(appendCandidate), nextOffset = 60, endReached = false))
+            advanceUntilIdle()
+            val state = awaitItemUntil { !it.forYouLoading }
+            assertFalse(state.recommendations.any { it.game.id == 102L })
+            assertEquals(listOf(101L), state.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `forYou loadMoreForYou on queued dispatcher executes exactly one candidate page append`() = runTest {
+        stubFavoriteRpgSignals()
+        stubCandidatePages { offset ->
+            if (offset == 0) {
+                candidatePage(listOf(rpgCandidate(101L, "Initial Rec")), nextOffset = 30, endReached = false)
+            } else {
+                candidatePage(listOf(rpgCandidate(102L, "Append Rec")), nextOffset = null, endReached = true)
+            }
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            cancelAndIgnoreRemainingEvents()
+        }
+        try {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            viewModel.loadMoreForYou()
+            runCurrent()
+            advanceUntilIdle()
+            coVerify(exactly = 1) {
+                gameRepository.getRecommendationCandidatesPage(
+                    any(), any(), any(), any(), any(), any(), 30, any(),
+                )
+            }
+        } finally {
+            Dispatchers.setMain(mainDispatcherRule.testDispatcher)
+        }
+    }
+
 
 
     private fun createViewModel(): DiscoverViewModel {
@@ -1217,6 +1339,35 @@ class DiscoverViewModelTest {
             libraryRepository = libraryRepository,
             librarySeeder = librarySeeder,
         )
+    }
+
+    private fun rpgCandidate(id: Long, name: String): RecommendationCandidate =
+        RecommendationCandidate(id, name, genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
+
+    private fun candidatePage(
+        items: List<RecommendationCandidate>,
+        nextOffset: Int?,
+        endReached: Boolean,
+    ): AppResult.Success<RecommendationCandidatePage> =
+        AppResult.Success(RecommendationCandidatePage(items, nextOffset, endReached))
+
+    private fun stubFavoriteRpgSignals(vararg extra: RecommendationSignal) {
+        val base = RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(base) + extra)
+    }
+
+    private fun stubCandidatePages(
+        pageForOffset: suspend (Int) -> AppResult<RecommendationCandidatePage>,
+    ) {
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            pageForOffset(invocation.args[CANDIDATE_OFFSET_ARG_INDEX] as Int)
+        }
+    }
+
+    private companion object {
+        const val CANDIDATE_OFFSET_ARG_INDEX = 6
     }
 
     private suspend fun app.cash.turbine.ReceiveTurbine<DiscoverUiState>.awaitItemUntil(
