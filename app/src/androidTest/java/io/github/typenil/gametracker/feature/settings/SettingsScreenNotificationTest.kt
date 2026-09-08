@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -50,7 +51,7 @@ class SettingsScreenNotificationTest {
 
         composeTestRule.onNodeWithText(notificationTitle).assertIsDisplayed()
         composeTestRule.onNodeWithText(notificationDesc).assertIsDisplayed()
-        composeTestRule.onNodeWithText(igdbAttribution).assertIsDisplayed()
+        composeTestRule.onNodeWithText(igdbAttribution).performScrollTo().assertIsDisplayed()
     }
 
     @Test

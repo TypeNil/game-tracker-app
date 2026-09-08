@@ -53,7 +53,7 @@ class SettingsScreenTest {
     fun attributionCopy_isVisible() {
         setContent()
 
-        composeTestRule.onNodeWithText("Game data provided by IGDB").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Game data provided by IGDB").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -61,7 +61,7 @@ class SettingsScreenTest {
         var clicked = false
         setContent(onOpenIgdb = { clicked = true })
 
-        composeTestRule.onNodeWithText("IGDB").performClick()
+        composeTestRule.onNodeWithText("IGDB").performScrollTo().performClick()
 
         composeTestRule.runOnIdle { assertTrue(clicked) }
     }
