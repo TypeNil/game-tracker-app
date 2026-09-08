@@ -83,8 +83,8 @@ fun Route.gamesRoutes(igdbService: IgdbService, cache: BffCache) {
             get("/games/search") {
                 requireKnownQueryParams(call, searchQueryParams)
                 val query = call.request.queryParameters["q"]
-                val genres = call.request.queryParameters["genres"]
-                val platforms = call.request.queryParameters["platforms"]
+                val genres = call.request.queryParameters.getAll("genres")
+                val platforms = call.request.queryParameters.getAll("platforms")
                 val minRating = parseIntegerParam(call.request.queryParameters["minRating"], "minRating")
                 val minYear = parseIntegerParam(call.request.queryParameters["minYear"], "minYear")
                 val maxYear = parseIntegerParam(call.request.queryParameters["maxYear"], "maxYear")
@@ -192,9 +192,9 @@ private fun Route.pagedRecommendationCandidatesRoute(igdbService: IgdbService, c
 
 private fun recommendationRequest(call: io.ktor.server.application.ApplicationCall) =
     RecommendationCandidatesRequest(
-        genresParam = call.request.queryParameters["genres"],
-        themesParam = call.request.queryParameters["themes"],
-        platformsParam = call.request.queryParameters["platforms"],
+        genresParam = call.request.queryParameters.getAll("genres"),
+        themesParam = call.request.queryParameters.getAll("themes"),
+        platformsParam = call.request.queryParameters.getAll("platforms"),
         excludeParam = call.request.queryParameters["exclude"],
         similarToParam = call.request.queryParameters["similarTo"],
         limitParam = parseIntegerParam(call.request.queryParameters["limit"], "limit"),

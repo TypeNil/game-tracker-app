@@ -71,7 +71,7 @@ class SearchRequestContractTest {
 
     @Test
     fun `genres use AND semantics and themes map by canonical names`() {
-        val request = SearchRequest(rawQuery = null, genresParam = cases.semantics.genresAnd.joinToString(","))
+        val request = SearchRequest(rawQuery = null, genresParam = cases.semantics.genresAnd)
         val query = request.toApicalypseQuery()
         assertTrue("genres = (12) for Role-playing (RPG)", query.contains("genres = (12)"))
         assertTrue("themes = (1) for Action", query.contains("themes = (1)"))
@@ -79,7 +79,7 @@ class SearchRequestContractTest {
 
     @Test
     fun `platforms use OR semantics inside a single list`() {
-        val request = SearchRequest(rawQuery = null, platformsParam = cases.semantics.platformsOr.joinToString(","))
+        val request = SearchRequest(rawQuery = null, platformsParam = cases.semantics.platformsOr)
         val query = request.toApicalypseQuery()
         assertTrue(query.contains("PC (Microsoft Windows)"))
         assertTrue(query.contains("Nintendo Switch"))
@@ -111,7 +111,7 @@ class SearchRequestContractTest {
         for ((param, clause) in expectations) {
             val query = SearchRequest(
                 rawQuery = null,
-                genresParam = "Role-Playing (RPG)",
+                genresParam = listOf("Role-Playing (RPG)"),
                 sortParam = param,
                 offsetParam = 20,
             ).toApicalypseQuery()

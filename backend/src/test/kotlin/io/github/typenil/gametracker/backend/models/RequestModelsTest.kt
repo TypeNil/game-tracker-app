@@ -45,13 +45,13 @@ class RequestModelsTest {
         assertThrows(IllegalArgumentException::class.java) {
             SearchRequest(
                 rawQuery = "\n",
-                genresParam = "Action",
+                genresParam = listOf("Action"),
             )
         }
         assertThrows(IllegalArgumentException::class.java) {
             SearchRequest(
                 rawQuery = "\t",
-                platformsParam = "PC (Microsoft Windows)",
+                platformsParam = listOf("PC (Microsoft Windows)"),
             )
         }
     }
@@ -66,8 +66,8 @@ class RequestModelsTest {
     fun `SearchRequest accepts filters with null or blank query and applies sort`() {
         val request = SearchRequest(
             rawQuery = null,
-            genresParam = "Role-playing (RPG), Adventure",
-            platformsParam = "PC (Microsoft Windows)",
+            genresParam = listOf("Role-playing (RPG)", "Adventure"),
+            platformsParam = listOf("PC (Microsoft Windows)"),
             minRatingParam = 85,
             minYearParam = 2023,
             maxYearParam = 2024,
@@ -100,7 +100,7 @@ class RequestModelsTest {
     fun `SearchRequest with query and filters does not add sort clause to apicalypse`() {
         val request = SearchRequest(
             rawQuery = "Zelda",
-            genresParam = "Adventure",
+            genresParam = listOf("Adventure"),
             sortParam = "rating",
         )
 
@@ -114,7 +114,7 @@ class RequestModelsTest {
     fun `SearchRequest with RPG genre and Action theme maps to genre 12 and theme 1`() {
         val request = SearchRequest(
             rawQuery = null,
-            genresParam = "Role-playing (RPG), Action",
+            genresParam = listOf("Role-playing (RPG)", "Action"),
             sortParam = "rating_desc",
         )
         val apicalypse = request.toApicalypseQuery()
@@ -137,8 +137,8 @@ class RequestModelsTest {
 
     @Test
     fun `SearchRequest without text query produces distinct cacheKey for different sortParams`() {
-        val reqRating = SearchRequest(rawQuery = null, genresParam = "RPG", sortParam = "rating")
-        val reqDate = SearchRequest(rawQuery = null, genresParam = "RPG", sortParam = "first_release_date_desc")
+        val reqRating = SearchRequest(rawQuery = null, genresParam = listOf("RPG"), sortParam = "rating")
+        val reqDate = SearchRequest(rawQuery = null, genresParam = listOf("RPG"), sortParam = "first_release_date_desc")
 
         assertNotEquals(reqRating.cacheKey, reqDate.cacheKey)
         assertEquals(SearchSortField.RATING, reqRating.effectiveSort)
@@ -264,12 +264,12 @@ class RequestModelsTest {
     fun `search cache key cannot collide across tag fields`() {
         val embeddedDelimiter = SearchRequest(
             rawQuery = null,
-            genresParam = "RPG|PC",
+            genresParam = listOf("RPG|PC"),
         )
         val separateFields = SearchRequest(
             rawQuery = null,
-            genresParam = "RPG",
-            platformsParam = "PC",
+            genresParam = listOf("RPG"),
+            platformsParam = listOf("PC"),
         )
 
         assertNotEquals(embeddedDelimiter.cacheKey, separateFields.cacheKey)
@@ -283,7 +283,7 @@ class RequestModelsTest {
             "Puzzle", "Indie", "Simulator", "Sport", "Racing", "Fighting",
             "Hack and slash/Beat 'em up", "Music", "Arcade", "Visual Novel",
             "Point-and-click", "Tactical", "MOBA", "Card & Board Game"
-        ).joinToString(",")
+        )
 
         val request = SearchRequest(rawQuery = null, genresParam = all22Genres)
         assertEquals(22, request.genres.size)
@@ -363,16 +363,16 @@ class RequestModelsTest {
     @Test
     fun `RecommendationCandidatesRequest parses lists and builds cache key`() {
         val req = RecommendationCandidatesRequest(
-            genresParam = " RPG, Shooter,RPG ",
-            themesParam = "Fantasy",
-            platformsParam = "PC",
+            genresParam = listOf(" RPG", "Shooter", "RPG "),
+            themesParam = listOf("Fantasy"),
+            platformsParam = listOf("PC"),
             excludeParam = "1,2",
             similarToParam = "10",
             limitParam = 30,
         )
         assertEquals(listOf("RPG", "Shooter"), req.genres)
         assertEquals(listOf("Fantasy"), req.themes)
-        assertEquals(listOf("PC"), req.platforms)
+        assertEquals(listOf("PC (Microsoft Windows)"), req.platforms)
         assertEquals(listOf(1L, 2L), req.exclude)
         assertEquals(listOf(10L), req.similarTo)
         assertEquals(30, req.limit)
@@ -382,8 +382,8 @@ class RequestModelsTest {
     @Test
     fun `RecommendationCandidatesRequest accepts IGDB tag punctuation`() {
         val req = RecommendationCandidatesRequest(
-            genresParam = "Role-playing (RPG),Hack and slash/Beat 'em up",
-            platformsParam = "Xbox Series X|S",
+            genresParam = listOf("Role-playing (RPG)", "Hack and slash/Beat 'em up"),
+            platformsParam = listOf("Xbox Series X|S"),
         )
         assertEquals(listOf("Role-playing (RPG)", "Hack and slash/Beat 'em up"), req.genres)
         assertEquals(listOf("Xbox Series X|S"), req.platforms)
@@ -392,7 +392,7 @@ class RequestModelsTest {
     @Test
     fun `RecommendationCandidatesRequest rejects quote in genre`() {
         assertThrows(IllegalArgumentException::class.java) {
-            RecommendationCandidatesRequest(genresParam = "RP\"G")
+            RecommendationCandidatesRequest(genresParam = listOf("RP\"G"))
         }
     }
 
@@ -406,7 +406,7 @@ class RequestModelsTest {
     @Test
     fun `RecommendationCandidatesRequest tag query omits empty axes and excludes seeds`() {
         val req = RecommendationCandidatesRequest(
-            genresParam = "RPG",
+            genresParam = listOf("RPG"),
             excludeParam = "5",
             similarToParam = "10",
             limitParam = 10,
@@ -450,7 +450,7 @@ class RequestModelsTest {
     @Test
     fun `RecommendationCandidatesRequest paginates tag query from page zero`() {
         val request = RecommendationCandidatesRequest(
-            genresParam = "RPG",
+            genresParam = listOf("RPG"),
             offsetParam = 40,
             limitParam = 20,
         )
@@ -464,12 +464,12 @@ class RequestModelsTest {
     @Test
     fun `candidate pool cache key cannot collide across tag fields`() {
         val embeddedDelimiter = RecommendationCandidatesRequest(
-            genresParam = "RPG|Fantasy",
-            themesParam = "Horror",
+            genresParam = listOf("RPG|Fantasy"),
+            themesParam = listOf("Horror"),
         )
         val separateFields = RecommendationCandidatesRequest(
-            genresParam = "RPG",
-            themesParam = "Fantasy|Horror",
+            genresParam = listOf("RPG"),
+            themesParam = listOf("Fantasy|Horror"),
         )
 
         assertNotEquals(
