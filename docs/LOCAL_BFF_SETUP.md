@@ -183,16 +183,21 @@ curl http://127.0.0.1:8080/health/cache
 
 ### Сценарий В: Подключение по локальной сети Wi-Fi (LAN IP)
 
-Если телефон и компьютер находятся в одной сети Wi-Fi:
+Предпочтительный путь для физического устройства — сценарий Б (`adb reverse`). Один `-PBFF_BASE_URL=http://192.168...` **не** добавляет этот хост в Android cleartext allowlist.
 
-1. Узнайте локальный IP-адрес вашего компьютера:
-   - Linux/macOS: `ifconfig` или `ip a` (например, `192.168.1.42`).
-   - Windows: `ipconfig` (IPv4-адрес беспроводного адаптера).
-2. Соберите и установите приложение с указанием LAN IP:
+`liveDebug` разрешает HTTP только для `10.0.2.2`, `localhost` и `127.0.0.1` (`app/src/liveDebug/res/xml/network_security_config.xml`). Release cleartext не открывается.
+
+Если нужен именно LAN HTTP (только debug):
+
+1. Узнайте IPv4 компьютера (`ip a` / `ipconfig`), например `192.168.1.42`.
+2. Добавьте **этот** хост в debug-only `network_security_config.xml` (`liveDebug`), не в release и не как глобальный cleartext.
+3. Соберите приложение:
    ```bash
    ./gradlew :app:installLiveDebug -PBFF_BASE_URL="http://192.168.1.42:8080/"
    ```
-3. Убедитесь, что брандмауэр операционной системы разрешает входящие TCP-подключения к порту 8080 для процесса Java.
+4. Откройте порт 8080 в брандмауэре хоста.
+
+Альтернатива без cleartext: HTTPS на LAN. Не используйте этот сценарий как инструкцию «из коробки».
 
 ---
 
@@ -203,4 +208,5 @@ curl http://127.0.0.1:8080/health/cache
 | `IGDB credentials are missing` | Не найдены учетные данные IGDB при проверке порядка разрешения (`Ktor config` > `env IGDB_CLIENT_ID/SECRET` > `local.properties`) | Задайте переменные окружения `IGDB_CLIENT_ID` и `IGDB_CLIENT_SECRET` или добавьте их в `local.properties`. |
 | `Failed to connect to /127.0.0.1:8080` на физическом телефоне | Телефон пытается подключиться к своему внутреннему loopback | Выполните `adb reverse tcp:8080 tcp:8080` по USB. |
 | Ошибка сетевого тайм-аута при подключении по LAN IP | Брандмауэр хоста блокирует порт 8080 | Откройте порт 8080 в Windows Defender Firewall / ufw или переключитесь на `adb reverse`. |
+| `CLEARTEXT communication ... not permitted` на LAN HTTP | Хост не входит в debug cleartext allowlist | Используйте `adb reverse` + `127.0.0.1`, либо добавьте конкретный debug-only host. Не включайте глобальный cleartext в release. |
 | Ошибки 429 Too Many Requests от IGDB | Превышение лимита запросов аккаунта | BFF автоматически сглаживает запросы через `SmoothRateLimiter`, однако не выполняйте параллельных запросов в обход BFF. |

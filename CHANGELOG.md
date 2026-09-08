@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - CI actions are pinned to immutable SHAs and Room migration smoke tests run on API 26 and API 36.
 - Search, Game Details, Library, and Discover presentation code was split into focused components without changing behavior. Extracted Search/Details/Library helpers are `internal`; screen APIs stay public.
+- Docs now state recommendation transport (seed/exclude IDs and tags), memory-only For You, best-effort release notifications, Settings as a top-bar action, and the liveDebug cleartext allowlist for LAN HTTP.
 
 ---
 
