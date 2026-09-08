@@ -26,6 +26,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1209,6 +1213,206 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun `forYou rebuild empty first page continues to fill next offset until eligible candidate found`() = runTest {
+        val candidateInLibrary = RecommendationCandidate(
+            gameId = 1942L,
+            name = "In Library Game",
+            genres = listOf("RPG"),
+            rating = 90.0,
+            ratingCount = 200L,
+        )
+        val eligibleCandidate = RecommendationCandidate(
+            gameId = 2024L,
+            name = "Eligible Game",
+            genres = listOf("RPG"),
+            rating = 95.0,
+            ratingCount = 300L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = invocation.args[6] as Int
+            if (offset == 0) {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(candidateInLibrary),
+                        nextOffset = 30,
+                        endReached = false,
+                    ),
+                )
+            } else {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(eligibleCandidate),
+                        nextOffset = null,
+                        endReached = true,
+                    ),
+                )
+            }
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItemUntil { !it.isLoading }
+            assertEquals(listOf(2024L), state.recommendations.map { it.game.id })
+            assertFalse(state.forYouLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `forYou append does not reinsert candidate added to library while append request was in flight`() = runTest {
+        val initialCandidate = RecommendationCandidate(
+            gameId = 101L,
+            name = "Initial Rec",
+            genres = listOf("RPG"),
+            rating = 90.0,
+            ratingCount = 200L,
+        )
+        val appendCandidate = RecommendationCandidate(
+            gameId = 102L,
+            name = "Append Rec",
+            genres = listOf("RPG"),
+            rating = 91.0,
+            ratingCount = 210L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        val appendDeferred = CompletableDeferred<AppResult<RecommendationCandidatePage>>()
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            val offset = invocation.args[6] as Int
+            if (offset == 0) {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(initialCandidate),
+                        nextOffset = 30,
+                        endReached = false,
+                    ),
+                )
+            } else if (offset == 30) {
+                appendDeferred.await()
+            } else {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = emptyList(),
+                        nextOffset = null,
+                        endReached = true,
+                    ),
+                )
+            }
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+
+            viewModel.loadMoreForYou()
+            runCurrent()
+
+            coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+                listOf(
+                    RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG")),
+                    RecommendationSignal(102L, LibraryStatus.COMPLETED, isFavorite = false, genres = listOf("RPG")),
+                ),
+            )
+            libraryFlow.value = listOf(
+                libraryGame(1942L, LibraryStatus.COMPLETED, "RPG Game"),
+                libraryGame(102L, LibraryStatus.COMPLETED, "Append Rec"),
+            )
+            advanceUntilIdle()
+
+            appendDeferred.complete(
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(appendCandidate),
+                        nextOffset = 60,
+                        endReached = false,
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            val state = awaitItemUntil { !it.forYouLoading }
+            assertFalse(state.recommendations.any { it.game.id == 102L })
+            assertEquals(listOf(101L), state.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `forYou loadMoreForYou on queued dispatcher executes exactly one candidate page append`() = runTest {
+        val initialCandidate = RecommendationCandidate(
+            gameId = 101L,
+            name = "Initial Rec",
+            genres = listOf("RPG"),
+            rating = 90.0,
+            ratingCount = 200L,
+        )
+        val appendCandidate = RecommendationCandidate(
+            gameId = 102L,
+            name = "Append Rec",
+            genres = listOf("RPG"),
+            rating = 91.0,
+            ratingCount = 210L,
+        )
+        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
+            listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
+        )
+        coEvery {
+            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            val offset = invocation.args[6] as Int
+            if (offset == 0) {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(initialCandidate),
+                        nextOffset = 30,
+                        endReached = false,
+                    ),
+                )
+            } else {
+                AppResult.Success(
+                    RecommendationCandidatePage(
+                        items = listOf(appendCandidate),
+                        nextOffset = null,
+                        endReached = true,
+                    ),
+                )
+            }
+        }
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        try {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            viewModel.loadMoreForYou()
+            runCurrent()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) {
+                gameRepository.getRecommendationCandidatesPage(
+                    any(), any(), any(), any(), any(), any(),
+                    eq(30),
+                    any(),
+                )
+            }
+        } finally {
+            Dispatchers.setMain(mainDispatcherRule.testDispatcher)
+        }
+    }
+
 
 
     private fun createViewModel(): DiscoverViewModel {
