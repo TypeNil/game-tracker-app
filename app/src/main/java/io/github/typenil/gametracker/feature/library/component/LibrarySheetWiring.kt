@@ -13,7 +13,7 @@ import io.github.typenil.gametracker.feature.library.HoursSaveState
 import io.github.typenil.gametracker.feature.library.LibraryMutationState
 
 @Composable
-fun LibraryHoursDialogWiring(
+internal fun LibraryHoursDialogWiring(
     allGames: List<LibraryGame>,
     editingHoursGameId: Long?,
     hoursSaveState: HoursSaveState,
@@ -41,7 +41,7 @@ fun LibraryHoursDialogWiring(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryEditSheetWiring(
+internal fun LibraryEditSheetWiring(
     allGames: List<LibraryGame>,
     editingGameId: Long?,
     libraryMutationState: LibraryMutationState,

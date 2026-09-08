@@ -92,11 +92,12 @@ flowchart LR
 
 ## Тестирование и CI
 
-В проекте настроен CI-пайплайн на GitHub Actions из **трёх параллельных задач** на каждый PR и push в `main`:
+В проекте настроен CI-пайплайн из **четырёх параллельных задач**:
 
 1. **Backend**: `:backend:detekt` → `:backend:check` → `:backend:build`.
 2. **Android**: `:app:detekt` → `testDemoDebugUnitTest` → `assembleDemoDebug` → `assembleLiveDebug`.
 3. **Инструментальные тесты**: `:app:connectedDemoDebugAndroidTest` на эмуляторе API 30 (тесты DAO Room, `MigrationTest`, `OfflineAcceptanceTest`, Compose UI).
+4. **API smoke**: только `MigrationTest` на API 26 и API 36. Полный connected suite остаётся на API 30.
 
 ### Команды локальной проверки
 

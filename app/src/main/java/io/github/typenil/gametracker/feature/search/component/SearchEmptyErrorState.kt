@@ -41,7 +41,7 @@ internal fun Throwable.toPresentedAppError(): AppError =
  * Full-screen skeleton loading state when search results are being fetched initially.
  */
 @Composable
-fun SearchLoadingState(modifier: Modifier = Modifier) {
+internal fun SearchLoadingState(modifier: Modifier = Modifier) {
     FeedSkeleton(
         label = stringResource(R.string.search_loading_games),
         modifier = modifier.fillMaxSize(),
@@ -52,7 +52,7 @@ fun SearchLoadingState(modifier: Modifier = Modifier) {
  * Empty results state offering clear query or reset filters actions.
  */
 @Composable
-fun SearchEmptyState(
+internal fun SearchEmptyState(
     query: String,
     hasConstraints: Boolean,
     onClearQuery: () -> Unit,
@@ -120,7 +120,7 @@ fun SearchEmptyState(
  * Full-screen error state with retry button.
  */
 @Composable
-fun SearchErrorState(
+internal fun SearchErrorState(
     error: AppError,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,

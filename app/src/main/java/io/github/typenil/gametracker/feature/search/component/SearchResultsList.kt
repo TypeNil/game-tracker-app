@@ -40,7 +40,7 @@ private const val GAME_ROW_CONTENT_TYPE = "game"
  * placeholder rows, and append loading/error states.
  */
 @Composable
-fun SearchResultsList(
+internal fun SearchResultsList(
     games: LazyPagingItems<Game>,
     librarySnapshot: LibrarySnapshot,
     onGameClick: (Long) -> Unit,

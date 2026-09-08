@@ -26,7 +26,7 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 
 @Composable
-fun LibraryEmptyState(
+internal fun LibraryEmptyState(
     onNavigateToDiscover: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,7 +65,7 @@ fun LibraryEmptyState(
 }
 
 @Composable
-fun LibrarySearchEmptyState(
+internal fun LibrarySearchEmptyState(
     onResetSearchAndFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -104,7 +104,7 @@ fun LibrarySearchEmptyState(
 }
 
 @Composable
-fun LibraryTabEmptyState(
+internal fun LibraryTabEmptyState(
     onNavigateToDiscover: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

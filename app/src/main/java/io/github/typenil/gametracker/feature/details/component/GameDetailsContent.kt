@@ -49,7 +49,7 @@ private val DETAILS_GUTTER = GtDimens.Gutter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameDetailsContent(
+internal fun GameDetailsContent(
     game: GameDetails?,
     libraryEntry: LibraryEntry?,
     libraryLoadError: AppError?,

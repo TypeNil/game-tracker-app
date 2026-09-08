@@ -44,7 +44,7 @@ private fun SearchInputViolation.messageRes(): Int = when (this) {
  * field misaligned with the back button plus dead space before the filter row.
  */
 @Composable
-fun SearchTopBar(
+internal fun SearchTopBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,

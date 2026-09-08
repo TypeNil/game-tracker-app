@@ -35,7 +35,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
  * Idle state recent searches section displaying clickable previous queries and clear actions.
  */
 @Composable
-fun RecentQueriesList(
+internal fun RecentQueriesList(
     recentQueries: List<String>,
     onSelectRecentQuery: (String) -> Unit,
     onRemoveRecentQuery: (String) -> Unit,

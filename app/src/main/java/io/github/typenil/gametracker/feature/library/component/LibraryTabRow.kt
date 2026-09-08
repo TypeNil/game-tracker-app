@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.feature.library.LibraryTab
 
 @Composable
-fun LibraryTabRow(
+internal fun LibraryTabRow(
     selectedTabIndex: Int,
     tabCounts: Map<LibraryTab, Int>,
     onTabClick: (LibraryTab) -> Unit,

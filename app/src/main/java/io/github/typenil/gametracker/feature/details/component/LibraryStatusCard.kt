@@ -46,7 +46,7 @@ import io.github.typenil.gametracker.core.model.LibraryEntry
 private val LibraryCta = Color(0xFF4E3DCA)
 
 @Composable
-fun LibraryUnavailableCard(
+internal fun LibraryUnavailableCard(
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -67,7 +67,7 @@ fun LibraryUnavailableCard(
 }
 
 @Composable
-fun LibraryStatusCard(
+internal fun LibraryStatusCard(
     libraryEntry: LibraryEntry?,
     isLibraryLoading: Boolean,
     onEditClicked: () -> Unit,
@@ -102,7 +102,7 @@ fun LibraryStatusCard(
  * "Add to library" affordance for an already-added game.
  */
 @Composable
-fun LibraryStatusPlaceholder(modifier: Modifier = Modifier) {
+internal fun LibraryStatusPlaceholder(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .height(58.dp)
@@ -113,7 +113,7 @@ fun LibraryStatusPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AddToLibraryButton(
+internal fun AddToLibraryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -156,7 +156,7 @@ fun AddToLibraryButton(
 }
 
 @Composable
-fun InLibraryCard(
+internal fun InLibraryCard(
     status: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

@@ -31,7 +31,7 @@ private val CombinedLoadStates.isLoading: Boolean
  * The first composition (Unknown baseline) is never treated as recovery.
  */
 @Composable
-fun SearchReconnectEffect(
+internal fun SearchReconnectEffect(
     networkStatus: NetworkStatus,
     lazyItems: LazyPagingItems<*>,
 ) {

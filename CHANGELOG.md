@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+- CI actions are pinned to immutable SHAs and Room migration smoke tests run on API 26 and API 36.
+- Search, Game Details, Library, and Discover presentation code was split into focused components without changing behavior. Extracted Search/Details/Library helpers are `internal`; screen APIs stay public.
+
+---
+
 ## [1.0.1] - 2026-09-08
 
 Signed portfolio `demoRelease` and post-`v1.0.0` correctness. Tag `v1.0.0` was not moved.
