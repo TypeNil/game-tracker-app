@@ -1083,6 +1083,132 @@ class DiscoverViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+    @Test
+    fun `pull to refresh on selected rail preserves other rail cursor for subsequent append`() = runTest {
+        val popularFlow = MutableStateFlow(listOf(Game(id = 1L, name = "Pop 1")))
+        val wantedFlow = MutableStateFlow(listOf(Game(id = 2L, name = "Wanted 1")))
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.WANTED_NOW.type) } returns wantedFlow
+
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 0, false)
+        } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
+
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 20, true)
+        } returns AppResult.Success(PageContinuation(nextOffset = 40, endReached = false))
+
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 40, true)
+        } returns AppResult.Success(PageContinuation(nextOffset = 60, endReached = false))
+
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.WANTED_NOW.type, any(), any(), any())
+        } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 0, false)
+        }
+
+        viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 20, true)
+        }
+
+        viewModel.selectRail(DiscoverRail.WANTED_NOW)
+        advanceUntilIdle()
+
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 40, true)
+        }
+        coVerify(exactly = 1) {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 0, false)
+        }
+    }
+
+    @Test
+    fun `cancelled rail append does not stay loading or replace cursor on deferred completion`() = runTest {
+        val popularFlow = MutableStateFlow(listOf(Game(id = 1L, name = "Pop 1")))
+        val wantedFlow = MutableStateFlow(listOf(Game(id = 2L, name = "Wanted 1")))
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.POPULAR_NOW.type) } returns popularFlow
+        every { gameRepository.getPopularGamesFlow(DiscoverRail.WANTED_NOW.type) } returns wantedFlow
+
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 0, false)
+        } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
+
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.WANTED_NOW.type, any(), any(), any())
+        } returns AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
+
+        val appendDeferred = CompletableDeferred<AppResult<PageContinuation>>()
+        coEvery {
+            gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 20, true)
+        } coAnswers {
+            appendDeferred.await()
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val initial = awaitItemUntil { !it.isLoading }
+            assertFalse(initial.rails.first { it.rail == DiscoverRail.POPULAR_NOW }.isLoading)
+
+            viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+            val loadingState = awaitItemUntil { state ->
+                state.rails.first { it.rail == DiscoverRail.POPULAR_NOW }.isLoading
+            }
+            assertTrue(loadingState.rails.first { it.rail == DiscoverRail.POPULAR_NOW }.isLoading)
+
+            viewModel.selectRail(DiscoverRail.WANTED_NOW)
+            val selectedState = awaitItemUntil { it.selectedRail == DiscoverRail.WANTED_NOW }
+            assertEquals(DiscoverRail.WANTED_NOW, selectedState.selectedRail)
+
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            val stateAfterRefresh = viewModel.uiState.value
+            val popularRailAfterRefresh = stateAfterRefresh.rails.first { it.rail == DiscoverRail.POPULAR_NOW }
+            assertFalse(popularRailAfterRefresh.isLoading)
+
+            appendDeferred.complete(
+                AppResult.Success(PageContinuation(nextOffset = 999, endReached = false)),
+            )
+            advanceUntilIdle()
+
+            val stateAfterDeferred = viewModel.uiState.value
+            val popularRailAfterDeferred = stateAfterDeferred.rails.first { it.rail == DiscoverRail.POPULAR_NOW }
+            assertFalse(popularRailAfterDeferred.isLoading)
+
+            coEvery {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 20, true)
+            } returns AppResult.Success(PageContinuation(nextOffset = 40, endReached = false))
+
+            viewModel.loadMoreRail(DiscoverRail.POPULAR_NOW)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, any(), 999, any())
+            }
+            coVerify {
+                gameRepository.refreshPopular(DiscoverRail.POPULAR_NOW.type, 20, 20, true)
+            }
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
 
     private fun createViewModel(): DiscoverViewModel {

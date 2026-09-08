@@ -28,6 +28,7 @@ internal class DiscoverRailLoader(
     val railStates: StateFlow<List<DiscoverRailState>> = _railStates.asStateFlow()
 
     private val railOffsets = DiscoverRail.entries.associateWith { 0 }.toMutableMap()
+    private val railGenerations = DiscoverRail.entries.associateWith { 0L }.toMutableMap()
     private val railJobs = mutableMapOf<DiscoverRail, Job>()
     private val trendingMutex = Mutex()
     private var appendJob: Job? = null
@@ -115,41 +116,58 @@ internal class DiscoverRailLoader(
         append: Boolean,
         onUserMessage: (Int) -> Unit,
     ) {
+        val generation = (railGenerations[rail] ?: 0L) + 1L
+        railGenerations[rail] = generation
         val offset = if (append) railOffsets.getValue(rail) else 0
         updateRail(rail) { it.copy(isLoading = true, error = null) }
         try {
             when (val result = gameRepository.refreshPopular(rail.type, RAIL_PAGE_SIZE, offset, append)) {
                 is AppResult.Success -> {
-                    val continuation = result.data
-                    railOffsets[rail] = continuation.nextOffset ?: 0
-                    updateRail(rail) {
-                        it.copy(
-                            isLoading = false,
-                            endReached = continuation.endReached,
-                            error = null,
-                        )
+                    if (railGenerations[rail] == generation) {
+                        val continuation = result.data
+                        railOffsets[rail] = continuation.nextOffset ?: 0
+                        updateRail(rail) {
+                            it.copy(
+                                isLoading = false,
+                                endReached = continuation.endReached,
+                                error = null,
+                            )
+                        }
                     }
                 }
                 is AppResult.Error -> {
-                    updateRail(rail) { it.copy(isLoading = false, error = result.error) }
-                    onUserMessage(R.string.error_refresh_failed)
+                    if (railGenerations[rail] == generation) {
+                        updateRail(rail) { it.copy(isLoading = false, error = result.error) }
+                        onUserMessage(R.string.error_refresh_failed)
+                    }
                 }
             }
         } catch (e: CancellationException) {
+            if (railGenerations[rail] == generation) {
+                updateRail(rail) { it.copy(isLoading = false) }
+            }
             throw e
         } catch (e: Exception) {
-            updateRail(rail) { it.copy(isLoading = false, error = AppError.UnknownError(e)) }
+            if (railGenerations[rail] == generation) {
+                updateRail(rail) { it.copy(isLoading = false, error = AppError.UnknownError(e)) }
+            }
         }
     }
 
     fun resetRailForRefresh(rail: DiscoverRail) {
-        DiscoverRail.entries.forEach { railOffsets[it] = 0 }
+        railOffsets[rail] = 0
         updateRail(rail) { it.copy(endReached = false, error = null) }
     }
 
     fun cancelJobs() {
         appendJob?.cancel()
-        railJobs.values.forEach { it.cancel() }
+        railJobs.forEach { (rail, job) ->
+            if (job.isActive) {
+                railGenerations[rail] = (railGenerations[rail] ?: 0L) + 1L
+                job.cancel()
+                updateRail(rail) { it.copy(isLoading = false) }
+            }
+        }
         railJobs.clear()
     }
 
