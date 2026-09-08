@@ -21,7 +21,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
-import io.github.typenil.gametracker.feature.details.DETAILS_GUTTER
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 
 /** Enlarged portrait cover width in the details header. */
 private val HEADER_COVER_WIDTH = 124.dp
@@ -46,7 +46,7 @@ fun DetailsHeaderSkeleton(
         modifier = modifier
             .fillMaxWidth()
             .testTag("details-skeleton")
-            .padding(top = contentTopPadding, start = DETAILS_GUTTER, end = DETAILS_GUTTER),
+            .padding(top = contentTopPadding, start = GtDimens.Gutter, end = GtDimens.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(

@@ -8,17 +8,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.GameReleaseDate
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-/** Standard horizontal gutter for details sections. */
-internal val DETAILS_GUTTER: Dp = GtDimens.Gutter
 
 /** Landscape 16:9 aspect ratio for screenshot thumbnails. */
 internal const val SCREENSHOT_ASPECT_RATIO = 16f / 9f

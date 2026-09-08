@@ -40,10 +40,12 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
-import io.github.typenil.gametracker.feature.details.DETAILS_GUTTER
+import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.feature.details.DetailsSection
 import io.github.typenil.gametracker.feature.details.SCREENSHOT_ASPECT_RATIO
 import io.github.typenil.gametracker.feature.details.viewer.ScreenshotViewerDialog
+
+private val DETAILS_GUTTER = GtDimens.Gutter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
