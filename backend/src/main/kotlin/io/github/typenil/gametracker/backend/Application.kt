@@ -45,6 +45,8 @@ fun main() {
  * Supports injecting [customDeps] for isolated unit and integration testing.
  */
 fun Application.module(customDeps: BffDependencies? = null) {
+    // BffDependencies.createProduction already emits the sanitized missing-credentials
+    // warning; a second logging layer here would duplicate operational output.
     val deps = customDeps ?: BffDependencies.createProduction(environment.config)
 
     // Unconditional resource cleanup registration on application stop

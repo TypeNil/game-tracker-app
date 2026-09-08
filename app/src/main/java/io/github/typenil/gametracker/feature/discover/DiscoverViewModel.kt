@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.recommendations.DiscoverFeed
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverFeedAssembler
 import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommendation
 import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
@@ -324,16 +325,16 @@ class DiscoverViewModel @Inject constructor(
         try {
             var currentOffset: Int? = initialOffset
             while (currentOffset != null && !forYouEndReached.value) {
-                val stepResult = fetchAndProcessCandidatesPage(currentOffset) ?: break
-                currentOffset = stepResult.nextOffset
-                if (stepResult.hasNewItems) break
+                val transition = fetchAndProcessCandidatesPage(currentOffset) ?: break
+                currentOffset = transition.nextOffset
+                if (transition.hasNewItems) break
             }
         } finally {
             forYouLoading.value = false
         }
     }
 
-    private suspend fun fetchAndProcessCandidatesPage(offset: Int): StepResult? {
+    private suspend fun fetchAndProcessCandidatesPage(offset: Int): ForYouTransition? {
         val signals = loadRecommendationSignals(ForYouRetry.Append) ?: return null
         val profile = RecommendationProfileBuilder.build(signals)
         if (profile.isColdStart) {
@@ -341,7 +342,6 @@ class DiscoverViewModel @Inject constructor(
             return null
         }
         val inLibraryIds = signals.map { it.gameId }.toSet()
-        val alreadyShownIds = recommendations.value.map { it.game.id }.toSet()
         val librarySeeds = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10)
         val currentSort = FOR_YOU_SORT_MODES.getOrElse(forYouSortIndex) { FOR_YOU_SORT_MODES.first() }
 
@@ -358,7 +358,17 @@ class DiscoverViewModel @Inject constructor(
             is AppResult.Success -> {
                 pendingForYouRetry = null
                 forYouError.value = null
-                processPageSuccess(result.data, profile, inLibraryIds, alreadyShownIds)
+                val input = ForYouPageInput(
+                    currentRecommendations = recommendations.value,
+                    inLibraryIds = inLibraryIds,
+                    page = result.data,
+                    profile = profile,
+                    sortIndex = forYouSortIndex,
+                    sortModeCount = FOR_YOU_SORT_MODES.size,
+                )
+                val transition = reduceForYouAppend(input)
+                applyForYouAppendTransition(transition, profile)
+                transition
             }
             is AppResult.Error -> {
                 exposeForYouFailure(result.error, ForYouRetry.Append)
@@ -367,43 +377,17 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-
-    private fun processPageSuccess(
-        page: io.github.typenil.gametracker.core.model.RecommendationCandidatePage,
+    private fun applyForYouAppendTransition(
+        transition: ForYouTransition,
         profile: RecommendationProfile,
-        inLibraryIds: Set<Long>,
-        alreadyShownIds: Set<Long>,
-    ): StepResult {
-        val newFeed = DiscoverFeedAssembler.assemble(
-            profile = profile,
-            candidates = page.items,
-            trending = emptyList(),
-            nowEpochSeconds = System.currentTimeMillis() / 1000,
-            inLibraryIds = inLibraryIds,
-            shownIds = alreadyShownIds,
-            pageSize = Int.MAX_VALUE,
-        )
-        val distinctNewRecs = newFeed.recommendations.filter { it.game.id !in alreadyShownIds }
-        if (distinctNewRecs.isNotEmpty()) {
-            recommendations.value = recommendations.value + distinctNewRecs
-        }
-
-        val nextOffset: Int?
-        if (page.endReached || (page.nextOffset == null && page.items.isEmpty())) {
-            forYouSortIndex++
-            if (forYouSortIndex >= FOR_YOU_SORT_MODES.size) {
-                forYouEndReached.value = true
-                forYouCurrentOffset = null
-                nextOffset = null
-            } else {
-                forYouCurrentOffset = 0
-                nextOffset = 0
-            }
-        } else {
-            forYouCurrentOffset = page.nextOffset
-            nextOffset = page.nextOffset
-        }
-        return StepResult(nextOffset = nextOffset, hasNewItems = distinctNewRecs.isNotEmpty())
+    ) {
+        val recIds = transition.recommendations.map { it.game.id }.toSet()
+        lastShownRecIds.value = recIds
+        hiddenFromTrending.value = recIds + profile.excludedGameIds
+        recommendations.value = transition.recommendations
+        forYouSortIndex = transition.nextSortIndex
+        forYouCurrentOffset = transition.nextOffset
+        forYouEndReached.value = transition.endReached
     }
     fun loadMoreTrending() {
         if (appendJob?.isActive == true || trendingEndReached || refreshing.value) return
@@ -586,21 +570,17 @@ class DiscoverViewModel @Inject constructor(
 
     private fun applyForYouPage(
         page: RecommendationCandidatePage,
-
         profile: RecommendationProfile,
         inLibraryIds: Set<Long>,
         rotate: Boolean,
         nextSortIndex: Int,
     ) {
         val shownIds = if (rotate) lastShownRecIds.value else emptySet()
-        val feed = DiscoverFeedAssembler.assemble(
+        val feed = reduceForYouRebuild(
             profile = profile,
-            candidates = page.items,
-            trending = emptyList(),
-            nowEpochSeconds = System.currentTimeMillis() / 1000,
+            page = page,
             inLibraryIds = inLibraryIds,
-            shownIds = shownIds,
-            pageSize = Int.MAX_VALUE,
+            historicShownIds = shownIds,
         )
         isColdStart.value = false
         pendingForYouRetry = null
@@ -619,9 +599,10 @@ class DiscoverViewModel @Inject constructor(
         } else {
             forYouCurrentOffset = page.nextOffset
         }
+        val recIds = feed.recommendations.map { it.game.id }.toSet()
+        lastShownRecIds.value = recIds
+        hiddenFromTrending.value = recIds + profile.excludedGameIds
         recommendations.value = feed.recommendations
-        lastShownRecIds.value = feed.recommendations.map { it.game.id }.toSet()
-        hiddenFromTrending.value = lastShownRecIds.value + profile.excludedGameIds
     }
 
 
@@ -655,7 +636,6 @@ class DiscoverViewModel @Inject constructor(
     }
 
 
-    private data class StepResult(val nextOffset: Int?, val hasNewItems: Boolean)
 
     private data class ForYouStateData(
         val recommendations: List<DiscoverRecommendation>,
@@ -716,6 +696,81 @@ class DiscoverViewModel @Inject constructor(
             }
         }
     }
+}
+
+internal data class ForYouPageInput(
+    val currentRecommendations: List<DiscoverRecommendation>,
+    val inLibraryIds: Set<Long>,
+    val page: RecommendationCandidatePage,
+    val profile: RecommendationProfile,
+    val sortIndex: Int,
+    val sortModeCount: Int,
+)
+
+internal data class ForYouTransition(
+    val recommendations: List<DiscoverRecommendation>,
+    val nextOffset: Int?,
+    val nextSortIndex: Int,
+    val endReached: Boolean,
+    val hasNewItems: Boolean,
+)
+
+internal fun reduceForYouAppend(input: ForYouPageInput): ForYouTransition {
+    val shownIds = input.currentRecommendations.map { it.game.id }.toSet()
+    val newFeed = DiscoverFeedAssembler.assemble(
+        profile = input.profile,
+        candidates = input.page.items,
+        trending = emptyList(),
+        inLibraryIds = input.inLibraryIds,
+        shownIds = shownIds,
+        pageSize = Int.MAX_VALUE,
+    )
+    val distinctNewRecs = newFeed.recommendations.filter { it.game.id !in shownIds }
+    val completeRecommendations = input.currentRecommendations + distinctNewRecs
+
+    val nextOffset: Int?
+    val nextSortIndex: Int
+    val endReached: Boolean
+    if (input.page.endReached || (input.page.nextOffset == null && input.page.items.isEmpty())) {
+        val advancedSort = input.sortIndex + 1
+        if (advancedSort >= input.sortModeCount) {
+            nextSortIndex = advancedSort
+            endReached = true
+            nextOffset = null
+        } else {
+            nextSortIndex = advancedSort
+            endReached = false
+            nextOffset = 0
+        }
+    } else {
+        nextSortIndex = input.sortIndex
+        endReached = false
+        nextOffset = input.page.nextOffset
+    }
+
+    return ForYouTransition(
+        recommendations = completeRecommendations,
+        nextOffset = nextOffset,
+        nextSortIndex = nextSortIndex,
+        endReached = endReached,
+        hasNewItems = distinctNewRecs.isNotEmpty(),
+    )
+}
+
+internal fun reduceForYouRebuild(
+    profile: RecommendationProfile,
+    page: RecommendationCandidatePage,
+    inLibraryIds: Set<Long>,
+    historicShownIds: Set<Long>,
+): DiscoverFeed {
+    return DiscoverFeedAssembler.assemble(
+        profile = profile,
+        candidates = page.items,
+        trending = emptyList(),
+        inLibraryIds = inLibraryIds,
+        shownIds = historicShownIds,
+        pageSize = Int.MAX_VALUE,
+    )
 }
 
 private val FOR_YOU_SORT_MODES = listOf("follows", "hypes", "first_release_date")

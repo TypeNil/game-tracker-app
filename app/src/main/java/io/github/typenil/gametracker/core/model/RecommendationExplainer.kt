@@ -2,7 +2,7 @@ package io.github.typenil.gametracker.core.model
 
 object RecommendationExplainer {
 
-    private val factorOrder = listOf("genre", "theme", "platform", "similar", "rating", "recency")
+    private val factorOrder = listOf("genre", "theme", "platform", "similar", "rating")
 
     fun explain(
         ranked: RankedRecommendation,
@@ -37,11 +37,6 @@ object RecommendationExplainer {
                 key = "rating",
                 contribution = weights.rating * factors.bayesianRating,
                 reason = RecommendationReason.HighRating.takeIf { factors.bayesianRating > 0f },
-            ),
-            ScoredReason(
-                key = "recency",
-                contribution = weights.recency * factors.recency,
-                reason = RecommendationReason.RecentRelease.takeIf { factors.recency > 0f },
             ),
         )
         return scored

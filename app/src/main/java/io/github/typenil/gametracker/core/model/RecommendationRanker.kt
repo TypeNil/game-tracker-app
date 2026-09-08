@@ -7,7 +7,6 @@ data class RankerWeights(
     val similarBoost: Float = 1.5f,
     val rating: Float = 0.4f,
     val negativePenalty: Float = 1.0f,
-    val recency: Float = 0.0f,
 )
 
 data class RecommendationFactors(
@@ -17,7 +16,6 @@ data class RecommendationFactors(
     val similarBoost: Float,
     val bayesianRating: Float,
     val negativePenalty: Float,
-    val recency: Float,
 )
 
 data class RankedRecommendation(
@@ -27,24 +25,21 @@ data class RankedRecommendation(
 )
 
 /**
- * Deterministic ranker. Time-based recency uses [nowEpochSeconds], never wall clock.
+ * Deterministic ranker.
  */
 object RecommendationRanker {
     const val BAYESIAN_C = 70.0
     const val BAYESIAN_M = 10.0
-    const val RECENCY_HORIZON_YEARS = 10.0
-    private const val SECONDS_PER_YEAR = 365.25 * 86400.0
 
     fun rank(
         profile: RecommendationProfile,
         candidates: List<RecommendationCandidate>,
-        nowEpochSeconds: Long,
         weights: RankerWeights = RankerWeights(),
     ): List<RankedRecommendation> {
         return candidates
             .filterNot { it.gameId in profile.excludedGameIds }
             .map { candidate ->
-                val factors = factors(profile, candidate, nowEpochSeconds)
+                val factors = factors(profile, candidate)
                 RankedRecommendation(
                     candidate = candidate,
                     score = score(factors, weights),
@@ -62,16 +57,9 @@ object RecommendationRanker {
         return (adjusted / 100.0).toFloat()
     }
 
-    fun recency(releaseEpochSeconds: Long?, nowEpochSeconds: Long): Float {
-        if (releaseEpochSeconds == null) return 0f
-        val ageYears = (nowEpochSeconds - releaseEpochSeconds).coerceAtLeast(0) / SECONDS_PER_YEAR
-        return (1.0 - (ageYears / RECENCY_HORIZON_YEARS).coerceIn(0.0, 1.0)).toFloat()
-    }
-
     private fun factors(
         profile: RecommendationProfile,
         candidate: RecommendationCandidate,
-        nowEpochSeconds: Long,
     ): RecommendationFactors {
         val genrePos = positiveOverlap(profile.genreWeights, candidate.genres)
         val themePos = positiveOverlap(profile.themeWeights, candidate.themes)
@@ -86,7 +74,6 @@ object RecommendationRanker {
             similarBoost = if (candidate.similarToGameIds.isNotEmpty()) 1f else 0f,
             bayesianRating = bayesian(candidate.rating, candidate.ratingCount),
             negativePenalty = negative,
-            recency = recency(candidate.releaseDateEpochSeconds, nowEpochSeconds),
         )
     }
 
@@ -96,8 +83,7 @@ object RecommendationRanker {
             weights.platformOverlap * factors.platformOverlap +
             weights.similarBoost * factors.similarBoost +
             weights.rating * factors.bayesianRating +
-            weights.negativePenalty * factors.negativePenalty +
-            weights.recency * factors.recency
+            weights.negativePenalty * factors.negativePenalty
 
     private fun positiveOverlap(weights: Map<String, Float>, tags: List<String>): Float =
         tags.distinct().sumOf { tag -> maxOf(0f, weights[tag] ?: 0f).toDouble() }.toFloat()

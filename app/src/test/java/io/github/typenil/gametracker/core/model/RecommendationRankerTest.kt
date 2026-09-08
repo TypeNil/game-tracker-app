@@ -7,14 +7,12 @@ import kotlin.system.measureTimeMillis
 
 class RecommendationRankerTest {
 
-    private val now = 1_700_000_000L
 
     @Test
     fun excludedIds_areDropped() {
         val ranked = RecommendationRanker.rank(
             profile(excluded = setOf(1L)),
             listOf(cand(1, genres = listOf("RPG")), cand(2, genres = listOf("RPG"))),
-            now,
             weights = RankerWeights(
                 genreOverlap = 1f,
                 themeOverlap = 0f,
@@ -32,7 +30,6 @@ class RecommendationRankerTest {
         val ranked = RecommendationRanker.rank(
             profile(genres = mapOf("RPG" to 1f, "Sports" to -1f)),
             listOf(cand(1, genres = listOf("RPG", "Sports"), similarTo = listOf(9L))),
-            now,
             weights = RankerWeights(
                 genreOverlap = 1f,
                 themeOverlap = 0f,
@@ -40,7 +37,6 @@ class RecommendationRankerTest {
                 similarBoost = 1.5f,
                 rating = 0f,
                 negativePenalty = 1f,
-                recency = 0f,
             ),
         )
         val factors = ranked.single().factors
@@ -69,7 +65,6 @@ class RecommendationRankerTest {
         val ranked = RecommendationRanker.rank(
             profile(genres = mapOf("RPG" to 1f)),
             listOf(cand(20, genres = listOf("RPG")), cand(3, genres = listOf("RPG"))),
-            now,
             weights = RankerWeights(
                 genreOverlap = 1f,
                 themeOverlap = 0f,
@@ -82,15 +77,6 @@ class RecommendationRankerTest {
         assertEquals(listOf(3L, 20L), ranked.map { it.candidate.gameId })
     }
 
-    @Test
-    fun recency_usesInjectedNow() {
-        val year = (365.25 * 86400).toLong()
-        assertTrue(
-            RecommendationRanker.recency(now - year, now) >
-                RecommendationRanker.recency(now - 10 * year, now),
-        )
-        assertEquals(0f, RecommendationRanker.recency(null, now))
-    }
 
     @Test
     fun rank_thirtyCandidates_keepsAllAndOrdersByScoreThenId() {
@@ -100,7 +86,6 @@ class RecommendationRankerTest {
         val ranked = RecommendationRanker.rank(
             profile(genres = mapOf("RPG" to 1f)),
             listOf(low, high) + rest,
-            now,
             weights = RankerWeights(
                 genreOverlap = 1f,
                 themeOverlap = 0f,
@@ -108,7 +93,6 @@ class RecommendationRankerTest {
                 similarBoost = 0f,
                 rating = 0.4f,
                 negativePenalty = 0f,
-                recency = 0f,
             ),
         )
         assertEquals(30, ranked.size)
@@ -120,7 +104,7 @@ class RecommendationRankerTest {
         val candidates = (1L..500L).map { cand(it, genres = listOf("RPG"), rating = 50.0, ratingCount = 10) }
         var ranked: List<RankedRecommendation> = emptyList()
         val elapsedMs = measureTimeMillis {
-            ranked = RecommendationRanker.rank(profile(genres = mapOf("RPG" to 1f)), candidates, now)
+            ranked = RecommendationRanker.rank(profile(genres = mapOf("RPG" to 1f)), candidates)
         }
         assertEquals(500, ranked.size)
         assertTrue("rank(500) took ${elapsedMs}ms", elapsedMs < 2_000)

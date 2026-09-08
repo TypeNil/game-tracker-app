@@ -13,8 +13,10 @@ package io.github.typenil.gametracker.backend.cache
  * - [RECOMMEND]: 15 min TTL. The candidate pool depends on the user's tags;
  *   a search-like short TTL avoids keeping personal keys for hours.
  *
- * Each cache region is capped at 1,000 entries (MAX_CACHE_SIZE), keeping the estimated
- * heap footprint in the low megabytes (assuming an average DTO size of ~1-3 KB).
+ * Each cache region is bounded strictly by an entry-count limit of 1,000 entries (MAX_CACHE_SIZE).
+ * Retained heap consumption depends on response payload shapes, object graph depth, and JVM GC behavior,
+ * and should be empirically measured under maximum production payloads rather than estimated via static
+ * byte multipliers. Region sizes and eviction metrics can be inspected at runtime via GET /health/cache.
  */
 enum class CachePolicy(val ttlMinutes: Long) {
     POPULAR(ttlMinutes = 60),

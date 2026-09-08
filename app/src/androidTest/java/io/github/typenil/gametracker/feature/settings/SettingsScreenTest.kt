@@ -7,10 +7,17 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
+import dagger.hilt.android.EntryPointAccessors
+import io.github.typenil.gametracker.core.network.DebugBffUrlStore
+import io.github.typenil.gametracker.core.network.DebugNetworkGraphEntryPoint
+import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -46,7 +53,7 @@ class SettingsScreenTest {
     fun attributionCopy_isVisible() {
         setContent()
 
-        composeTestRule.onNodeWithText("Game data provided by IGDB").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Game data provided by IGDB").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -54,7 +61,7 @@ class SettingsScreenTest {
         var clicked = false
         setContent(onOpenIgdb = { clicked = true })
 
-        composeTestRule.onNodeWithText("IGDB").performClick()
+        composeTestRule.onNodeWithText("IGDB").performScrollTo().performClick()
 
         composeTestRule.runOnIdle { assertTrue(clicked) }
     }
@@ -165,5 +172,211 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText(githubLabel).performScrollTo().performClick()
 
         composeTestRule.runOnIdle { assertTrue(githubClicked) }
+    }
+
+    @Test
+    fun debugBffUrl_visibleWhenDebugVisible() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    debugBffUrl = "http://10.0.2.2:8080",
+                    isDebugBffUrlVisible = true
+                )
+            }
+        }
+
+        val title = composeTestRule.activity.getString(R.string.settings_debug_bff_title)
+        val label = composeTestRule.activity.getString(R.string.settings_debug_bff_label)
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        val reset = composeTestRule.activity.getString(R.string.settings_debug_bff_reset)
+
+        composeTestRule.onNodeWithText(title).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+        composeTestRule.onNodeWithText("http://10.0.2.2:8080").assertIsDisplayed()
+        composeTestRule.onNodeWithText(save).assertIsDisplayed()
+        composeTestRule.onNodeWithText(reset).assertIsDisplayed()
+    }
+
+    @Test
+    fun debugBffUrl_hiddenWhenNotVisible() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    isDebugBffUrlVisible = false
+                )
+            }
+        }
+
+        val title = composeTestRule.activity.getString(R.string.settings_debug_bff_title)
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        val reset = composeTestRule.activity.getString(R.string.settings_debug_bff_reset)
+
+        composeTestRule.onNodeWithText(title).assertDoesNotExist()
+        composeTestRule.onNodeWithText(save).assertDoesNotExist()
+        composeTestRule.onNodeWithText(reset).assertDoesNotExist()
+    }
+
+    @Test
+    fun debugBffUrl_showsErrorWhenInvalid() {
+        val errorMessage = "Invalid URL: must be http(s) origin with no path or query"
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    debugBffUrl = "invalid://url/path",
+                    debugBffUrlError = errorMessage,
+                    isDebugBffUrlVisible = true
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText(errorMessage).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun debugBffUrl_saveInvokesCallback() {
+        var saveClicked = false
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    debugBffUrl = "http://10.0.2.2:8080",
+                    isDebugBffUrlVisible = true,
+                    onSaveDebugBffUrl = { saveClicked = true }
+                )
+            }
+        }
+
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        composeTestRule.onNodeWithText(save).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle {
+            assertTrue(saveClicked)
+        }
+    }
+
+    @Test
+    fun debugBffUrl_resetInvokesCallback() {
+        var resetClicked = false
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    debugBffUrl = "http://10.0.2.2:8080",
+                    isDebugBffUrlVisible = true,
+                    onResetDebugBffUrl = { resetClicked = true }
+                )
+            }
+        }
+
+        val reset = composeTestRule.activity.getString(R.string.settings_debug_bff_reset)
+        composeTestRule.onNodeWithText(reset).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle {
+            assertTrue(resetClicked)
+        }
+    }
+
+    @Test
+    fun debugBffUrl_changeInvokesCallback() {
+        var changedValue = ""
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    debugBffUrl = "",
+                    isDebugBffUrlVisible = true,
+                    onDebugBffUrlChange = { changedValue = it }
+                )
+            }
+        }
+
+        val label = composeTestRule.activity.getString(R.string.settings_debug_bff_label)
+        composeTestRule.onNodeWithText(label).performScrollTo().performTextInput("http://localhost:8080")
+
+        composeTestRule.runOnIdle {
+            assertEquals("http://localhost:8080", changedValue)
+        }
+    }
+
+    @After
+    fun tearDown() {
+        graphStore().setUrl(urlString = null)
+    }
+
+    @Test
+    fun debugBffUrl_routeSaveValidUrl_updatesHiltStore() {
+        graphStore().setUrl(urlString = null)
+        composeTestRule.setContent {
+            GameTrackerTheme { SettingsRoute(onBackClick = {}) }
+        }
+
+        val label = composeTestRule.activity.getString(R.string.settings_debug_bff_label)
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        composeTestRule.onNodeWithText(label).performScrollTo().performTextInput(OVERRIDE_HOST)
+        composeTestRule.onNodeWithText(save).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals("$OVERRIDE_HOST/", graphStore().currentUrl().toString())
+        }
+    }
+
+    @Test
+    fun debugBffUrl_routeInvalidUrl_showsErrorAndKeepsStoreEmpty() {
+        graphStore().setUrl(urlString = null)
+        composeTestRule.setContent {
+            GameTrackerTheme { SettingsRoute(onBackClick = {}) }
+        }
+
+        val label = composeTestRule.activity.getString(R.string.settings_debug_bff_label)
+        val save = composeTestRule.activity.getString(R.string.settings_debug_bff_save)
+        val error = composeTestRule.activity.getString(R.string.settings_debug_bff_invalid_url)
+        composeTestRule.onNodeWithText(label).performScrollTo().performTextInput("notaurl")
+        composeTestRule.onNodeWithText(save).performScrollTo().performClick()
+
+        composeTestRule.onNodeWithText(error).assertIsDisplayed()
+        composeTestRule.runOnIdle {
+            assertNull(graphStore().currentUrl())
+        }
+    }
+
+    private fun graphStore(): DebugBffUrlStore =
+        EntryPointAccessors.fromApplication(
+            composeTestRule.activity.application,
+            DebugNetworkGraphEntryPoint::class.java,
+        ).debugBffUrlStore()
+
+    private companion object {
+        const val OVERRIDE_HOST = "http://192.168.1.200:8888"
     }
 }

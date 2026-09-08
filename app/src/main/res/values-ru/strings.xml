@@ -7,7 +7,6 @@
     <string name="reason_platform">Для %1$s</string>
     <string name="reason_similar">Похоже на игры, в которые вы играете</string>
     <string name="reason_rating">Высокий рейтинг</string>
-    <string name="reason_recency">Недавно вышла</string>
 
     <string name="platform_playstation">PlayStation</string>
     <string name="platform_xbox">Xbox</string>
@@ -259,4 +258,14 @@
     <string name="settings_notifications_check_triggered">Проверяем выходы отслеживаемых игр в фоне…</string>
     <string name="settings_notifications_send_test">Отправить тестовое уведомление</string>
     <string name="settings_notifications_test_sent">Тестовое уведомление отправлено! Проверьте шторку.</string>
+
+    <!-- Debug BFF URL -->
+    <string name="settings_debug_bff_title">Отладочный URL BFF</string>
+    <string name="settings_debug_bff_desc">Переопределение базового URL BFF для локального тестирования (scheme://host:port)</string>
+    <string name="settings_debug_bff_label">Базовый URL BFF</string>
+    <string name="settings_debug_bff_save">Сохранить</string>
+    <string name="settings_debug_bff_reset">Сбросить</string>
+    <string name="settings_debug_bff_invalid_url">Некорректный URL: требуется http(s) origin без пути и параметров (например, http://10.0.2.2:8080)</string>
+    <string name="settings_debug_bff_saved">URL BFF обновлён</string>
+    <string name="settings_debug_bff_reset_done">URL BFF сброшен по умолчанию</string>
 </resources>

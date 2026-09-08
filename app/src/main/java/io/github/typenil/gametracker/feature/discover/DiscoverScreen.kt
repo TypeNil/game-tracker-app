@@ -581,7 +581,6 @@ private fun reasonLabel(reason: RecommendationReason): String = when (reason) {
         stringResource(R.string.reason_platform, overlapLabel(reason.tags))
     RecommendationReason.SimilarGame -> stringResource(R.string.reason_similar)
     RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
-    RecommendationReason.RecentRelease -> stringResource(R.string.reason_recency)
 }
 @Composable
 private fun DiscoverLoadingState(modifier: Modifier = Modifier) {

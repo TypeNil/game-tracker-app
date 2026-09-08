@@ -186,17 +186,51 @@ class ApplicationLifecycleTest {
     }
 
     @Test
-    fun `BffDependencies fails fast when credentials are unconfigured`() {
+    fun `BffDependencies createProduction fails fast with sanitized message when unconfigured`() {
+        val secretValue = "super_secret_client_secret_98765"
         val unconfigured = IgdbConfigImpl(
-            config = MapApplicationConfig(),
+            config = MapApplicationConfig(
+                "igdb.clientId" to "",
+                "igdb.clientSecret" to secretValue
+            ),
             envProvider = { null },
             localPropertiesProvider = { Properties() }
         )
         assertFalse(unconfigured.isConfigured)
-        assertThrows(IllegalArgumentException::class.java) {
-            require(unconfigured.isConfigured) {
-                "IGDB credentials must be configured via application.conf or environment variables"
-            }
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            BffDependencies.createProduction(
+                config = MapApplicationConfig(),
+                igdbConfig = unconfigured
+            )
         }
+
+        val message = exception.message.orEmpty()
+        assertTrue("Message must state Ktor config: $message", message.contains("Ktor config"))
+        assertTrue("Message must state env: $message", message.contains("env"))
+        assertTrue("Message must state local.properties: $message", message.contains("local.properties"))
+        assertFalse("Message must not leak the secret value: $message", message.contains(secretValue))
+    }
+
+    @Test
+    fun `BffDependencies createProduction fails fast with default config when unconfigured`() {
+        val blankConfig = MapApplicationConfig(
+            "igdb.clientId" to "",
+            "igdb.clientSecret" to ""
+        )
+        // Hermetic: ignore machine env and local.properties so the test never
+        // passes vacuously on a developer machine with real credentials present.
+        val unconfigured = IgdbConfigImpl(
+            config = blankConfig,
+            envProvider = { null },
+            localPropertiesProvider = { Properties() }
+        )
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            BffDependencies.createProduction(blankConfig, unconfigured)
+        }
+        val message = exception.message.orEmpty()
+        assertTrue("Message must state Ktor config: $message", message.contains("Ktor config"))
+        assertTrue("Message must state env: $message", message.contains("env"))
+        assertTrue("Message must state local.properties: $message", message.contains("local.properties"))
     }
 }
