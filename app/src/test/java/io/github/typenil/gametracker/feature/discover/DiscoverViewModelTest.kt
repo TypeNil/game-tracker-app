@@ -1331,6 +1331,33 @@ class DiscoverViewModelTest {
         }
     }
 
+    @Test
+    fun emptyingLibrary_clearsForYouAndShowsColdStart() = runTest {
+        libraryFlow.value = listOf(libraryGame(1942L, LibraryStatus.COMPLETED, "RPG Game"))
+        stubFavoriteRpgSignals()
+        stubCandidatePages {
+            candidatePage(
+                items = listOf(rpgCandidate(101L, "Rec 101")),
+                nextOffset = null,
+                endReached = true,
+            )
+        }
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val filled = awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            assertFalse(filled.isColdStart)
+            assertEquals(listOf(101L), filled.recommendations.map { it.game.id })
+
+            coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(emptyList())
+            libraryFlow.value = emptyList()
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertTrue(viewModel.uiState.value.isColdStart)
+        assertTrue(viewModel.uiState.value.recommendations.isEmpty())
+    }
+
+
 
 
     private fun createViewModel(): DiscoverViewModel {

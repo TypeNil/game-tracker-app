@@ -285,7 +285,11 @@ internal class DiscoverForYouLoader(
                 }
             }
             val profile = RecommendationProfileBuilder.build(signals)
-            _isColdStart.value = profile.isColdStart
+            if (profile.isColdStart) {
+                applyColdStartRecommendations(profile, forYouSortIndex)
+                return@withLock
+            }
+            _isColdStart.value = false
             val inLibraryIds = signals.map { it.gameId }.toSet()
             val excludedFromLibrary = games
                 .filter { it.entry.status == LibraryStatus.DROPPED || it.entry.status == LibraryStatus.NOT_INTERESTED }
