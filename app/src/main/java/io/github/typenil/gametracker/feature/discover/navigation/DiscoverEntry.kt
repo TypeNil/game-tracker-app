@@ -25,6 +25,7 @@ fun NavGraphBuilder.discoverEntry(
     onSearchClick: () -> Unit,
     onAboutClick: () -> Unit,
     scrollToTopTrigger: () -> Long = { 0L },
+    onReadyToDraw: () -> Unit = {},
 ) {
     composable<DiscoverKey> {
         val viewModel: DiscoverViewModel = hiltViewModel()
@@ -49,6 +50,7 @@ fun NavGraphBuilder.discoverEntry(
             onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
             onDismissEditLibrary = viewModel::onDismissEditLibrary,
             scrollToTopTrigger = scrollToTopTrigger(),
+            onReadyToDraw = onReadyToDraw,
         )
     }
 }

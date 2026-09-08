@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_CARD_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_HERO_TEST_TAG
+import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_META_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LibraryCardSkeleton
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -48,7 +49,14 @@ class LibraryCardSkeletonTest {
         assertTrue("Hero should be ~16:9, was $ratio", ratio in 1.6f..2.0f)
         assertTrue(
             "Meta row should sit below the hero, gap was ${card.bottom - hero.bottom}",
-            card.bottom > hero.bottom + 24.dp,
+            card.bottom > hero.bottom + 48.dp,
+        )
+        val meta = composeTestRule.onAllNodesWithTag(LIBRARY_SKELETON_META_TEST_TAG)
+            .onFirst()
+            .getUnclippedBoundsInRoot()
+        assertTrue(
+            "Meta strip should be at least 48.dp, was ${meta.bottom - meta.top}",
+            meta.bottom - meta.top >= 47.9.dp,
         )
     }
 }

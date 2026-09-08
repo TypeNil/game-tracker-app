@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -35,6 +37,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 const val LIBRARY_SKELETON_TEST_TAG = "library_skeleton"
 const val LIBRARY_SKELETON_CARD_TEST_TAG = "library_skeleton_card"
 const val LIBRARY_SKELETON_HERO_TEST_TAG = "library_skeleton_hero"
+const val LIBRARY_SKELETON_META_TEST_TAG = "library_skeleton_meta"
 
 private const val HERO_ASPECT_RATIO = 16f / 9f
 private const val SKELETON_CARDS = 3
@@ -45,12 +48,13 @@ private val HeroShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
 private val BarCorner = RoundedCornerShape(4.dp)
 private val TitleBarHeight = 18.dp
 private val SubtitleBarHeight = 12.dp
-private val MetaBarHeight = 20.dp
+private val StatusMinHeight = 48.dp
 private val StatusBarWidth = 96.dp
 private val DateBarWidth = 72.dp
 private val FavoritePlaceholderSize = 34.dp
-private val MetaReserve = 48.dp
+private val MetaReserve = 64.dp
 private val CardSpacing = 12.dp
+private const val STACKED_FONT_SCALE = 1.3f
 
 /**
  * Loading placeholder that mirrors [LibraryGameCard]: full-width 16:9 hero plus a
@@ -137,28 +141,63 @@ private fun LibrarySkeletonCard() {
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
+            val useStackedMetadata = LocalDensity.current.fontScale >= STACKED_FONT_SCALE
+            if (useStackedMetadata) {
+                Column(
                     modifier = Modifier
-                        .width(StatusBarWidth)
-                        .height(MetaBarHeight)
-                        .clip(BarCorner)
-                        .background(barColor),
-                )
-                Box(
+                        .fillMaxWidth()
+                        .testTag(LIBRARY_SKELETON_META_TEST_TAG)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    SkeletonBar(
+                        color = barColor,
+                        modifier = Modifier
+                            .width(StatusBarWidth)
+                            .height(StatusMinHeight),
+                    )
+                    SkeletonBar(
+                        color = barColor,
+                        modifier = Modifier
+                            .width(DateBarWidth)
+                            .height(SubtitleBarHeight),
+                    )
+                }
+            } else {
+                Row(
                     modifier = Modifier
-                        .width(DateBarWidth)
-                        .height(SubtitleBarHeight)
-                        .clip(BarCorner)
-                        .background(barColor),
-                )
+                        .fillMaxWidth()
+                        .testTag(LIBRARY_SKELETON_META_TEST_TAG)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SkeletonBar(
+                        color = barColor,
+                        modifier = Modifier
+                            .width(StatusBarWidth)
+                            .height(StatusMinHeight),
+                    )
+                    SkeletonBar(
+                        color = barColor,
+                        modifier = Modifier
+                            .width(DateBarWidth)
+                            .height(SubtitleBarHeight),
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun SkeletonBar(
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(BarCorner)
+            .background(color),
+    )
 }

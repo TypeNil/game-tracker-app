@@ -19,7 +19,6 @@ import io.github.typenil.gametracker.core.model.NotificationEventType
 import io.github.typenil.gametracker.core.model.ReleaseEvent
 import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import io.github.typenil.gametracker.navigation.AppNavHost
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -42,8 +41,7 @@ class MainActivity : ComponentActivity() {
             super.onCreate(savedInstanceState)
             splashScreen.setKeepOnScreenCondition { splashHold.hold.value }
             lifecycleScope.launch {
-                delay(SplashHold.TIMEOUT_MS)
-                splashHold.release()
+                splashHold.releaseAtDeadline()
             }
             enableEdgeToEdge()
             handleTestNotification(intent)
