@@ -21,17 +21,21 @@
 
 ## Быстрый запуск демо
 
-Готовый предсобранный APK с автономными оффлайн-фикстурами (не требует ключей API и бэкенда):
+Готовый предсобранный **signed `demoRelease` APK** с автономными оффлайн-фикстурами (не требует ключей API и бэкенда). Package `io.github.typenil.gametracker.demo`, non-debuggable, R8. Это портфолио-сборка, не Play-релиз.
+
+Текущий GitHub Release `v1.0.0` ещё **debug** (`io.github.typenil.gametracker.demo.debug`). Signed `demoRelease` появится в `v1.0.1`.
 
 ```bash
-# 1. Скачайте официальный демо-релиз
+# 1. Скачайте демо-APK (v1.0.0 = debug, пока не опубликован v1.0.1)
 curl --fail --location --output app-demo.apk https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.0/GameTracker-v1.0.0-demo.apk
 
 # 2. Установите и запустите на подключенном устройстве или эмуляторе
 adb install -r app-demo.apk && adb shell monkey -p io.github.typenil.gametracker.demo.debug -c android.intent.category.LAUNCHER 1
 ```
 
-*Сборка из исходников: `./gradlew :app:installDemoDebug`.*
+*Сборка из исходников: `./gradlew :app:installDemoDebug`. Подпись demoRelease: [docs/DEMO_RELEASE_SIGNING.md](docs/DEMO_RELEASE_SIGNING.md).*
+
+> Скачиваемый demo APK полностью оффлайн. Flavor `live` — только из исходников и рассчитан на локальный BFF (`10.0.2.2`, LAN или `adb reverse`). Публичный production backend для этого портфолио не развёрнут.
 
 ---
 
@@ -82,9 +86,9 @@ flowchart LR
 | **Источник данных** | Автономные локальные фикстуры | Ktor BFF по HTTP |
 | **Ключи API** | Не требуются | IGDB Client ID и Secret |
 | **Сеть** | Не требуется (работает оффлайн) | Требуется подключение к BFF |
-| **Назначение** | Оффлайн-фикстуры, тесты, быстрый запуск | Полный каталог IGDB |
+| **Назначение** | Оффлайн-фикстуры, тесты, быстрый запуск | Полный каталог IGDB при локальном BFF |
 
-> Пошаговое руководство по запуску сервиса Ktor, конфигурации переменных окружения и настройке сети Android (`localhost`, `10.0.2.2`, LAN IP, `adb reverse`) доступно в [**docs/LOCAL_BFF_SETUP.md**](docs/LOCAL_BFF_SETUP.md).
+> `liveDebug` ходит на локальный BFF. `liveRelease` намеренно fail-fast без HTTPS BFF URL и не входит в портфолио-релиз. Пошаговое руководство: [**docs/LOCAL_BFF_SETUP.md**](docs/LOCAL_BFF_SETUP.md).
 
 ---
 
@@ -124,6 +128,7 @@ flowchart LR
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — системная диаграмма, sequence диаграмма пагинации, Room SSOT, миграции схемы v1..v6 и организация слоёв.
 - [**docs/LOCAL_BFF_SETUP.md**](docs/LOCAL_BFF_SETUP.md) — запуск сервиса Ktor, ключи IGDB, привязка `0.0.0.0` vs `127.0.0.1`, `adb reverse` и сети Android.
 - [**docs/SECURITY.md**](docs/SECURITY.md) — модель угроз, жизненный цикл токенов OAuth2, SmoothRateLimiter, защита от APICalypse-инъекций и гигиена логов.
+- [**docs/DEMO_RELEASE_SIGNING.md**](docs/DEMO_RELEASE_SIGNING.md) — отдельный demo keystore, GitHub Secrets и подпись `demoRelease`.
 - [**docs/RECOMMENDATIONS.md**](docs/RECOMMENDATIONS.md) — формула эвристического движка, веса сигналов библиотеки, байесовское сглаживание и генерация объяснений.
 - [**docs/DEMO_SCENARIOS.md**](docs/DEMO_SCENARIOS.md) — adb-сценарии: тестовое уведомление (`ACTION_TEST_NOTIFICATION`), deep links, WorkManager и оффлайн-проверка.
 

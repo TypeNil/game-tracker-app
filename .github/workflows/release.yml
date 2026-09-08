@@ -73,8 +73,8 @@ jobs:
           printf '%s' "$RELEASE_KEYSTORE_B64" \
             | base64 --decode > "$RUNNER_TEMP/release.jks"
 
-      # demoRelease is an unsigned, non-distributable R8 fixture: never built here,
-      # never signed, never uploaded. Only the live variant ships.
+      # demoRelease uses a separate DEMO_* keystore in portfolio-release.yml.
+      # This job must never build, sign, or upload demo: production identity only.
       - name: Build signed live release
         env:
           RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks

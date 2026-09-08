@@ -7,9 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+Honesty and post-`v1.0.0` correctness. Tag `v1.0.1` from current `main` after demo signing secrets are in place; do not move `v1.0.0`.
+
+### Changed
+- Portfolio GitHub Release builds signed `demoRelease` (`io.github.typenil.gametracker.demo`, R8, resource shrinking) with a dedicated demo keystore. Production `liveRelease` keeps `RELEASE_*`.
+- Positioning: production-style Android portfolio with an optional locally hosted Ktor BFF. No public production backend is operated.
+- Privacy docs: library data is not sent to BFF or analytics, but may participate in Android cloud backup / device transfer.
+- BFF error logs record request path only (query string stripped).
+- `DefaultLibraryRepository` write timestamps all go through the injected `Clock`.
+
+### Fixed
+- Details navigation stacking dropped by `launchSingleTop` (#74).
+- Library status flash on the details screen (#77).
+- TalkBack semantics and accessibility lint in CI (#76).
+- Dense discover rail positions after cache rebuilds (#71).
+- Details transition stutter via preview cache and lifecycle gating (#69).
+- BFF `/v1` query allowlist and local setup docs (#75).
+- For You recommendations, networking, and debug BFF override (#78).
+
+
 ## [1.0.0] - 2026-09-06
 
-Initial public release of **GameTracker** — a production-grade Android application and Kotlin/Ktor BFF service proxying the IGDB API.
+Initial public release of **GameTracker** — a production-style Android portfolio application with an optional locally hosted Kotlin/Ktor BFF proxying the IGDB API.
 
 ### Added
 
@@ -49,9 +70,9 @@ Initial public release of **GameTracker** — a production-grade Android applica
   - `live`: Configurable network mode communicating with the Ktor BFF gateway.
 
 #### Backend-for-Frontend Service (`:backend`)
-- **Microservice Architecture**:
-  - High-performance asynchronous service built on Kotlin and Ktor 3 with Netty engine.
-  - Micro-proxying endpoints: `/v1/discover/top-rated`, `/v1/games/search`, `/v1/games/{id}`, and `/health`.
+- **Ktor BFF service**:
+  - Asynchronous Kotlin/Ktor 3 service on the Netty engine.
+  - Proxy endpoints: `/v1/discover/top-rated`, `/v1/games/search`, `/v1/games/{id}`, and `/health`.
 - **Security & Quota Hardening**:
   - Monotonic `SmoothRateLimiter` enforcing strict 300 ms intervals ($\le 3.33\text{ req/s}$) to guarantee compliance with IGDB's 4 req/s limit.
   - Single-flight in-memory Caffeine cache (`SupervisorScope` + `CompletableDeferred`) eliminating request dogpiling.
@@ -79,5 +100,5 @@ Initial public release of **GameTracker** — a production-grade Android applica
 ### Known Limitations
 - **Upstream Rate Limits**: Upstream IGDB enforces a 4 req/s quota. The BFF queues requests with a 300 ms step, but uncached bulk operations are rate-limited.
 - **Offline Dataset Scope**: The `demo` flavor includes a curated collection of popular titles and edge cases, rather than the complete IGDB database.
-- **Local Storage**: User library data and notes are stored strictly on-device in Room SQLite (no cloud account synchronization).
+- **Local Storage**: User library data and notes live in on-device Room SQLite and are not synced to the BFF or analytics. They may still be included in Android cloud backup / device transfer according to system settings.
 - **Video Playback**: Game trailers are handed off to native external video applications (YouTube / web browser) via Android Intent to avoid bundling heavyweight player components.

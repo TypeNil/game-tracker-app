@@ -26,7 +26,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"
 
   publish-demo:
-    name: Build Demo APK & Publish GitHub Release
+    name: Build signed Demo Release APK & Publish GitHub Release
     needs: verify-release-ref
     runs-on: ubuntu-latest
     permissions:
@@ -47,16 +47,68 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Verify & Assemble Demo Debug APK
+      - name: Restore demo keystore
+        env:
+          DEMO_KEYSTORE_B64: ${{ secrets.DEMO_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$DEMO_KEYSTORE_B64" ]; then
+            echo "::error::DEMO_KEYSTORE_B64 is missing. See docs/DEMO_RELEASE_SIGNING.md"
+            exit 1
+          fi
+          printf '%s' "$DEMO_KEYSTORE_B64" \
+            | base64 --decode > "$RUNNER_TEMP/demo-release.jks"
+          test -s "$RUNNER_TEMP/demo-release.jks"
+
+      - name: Verify & Assemble signed Demo Release APK
+        env:
+          DEMO_KEYSTORE_PATH: ${{ runner.temp }}/demo-release.jks
+          DEMO_KEY_ALIAS: ${{ secrets.DEMO_KEY_ALIAS }}
+          DEMO_KEY_PASSWORD: ${{ secrets.DEMO_KEY_PASSWORD }}
+          DEMO_STORE_PASSWORD: ${{ secrets.DEMO_STORE_PASSWORD }}
         run: |
           ./gradlew \
             :app:detekt \
             :app:testDemoDebugUnitTest \
-            :app:assembleDemoDebug \
+            :app:assembleDemoRelease \
             --stacktrace
-      - name: Prepare release files
+
+      - name: Verify signature, package, R8 mapping, and SHA-256
+        env:
+          EXPECTED_CERT_SHA256: ${{ vars.DEMO_CERT_SHA256 }}
         run: |
-          cp app/build/outputs/apk/demo/debug/app-demo-debug.apk "GameTracker-${GITHUB_REF_NAME}-demo.apk"
+          set -euo pipefail
+          APK_DIR="app/build/outputs/apk/demo/release"
+          APK="$(find "$APK_DIR" -name '*.apk' -print -quit)"
+          test -n "$APK"
+          test -s app/build/outputs/mapping/demoRelease/mapping.txt
+
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          AAPT="$BUILD_TOOLS/aapt"
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+          ACTUAL="$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          if [ -z "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::DEMO_CERT_SHA256 repository variable is missing. See docs/DEMO_RELEASE_SIGNING.md"
+            exit 1
+          fi
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::demoRelease signer certificate SHA-256 does not match DEMO_CERT_SHA256"
+            exit 1
+          fi
+
+          BADGING="$("$AAPT" dump badging "$APK")"
+          echo "$BADGING" | grep -Fq "package: name='io.github.typenil.gametracker.demo'"
+          if echo "$BADGING" | grep -Fq "application-debuggable"; then
+            echo "::error::$APK is debuggable"
+            exit 1
+          fi
+
+          TAG="$GITHUB_REF_NAME"
+          RELEASE_APK="GameTracker-${TAG}-demo.apk"
+          cp "$APK" "$RELEASE_APK"
+          sha256sum "$RELEASE_APK" | tee "${RELEASE_APK}.sha256"
 
       - name: Create or update draft release and upload assets
         env:
@@ -64,6 +116,7 @@ jobs:
         run: |
           TAG="$GITHUB_REF_NAME"
           APK="GameTracker-${TAG}-demo.apk"
+          CHECKSUM="${APK}.sha256"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, updating draft..."
@@ -81,14 +134,21 @@ jobs:
           fi
 
           test -f art/walkthrough.gif
+          test -f "$APK"
+          test -f "$CHECKSUM"
 
-          echo "Uploading $APK and walkthrough.gif..."
-          gh release upload "$TAG" "$APK" "art/walkthrough.gif" --clobber
+          echo "Uploading $APK, checksum, and walkthrough.gif..."
+          gh release upload "$TAG" "$APK" "$CHECKSUM" "art/walkthrough.gif" --clobber
 
           echo "Verifying uploaded assets..."
           ASSETS="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
           grep -Fxq "$APK" <<< "$ASSETS"
+          grep -Fxq "$CHECKSUM" <<< "$ASSETS"
           grep -Fxq "walkthrough.gif" <<< "$ASSETS"
 
           echo "Publishing release (undrafting)..."
           gh release edit "$TAG" --draft=false
+
+      - name: Remove demo keystore material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/demo-release.jks"

@@ -24,7 +24,7 @@ fun Application.configureErrorHandling() {
 
 private fun StatusPagesConfig.configureUpstreamExceptionHandlers() {
     exception<UpstreamRateLimitException> { call, cause ->
-        logger.warn("Upstream rate limit reached on {}: {}", call.request.local.uri, cause.message)
+        logger.warn("Upstream rate limit reached on {}: {}", loggedRequestPath(call.request.local.uri), cause.message)
         call.response.header(HttpHeaders.RetryAfter, cause.retryAfterSeconds.toString())
         call.respond(
             status = HttpStatusCode.TooManyRequests,
@@ -36,7 +36,7 @@ private fun StatusPagesConfig.configureUpstreamExceptionHandlers() {
     }
 
     exception<UpstreamBadGatewayException> { call, cause ->
-        logger.error("Upstream bad gateway on {}: {}", call.request.local.uri, cause.message, cause)
+        logger.error("Upstream bad gateway on {}: {}", loggedRequestPath(call.request.local.uri), cause.message, cause)
         call.respond(
             status = HttpStatusCode.BadGateway,
             message = ErrorResponse(code = "BAD_GATEWAY", message = "Upstream service error.")
@@ -44,7 +44,7 @@ private fun StatusPagesConfig.configureUpstreamExceptionHandlers() {
     }
 
     exception<UpstreamServiceUnavailableException> { call, cause ->
-        logger.error("Upstream service unavailable on {}: {}", call.request.local.uri, cause.message, cause)
+        logger.error("Upstream service unavailable on {}: {}", loggedRequestPath(call.request.local.uri), cause.message, cause)
         call.respond(
             status = HttpStatusCode.ServiceUnavailable,
             message = ErrorResponse(code = "SERVICE_UNAVAILABLE", message = "Upstream service is temporarily unavailable.")
@@ -52,7 +52,7 @@ private fun StatusPagesConfig.configureUpstreamExceptionHandlers() {
     }
 
     exception<UpstreamTimeoutException> { call, cause ->
-        logger.error("Upstream timeout on {}: {}", call.request.local.uri, cause.message, cause)
+        logger.error("Upstream timeout on {}: {}", loggedRequestPath(call.request.local.uri), cause.message, cause)
         call.respond(
             status = HttpStatusCode.GatewayTimeout,
             message = ErrorResponse(code = "GATEWAY_TIMEOUT", message = "Upstream request timed out.")
@@ -62,7 +62,7 @@ private fun StatusPagesConfig.configureUpstreamExceptionHandlers() {
 
 private fun StatusPagesConfig.configureClientExceptionHandlers() {
     exception<IllegalArgumentException> { call, cause ->
-        logger.warn("Validation error on {}: {}", call.request.local.uri, cause.message)
+        logger.warn("Validation error on {}: {}", loggedRequestPath(call.request.local.uri), cause.message)
         call.respond(
             status = HttpStatusCode.BadRequest,
             message = ErrorResponse(code = "BAD_REQUEST", message = cause.message ?: "Invalid request parameters.")
@@ -70,7 +70,7 @@ private fun StatusPagesConfig.configureClientExceptionHandlers() {
     }
 
     exception<NoSuchElementException> { call, cause ->
-        logger.warn("Resource not found on {}: {}", call.request.local.uri, cause.message)
+        logger.warn("Resource not found on {}: {}", loggedRequestPath(call.request.local.uri), cause.message)
         call.respond(
             status = HttpStatusCode.NotFound,
             message = ErrorResponse(code = "NOT_FOUND", message = cause.message ?: "Requested resource not found.")
@@ -97,7 +97,7 @@ private fun StatusPagesConfig.configureFallbackExceptionHandler() {
             // Strict structured-concurrency compliance: CancellationException is never swallowed
             throw cause
         }
-        logger.error("Unhandled internal server error on {}", call.request.local.uri, cause)
+        logger.error("Unhandled internal server error on {}", loggedRequestPath(call.request.local.uri), cause)
         call.respond(
             status = HttpStatusCode.InternalServerError,
             message = ErrorResponse(
@@ -107,3 +107,5 @@ private fun StatusPagesConfig.configureFallbackExceptionHandler() {
         )
     }
 }
+
+internal fun loggedRequestPath(uri: String): String = uri.substringBefore('?')

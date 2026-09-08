@@ -61,7 +61,7 @@ class DefaultLibraryRepository @Inject constructor(
         withContext(ioDispatcher) {
             runSuspendCatching {
                 transactionRunner {
-                    val now = System.currentTimeMillis() / 1000
+                    val now = clock.instant().epochSecond
                     if (libraryDao.updateStatus(gameId, status, now) == 1) {
                         return@transactionRunner AppResult.Success(Unit)
                     }
@@ -116,7 +116,7 @@ class DefaultLibraryRepository @Inject constructor(
     override suspend fun addToWishlist(game: Game): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {
-                val now = System.currentTimeMillis() / 1000
+                val now = clock.instant().epochSecond
                 transactionRunner {
                     if (libraryDao.getLibraryEntry(game.id) == null) {
                         gameDao.upsertGame(game.toEntity(now))
@@ -157,7 +157,7 @@ class DefaultLibraryRepository @Inject constructor(
                                 IllegalStateException("No library entry for $gameId"),
                             ),
                         )
-                    val now = System.currentTimeMillis() / 1000
+                    val now = clock.instant().epochSecond
                     val notes = userNotes?.trim()?.takeIf { it.isNotEmpty() }
                     val sanitizedNotes = notes?.let(LibraryNotes::clamp)
 
@@ -198,7 +198,7 @@ class DefaultLibraryRepository @Inject constructor(
         withContext(ioDispatcher) {
             runSuspendCatching {
                 val clampedHours = hoursPlayed.coerceIn(0, 999_999)
-                val now = System.currentTimeMillis() / 1000
+                val now = clock.instant().epochSecond
                 val updatedRows = libraryDao.updateHoursPlayed(
                     gameId = gameId,
                     hoursPlayed = clampedHours,
