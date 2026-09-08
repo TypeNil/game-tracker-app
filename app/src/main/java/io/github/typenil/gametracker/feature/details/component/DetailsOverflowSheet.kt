@@ -3,7 +3,7 @@ package io.github.typenil.gametracker.feature.details.component
 import androidx.compose.runtime.Composable
 import io.github.typenil.gametracker.core.model.GameDetails
 
-enum class DetailsOverflowSheet {
+internal enum class DetailsOverflowSheet {
     None,
     Platforms,
     Tags,
@@ -11,7 +11,7 @@ enum class DetailsOverflowSheet {
 }
 
 @Composable
-fun DetailsOverflowSheets(
+internal fun DetailsOverflowSheets(
     overflowSheet: DetailsOverflowSheet,
     game: GameDetails?,
     onDismiss: () -> Unit,

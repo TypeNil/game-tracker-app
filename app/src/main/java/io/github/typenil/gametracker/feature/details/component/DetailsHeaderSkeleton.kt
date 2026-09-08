@@ -36,7 +36,7 @@ private const val SKELETON_SUBTITLE_FRACTION = 0.4f
  * replaces it without a spinner swap or a scroll-state conflict.
  */
 @Composable
-fun DetailsHeaderSkeleton(
+internal fun DetailsHeaderSkeleton(
     contentTopPadding: Dp,
     titleTranslationRangePx: Float,
     modifier: Modifier = Modifier,

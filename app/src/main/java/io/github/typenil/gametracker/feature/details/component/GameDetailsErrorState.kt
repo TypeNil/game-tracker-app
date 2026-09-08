@@ -25,7 +25,7 @@ import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 
 @Composable
-fun GameDetailsErrorState(
+internal fun GameDetailsErrorState(
     error: AppError,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,

@@ -39,7 +39,7 @@ import io.github.typenil.gametracker.feature.library.LibrarySortOption
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryTopBar(
+internal fun LibraryTopBar(
     isSearchActive: Boolean,
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
@@ -141,7 +141,7 @@ fun LibraryTopBar(
 }
 
 @Composable
-fun LibraryFavoritesFilter(
+internal fun LibraryFavoritesFilter(
     filterFavoritesOnly: Boolean,
     onToggleFavoritesOnly: () -> Unit,
     modifier: Modifier = Modifier,

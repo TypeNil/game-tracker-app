@@ -47,7 +47,7 @@ private const val ABOUT_COLLAPSED_LINES = 2
 
 /** Collapsed About card: 2-line summary with an in-card header and arrow toggle. */
 @Composable
-fun AboutCard(
+internal fun AboutCard(
     summary: String,
     modifier: Modifier = Modifier,
 ) {

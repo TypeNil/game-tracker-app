@@ -29,7 +29,7 @@ import io.github.typenil.gametracker.feature.library.LibraryTab
 import io.github.typenil.gametracker.feature.library.LibraryUiState
 
 @Composable
-fun LibraryTabBody(
+internal fun LibraryTabBody(
     uiState: LibraryUiState,
     pagerState: PagerState,
     onGameClick: (Long) -> Unit,
@@ -92,7 +92,7 @@ fun LibraryTabBody(
 }
 
 @Composable
-fun LibraryPager(
+internal fun LibraryPager(
     pagerState: PagerState,
     uiState: LibraryUiState,
     onGameClick: (Long) -> Unit,

@@ -39,7 +39,7 @@ private val TITLE_HANDOFF_START_OFFSET = 90.dp
 private val TITLE_HANDOFF_END_OFFSET = 150.dp
 
 @Stable
-class DetailsAppBarScrollState(
+internal class DetailsAppBarScrollState(
     val lazyListState: LazyListState,
     val titleTranslationRangePx: Float,
     val appBarBgAlpha: () -> Float,
@@ -47,7 +47,7 @@ class DetailsAppBarScrollState(
 )
 
 @Composable
-fun rememberDetailsAppBarScrollState(
+internal fun rememberDetailsAppBarScrollState(
     lazyListState: LazyListState = rememberLazyListState(),
 ): DetailsAppBarScrollState {
     val density = LocalDensity.current
@@ -89,7 +89,7 @@ fun rememberDetailsAppBarScrollState(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailsTopAppBar(
+internal fun DetailsTopAppBar(
     gameName: String?,
     onBackClick: () -> Unit,
     onShareClick: () -> Unit,
