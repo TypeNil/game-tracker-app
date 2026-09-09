@@ -14,6 +14,8 @@ import io.github.typenil.gametracker.core.model.RecommendationCandidatePage
 import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
 import io.github.typenil.gametracker.core.model.RecommendationSignal
+import io.github.typenil.gametracker.core.model.UserPreferences
+import io.github.typenil.gametracker.core.model.expandRecommendationPlatforms
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.sync.withLock
 private val FOR_YOU_SORT_MODES = listOf("follows", "hypes", "first_release_date")
 private const val CANDIDATE_PAGE_SIZE = 30
 private const val MAX_EXCLUDE_IDS = 50
+private const val MAX_RECOMMENDATION_PLATFORM_TAGS = 25
 
 @Suppress("TooManyFunctions")
 internal class DiscoverForYouLoader(
@@ -34,6 +37,7 @@ internal class DiscoverForYouLoader(
     private val scope: CoroutineScope,
     private val onUserMessage: (Int) -> Unit,
     private val isRefreshing: () -> Boolean,
+    private val userPreferences: () -> UserPreferences = { UserPreferences() },
 ) {
     private val _recommendations = MutableStateFlow<List<DiscoverRecommendation>>(emptyList())
     val recommendations: StateFlow<List<DiscoverRecommendation>> = _recommendations.asStateFlow()
@@ -82,7 +86,7 @@ internal class DiscoverForYouLoader(
     private fun canExecuteLoadMoreForYou(): Boolean {
         if (_forYouEndReached.value) return false
         if (_forYouError.value != null) return false
-        return !isRefreshing() && !_isColdStart.value
+        return !isRefreshing() && (_recommendations.value.isNotEmpty() || !_isColdStart.value)
     }
 
     private suspend fun executeLoadMoreForYou(initialOffset: Int) {
@@ -101,8 +105,8 @@ internal class DiscoverForYouLoader(
 
     private suspend fun fetchAndProcessCandidatesPage(offset: Int): ForYouTransition? {
         val signals = loadRecommendationSignals(ForYouRetry.Append) ?: return null
-        val profile = RecommendationProfileBuilder.build(signals)
-        if (profile.isColdStart) {
+        val profile = buildProfile(signals)
+        if (!profile.hasRankingSignal) {
             _isColdStart.value = true
             return null
         }
@@ -113,7 +117,10 @@ internal class DiscoverForYouLoader(
         return when (val result = gameRepository.getRecommendationCandidatesPage(
             genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
             themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
-            platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
+            platforms = DiscoverFeedAssembler.topPositiveTags(
+                profile.platformWeights,
+                limit = MAX_RECOMMENDATION_PLATFORM_TAGS,
+            ),
             exclude = excludeIds,
             similarTo = librarySeeds,
             limit = CANDIDATE_PAGE_SIZE,
@@ -160,7 +167,7 @@ internal class DiscoverForYouLoader(
             forYouJob?.cancel()
             val retry = ForYouRetry.Rebuild(rotate)
             val signals = loadRecommendationSignals(retry) ?: return@withLock
-            val profile = RecommendationProfileBuilder.build(signals)
+            val profile = buildProfile(signals)
             val nextSortIndex = if (rotate) {
                 (forYouSortIndex + 1) % FOR_YOU_SORT_MODES.size
             } else {
@@ -168,38 +175,47 @@ internal class DiscoverForYouLoader(
             }
             val inLibraryIds = signals.map { it.gameId }.toSet()
             val currentSort = FOR_YOU_SORT_MODES.getOrElse(nextSortIndex) { FOR_YOU_SORT_MODES.first() }
-            if (profile.isColdStart) {
+            if (!profile.hasRankingSignal) {
                 applyColdStartRecommendations(nextSortIndex)
                 return@withLock
             }
-            when (
-                val result = gameRepository.getRecommendationCandidatesPage(
-                    genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
-                    themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
-                    platforms = DiscoverFeedAssembler.topPositiveTags(profile.platformWeights),
-                    exclude = inLibraryIds.take(MAX_EXCLUDE_IDS).toSet(),
-                    similarTo = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10),
-                    limit = CANDIDATE_PAGE_SIZE,
-                    offset = 0,
-                    sort = currentSort,
-                )
-            ) {
-                is AppResult.Success -> {
-                    val hasItems = applyForYouPage(
-                        page = result.data,
-                        profile = profile,
-                        inLibraryIds = inLibraryIds,
-                        rotate = rotate,
-                        nextSortIndex = nextSortIndex,
+            _isColdStart.value = false
+            _forYouLoading.value = true
+            try {
+                when (
+                    val result = gameRepository.getRecommendationCandidatesPage(
+                        genres = DiscoverFeedAssembler.topPositiveTags(profile.genreWeights),
+                        themes = DiscoverFeedAssembler.topPositiveTags(profile.themeWeights),
+                        platforms = DiscoverFeedAssembler.topPositiveTags(
+                            profile.platformWeights,
+                            limit = MAX_RECOMMENDATION_PLATFORM_TAGS,
+                        ),
+                        exclude = inLibraryIds.take(MAX_EXCLUDE_IDS).toSet(),
+                        similarTo = DiscoverFeedAssembler.similarSeedIds(signals, limit = 10),
+                        limit = CANDIDATE_PAGE_SIZE,
+                        offset = 0,
+                        sort = currentSort,
                     )
-                    if (!hasItems && !_forYouEndReached.value) {
-                        val nextOffset = forYouCurrentOffset
-                        if (nextOffset != null) {
-                            executeLoadMoreForYou(nextOffset)
+                ) {
+                    is AppResult.Success -> {
+                        val hasItems = applyForYouPage(
+                            page = result.data,
+                            profile = profile,
+                            inLibraryIds = inLibraryIds,
+                            rotate = rotate,
+                            nextSortIndex = nextSortIndex,
+                        )
+                        if (!hasItems && !_forYouEndReached.value) {
+                            val nextOffset = forYouCurrentOffset
+                            if (nextOffset != null) {
+                                executeLoadMoreForYou(nextOffset)
+                            }
                         }
                     }
+                    is AppResult.Error -> exposeForYouFailure(result.error, retry)
                 }
-                is AppResult.Error -> exposeForYouFailure(result.error, retry)
+            } finally {
+                _forYouLoading.value = false
             }
         }
     }
@@ -212,6 +228,15 @@ internal class DiscoverForYouLoader(
                 null
             }
         }
+    }
+
+    private fun buildProfile(signals: List<RecommendationSignal>): RecommendationProfile {
+        val prefs = userPreferences()
+        return RecommendationProfileBuilder.build(
+            signals = signals,
+            coldStartGenres = prefs.recommendationGenres,
+            coldStartPlatforms = expandRecommendationPlatforms(prefs.recommendationPlatforms),
+        )
     }
 
     private fun exposeForYouFailure(error: AppError, retry: ForYouRetry) {
@@ -278,8 +303,8 @@ internal class DiscoverForYouLoader(
                     return@withLock
                 }
             }
-            val profile = RecommendationProfileBuilder.build(signals)
-            if (profile.isColdStart) {
+            val profile = buildProfile(signals)
+            if (!profile.hasRankingSignal) {
                 applyColdStartRecommendations(forYouSortIndex)
                 return@withLock
             }

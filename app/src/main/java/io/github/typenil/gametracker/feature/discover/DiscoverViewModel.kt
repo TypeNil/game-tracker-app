@@ -10,9 +10,12 @@ import io.github.typenil.gametracker.core.data.recommendations.DiscoverRecommend
 import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
+import io.github.typenil.gametracker.core.model.UserPreferences
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -21,6 +24,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,17 +37,20 @@ class DiscoverViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val libraryRepository: LibraryRepository,
     private val librarySeeder: LibrarySeeder,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val networkMonitor: NetworkMonitor? = null,
 ) : ViewModel() {
 
     private val selectionManager = DiscoverSelectionManager()
     private val railLoader = DiscoverRailLoader(gameRepository, viewModelScope)
+    private val userPreferences = MutableStateFlow(UserPreferences())
     private val forYouLoader = DiscoverForYouLoader(
         gameRepository = gameRepository,
         libraryRepository = libraryRepository,
         scope = viewModelScope,
         onUserMessage = { userMessageRes.value = it },
         isRefreshing = { refreshing.value },
+        userPreferences = { userPreferences.value },
     )
 
     private val loading = MutableStateFlow(true)
@@ -78,7 +86,8 @@ class DiscoverViewModel @Inject constructor(
             combine(librarySnapshot, editingGameId, isLibrarySubmitting, ::LibraryUi),
             ::Flags,
         ),
-    ) { tab, forYou, railData, flags ->
+        userPreferences,
+    ) { tab, forYou, railData, flags, prefs ->
         DiscoverUiState(
             selectedTab = tab,
             selectedRail = railData.selectedRail,
@@ -94,6 +103,9 @@ class DiscoverViewModel @Inject constructor(
             librarySnapshot = flags.library.snapshot,
             editingGameId = flags.library.editingGameId,
             isLibrarySubmitting = flags.library.isSubmitting,
+            recommendationGenres = prefs.recommendationGenres,
+            recommendationPlatforms = prefs.recommendationPlatforms,
+            recommendationOnboardingDismissed = prefs.recommendationOnboardingDismissed,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -104,33 +116,15 @@ class DiscoverViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                libraryRepository.getLibraryGamesFlow().collect { result ->
-                    when (result) {
-                        is AppResult.Success -> {
-                            val games = result.data
-                            librarySnapshot.value = LibrarySnapshot.Ready(
-                                games.associate { it.entry.gameId to it.entry },
-                            )
-                            val entries = games.map { it.entry }.toSet()
-                            val isInitial = lastLibraryEntries == null
-                            val libraryChanged = lastLibraryEntries != entries
-                            lastLibraryEntries = entries
-                            if (!isInitial && !libraryChanged) return@collect
-                            if (refreshing.value && !libraryChanged) return@collect
-                            if (isInitial || forYouLoader.recommendations.value.isEmpty()) {
-                                forYouLoader.rebuildRecommendations(rotate = false)
-                            } else {
-                                forYouLoader.updateLibraryRecommendations(games)
-                            }
-                            loading.value = false
-                        }
-                        is AppResult.Error -> {
-                            librarySnapshot.value = LibrarySnapshot.Failed(result.error)
-                            userMessageRes.value = R.string.error_library_load_failed
-                            loading.value = false
-                        }
+                combine(
+                    libraryRepository.getLibraryGamesFlow(),
+                    userPreferencesRepository.preferences.distinctUntilChanged(),
+                ) { libraryResult, preferences -> libraryResult to preferences }
+                    .collectLatest { (libraryResult, preferences) ->
+                        val prefsChanged = userPreferences.value != preferences
+                        userPreferences.value = preferences
+                        handleLibraryResult(libraryResult, forceRebuild = prefsChanged)
                     }
-                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -146,6 +140,37 @@ class DiscoverViewModel @Inject constructor(
             }
         }
         observeNetworkReconnect()
+    }
+
+    private suspend fun handleLibraryResult(
+        result: AppResult<List<LibraryGame>>,
+        forceRebuild: Boolean,
+    ) {
+        when (result) {
+            is AppResult.Success -> {
+                val games = result.data
+                librarySnapshot.value = LibrarySnapshot.Ready(
+                    games.associate { it.entry.gameId to it.entry },
+                )
+                val entries = games.map { it.entry }.toSet()
+                val isInitial = lastLibraryEntries == null
+                val libraryChanged = lastLibraryEntries != entries
+                if (!isInitial && !libraryChanged && !forceRebuild) return
+                if (refreshing.value && !libraryChanged && !forceRebuild) return
+                if (forceRebuild || isInitial || forYouLoader.recommendations.value.isEmpty()) {
+                    forYouLoader.rebuildRecommendations(rotate = false)
+                } else {
+                    forYouLoader.updateLibraryRecommendations(games)
+                }
+                lastLibraryEntries = entries
+                loading.value = false
+            }
+            is AppResult.Error -> {
+                librarySnapshot.value = LibrarySnapshot.Failed(result.error)
+                userMessageRes.value = R.string.error_library_load_failed
+                loading.value = false
+            }
+        }
     }
 
     fun selectTab(tab: DiscoverTab) {
@@ -239,6 +264,26 @@ class DiscoverViewModel @Inject constructor(
 
     fun loadMoreForYou() {
         forYouLoader.loadMoreForYou()
+    }
+
+    suspend fun saveRecommendationPreferences(genres: Set<String>, platforms: Set<String>): Boolean {
+        return when (val result = userPreferencesRepository.setRecommendationPreferences(genres, platforms)) {
+            is AppResult.Success -> true
+            is AppResult.Error -> {
+                userMessageRes.value = R.string.error_preferences_save_failed
+                false
+            }
+        }
+    }
+
+    suspend fun skipRecommendationOnboarding(): Boolean {
+        return when (userPreferencesRepository.skipRecommendationOnboarding()) {
+            is AppResult.Success -> true
+            is AppResult.Error -> {
+                userMessageRes.value = R.string.error_preferences_save_failed
+                false
+            }
+        }
     }
 
 

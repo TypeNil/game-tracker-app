@@ -96,18 +96,7 @@ class RecommendationProfileBuilderTest {
     }
 
     @Test
-    fun coldStart_fillsOnlyEmptyPositiveAxis() {
-        val onlyPlatforms = RecommendationProfileBuilder.build(
-            signals = listOf(signal(status = LibraryStatus.COMPLETED, platforms = listOf("PC"))),
-            coldStartGenres = setOf("Indie"),
-            coldStartPlatforms = setOf("PS5"),
-        )
-        assertEquals(1f, onlyPlatforms.genreWeights.getValue("Indie"))
-        assertTrue(onlyPlatforms.platformWeights.isEmpty())
-        assertTrue("PS5" !in onlyPlatforms.platformWeights)
-
-        assertFalse(onlyPlatforms.isColdStart)
-
+    fun coldStart_fillsEmptyProfile_andBlendsUnderLibraryWeights() {
         val empty = RecommendationProfileBuilder.build(
             signals = emptyList(),
             coldStartGenres = setOf("Indie"),
@@ -116,6 +105,46 @@ class RecommendationProfileBuilderTest {
         assertTrue(empty.isColdStart)
         assertEquals(1f, empty.genreWeights.getValue("Indie"))
         assertEquals(1f, empty.platformWeights.getValue("PC"))
+        assertTrue(empty.hasRankingSignal)
+
+        val blended = RecommendationProfileBuilder.build(
+            signals = listOf(signal(status = LibraryStatus.COMPLETED, genres = listOf("RPG"))),
+            coldStartGenres = setOf("Indie"),
+            coldStartPlatforms = setOf("PS5"),
+        )
+        assertFalse(blended.isColdStart)
+        assertEquals(1f, blended.genreWeights.getValue("RPG"))
+        assertEquals(
+            RecommendationProfileBuilder.COLD_START / RecommendationProfileBuilder.PLAYING_OR_COMPLETED,
+            blended.genreWeights.getValue("Indie"),
+            0.0001f,
+        )
+        assertEquals(1f, blended.platformWeights.getValue("PS5"))
+    }
+
+    @Test
+    fun coldStartBlend_decaysAsLibraryEvidenceGrows() {
+        val oneGame = RecommendationProfileBuilder.build(
+            signals = listOf(
+                signal(gameId = 1, status = LibraryStatus.COMPLETED, genres = listOf("RPG")),
+            ),
+            coldStartGenres = setOf("Indie"),
+        )
+        val fiveGames = RecommendationProfileBuilder.build(
+            signals = (1L..5L).map { id ->
+                signal(gameId = id, status = LibraryStatus.COMPLETED, genres = listOf("RPG"))
+            },
+            coldStartGenres = setOf("Indie"),
+        )
+        val indieOne = oneGame.genreWeights.getValue("Indie")
+        val indieFive = fiveGames.genreWeights.getValue("Indie")
+        assertTrue(indieFive < indieOne)
+        assertEquals(
+            RecommendationProfileBuilder.COLD_START /
+                (5 * RecommendationProfileBuilder.PLAYING_OR_COMPLETED),
+            indieFive,
+            0.0001f,
+        )
     }
 
     @Test

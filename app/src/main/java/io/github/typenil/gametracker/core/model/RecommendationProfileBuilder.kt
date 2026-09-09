@@ -71,12 +71,8 @@ object RecommendationProfileBuilder {
         }
 
         retainDominantPlatforms(positiveSignals, platforms)
-
-
         fillColdStart(genres, coldStartGenres)
-        if (positiveSignals.isEmpty()) {
-            fillColdStart(platforms, coldStartPlatforms)
-        }
+        fillColdStart(platforms, coldStartPlatforms)
 
 
         return RecommendationProfile(
@@ -95,7 +91,6 @@ object RecommendationProfileBuilder {
     }
 
     private fun fillColdStart(target: MutableMap<String, Float>, coldStart: Set<String>) {
-        if (target.values.any { it > 0f }) return
         for (tag in distinctTags(coldStart)) {
             target[tag] = (target[tag] ?: 0f) + COLD_START
         }

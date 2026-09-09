@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- For You contextual onboarding stores favorite genres/platforms in DataStore as decaying cold-start signals. Tune later from For You or Settings; library taste outranks onboarding prefs as it grows.
+
 ### Changed
 - Search is a top-level destination in bottom navigation (`Discover | Search | Library`). Query, filters, paging results, and scroll restore across tab switches; re-tapping Search focuses the field and scrolls to top.
 

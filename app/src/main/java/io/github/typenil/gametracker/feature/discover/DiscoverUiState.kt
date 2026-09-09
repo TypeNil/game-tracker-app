@@ -45,6 +45,9 @@ data class DiscoverUiState(
     val librarySnapshot: LibrarySnapshot = LibrarySnapshot.Loading,
     val editingGameId: Long? = null,
     val isLibrarySubmitting: Boolean = false,
+    val recommendationGenres: Set<String> = emptySet(),
+    val recommendationPlatforms: Set<String> = emptySet(),
+    val recommendationOnboardingDismissed: Boolean = false,
 ) {
     val isInitialLoading: Boolean
         get() = isLoading && recommendations.isEmpty() && rails.all { it.games.isEmpty() }
@@ -54,4 +57,7 @@ data class DiscoverUiState(
 
     val hasContent: Boolean
         get() = recommendations.isNotEmpty() || rails.any { it.games.isNotEmpty() }
+
+    val showRecommendationOnboarding: Boolean
+        get() = isColdStart && recommendations.isEmpty() && !recommendationOnboardingDismissed
 }

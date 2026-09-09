@@ -36,10 +36,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,12 +60,20 @@ import io.github.typenil.gametracker.core.notification.rememberNotificationPermi
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
+import io.github.typenil.gametracker.feature.discover.component.TuneRecommendationsSheet
 @Composable
 fun SettingsRoute(
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    recommendationGenres: Set<String> = emptySet(),
+    recommendationPlatforms: Set<String> = emptySet(),
+    onSaveRecommendationPreferences: suspend (Set<String>, Set<String>) -> Boolean = { _, _ -> true },
+    onSkipRecommendationOnboarding: suspend () -> Boolean = { true },
+    userMessageRes: Int? = null,
+    onUserMessageShown: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    var isTuneSheetOpen by rememberSaveable { mutableStateOf(false) }
     val notificationPermissionState = rememberNotificationPermissionState()
     var debugBffUrl by rememberSaveable {
         mutableStateOf(DebugBffUrlActions.currentUrl(context))
@@ -71,6 +83,9 @@ fun SettingsRoute(
     }
     val debugBffInvalidError = stringResource(R.string.settings_debug_bff_invalid_url)
     SettingsScreen(
+        onTuneRecommendations = { isTuneSheetOpen = true },
+        userMessageRes = userMessageRes,
+        onUserMessageShown = onUserMessageShown,
         hasNotificationPermission = notificationPermissionState.hasPermission,
         onRequestPermission = { notificationPermissionState.requestPermission() },
         onManageNotifications = {
@@ -135,12 +150,23 @@ fun SettingsRoute(
         },
         modifier = modifier
     )
+    if (isTuneSheetOpen) {
+        TuneRecommendationsSheet(
+            initialGenres = recommendationGenres,
+            initialPlatforms = recommendationPlatforms,
+            onDismiss = { isTuneSheetOpen = false },
+            onSave = onSaveRecommendationPreferences,
+            onSkip = onSkipRecommendationOnboarding,
+        )
+    }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     hasNotificationPermission: Boolean,
+    onTuneRecommendations: () -> Unit = {},
     onRequestPermission: () -> Unit,
     onManageNotifications: () -> Unit,
     onBackClick: () -> Unit,
@@ -155,11 +181,22 @@ fun SettingsScreen(
     onDebugBffUrlChange: (String) -> Unit = {},
     onSaveDebugBffUrl: () -> Unit = {},
     onResetDebugBffUrl: () -> Unit = {},
+    userMessageRes: Int? = null,
+    onUserMessageShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val userMessage = userMessageRes?.let { stringResource(it) }
+    LaunchedEffect(userMessage) {
+        userMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            onUserMessageShown()
+        }
+    }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(R.string.settings_title)) },
@@ -295,6 +332,33 @@ fun SettingsScreen(
                                 Text(text = stringResource(R.string.settings_notifications_check_now))
                             }
                         }
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(GtDimens.Gutter),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_recommendations_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_recommendations_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    OutlinedButton(onClick = onTuneRecommendations) {
+                        Text(text = stringResource(R.string.discover_tune_recommendations))
                     }
                 }
             }

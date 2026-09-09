@@ -47,6 +47,8 @@ fun NavGraphBuilder.discoverEntry(
             onSaveLibraryEntry = viewModel::onSaveLibraryEntry,
             onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
             onDismissEditLibrary = viewModel::onDismissEditLibrary,
+            onSaveRecommendationPreferences = viewModel::saveRecommendationPreferences,
+            onSkipRecommendationOnboarding = viewModel::skipRecommendationOnboarding,
             scrollToTopTrigger = scrollToTopTrigger(),
             onReadyToDraw = onReadyToDraw,
         )

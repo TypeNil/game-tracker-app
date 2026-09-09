@@ -432,9 +432,9 @@ class RecommendationCandidatesRequest(
     offsetParam: Int? = null,
     sortParam: String? = null,
 ) {
-    val genres: List<String> = parseTags(genresParam, "genres")
-    val themes: List<String> = parseTags(themesParam, "themes")
-    val platforms: List<String> = parseTags(platformsParam, "platforms")
+    val genres: List<String> = parseTags(genresParam, "genres", MAX_TAGS)
+    val themes: List<String> = parseTags(themesParam, "themes", MAX_TAGS)
+    val platforms: List<String> = parseTags(platformsParam, "platforms", MAX_PLATFORM_TAGS)
         .map(::canonicalPlatformName)
         .distinct()
     val exclude: List<Long> = parseIds(excludeParam, "exclude", max = MAX_EXCLUDE)
@@ -520,18 +520,19 @@ class RecommendationCandidatesRequest(
         const val DEFAULT_SORT = "follows"
         val SORTS = setOf("follows", "hypes", "first_release_date")
         const val MAX_TAGS = 5
+        const val MAX_PLATFORM_TAGS = 25
         const val MAX_EXCLUDE = 50
         const val MAX_SIMILAR_TO = 10
 
-        private fun parseTags(raw: List<String>?, label: String): List<String> {
+        private fun parseTags(raw: List<String>?, label: String, max: Int): List<String> {
             if (raw.isNullOrEmpty()) return emptyList()
             val tags = raw
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .map(TagNameValidator::validate)
                 .distinct()
-            if (tags.size > MAX_TAGS) {
-                throw IllegalArgumentException("Query parameter '$label' accepts at most $MAX_TAGS values")
+            if (tags.size > max) {
+                throw IllegalArgumentException("Query parameter '$label' accepts at most $max values")
             }
             return tags
         }

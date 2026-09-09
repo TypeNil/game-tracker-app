@@ -7,6 +7,7 @@ import androidx.compose.runtime.saveable.listSaver
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.model.GameSearchQuery
+import io.github.typenil.gametracker.core.model.RecommendationGenreCatalog
 import java.io.Serializable
 import java.time.Clock
 import java.time.Year
@@ -70,30 +71,7 @@ enum class MinRatingFilter(
  * Canonical IGDB wire names for genres.
  */
 object SearchGenreCatalog {
-    val wireNames: List<String> = listOf(
-        "Role-playing (RPG)",
-        "Action",
-        "Adventure",
-        "Shooter",
-        "Strategy",
-        "Turn-based strategy (TBS)",
-        "Real-time strategy (RTS)",
-        "Platform",
-        "Puzzle",
-        "Indie",
-        "Simulator",
-        "Sport",
-        "Racing",
-        "Fighting",
-        "Hack and slash/Beat 'em up",
-        "Music",
-        "Arcade",
-        "Visual Novel",
-        "Point-and-click",
-        "Tactical",
-        "MOBA",
-        "Card & Board Game"
-    )
+    val wireNames: List<String> = RecommendationGenreCatalog.wireNames
 }
 
 /**
