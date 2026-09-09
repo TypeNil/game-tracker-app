@@ -641,8 +641,8 @@ class DefaultGameRepository internal constructor(
                 // refreshed by every Discover/Search fetch, so gating on it would pin
                 // the screen to the skeleton for the whole TTL window.
                 val cached = gameDetailsDao.getGameDetails(id)
-                val isFresh = cached != null &&
-                    nowEpochSeconds() - cached.cachedAtEpochSeconds < DETAILS_TTL_SECONDS
+                val age = cached?.let { nowEpochSeconds() - it.cachedAtEpochSeconds }
+                val isFresh = age != null && age in 0 until DETAILS_TTL_SECONDS
                 if (!force && isFresh) return@runSuspendCatching
 
                 val remoteDetails = remoteDataSource.getGameDetails(id = id).toDomain()
