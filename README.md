@@ -2,144 +2,142 @@
 
 # GameTracker
 
-Оффлайн-ориентированное Android-приложение для каталогизации видеоигр и персонального трекинга. Каталог IGDB проксирует BFF на Kotlin/Ktor.
+Android-приложение для поиска игр, ведения личной библиотеки, отслеживания прогресса и персональных рекомендаций.
+
+Kotlin · Jetpack Compose · offline-first · Room / Paging 3 · Ktor BFF
 
 [![CI](https://github.com/TypeNil/game-tracker-app/actions/workflows/ci.yml/badge.svg)](https://github.com/TypeNil/game-tracker-app/actions/workflows/ci.yml)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
-[![Compose](https://img.shields.io/badge/Compose-BOM_2026.02-4285F4.svg?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Release](https://img.shields.io/github/v/release/TypeNil/game-tracker-app)](https://github.com/TypeNil/game-tracker-app/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-<br/>
 
 <img src="art/walkthrough.gif" width="340" alt="GameTracker Walkthrough" />
 
-*Критический путь: лента рекомендаций Discover → дебаунс-поиск с автодополнением → карточка игры с метаданными и скриншотами.*
+**[Скачать demo APK (v1.0.2)](https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.2/GameTracker-v1.0.2-demo.apk)**
+· [Релиз](https://github.com/TypeNil/game-tracker-app/releases/tag/v1.0.2)
+
+Signed `demoRelease`, оффлайн, без API-ключей. Портфолио-сборка, не Play-релиз.
 
 </div>
 
----
+## Возможности
 
-## Быстрый запуск демо
+- **Discover** — персональные рекомендации по библиотеке, чарты и предстоящие релизы
+- **Поиск** — каталог с фильтрами (жанр, платформа, рейтинг, год) и историей запросов
+- **Карточка игры** — метаданные, скриншоты, похожие игры, share и трейлер во внешнем плеере
+- **Библиотека** — Playing / Completed / Wishlist / Dropped / Not Interested, оценка 1–10, часы, заметки, избранное
+- **Уведомления** — локальные напоминания о релизе и deep link на карточку
+- **Языки** — английский и русский
 
-Готовый предсобранный **signed `demoRelease` APK** с автономными оффлайн-фикстурами (не требует ключей API и бэкенда). Package `io.github.typenil.gametracker.demo`, non-debuggable, R8. Это портфолио-сборка, не Play-релиз.
+## Стек
 
-```bash
-# 1. Скачайте signed demo APK
-curl --fail --location --output app-demo.apk https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.2/GameTracker-v1.0.2-demo.apk
-
-# 2. Установите и запустите на подключенном устройстве или эмуляторе
-adb install -r app-demo.apk && adb shell monkey -p io.github.typenil.gametracker.demo -c android.intent.category.LAUNCHER 1
-```
-
-*Сборка из исходников: `./gradlew :app:installDemoDebug`. Подпись demoRelease: [docs/DEMO_RELEASE_SIGNING.md](docs/DEMO_RELEASE_SIGNING.md).*
-
-> Скачиваемый demo APK полностью оффлайн. Flavor `live` — только из исходников и рассчитан на локальный BFF (`10.0.2.2`, LAN или `adb reverse`). Публичный production backend для этого портфолио не развёрнут.
-
----
-
-## Что есть в проекте
-
-- **Offline-First и Room SSOT**: реактивный источник правды на базе Room SQLite (схема `v6`, миграции `1→2→3→4→5→6`). UI наблюдает `Flow<List<Game>>` из репозитория; сетевые обновления атомарно фиксируются в транзакциях Room.
-- **Paging 3 + RemoteMediator**: пагинация с плотной индексацией (`dense ordinals`) в кросс-таблицах, валидацией кэша и оффлайн-восстановлением.
-- **BFF на Kotlin/Ktor**: секреты OAuth2 не попадают в мобильный клиент. Серверный rate limiter (не более 3.33 req/s) и single-flight in-memory кэш защищают квоты внешнего IGDB API.
-- **Рекомендации**: ranking на устройстве по жанрам, темам и платформам. В `live` кандидаты запрашиваются у BFF (seed/exclude IDs и теги, не оценки и заметки). Лента For You не пишется в Room.
-- **Jetpack Compose UI**: Material 3 токены, adaptive layouts, предиктивные анимации переходов и просмотрщик скриншотов с арбитражем жестов (pinch-to-zoom, pan bounds).
-- **WorkManager**: периодическая best-effort проверка дат релизов с дедупликацией уведомлений и типизированными deep links (`gametracker://game/{id}`). Не at-least-once.
-
----
+| Слой | Технологии |
+| :--- | :--- |
+| UI | Kotlin, Jetpack Compose, Material 3 |
+| Состояние | ViewModel, UDF, Coroutines / Flow |
+| Данные | Room, Paging 3 / RemoteMediator |
+| Сеть | Retrofit, OkHttp, kotlinx.serialization |
+| DI / фон | Hilt, WorkManager |
+| Backend | Ktor BFF (прокси IGDB) |
+| Качество | Detekt, Android Lint, unit / instrumentation / CI |
 
 ## Скриншоты
 
-| Лента Discover | Поиск в каталоге | Карточка игры |
-| :---: | :---: | :---: |
-| <img src="art/screenshot_discover.png" width="260" alt="Discover" /> | <img src="art/screenshot_search.png" width="260" alt="Search" /> | <img src="art/screenshot_details.png" width="260" alt="Details" /> |
+| Discover | Поиск |
+| :---: | :---: |
+| <img src="art/screenshot_discover.png" width="300" alt="Discover" /> | <img src="art/screenshot_search.png" width="300" alt="Search" /> |
 
-| Библиотека | Чарты и релизы | Просмотр скриншотов |
-| :---: | :---: | :---: |
-| <img src="art/screenshot_library.png" width="260" alt="Library" /> | <img src="art/screenshot_charts.png" width="260" alt="Charts" /> | <img src="art/screenshot_viewer.png" width="260" alt="Media Viewer" /> |
+| Карточка | Библиотека |
+| :---: | :---: |
+| <img src="art/screenshot_details.png" width="300" alt="Details" /> | <img src="art/screenshot_library.png" width="300" alt="Library" /> |
 
----
+<details>
+<summary>Чарты и просмотр скриншотов</summary>
+
+| Чарты | Media Viewer |
+| :---: | :---: |
+| <img src="art/screenshot_charts.png" width="220" alt="Charts" /> | <img src="art/screenshot_viewer.png" width="220" alt="Media Viewer" /> |
+
+</details>
+
+## Что интересно в инженерии
+
+- **Offline-first / Room SSOT.** UI читает `Flow` из Room. Сеть пишет в базу, не в экран — ранее загруженные данные каталога и библиотека остаются доступны без сети.
+- **Paging 3 + RemoteMediator.** Поиск использует Paging 3 поверх Room с `RemoteMediator`; Discover-ленты также кэшируются в Room и поддерживают постраничную догрузку.
+- **Coroutines / Flow.** UDF: состояние вниз, события вверх. Поиск отменяет устаревшие запросы.
+- **Ktor BFF.** Секреты IGDB остаются на сервере; live-клиент работает с IGDB только через BFF.
+- **WorkManager.** Фоновая сверка дат релиза по библиотеке и локальные уведомления.
+- **Тесты и CI.** Detekt, Android Lint, unit, Room-миграции, instrumentation/Compose и R8 — на каждый PR.
 
 ## Архитектура
-
-Приложение следует принципам **Unidirectional Data Flow (UDF)** и строгого разделения ответственности:
 
 ```mermaid
 flowchart LR
     UI["Compose UI"] --> VM["ViewModel / StateFlow"]
-    VM --> Repo["GameRepository"]
-    Repo --> DB[("Room SQLite (SSOT)")]
-    Repo --> BFF["Ktor BFF Gateway"]
-    BFF --> IGDB[("IGDB API v4")]
+    VM --> Repo["Repository"]
+    Repo --> DB[("Room SSOT")]
+    Repo --> BFF["Ktor BFF"]
+    BFF --> IGDB[("IGDB")]
 ```
 
-> Подробная системная диаграмма, sequence flow пагинации, разделение моделей (DTO ↔ Entity ↔ Domain) и организация пакетов описаны в [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).
+- UDF: UI рисует `UiState`, в сеть сам не ходит.
+- Room — постоянный источник правды для каталога и библиотеки.
+- Repository стыкует локальный кэш и BFF.
+- В UI только domain-модели, не network DTO.
 
----
+Подробности: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Режимы сборки: demo и live
+## Демо и запуск
 
-| Параметр | `demo` (по умолчанию) | `live` |
-| :--- | :--- | :--- |
-| **Источник данных** | Автономные локальные фикстуры | Ktor BFF по HTTP |
-| **Ключи API** | Не требуются | IGDB Client ID и Secret |
-| **Сеть** | Не требуется (работает оффлайн) | Требуется подключение к BFF |
-| **Назначение** | Оффлайн-фикстуры, тесты, быстрый запуск | Полный каталог IGDB при локальном BFF |
-
-> `liveDebug` ходит на локальный BFF. `liveRelease` намеренно fail-fast без HTTPS BFF URL и не входит в портфолио-релиз. Пошаговое руководство: [**docs/LOCAL_BFF_SETUP.md**](docs/LOCAL_BFF_SETUP.md).
-
----
-
-## Тестирование и CI
-
-В проекте настроен CI-пайплайн из **четырёх параллельных задач**:
-
-1. **Backend**: `:backend:detekt` → `:backend:check` → `:backend:build`.
-2. **Android**: `:app:detekt` → `testDemoDebugUnitTest` → `assembleDemoDebug` → `assembleLiveDebug`.
-3. **Инструментальные тесты**: `:app:connectedDemoDebugAndroidTest` на эмуляторе API 30 (тесты DAO Room, `MigrationTest`, `OfflineAcceptanceTest`, Compose UI).
-4. **API smoke**: только `MigrationTest` на API 26 и API 36. Полный connected suite остаётся на API 30.
-
-### Команды локальной проверки
+Оффлайн APK, package `io.github.typenil.gametracker.demo`:
 
 ```bash
-# Статический анализ Detekt:
-./gradlew :app:detekt :backend:detekt
+curl --fail --location --output app-demo.apk \
+  https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.2/GameTracker-v1.0.2-demo.apk
+adb install -r app-demo.apk
+adb shell monkey -p io.github.typenil.gametracker.demo -c android.intent.category.LAUNCHER 1
+```
 
-# Unit-тесты Android и бэкенда:
+```bash
+./gradlew :app:installDemoDebug    # оффлайн demo
+./gradlew :app:installLiveDebug    # каталог IGDB через локальный BFF
+```
+
+`live` — локальный Ktor BFF и ключи IGDB: [docs/LOCAL_BFF_SETUP.md](docs/LOCAL_BFF_SETUP.md). Публичный backend не развёрнут.
+
+## Тесты и CI
+
+На PR и `main`: Detekt (`:app`, `:backend`), Android Lint, unit-тесты Android и backend, Room-миграции, instrumentation / Compose UI, API smoke миграций на API 26 и 36, сборки `demo` / `live`, R8 (unsigned в CI; signed demo — portfolio-release).
+
+```bash
+./gradlew :app:detekt :backend:detekt
 ./gradlew :app:testDemoDebugUnitTest :backend:check
 ```
 
----
+## Инженерные решения
 
-## Инженерные решения и компромиссы
+- **Один модуль `:app`, package-by-feature.** Слои (`core/model`, `core/database`, `core/data`, `feature/*`) — соглашениями пакетов, без десятка Gradle-модулей «на вырост».
+- **Caffeine, не Redis.** BFF одноинстансный: кэш в процессе закрывает повторные запросы к IGDB без лишней инфраструктуры.
+- **Трейлер через системный Intent.** Плеер на устройстве уже есть; в APK нет WebView.
 
-- **Package-by-feature внутри единого `:app` вместо преждевременного мультимодуля**:
-  разделение по пакетам (`core/model`, `core/database`, `core/data`, `feature/*`) держит границы слоёв соглашениями структуры и code review, без штрафа Gradle на конфигурацию десятка модулей.
-- **Локальный кэш Caffeine вместо Redis**:
-  для одноинстансного BFF кэширование в памяти процесса даёт микросекундный доступ без внешней инфраструктуры.
-- **Воспроизведение видео через системный Intent**:
-  трейлеры открываются нативным приложением YouTube, без WebView и встроенного видеоплеера.
+<details>
+<summary>Ограничения</summary>
 
-## Ограничения
+- **For You в `live`:** ranking на устройстве, кандидаты с BFF; лента в памяти и не переживает смерть процесса.
+- **BFF:** локальный прокси без клиентской аутентификации. Публичный backend не развёрнут.
+- **Уведомления о релизе:** best-effort, не гарантия доставки.
+- **Backup:** записи библиотеки могут попасть в Android cloud backup / device transfer.
 
-- **For You (live)**: ranking на устройстве; кандидаты с BFF; лента memory-only и не переживает смерть процесса.
-- **BFF**: локальный одноинстансный demo-прокси без клиентской аутентификации. Публичный backend не развёрнут.
-- **Уведомления о релизе**: best-effort. WorkManager и дедуп не заменяют durable tracking baseline.
-- **Backup**: записи библиотеки могут попасть в Android cloud backup / device transfer.
-
+</details>
 
 ## Документация
 
-- [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — системная диаграмма, sequence диаграмма пагинации, Room SSOT, миграции схемы v1..v6 и организация слоёв.
-- [**docs/LOCAL_BFF_SETUP.md**](docs/LOCAL_BFF_SETUP.md) — запуск сервиса Ktor, ключи IGDB, привязка `0.0.0.0` vs `127.0.0.1`, `adb reverse` и сети Android.
-- [**docs/SECURITY.md**](docs/SECURITY.md) — модель угроз, жизненный цикл токенов OAuth2, SmoothRateLimiter, защита от APICalypse-инъекций и гигиена логов.
-- [**docs/DEMO_RELEASE_SIGNING.md**](docs/DEMO_RELEASE_SIGNING.md) — отдельный demo keystore, GitHub Secrets и подпись `demoRelease`.
-- [**docs/RECOMMENDATIONS.md**](docs/RECOMMENDATIONS.md) — формула эвристического движка, веса сигналов библиотеки, байесовское сглаживание и генерация объяснений.
-- [**docs/DEMO_SCENARIOS.md**](docs/DEMO_SCENARIOS.md) — adb-сценарии: тестовое уведомление (`ACTION_TEST_NOTIFICATION`), deep links, WorkManager и оффлайн-проверка.
-
----
+- [Architecture](docs/ARCHITECTURE.md) — слои, Room SSOT, пагинация
+- [Local BFF](docs/LOCAL_BFF_SETUP.md) — запуск Ktor и ключи IGDB
+- [Security](docs/SECURITY.md) — OAuth, квоты IGDB, логи
+- [Recommendations](docs/RECOMMENDATIONS.md) — эвристика For You
+- [Demo signing](docs/DEMO_RELEASE_SIGNING.md) — подпись `demoRelease`
+- [Demo scenarios](docs/DEMO_SCENARIOS.md) — deep links, уведомления, оффлайн
 
 ## Лицензия и атрибуция
 
-- Каталог игр, обложки и метаданные предоставлены [IGDB.com](https://www.igdb.com/) (Twitch Interactive).
-- Исходный код распространяется под открытой лицензией [MIT License](LICENSE).
+Каталог, обложки и метаданные — [IGDB.com](https://www.igdb.com/) (Twitch Interactive). Код — [MIT License](LICENSE).
