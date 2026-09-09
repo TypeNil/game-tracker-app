@@ -213,7 +213,10 @@
     <string name="insights_title">Insights</string>
     <string name="insights_action_desc">Library insights</string>
     <string name="insights_heading">Your Library</string>
-    <string name="insights_games_count">%1$s games</string>
+    <plurals name="insights_games_count">
+        <item quantity="one">%1$s game</item>
+        <item quantity="other">%1$s games</item>
+    </plurals>
     <string name="insights_hours_total">%1$s h</string>
     <string name="insights_completed_count">%1$s completed</string>
     <string name="insights_avg_rating">%1$s avg rating</string>

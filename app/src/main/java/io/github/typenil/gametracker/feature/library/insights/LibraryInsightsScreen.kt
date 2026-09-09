@@ -60,6 +60,10 @@ import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.ui.res.pluralStringResource
 import java.text.NumberFormat
 
 internal const val LIBRARY_INSIGHTS_SCREEN_TEST_TAG = "library-insights-screen"
@@ -96,7 +100,7 @@ fun LibraryInsightsScreen(
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        contentWindowInsets = WindowInsets.statusBars.union(WindowInsets.navigationBars),
         modifier = modifier
             .fillMaxSize()
             .testTag(LIBRARY_INSIGHTS_SCREEN_TEST_TAG),
@@ -318,8 +322,9 @@ private fun InsightsSummary(
         )
         Row(modifier = Modifier.fillMaxWidth()) {
             SummaryCell(
-                value = stringResource(
-                    R.string.insights_games_count,
+                value = pluralStringResource(
+                    R.plurals.insights_games_count,
+                    insights.totalGames,
                     integerFormat.format(insights.totalGames),
                 ),
                 modifier = Modifier.weight(1f),

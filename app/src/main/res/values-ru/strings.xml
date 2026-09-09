@@ -214,7 +214,12 @@
     <string name="insights_title">Статистика</string>
     <string name="insights_action_desc">Статистика библиотеки</string>
     <string name="insights_heading">Ваша библиотека</string>
-    <string name="insights_games_count">%1$s игр</string>
+    <plurals name="insights_games_count">
+        <item quantity="one">%1$s игра</item>
+        <item quantity="few">%1$s игры</item>
+        <item quantity="many">%1$s игр</item>
+        <item quantity="other">%1$s игр</item>
+    </plurals>
     <string name="insights_hours_total">%1$s ч</string>
     <string name="insights_completed_count">%1$s пройдено</string>
     <string name="insights_avg_rating">%1$s ср. оценка</string>
