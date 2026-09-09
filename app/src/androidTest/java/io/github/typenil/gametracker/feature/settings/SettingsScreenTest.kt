@@ -196,10 +196,10 @@ class SettingsScreenTest {
         val reset = composeTestRule.activity.getString(R.string.settings_debug_bff_reset)
 
         composeTestRule.onNodeWithText(title).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(label).assertIsDisplayed()
-        composeTestRule.onNodeWithText("http://10.0.2.2:8080").assertIsDisplayed()
-        composeTestRule.onNodeWithText(save).assertIsDisplayed()
-        composeTestRule.onNodeWithText(reset).assertIsDisplayed()
+        composeTestRule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("http://10.0.2.2:8080").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(save).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(reset).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -364,7 +364,7 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText(label).performScrollTo().performTextInput("notaurl")
         composeTestRule.onNodeWithText(save).performScrollTo().performClick()
 
-        composeTestRule.onNodeWithText(error).assertIsDisplayed()
+        composeTestRule.onNodeWithText(error).performScrollTo().assertIsDisplayed()
         composeTestRule.runOnIdle {
             assertNull(graphStore().currentUrl())
         }

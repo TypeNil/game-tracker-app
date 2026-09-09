@@ -16,6 +16,7 @@
     <string name="back_action_desc">Назад</string>
     <string name="retry_button">Повторить</string>
     <string name="error_network">Нет соединения с сетью. Проверьте интернет.</string>
+    <string name="error_preferences_save_failed">Не удалось сохранить настройки. Попробуйте снова.</string>
     <string name="error_rate_limit">Слишком много запросов. Подождите немного и попробуйте снова.</string>
     <string name="error_server">Сервер временно недоступен. Попробуйте позже.</string>
     <string name="error_generic">Произошла ошибка при обмене данными с сервером.</string>
@@ -242,6 +243,18 @@
     <string name="discover_cold_start_title">Пока нет рекомендаций</string>
     <string name="discover_cold_start_subtitle">Добавляйте игры в библиотеку и ставьте оценки — подберём рекомендации под ваш вкус.</string>
     <string name="discover_cold_start_action">Смотреть популярное</string>
+    <string name="discover_onboarding_title">Пока мы мало знаем о ваших вкусах</string>
+    <string name="discover_onboarding_subtitle">Выберите несколько жанров и платформ, чтобы настроить рекомендации.</string>
+    <string name="discover_onboarding_action">Настроить рекомендации</string>
+    <string name="discover_tune_recommendations">Настроить рекомендации</string>
+    <string name="discover_recommendations_use_library">Только библиотека</string>
+    <string name="discover_onboarding_skip">Пропустить</string>
+    <string name="discover_onboarding_save">Сохранить</string>
+    <string name="discover_onboarding_genres">Любимые жанры</string>
+    <string name="discover_onboarding_platforms">Платформы</string>
+    <string name="discover_onboarding_hint">Выберите минимум 3 жанра и 1 платформу.</string>
+    <string name="settings_recommendations_title">Рекомендации</string>
+    <string name="settings_recommendations_desc">Жанры и платформы как cold-start, пока в библиотеке мало сигналов о вкусе.</string>
     <string name="library_loading">Загружаем библиотеку…</string>
     <string name="discover_rail_empty">В этом чарте сейчас пусто</string>
     <string name="library_search_clear_action">Сбросить поиск и фильтры</string>

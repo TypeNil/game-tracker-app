@@ -30,6 +30,9 @@ object DiscoverFeedAssembler {
             .map { it.key }
     }
 
+    fun positiveTags(weights: Map<String, Float>): List<String> =
+        topPositiveTags(weights, limit = weights.size)
+
     fun similarSeedIds(signals: List<RecommendationSignal>, limit: Int = 10): List<Long> {
         return signals
             .filter {

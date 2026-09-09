@@ -253,6 +253,9 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
 
+    // DataStore (recommendation / future theme prefs)
+    implementation(libs.androidx.datastore.preferences)
+
     // Networking & Serialization
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.kotlinx.serialization)

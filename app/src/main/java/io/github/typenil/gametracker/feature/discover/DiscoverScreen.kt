@@ -69,6 +69,9 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
+import io.github.typenil.gametracker.feature.recommendations.TuneRecommendationsSheet
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
 
@@ -93,6 +96,9 @@ fun DiscoverScreen(
     onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
     onDismissEditLibrary: () -> Unit = {},
+    onSaveRecommendationPreferences: suspend (Set<String>, Set<String>) -> Boolean = { _, _ -> true },
+    onSkipRecommendationOnboarding: suspend () -> Boolean = { true },
+    onResetRecommendationPreferences: suspend () -> Boolean = { true },
 
     scrollToTopTrigger: Long = 0L,
     onReadyToDraw: () -> Unit = {},
@@ -117,6 +123,7 @@ fun DiscoverScreen(
     }
     val readyLibrary = uiState.librarySnapshot as? LibrarySnapshot.Ready
     val editingEntry = uiState.editingGameId?.let { readyLibrary?.entries?.get(it) }
+    var isTuneSheetOpen by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
@@ -151,6 +158,8 @@ fun DiscoverScreen(
                 onLoadMoreForYou = onLoadMoreForYou,
                 onRetryForYou = onRetryForYou,
                 onLibraryAction = onLibraryAction,
+                onOpenTuneRecommendations = { isTuneSheetOpen = true },
+                onSkipRecommendationOnboarding = onSkipRecommendationOnboarding,
                 scrollToTopTrigger = scrollToTopTrigger,
                 modifier = contentModifier,
             )
@@ -165,6 +174,17 @@ fun DiscoverScreen(
             },
             onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
             actionsEnabled = !uiState.isLibrarySubmitting,
+        )
+    }
+    if (isTuneSheetOpen) {
+        TuneRecommendationsSheet(
+            initialTags = uiState.recommendationGenres + uiState.recommendationThemes,
+            initialPlatforms = uiState.recommendationPlatforms,
+            onboardingDismissed = uiState.recommendationOnboardingDismissed,
+            onDismiss = { isTuneSheetOpen = false },
+            onSave = onSaveRecommendationPreferences,
+            onSkip = onSkipRecommendationOnboarding,
+            onReset = onResetRecommendationPreferences,
         )
     }
 }
@@ -182,6 +202,8 @@ private fun DiscoverContent(
     onRetryForYou: () -> Unit,
 
     onLibraryAction: (Game) -> Unit,
+    onOpenTuneRecommendations: () -> Unit,
+    onSkipRecommendationOnboarding: suspend () -> Boolean,
     scrollToTopTrigger: Long,
     modifier: Modifier,
 ) {
@@ -251,6 +273,8 @@ private fun DiscoverContent(
                         onBrowseChartsClick = { onSelectTab(DiscoverTab.CHARTS) },
                         onLoadMoreForYou = onLoadMoreForYou,
                         onRetryForYou = onRetryForYou,
+                        onOpenTuneRecommendations = onOpenTuneRecommendations,
+                        onSkipRecommendationOnboarding = onSkipRecommendationOnboarding,
                     )
 
                     DiscoverTab.CHARTS -> ChartsFeed(
@@ -307,6 +331,8 @@ private fun ForYouFeed(
     onBrowseChartsClick: () -> Unit,
     onLoadMoreForYou: () -> Unit,
     onRetryForYou: () -> Unit,
+    onOpenTuneRecommendations: () -> Unit,
+    onSkipRecommendationOnboarding: suspend () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     val shouldLoadMore by remember {
@@ -326,16 +352,22 @@ private fun ForYouFeed(
         }
     }
 
-    if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
-        ColdStartCard(
-            onBrowseChartsClick = onBrowseChartsClick,
-            modifier = modifier.padding(GtDimens.Gutter),
-        )
-    } else if (uiState.recommendations.isEmpty() && uiState.forYouError != null) {
+    if (uiState.recommendations.isEmpty() && uiState.forYouError != null) {
         DiscoverErrorState(
             error = uiState.forYouError,
             onRetry = onRetryForYou,
             modifier = modifier.fillMaxSize(),
+        )
+    } else if (uiState.forYouLoading && uiState.recommendations.isEmpty()) {
+        DiscoverLoadingState(modifier.fillMaxSize())
+    } else if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
+        ColdStartCard(
+            isOnboarding = uiState.showRecommendationOnboarding,
+            onSetUpClick = onOpenTuneRecommendations,
+            onSkipClick = onSkipRecommendationOnboarding,
+            onTuneClick = onOpenTuneRecommendations,
+            onBrowseChartsClick = onBrowseChartsClick,
+            modifier = modifier.padding(GtDimens.Gutter),
         )
     } else {
         LazyColumn(
@@ -344,6 +376,11 @@ private fun ForYouFeed(
             contentPadding = PaddingValues(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item(key = "tune-recommendations") {
+                TextButton(onClick = onOpenTuneRecommendations) {
+                    Text(stringResource(R.string.discover_tune_recommendations))
+                }
+            }
             items(uiState.recommendations, key = { "for-you:${it.game.id}" }) { recommendation ->
                 RecommendationCard(recommendation, onGameClick)
             }
@@ -388,9 +425,14 @@ private fun ForYouFeed(
 
 @Composable
 private fun ColdStartCard(
+    isOnboarding: Boolean,
+    onSetUpClick: () -> Unit,
+    onSkipClick: suspend () -> Boolean,
+    onTuneClick: () -> Unit,
     onBrowseChartsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -402,19 +444,37 @@ private fun ColdStartCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = stringResource(R.string.discover_cold_start_title),
+                text = stringResource(
+                    if (isOnboarding) R.string.discover_onboarding_title else R.string.discover_cold_start_title,
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.discover_cold_start_subtitle),
+                text = stringResource(
+                    if (isOnboarding) R.string.discover_onboarding_subtitle else R.string.discover_cold_start_subtitle,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(16.dp))
+            if (isOnboarding) {
+                Button(onClick = onSetUpClick) {
+                    Text(stringResource(R.string.discover_onboarding_action))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { scope.launch { onSkipClick() } }) {
+                    Text(stringResource(R.string.discover_onboarding_skip))
+                }
+            } else {
+                Button(onClick = onTuneClick) {
+                    Text(stringResource(R.string.discover_tune_recommendations))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             OutlinedButton(onClick = onBrowseChartsClick) {
                 Text(stringResource(R.string.discover_cold_start_action))
             }

@@ -7,6 +7,8 @@ import io.github.typenil.gametracker.core.data.recommendations.LibrarySeeder
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
+import io.github.typenil.gametracker.core.data.FakeUserPreferencesRepository
+import io.github.typenil.gametracker.core.model.UserPreferences
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
@@ -879,6 +881,7 @@ class DiscoverViewModelTest {
             gameRepository = gameRepository,
             libraryRepository = libraryRepository,
             librarySeeder = librarySeeder,
+            userPreferencesRepository = FakeUserPreferencesRepository(),
             networkMonitor = networkMonitor,
         )
 
@@ -938,6 +941,7 @@ class DiscoverViewModelTest {
             gameRepository = gameRepository,
             libraryRepository = libraryRepository,
             librarySeeder = librarySeeder,
+            userPreferencesRepository = FakeUserPreferencesRepository(),
             networkMonitor = networkMonitor,
         )
 
@@ -1226,14 +1230,92 @@ class DiscoverViewModelTest {
         assertTrue(viewModel.uiState.value.recommendations.isEmpty())
     }
 
+    @Test
+    fun emptyLibrary_withColdStartPrefs_fetchesForYouCandidates() = runTest {
+        val prefs = FakeUserPreferencesRepository(
+            UserPreferences(
+                recommendationGenres = setOf("Role-playing (RPG)", "Action", "Adventure"),
+                recommendationPlatforms = setOf("NINTENDO"),
+                recommendationOnboardingDismissed = true,
+            ),
+        )
+        stubCandidatePages {
+            candidatePage(
+                items = listOf(rpgCandidate(101L, "Rec 101")),
+                nextOffset = null,
+                endReached = true,
+            )
+        }
+        val viewModel = createViewModel(prefs)
+        viewModel.uiState.test {
+            val filled = awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            assertEquals(listOf(101L), filled.recommendations.map { it.game.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify(atLeast = 1) {
+            gameRepository.getRecommendationCandidatesPage(
+                genres = match { tags ->
+                    tags.containsAll(listOf("Adventure", "Role-playing (RPG)")) &&
+                        "Action" !in tags
+                },
+                themes = match { tags -> "Action" in tags },
+                platforms = match { tags ->
+                    tags.containsAll(
+                        listOf(
+                            "Nintendo Switch", "Nintendo Switch 2", "Wii U", "Wii",
+                            "Nintendo 3DS", "Nintendo DS", "Nintendo 64", "SNES", "NES",
+                        ),
+                    )
+                },
+                exclude = any(),
+                similarTo = any(),
+                limit = any(),
+                offset = any(),
+                sort = any(),
+            )
+        }
+    }
+
+    @Test
+    fun resetPrefs_clearsColdStartSignalsAndStopsFetchOnEmptyLibrary() = runTest {
+        val prefs = FakeUserPreferencesRepository(
+            UserPreferences(
+                recommendationGenres = setOf("Role-playing (RPG)", "Action", "Adventure"),
+                recommendationPlatforms = setOf("NINTENDO"),
+                recommendationOnboardingDismissed = true,
+            ),
+        )
+        stubCandidatePages {
+            candidatePage(
+                items = listOf(rpgCandidate(101L, "Rec 101")),
+                nextOffset = null,
+                endReached = true,
+            )
+        }
+        val viewModel = createViewModel(prefs)
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            val cleared = viewModel.resetRecommendationPreferences()
+            assertTrue(cleared)
+            val cold = awaitItemUntil { it.isColdStart && it.recommendations.isEmpty() }
+            assertTrue(cold.recommendationOnboardingDismissed)
+            assertTrue(cold.recommendationGenres.isEmpty())
+            assertTrue(cold.recommendationPlatforms.isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
 
 
-    private fun createViewModel(): DiscoverViewModel {
+
+    private fun createViewModel(
+        userPreferencesRepository: FakeUserPreferencesRepository = FakeUserPreferencesRepository(),
+    ): DiscoverViewModel {
         return DiscoverViewModel(
             gameRepository = gameRepository,
             libraryRepository = libraryRepository,
             librarySeeder = librarySeeder,
+            userPreferencesRepository = userPreferencesRepository,
         )
     }
 

@@ -10,4 +10,9 @@ data class RecommendationProfile(
     val platformWeights: Map<String, Float>,
     val excludedGameIds: Set<Long>,
     val isColdStart: Boolean,
-)
+) {
+    val hasRankingSignal: Boolean
+        get() = genreWeights.values.any { it > 0f } ||
+            themeWeights.values.any { it > 0f } ||
+            platformWeights.values.any { it > 0f }
+}

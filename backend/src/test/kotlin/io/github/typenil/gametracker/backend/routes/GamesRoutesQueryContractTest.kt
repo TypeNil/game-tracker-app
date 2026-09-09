@@ -349,6 +349,54 @@ class GamesRoutesQueryContractTest {
     }
 
     @Test
+    fun `recommendation candidates endpoint accepts expanded Nintendo platform family`() = testApplication {
+        val seenQueries = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            val body = (request.body as TextContent).text
+            seenQueries += body
+            respond(
+                content = sampleIgdbJson,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val clientHttp = HttpClient(engine) {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        val service = IgdbService(clientHttp, mockTokenManager, mockConfig)
+        val cache = BffCache()
+        application { testModule(service, cache) }
+        val client = createClient {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+        val nintendo = listOf(
+            "Nintendo Switch",
+            "Nintendo Switch 2",
+            "Wii U",
+            "Wii",
+            "Nintendo 3DS",
+            "Nintendo DS",
+            "Nintendo 64",
+            "SNES",
+            "NES",
+        )
+        val path = "/v1/recommendations/candidates?" +
+            nintendo.joinToString("&") { "platforms=${java.net.URLEncoder.encode(it, "UTF-8")}" }
+        val response = client.get(path)
+        assertEquals(HttpStatusCode.OK, response.status)
+        val apicalypse = seenQueries.last()
+        nintendo.forEach { name ->
+            assertTrue(
+                "Apicalypse should contain $name, but got: $apicalypse",
+                apicalypse.contains(name),
+            )
+        }
+
+        cache.close()
+    }
+
+    @Test
     fun `platforms alias PC produces APICalypse containing PC Microsoft Windows for search and recommendations`() = testApplication {
         val seenQueries = mutableListOf<String>()
         val engine = MockEngine { request ->

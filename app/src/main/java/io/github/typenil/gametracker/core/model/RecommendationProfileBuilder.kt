@@ -27,6 +27,7 @@ object RecommendationProfileBuilder {
     fun build(
         signals: List<RecommendationSignal>,
         coldStartGenres: Set<String> = emptySet(),
+        coldStartThemes: Set<String> = emptySet(),
         coldStartPlatforms: Set<String> = emptySet(),
     ): RecommendationProfile {
         val excludedGameIds = signals
@@ -71,12 +72,9 @@ object RecommendationProfileBuilder {
         }
 
         retainDominantPlatforms(positiveSignals, platforms)
-
-
         fillColdStart(genres, coldStartGenres)
-        if (positiveSignals.isEmpty()) {
-            fillColdStart(platforms, coldStartPlatforms)
-        }
+        fillColdStart(themes, coldStartThemes)
+        fillColdStart(platforms, coldStartPlatforms)
 
 
         return RecommendationProfile(
@@ -95,7 +93,6 @@ object RecommendationProfileBuilder {
     }
 
     private fun fillColdStart(target: MutableMap<String, Float>, coldStart: Set<String>) {
-        if (target.values.any { it > 0f }) return
         for (tag in distinctTags(coldStart)) {
             target[tag] = (target[tag] ?: 0f) + COLD_START
         }
