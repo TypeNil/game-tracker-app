@@ -163,8 +163,8 @@ fun AppNavHost(
                 onNavigateToDiscover = appState::navigateToDiscover,
                 onNavigateToSearch = appState::navigateToSearch,
                 onNavigateToLibrary = appState::navigateToLibrary,
-                onScrollToTopDiscover = { scrollToTopDiscoverTrigger = System.currentTimeMillis() },
-                onSearchRetap = { searchRetapTrigger = System.currentTimeMillis() },
+                onScrollToTopDiscover = { scrollToTopDiscoverTrigger++ },
+                onSearchRetap = { searchRetapTrigger++ },
             )
         }
 
@@ -199,7 +199,7 @@ private fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.Explore,
-                    contentDescription = stringResource(R.string.nav_discover)
+                    contentDescription = null,
                 )
             },
             label = { Text(stringResource(R.string.nav_discover)) }
@@ -218,7 +218,7 @@ private fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.nav_search)
+                    contentDescription = null,
                 )
             },
             label = { Text(stringResource(R.string.nav_search)) }
@@ -235,7 +235,7 @@ private fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.CollectionsBookmark,
-                    contentDescription = stringResource(R.string.nav_library)
+                    contentDescription = null,
                 )
             },
             label = { Text(stringResource(R.string.nav_library)) }

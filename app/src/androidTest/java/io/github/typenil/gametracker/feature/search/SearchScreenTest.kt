@@ -387,6 +387,24 @@ class SearchScreenTest {
     }
 
     @Test
+    fun searchField_keepsAccessibleNameWhenQueryIsFilled() {
+        val context = composeTestRule.activity
+
+        composeTestRule.setContent {
+            SearchScreen(
+                uiState = SearchUiState(query = "Witcher", searchActive = true),
+                searchResults = pendingPaged(),
+                onQueryChange = {},
+                onClearQuery = {},
+                onGameClick = {},
+            )
+        }
+
+        val searchDescription = context.getString(R.string.search_action_desc)
+        composeTestRule.onNodeWithContentDescription(searchDescription).assertIsDisplayed()
+    }
+
+    @Test
     fun filterBar_rendersActiveFilterChips_andForwardsRemovals() {
         var genreToggled = false
         val filters = SearchFilters(

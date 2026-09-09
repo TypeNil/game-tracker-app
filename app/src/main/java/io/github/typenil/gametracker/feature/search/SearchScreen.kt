@@ -155,7 +155,12 @@ fun SearchScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = topLevelBottomInset()),
+            )
+        },
         topBar = {
             SearchTopBar(
                 query = uiState.query,
