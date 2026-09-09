@@ -160,9 +160,7 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-    fun retry() = hydrate(isUserPullToRefresh = false)
-
-    fun refresh() = hydrate(isUserPullToRefresh = true)
+    fun refresh() = hydrate()
 
     fun retryForYou() {
         forYouLoader.retryForYou()
@@ -252,22 +250,19 @@ class DiscoverViewModel @Inject constructor(
         )
     }
 
-    private fun hydrate(isUserPullToRefresh: Boolean) {
+    private fun hydrate() {
         railLoader.cancelJobs()
         hydrateJob?.cancel()
         forYouLoader.cancelJobs()
-        hydrateJob = viewModelScope.launch { performHydrate(isUserPullToRefresh) }
+        hydrateJob = viewModelScope.launch { performRefresh() }
     }
 
-    private suspend fun performHydrate(isUserPullToRefresh: Boolean) {
-        if (isUserPullToRefresh) refreshing.value = true
-        else if (forYouLoader.recommendations.value.isEmpty()) loading.value = true
-        if (isUserPullToRefresh) {
-            val selected = selectionManager.selectedRail.value
-            railLoader.resetRailForRefresh(selected)
-            railLoader.refreshRail(selected, append = false) { userMessageRes.value = it }
-        }
-        forYouLoader.rebuildRecommendations(rotate = isUserPullToRefresh)
+    private suspend fun performRefresh() {
+        refreshing.value = true
+        val selected = selectionManager.selectedRail.value
+        railLoader.resetRailForRefresh(selected)
+        railLoader.refreshRail(selected, append = false) { userMessageRes.value = it }
+        forYouLoader.rebuildRecommendations(rotate = true)
         loading.value = false
         refreshing.value = false
     }

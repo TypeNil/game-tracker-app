@@ -16,7 +16,6 @@ data class DiscoverRecommendation(
 
 data class DiscoverFeed(
     val recommendations: List<DiscoverRecommendation>,
-    val trending: List<Game>,
 )
 
 object DiscoverFeedAssembler {
@@ -48,7 +47,6 @@ object DiscoverFeedAssembler {
     fun assemble(
         profile: RecommendationProfile,
         candidates: List<RecommendationCandidate>,
-        trending: List<Game>,
         inLibraryIds: Set<Long> = emptySet(),
         shownIds: Set<Long> = emptySet(),
         pageSize: Int = FOR_YOU_PAGE_SIZE,
@@ -63,12 +61,7 @@ object DiscoverFeedAssembler {
         }
         val unseen = eligible.filter { it.game.id !in shownIds }
         val recommendations = (if (unseen.isEmpty()) eligible else unseen).take(pageSize)
-        val recIds = recommendations.map { it.game.id }.toSet()
-        val hiddenFromTrending = recIds + profile.excludedGameIds
-        return DiscoverFeed(
-            recommendations = recommendations,
-            trending = trending.filter { it.id !in hiddenFromTrending },
-        )
+        return DiscoverFeed(recommendations = recommendations)
     }
 
     private fun RecommendationCandidate.toGame(): Game {

@@ -163,7 +163,7 @@ class DiscoverViewModelTest {
 
 
     @Test
-    fun positiveLibrary_buildsForYouAndDropsRecFromTrending() = runTest {
+    fun positiveLibrary_buildsForYouRecommendations() = runTest {
         coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(
                 gameId = 1942L,

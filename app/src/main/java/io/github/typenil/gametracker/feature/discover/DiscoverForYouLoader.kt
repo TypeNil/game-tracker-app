@@ -354,7 +354,6 @@ internal fun reduceForYouAppend(input: ForYouPageInput): ForYouTransition {
     val newFeed = DiscoverFeedAssembler.assemble(
         profile = input.profile,
         candidates = input.page.items,
-        trending = emptyList(),
         inLibraryIds = input.inLibraryIds,
         shownIds = shownIds,
         pageSize = Int.MAX_VALUE,
@@ -400,7 +399,6 @@ internal fun reduceForYouRebuild(
     return DiscoverFeedAssembler.assemble(
         profile = profile,
         candidates = page.items,
-        trending = emptyList(),
         inLibraryIds = inLibraryIds,
         shownIds = historicShownIds,
         pageSize = Int.MAX_VALUE,
