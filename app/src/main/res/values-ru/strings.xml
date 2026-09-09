@@ -36,6 +36,7 @@
     <string name="search_sort_date_desc">Сначала новые</string>
     <string name="search_sort_date_asc">Сначала старые</string>
     <string name="search_sort_name_asc">По названию (А–Я)</string>
+    <string name="search_sort_text_uses_relevance">Текстовый поиск всегда сортируется по релевантности</string>
 
     <!-- Search Filter Options -->
     <string name="search_filter_year_all">За всё время</string>
