@@ -15,16 +15,14 @@ import java.util.Locale
  */
 object ReleaseNotificationPayload {
 
-    private const val HASH_MULTIPLIER = 31
     private const val POSITIVE_INTEGER_MASK = 0x7FFFFFFF
 
     fun buildDeepLinkUri(gameId: Long): String {
         return "gametracker://game/$gameId"
     }
 
-    fun computeNotificationId(gameId: Long, eventType: NotificationEventType): Int {
-        val hash = gameId.hashCode() * HASH_MULTIPLIER + eventType.hashCode()
-        return hash and POSITIVE_INTEGER_MASK
+    fun computeNotificationId(event: ReleaseEvent): Int {
+        return event.eventKey.hashCode() and POSITIVE_INTEGER_MASK
     }
 
     /**
