@@ -8,6 +8,7 @@ import androidx.navigation.NavDestinationBuilder
 import androidx.navigation.Navigator
 import io.github.typenil.gametracker.feature.details.navigation.GameDetailsKey
 import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
+import io.github.typenil.gametracker.feature.library.navigation.LibraryInsightsKey
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.search.navigation.SearchKey
 import io.github.typenil.gametracker.feature.settings.navigation.SettingsKey
@@ -77,6 +78,9 @@ class AppNavigationMotionTest {
 
         val settings = NavDestinationBuilder(navigator, route = SettingsKey::class, typeMap = emptyMap()).build()
         assertFalse(settings.isTopLevelDestination())
+
+        val insights = NavDestinationBuilder(navigator, route = LibraryInsightsKey::class, typeMap = emptyMap()).build()
+        assertFalse(insights.isTopLevelDestination())
     }
 
     @Test

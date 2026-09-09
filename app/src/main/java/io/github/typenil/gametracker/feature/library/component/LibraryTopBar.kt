@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -30,11 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.feature.library.insights.LIBRARY_INSIGHTS_ACTION_TEST_TAG
 import io.github.typenil.gametracker.feature.library.LibrarySortOption
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +50,7 @@ internal fun LibraryTopBar(
     onClearSearch: () -> Unit,
     sortOption: LibrarySortOption,
     onSortOptionSelected: (LibrarySortOption) -> Unit,
+    onInsightsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -96,6 +100,15 @@ internal fun LibraryTopBar(
                 )
             },
             actions = {
+                IconButton(
+                    onClick = onInsightsClick,
+                    modifier = Modifier.testTag(LIBRARY_INSIGHTS_ACTION_TEST_TAG),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.BarChart,
+                        contentDescription = stringResource(R.string.insights_action_desc),
+                    )
+                }
                 IconButton(onClick = { onToggleSearchActive(true) }) {
                     Icon(
                         imageVector = Icons.Default.Search,

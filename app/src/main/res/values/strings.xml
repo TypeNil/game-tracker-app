@@ -209,6 +209,25 @@
 
     <string name="error_library_remove_failed">Failed to remove game from library</string>
 
+    <!-- Library Insights -->
+    <string name="insights_title">Insights</string>
+    <string name="insights_action_desc">Library insights</string>
+    <string name="insights_heading">Your Library</string>
+    <string name="insights_games_count">%1$s games</string>
+    <string name="insights_hours_total">%1$s h</string>
+    <string name="insights_completed_count">%1$s completed</string>
+    <string name="insights_avg_rating">%1$s avg rating</string>
+    <string name="insights_completion">%1$s completion</string>
+    <string name="insights_value_none">—</string>
+    <string name="insights_chip">%1$s %2$s</string>
+    <string name="insights_status">Status</string>
+    <string name="insights_most_played">Most played</string>
+    <string name="insights_taste">Your taste</string>
+    <string name="insights_platforms">Platforms</string>
+    <string name="insights_platform_nintendo">Nintendo</string>
+    <string name="insights_empty_title">No insights yet</string>
+    <string name="insights_empty_subtitle">Add or move games into Playing, Wishlist, Completed, or Dropped to see insights.</string>
+
     <!-- About / Attribution -->
     <string name="settings_title">About</string>
     <string name="settings_action_desc">About</string>

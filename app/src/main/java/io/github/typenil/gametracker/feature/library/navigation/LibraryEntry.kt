@@ -18,12 +18,14 @@ fun NavController.navigateToLibrary(navOptions: NavOptions? = null) {
  */
 fun NavGraphBuilder.libraryEntry(
     onGameClick: (Long) -> Unit,
-    onNavigateToDiscover: () -> Unit
+    onNavigateToDiscover: () -> Unit,
+    onInsightsClick: () -> Unit,
 ) {
     composable<LibraryKey> {
         LibraryRoute(
             onGameClick = onGameClick,
-            onNavigateToDiscover = onNavigateToDiscover
+            onNavigateToDiscover = onNavigateToDiscover,
+            onInsightsClick = onInsightsClick,
         )
     }
 }
