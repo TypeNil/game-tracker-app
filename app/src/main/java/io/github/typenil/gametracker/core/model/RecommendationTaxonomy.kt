@@ -1,33 +1,65 @@
 package io.github.typenil.gametracker.core.model
 
+enum class RecommendationTagAxis {
+    GENRE,
+    THEME,
+}
+
+data class RecommendationTag(
+    val wireName: String,
+    val axis: RecommendationTagAxis,
+)
+
 /**
- * Canonical IGDB genre names used by Search filters and For You cold-start prefs.
+ * Ordered onboarding/search chips. Action is an IGDB theme, not a genre.
  */
-object RecommendationGenreCatalog {
-    val wireNames: List<String> = listOf(
-        "Role-playing (RPG)",
-        "Action",
-        "Adventure",
-        "Shooter",
-        "Strategy",
-        "Turn-based strategy (TBS)",
-        "Real-time strategy (RTS)",
-        "Platform",
-        "Puzzle",
-        "Indie",
-        "Simulator",
-        "Sport",
-        "Racing",
-        "Fighting",
-        "Hack and slash/Beat 'em up",
-        "Music",
-        "Arcade",
-        "Visual Novel",
-        "Point-and-click",
-        "Tactical",
-        "MOBA",
-        "Card & Board Game",
+object RecommendationTagCatalog {
+    val tags: List<RecommendationTag> = listOf(
+        RecommendationTag("Role-playing (RPG)", RecommendationTagAxis.GENRE),
+        RecommendationTag("Action", RecommendationTagAxis.THEME),
+        RecommendationTag("Adventure", RecommendationTagAxis.GENRE),
+        RecommendationTag("Shooter", RecommendationTagAxis.GENRE),
+        RecommendationTag("Strategy", RecommendationTagAxis.GENRE),
+        RecommendationTag("Turn-based strategy (TBS)", RecommendationTagAxis.GENRE),
+        RecommendationTag("Real-time strategy (RTS)", RecommendationTagAxis.GENRE),
+        RecommendationTag("Platform", RecommendationTagAxis.GENRE),
+        RecommendationTag("Puzzle", RecommendationTagAxis.GENRE),
+        RecommendationTag("Indie", RecommendationTagAxis.GENRE),
+        RecommendationTag("Simulator", RecommendationTagAxis.GENRE),
+        RecommendationTag("Sport", RecommendationTagAxis.GENRE),
+        RecommendationTag("Racing", RecommendationTagAxis.GENRE),
+        RecommendationTag("Fighting", RecommendationTagAxis.GENRE),
+        RecommendationTag("Hack and slash/Beat 'em up", RecommendationTagAxis.GENRE),
+        RecommendationTag("Music", RecommendationTagAxis.GENRE),
+        RecommendationTag("Arcade", RecommendationTagAxis.GENRE),
+        RecommendationTag("Visual Novel", RecommendationTagAxis.GENRE),
+        RecommendationTag("Point-and-click", RecommendationTagAxis.GENRE),
+        RecommendationTag("Tactical", RecommendationTagAxis.GENRE),
+        RecommendationTag("MOBA", RecommendationTagAxis.GENRE),
+        RecommendationTag("Card & Board Game", RecommendationTagAxis.GENRE),
     )
+
+    val wireNames: List<String> = tags.map { it.wireName }
+
+    val genreNames: Set<String> = tags
+        .filter { it.axis == RecommendationTagAxis.GENRE }
+        .mapTo(mutableSetOf()) { it.wireName }
+
+    val themeNames: Set<String> = tags
+        .filter { it.axis == RecommendationTagAxis.THEME }
+        .mapTo(mutableSetOf()) { it.wireName }
+
+    fun split(selected: Set<String>): Pair<Set<String>, Set<String>> {
+        val genres = selected.filterTo(mutableSetOf()) { it in genreNames }
+        val themes = selected.filterTo(mutableSetOf()) { it in themeNames }
+        return genres to themes
+    }
+}
+
+object RecommendationGenreCatalog {
+    val wireNames: List<String> = RecommendationTagCatalog.tags
+        .filter { it.axis == RecommendationTagAxis.GENRE }
+        .map { it.wireName }
 }
 
 enum class RecommendationPlatformFamily(val storageId: String) {

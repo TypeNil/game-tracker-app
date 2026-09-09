@@ -13,4 +13,6 @@ interface UserPreferencesRepository {
     ): AppResult<Unit>
 
     suspend fun skipRecommendationOnboarding(): AppResult<Unit>
+
+    suspend fun clearRecommendationPreferences(): AppResult<Unit>
 }

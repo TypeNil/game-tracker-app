@@ -1255,9 +1255,10 @@ class DiscoverViewModelTest {
         coVerify(atLeast = 1) {
             gameRepository.getRecommendationCandidatesPage(
                 genres = match { tags ->
-                    tags.containsAll(listOf("Action", "Adventure", "Role-playing (RPG)"))
+                    tags.containsAll(listOf("Adventure", "Role-playing (RPG)")) &&
+                        "Action" !in tags
                 },
-                themes = any(),
+                themes = match { tags -> "Action" in tags },
                 platforms = match { tags ->
                     tags.containsAll(
                         listOf(
@@ -1272,6 +1273,35 @@ class DiscoverViewModelTest {
                 offset = any(),
                 sort = any(),
             )
+        }
+    }
+
+    @Test
+    fun resetPrefs_clearsColdStartSignalsAndStopsFetchOnEmptyLibrary() = runTest {
+        val prefs = FakeUserPreferencesRepository(
+            UserPreferences(
+                recommendationGenres = setOf("Role-playing (RPG)", "Action", "Adventure"),
+                recommendationPlatforms = setOf("NINTENDO"),
+                recommendationOnboardingDismissed = true,
+            ),
+        )
+        stubCandidatePages {
+            candidatePage(
+                items = listOf(rpgCandidate(101L, "Rec 101")),
+                nextOffset = null,
+                endReached = true,
+            )
+        }
+        val viewModel = createViewModel(prefs)
+        viewModel.uiState.test {
+            awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
+            val cleared = viewModel.resetRecommendationPreferences()
+            assertTrue(cleared)
+            val cold = awaitItemUntil { it.isColdStart && it.recommendations.isEmpty() }
+            assertTrue(cold.recommendationOnboardingDismissed)
+            assertTrue(cold.recommendationGenres.isEmpty())
+            assertTrue(cold.recommendationPlatforms.isEmpty())
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

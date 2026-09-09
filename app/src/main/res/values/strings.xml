@@ -247,6 +247,7 @@
     <string name="discover_onboarding_subtitle">Pick a few genres and platforms to tune recommendations.</string>
     <string name="discover_onboarding_action">Set up recommendations</string>
     <string name="discover_tune_recommendations">Tune recommendations</string>
+    <string name="discover_recommendations_use_library">Use library only</string>
     <string name="discover_onboarding_skip">Skip</string>
     <string name="discover_onboarding_save">Save</string>
     <string name="discover_onboarding_genres">Favorite genres</string>

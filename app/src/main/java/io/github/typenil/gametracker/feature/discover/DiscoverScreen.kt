@@ -69,7 +69,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
-import io.github.typenil.gametracker.feature.discover.component.TuneRecommendationsSheet
+import io.github.typenil.gametracker.feature.recommendations.TuneRecommendationsSheet
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
@@ -98,6 +98,7 @@ fun DiscoverScreen(
     onDismissEditLibrary: () -> Unit = {},
     onSaveRecommendationPreferences: suspend (Set<String>, Set<String>) -> Boolean = { _, _ -> true },
     onSkipRecommendationOnboarding: suspend () -> Boolean = { true },
+    onResetRecommendationPreferences: suspend () -> Boolean = { true },
 
     scrollToTopTrigger: Long = 0L,
     onReadyToDraw: () -> Unit = {},
@@ -177,11 +178,13 @@ fun DiscoverScreen(
     }
     if (isTuneSheetOpen) {
         TuneRecommendationsSheet(
-            initialGenres = uiState.recommendationGenres,
+            initialTags = uiState.recommendationGenres + uiState.recommendationThemes,
             initialPlatforms = uiState.recommendationPlatforms,
+            onboardingDismissed = uiState.recommendationOnboardingDismissed,
             onDismiss = { isTuneSheetOpen = false },
             onSave = onSaveRecommendationPreferences,
             onSkip = onSkipRecommendationOnboarding,
+            onReset = onResetRecommendationPreferences,
         )
     }
 }

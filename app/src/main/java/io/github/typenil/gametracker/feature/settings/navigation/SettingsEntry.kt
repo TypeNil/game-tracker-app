@@ -17,13 +17,18 @@ fun NavGraphBuilder.settingsEntry(
     composable<SettingsKey> {
         val viewModel: SettingsViewModel = hiltViewModel()
         val preferences by viewModel.preferences.collectAsStateWithLifecycle()
+        val preferencesLoaded by viewModel.preferencesLoaded.collectAsStateWithLifecycle()
         val userMessageRes by viewModel.userMessageRes.collectAsStateWithLifecycle()
         SettingsRoute(
             onBackClick = onBackClick,
             recommendationGenres = preferences.recommendationGenres,
+            recommendationThemes = preferences.recommendationThemes,
             recommendationPlatforms = preferences.recommendationPlatforms,
+            onboardingDismissed = preferences.recommendationOnboardingDismissed,
+            recommendationPreferencesLoaded = preferencesLoaded,
             onSaveRecommendationPreferences = viewModel::saveRecommendationPreferences,
             onSkipRecommendationOnboarding = viewModel::skipRecommendationOnboarding,
+            onResetRecommendationPreferences = viewModel::resetRecommendationPreferences,
             userMessageRes = userMessageRes,
             onUserMessageShown = viewModel::onUserMessageShown,
         )

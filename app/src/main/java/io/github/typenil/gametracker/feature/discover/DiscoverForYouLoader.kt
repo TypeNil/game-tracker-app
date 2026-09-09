@@ -15,6 +15,7 @@ import io.github.typenil.gametracker.core.model.RecommendationProfile
 import io.github.typenil.gametracker.core.model.RecommendationProfileBuilder
 import io.github.typenil.gametracker.core.model.RecommendationSignal
 import io.github.typenil.gametracker.core.model.UserPreferences
+import io.github.typenil.gametracker.core.model.RecommendationTagCatalog
 import io.github.typenil.gametracker.core.model.expandRecommendationPlatforms
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -232,9 +233,13 @@ internal class DiscoverForYouLoader(
 
     private fun buildProfile(signals: List<RecommendationSignal>): RecommendationProfile {
         val prefs = userPreferences()
+        val (genres, themes) = RecommendationTagCatalog.split(
+            prefs.recommendationGenres + prefs.recommendationThemes,
+        )
         return RecommendationProfileBuilder.build(
             signals = signals,
-            coldStartGenres = prefs.recommendationGenres,
+            coldStartGenres = genres,
+            coldStartThemes = themes,
             coldStartPlatforms = expandRecommendationPlatforms(prefs.recommendationPlatforms),
         )
     }

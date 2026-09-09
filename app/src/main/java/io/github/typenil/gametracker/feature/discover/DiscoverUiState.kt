@@ -46,6 +46,7 @@ data class DiscoverUiState(
     val editingGameId: Long? = null,
     val isLibrarySubmitting: Boolean = false,
     val recommendationGenres: Set<String> = emptySet(),
+    val recommendationThemes: Set<String> = emptySet(),
     val recommendationPlatforms: Set<String> = emptySet(),
     val recommendationOnboardingDismissed: Boolean = false,
 ) {

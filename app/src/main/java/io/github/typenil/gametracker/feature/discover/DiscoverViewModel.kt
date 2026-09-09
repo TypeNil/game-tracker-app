@@ -104,6 +104,7 @@ class DiscoverViewModel @Inject constructor(
             editingGameId = flags.library.editingGameId,
             isLibrarySubmitting = flags.library.isSubmitting,
             recommendationGenres = prefs.recommendationGenres,
+            recommendationThemes = prefs.recommendationThemes,
             recommendationPlatforms = prefs.recommendationPlatforms,
             recommendationOnboardingDismissed = prefs.recommendationOnboardingDismissed,
         )
@@ -267,18 +268,25 @@ class DiscoverViewModel @Inject constructor(
     }
 
     suspend fun saveRecommendationPreferences(genres: Set<String>, platforms: Set<String>): Boolean {
-        return when (val result = userPreferencesRepository.setRecommendationPreferences(genres, platforms)) {
-            is AppResult.Success -> true
-            is AppResult.Error -> {
-                userMessageRes.value = R.string.error_preferences_save_failed
-                false
-            }
-        }
+        return recordPreferenceWrite(userPreferencesRepository.setRecommendationPreferences(genres, platforms))
     }
 
     suspend fun skipRecommendationOnboarding(): Boolean {
-        return when (userPreferencesRepository.skipRecommendationOnboarding()) {
-            is AppResult.Success -> true
+        return recordPreferenceWrite(userPreferencesRepository.skipRecommendationOnboarding())
+    }
+
+    suspend fun resetRecommendationPreferences(): Boolean {
+        return recordPreferenceWrite(userPreferencesRepository.clearRecommendationPreferences())
+    }
+
+    private fun recordPreferenceWrite(result: AppResult<Unit>): Boolean {
+        return when (result) {
+            is AppResult.Success -> {
+                if (userMessageRes.value == R.string.error_preferences_save_failed) {
+                    userMessageRes.value = null
+                }
+                true
+            }
             is AppResult.Error -> {
                 userMessageRes.value = R.string.error_preferences_save_failed
                 false

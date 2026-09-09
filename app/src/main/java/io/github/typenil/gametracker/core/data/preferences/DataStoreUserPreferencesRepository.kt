@@ -1,16 +1,17 @@
 package io.github.typenil.gametracker.core.data.preferences
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import io.github.typenil.gametracker.core.common.IoDispatcher
 import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.RecommendationTagCatalog
 import io.github.typenil.gametracker.core.model.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -38,8 +39,12 @@ class DataStoreUserPreferencesRepository @Inject constructor(
             }
         }
         .map { prefs ->
+            val storedGenres = prefs[KEY_GENRES].orEmpty()
+            val storedThemes = prefs[KEY_THEMES].orEmpty()
+            val (genres, themes) = RecommendationTagCatalog.split(storedGenres + storedThemes)
             UserPreferences(
-                recommendationGenres = prefs[KEY_GENRES].orEmpty(),
+                recommendationGenres = genres,
+                recommendationThemes = themes,
                 recommendationPlatforms = prefs[KEY_PLATFORMS].orEmpty(),
                 recommendationOnboardingDismissed = prefs[KEY_DISMISSED] ?: false,
             )
@@ -55,8 +60,10 @@ class DataStoreUserPreferencesRepository @Inject constructor(
                 AppError.UnknownError(IllegalArgumentException("invalid recommendation preferences")),
             )
         }
+        val (genreTags, themeTags) = RecommendationTagCatalog.split(genres)
         return write {
-            it[KEY_GENRES] = genres
+            it[KEY_GENRES] = genreTags
+            it[KEY_THEMES] = themeTags
             it[KEY_PLATFORMS] = platforms
             it[KEY_DISMISSED] = true
         }
@@ -64,6 +71,15 @@ class DataStoreUserPreferencesRepository @Inject constructor(
 
     override suspend fun skipRecommendationOnboarding(): AppResult<Unit> {
         return write { it[KEY_DISMISSED] = true }
+    }
+
+    override suspend fun clearRecommendationPreferences(): AppResult<Unit> {
+        return write {
+            it[KEY_GENRES] = emptySet()
+            it[KEY_THEMES] = emptySet()
+            it[KEY_PLATFORMS] = emptySet()
+            it[KEY_DISMISSED] = true
+        }
     }
 
     private suspend fun write(block: suspend (MutablePreferences) -> Unit): AppResult<Unit> =
@@ -80,6 +96,7 @@ class DataStoreUserPreferencesRepository @Inject constructor(
 
     private companion object {
         val KEY_GENRES = stringSetPreferencesKey("recommendation_genres")
+        val KEY_THEMES = stringSetPreferencesKey("recommendation_themes")
         val KEY_PLATFORMS = stringSetPreferencesKey("recommendation_platforms")
         val KEY_DISMISSED = booleanPreferencesKey("recommendation_onboarding_dismissed")
     }

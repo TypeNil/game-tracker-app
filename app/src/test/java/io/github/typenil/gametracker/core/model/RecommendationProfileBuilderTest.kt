@@ -123,6 +123,20 @@ class RecommendationProfileBuilderTest {
     }
 
     @Test
+    fun coldStartThemes_fillThemeWeights_notGenres() {
+        val profile = RecommendationProfileBuilder.build(
+            signals = emptyList(),
+            coldStartGenres = setOf("Indie"),
+            coldStartThemes = setOf("Action"),
+            coldStartPlatforms = setOf("PC"),
+        )
+        assertEquals(1f, profile.themeWeights.getValue("Action"))
+        assertFalse(profile.genreWeights.containsKey("Action"))
+        assertEquals(1f, profile.genreWeights.getValue("Indie"))
+        assertTrue(profile.hasRankingSignal)
+    }
+
+    @Test
     fun coldStartBlend_decaysAsLibraryEvidenceGrows() {
         val oneGame = RecommendationProfileBuilder.build(
             signals = listOf(

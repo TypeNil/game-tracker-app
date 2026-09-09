@@ -247,6 +247,7 @@
     <string name="discover_onboarding_subtitle">Выберите несколько жанров и платформ, чтобы настроить рекомендации.</string>
     <string name="discover_onboarding_action">Настроить рекомендации</string>
     <string name="discover_tune_recommendations">Настроить рекомендации</string>
+    <string name="discover_recommendations_use_library">Только библиотека</string>
     <string name="discover_onboarding_skip">Пропустить</string>
     <string name="discover_onboarding_save">Сохранить</string>
     <string name="discover_onboarding_genres">Любимые жанры</string>

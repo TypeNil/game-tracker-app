@@ -60,15 +60,20 @@ import io.github.typenil.gametracker.core.notification.rememberNotificationPermi
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
-import io.github.typenil.gametracker.feature.discover.component.TuneRecommendationsSheet
+import io.github.typenil.gametracker.feature.recommendations.TuneRecommendationsSheet
+
 @Composable
 fun SettingsRoute(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     recommendationGenres: Set<String> = emptySet(),
+    recommendationThemes: Set<String> = emptySet(),
     recommendationPlatforms: Set<String> = emptySet(),
+    onboardingDismissed: Boolean = false,
+    recommendationPreferencesLoaded: Boolean = true,
     onSaveRecommendationPreferences: suspend (Set<String>, Set<String>) -> Boolean = { _, _ -> true },
     onSkipRecommendationOnboarding: suspend () -> Boolean = { true },
+    onResetRecommendationPreferences: suspend () -> Boolean = { true },
     userMessageRes: Int? = null,
     onUserMessageShown: () -> Unit = {},
 ) {
@@ -83,7 +88,10 @@ fun SettingsRoute(
     }
     val debugBffInvalidError = stringResource(R.string.settings_debug_bff_invalid_url)
     SettingsScreen(
-        onTuneRecommendations = { isTuneSheetOpen = true },
+        onTuneRecommendations = {
+            if (recommendationPreferencesLoaded) isTuneSheetOpen = true
+        },
+        recommendationPreferencesLoaded = recommendationPreferencesLoaded,
         userMessageRes = userMessageRes,
         onUserMessageShown = onUserMessageShown,
         hasNotificationPermission = notificationPermissionState.hasPermission,
@@ -150,13 +158,15 @@ fun SettingsRoute(
         },
         modifier = modifier
     )
-    if (isTuneSheetOpen) {
+    if (isTuneSheetOpen && recommendationPreferencesLoaded) {
         TuneRecommendationsSheet(
-            initialGenres = recommendationGenres,
+            initialTags = recommendationGenres + recommendationThemes,
             initialPlatforms = recommendationPlatforms,
+            onboardingDismissed = onboardingDismissed,
             onDismiss = { isTuneSheetOpen = false },
             onSave = onSaveRecommendationPreferences,
             onSkip = onSkipRecommendationOnboarding,
+            onReset = onResetRecommendationPreferences,
         )
     }
 
@@ -167,6 +177,7 @@ fun SettingsRoute(
 fun SettingsScreen(
     hasNotificationPermission: Boolean,
     onTuneRecommendations: () -> Unit = {},
+    recommendationPreferencesLoaded: Boolean = true,
     onRequestPermission: () -> Unit,
     onManageNotifications: () -> Unit,
     onBackClick: () -> Unit,
@@ -357,7 +368,10 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    OutlinedButton(onClick = onTuneRecommendations) {
+                    OutlinedButton(
+                        onClick = onTuneRecommendations,
+                        enabled = recommendationPreferencesLoaded,
+                    ) {
                         Text(text = stringResource(R.string.discover_tune_recommendations))
                     }
                 }
