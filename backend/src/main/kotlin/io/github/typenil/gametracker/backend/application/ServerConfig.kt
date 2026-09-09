@@ -7,6 +7,6 @@ data class ServerConfig(
 ) {
     companion object {
         const val DEFAULT_PORT = 8080
-        const val DEFAULT_HOST = "0.0.0.0"
+        const val DEFAULT_HOST = "127.0.0.1"
     }
 }
