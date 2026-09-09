@@ -121,6 +121,39 @@ jobs:
           cp "$APK" "$RELEASE_APK"
           sha256sum "$RELEASE_APK" | tee "${RELEASE_APK}.sha256"
 
+      - name: Extract changelog section for this tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          tag = os.environ["TAG"]
+          if not tag.startswith("v"):
+              print(f"::error::Expected tag ref like v1.0.2, got {tag!r}")
+              sys.exit(1)
+          version = tag[1:]
+          text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = rf"(?ms)^## \[{re.escape(version)}\][^\n]*\n.*?(?=^## \[|\Z)"
+          match = re.search(pattern, text)
+          if not match:
+              print(f"::error::CHANGELOG.md has no '## [{version}]' section")
+              sys.exit(1)
+          notes = re.sub(r"(?s)\n+---\s*$", "", match.group(0)).strip() + "\n"
+          heading = notes.splitlines()[0]
+          if f"## [{version}]" not in heading:
+              print("::error::Extracted notes do not start with the version heading")
+              sys.exit(1)
+          if "## [Unreleased]" in notes:
+              print("::error::Extracted notes include [Unreleased]")
+              sys.exit(1)
+          Path("release-notes.md").write_text(notes, encoding="utf-8")
+          print(notes)
+          PY
+
       - name: Create or update draft release and upload assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -134,14 +167,14 @@ jobs:
             gh release edit "$TAG" \
               --draft \
               --title "GameTracker $TAG — Portfolio Release" \
-              --notes-file CHANGELOG.md
+              --notes-file release-notes.md
           else
             echo "Creating new draft release $TAG..."
             gh release create "$TAG" \
               --verify-tag \
               --draft \
               --title "GameTracker $TAG — Portfolio Release" \
-              --notes-file CHANGELOG.md
+              --notes-file release-notes.md
           fi
 
           test -f art/walkthrough.gif

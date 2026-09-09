@@ -25,7 +25,7 @@
 
 ```bash
 # 1. Скачайте signed demo APK
-curl --fail --location --output app-demo.apk https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.1/GameTracker-v1.0.1-demo.apk
+curl --fail --location --output app-demo.apk https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.2/GameTracker-v1.0.2-demo.apk
 
 # 2. Установите и запустите на подключенном устройстве или эмуляторе
 adb install -r app-demo.apk && adb shell monkey -p io.github.typenil.gametracker.demo -c android.intent.category.LAUNCHER 1

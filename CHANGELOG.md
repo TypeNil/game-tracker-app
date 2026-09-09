@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.0.2] - 2026-09-09
+
+Post-`v1.0.1` Discover/Search/Library correctness, CI hardening, and presentation splits. Tag `v1.0.1` was not moved.
+
 ### Changed
 - CI actions are pinned to immutable SHAs and Room migration smoke tests run on API 26 and API 36.
 - Search, Game Details, Library, and Discover presentation code was split into focused components without changing behavior. Extracted Search/Details/Library helpers are `internal`; screen APIs stay public.
@@ -25,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Search filter sheet disables non-relevance sort while a text query is present instead of applying a silent no-op.
 - Release notification IDs are derived from `eventKey`, so successive date-change events for one game are distinct.
 - Game details TTL treats a future `cachedAt` timestamp as stale (device clock skew).
+- Cold start holds the splash until Discover applies a non-loading frame; Library loading uses hero-card skeletons; emptying the library shows the For You cold-start card.
 
 ---
 
