@@ -36,6 +36,7 @@
     <string name="search_sort_date_desc">Newest First</string>
     <string name="search_sort_date_asc">Oldest First</string>
     <string name="search_sort_name_asc">Title (A–Z)</string>
+    <string name="search_sort_text_uses_relevance">Text search is always sorted by relevance</string>
 
     <!-- Search Filter Options -->
     <string name="search_filter_year_all">All Time</string>

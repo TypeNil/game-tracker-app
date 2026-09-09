@@ -38,22 +38,20 @@ data class DiscoverUiState(
     val forYouEndReached: Boolean = false,
     val forYouError: AppError? = null,
 
-    val trending: List<Game> = emptyList(),
     val rails: List<DiscoverRailState> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: AppError? = null,
     val userMessageRes: Int? = null,
     val librarySnapshot: LibrarySnapshot = LibrarySnapshot.Loading,
     val editingGameId: Long? = null,
     val isLibrarySubmitting: Boolean = false,
 ) {
     val isInitialLoading: Boolean
-        get() = isLoading && recommendations.isEmpty() && trending.isEmpty() && rails.all { it.games.isEmpty() }
+        get() = isLoading && recommendations.isEmpty() && rails.all { it.games.isEmpty() }
 
     val showForYou: Boolean
         get() = recommendations.isNotEmpty()
 
     val hasContent: Boolean
-        get() = recommendations.isNotEmpty() || trending.isNotEmpty() || rails.any { it.games.isNotEmpty() }
+        get() = recommendations.isNotEmpty() || rails.any { it.games.isNotEmpty() }
 }

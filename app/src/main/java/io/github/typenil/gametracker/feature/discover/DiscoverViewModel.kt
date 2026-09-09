@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -48,7 +47,6 @@ class DiscoverViewModel @Inject constructor(
 
     private val loading = MutableStateFlow(true)
     private val refreshing = MutableStateFlow(false)
-    private val error = MutableStateFlow<AppError?>(null)
     private val userMessageRes = MutableStateFlow<Int?>(null)
     private val librarySnapshot = MutableStateFlow<LibrarySnapshot>(LibrarySnapshot.Loading)
     private val editingGameId = MutableStateFlow<Long?>(null)
@@ -68,26 +66,19 @@ class DiscoverViewModel @Inject constructor(
             forYouLoader.forYouError,
             ::ForYouStateData,
         ),
-        gameRepository.getTrendingGamesFlow(),
         combine(
             selectionManager.selectedRail,
-            forYouLoader.hiddenFromTrending,
             railLoader.railStates,
             ::RailStateData,
         ),
         combine(
             loading,
             refreshing,
-            error,
             userMessageRes,
             combine(librarySnapshot, editingGameId, isLibrarySubmitting, ::LibraryUi),
             ::Flags,
         ),
-    ) { tab, forYou, trending, railData, flags ->
-        val visibleTrending = trending.filter { it.id !in railData.hidden }
-        val hasAnyContent = forYou.recommendations.isNotEmpty() ||
-            visibleTrending.isNotEmpty() ||
-            railData.rails.any { it.games.isNotEmpty() }
+    ) { tab, forYou, railData, flags ->
         DiscoverUiState(
             selectedTab = tab,
             selectedRail = railData.selectedRail,
@@ -96,11 +87,9 @@ class DiscoverViewModel @Inject constructor(
             forYouLoading = forYou.forYouLoading,
             forYouEndReached = forYou.forYouEndReached,
             forYouError = forYou.forYouError,
-            trending = visibleTrending,
             rails = railData.rails,
             isLoading = flags.loading,
             isRefreshing = flags.refreshing,
-            error = if (hasAnyContent) null else flags.error,
             userMessageRes = flags.userMessageRes,
             librarySnapshot = flags.library.snapshot,
             editingGameId = flags.library.editingGameId,
@@ -152,7 +141,6 @@ class DiscoverViewModel @Inject constructor(
         }
         viewModelScope.launch {
             librarySeeder.seedIfEmpty()
-            refreshTrending()
             railLoader.refreshRail(DiscoverRail.entries.first(), append = false) {
                 userMessageRes.value = it
             }
@@ -172,9 +160,7 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-    fun retry() = hydrate(isUserPullToRefresh = false)
-
-    fun refresh() = hydrate(isUserPullToRefresh = true)
+    fun refresh() = hydrate()
 
     fun retryForYou() {
         forYouLoader.retryForYou()
@@ -255,12 +241,6 @@ class DiscoverViewModel @Inject constructor(
         forYouLoader.loadMoreForYou()
     }
 
-    fun loadMoreTrending() {
-        railLoader.loadMoreTrending(
-            isRefreshing = { refreshing.value },
-            onUserMessage = { userMessageRes.value = it },
-        )
-    }
 
     fun loadMoreRail(rail: DiscoverRail) {
         railLoader.loadMoreRail(
@@ -270,54 +250,34 @@ class DiscoverViewModel @Inject constructor(
         )
     }
 
-    private fun hydrate(isUserPullToRefresh: Boolean) {
+    private fun hydrate() {
         railLoader.cancelJobs()
         hydrateJob?.cancel()
         forYouLoader.cancelJobs()
-        hydrateJob = viewModelScope.launch { performHydrate(isUserPullToRefresh) }
+        hydrateJob = viewModelScope.launch { performRefresh() }
     }
 
-    private suspend fun performHydrate(isUserPullToRefresh: Boolean) {
-        if (isUserPullToRefresh) refreshing.value = true
-        else if (forYouLoader.recommendations.value.isEmpty()) loading.value = true
-        refreshTrending()
-        if (isUserPullToRefresh) {
-            val selected = selectionManager.selectedRail.value
-            railLoader.resetRailForRefresh(selected)
-            railLoader.refreshRail(selected, append = false) { userMessageRes.value = it }
-        }
-        forYouLoader.rebuildRecommendations(rotate = isUserPullToRefresh)
+    private suspend fun performRefresh() {
+        refreshing.value = true
+        val selected = selectionManager.selectedRail.value
+        railLoader.resetRailForRefresh(selected)
+        railLoader.refreshRail(selected, append = false) { userMessageRes.value = it }
+        forYouLoader.rebuildRecommendations(rotate = true)
         loading.value = false
         refreshing.value = false
-    }
-
-    private suspend fun refreshTrending() {
-        val trendingError = railLoader.refreshTrending(
-            hasVisibleContent = {
-                forYouLoader.recommendations.value.isNotEmpty() ||
-                    gameRepository.getTrendingGamesFlow().first().isNotEmpty()
-            },
-            onUserMessage = { userMessageRes.value = it },
-        )
-        error.value = trendingError
     }
 
     private fun observeNetworkReconnect() {
         val monitor = networkMonitor ?: return
         viewModelScope.launch {
             monitor.status.reconnects().collect {
-                if (error.value != null) {
-                    retry()
-                    hydrateJob?.join()
-                } else {
-                    when {
-                        forYouLoader.hasPendingRetry -> {
-                            retryForYou()
-                            forYouLoader.joinJobs()
-                        }
-                        forYouLoader.recommendations.value.isEmpty() && !forYouLoader.isColdStart.value -> {
-                            forYouLoader.rebuildRecommendations(rotate = false)
-                        }
+                when {
+                    forYouLoader.hasPendingRetry -> {
+                        retryForYou()
+                        forYouLoader.joinJobs()
+                    }
+                    forYouLoader.recommendations.value.isEmpty() && !forYouLoader.isColdStart.value -> {
+                        forYouLoader.rebuildRecommendations(rotate = false)
                     }
                 }
                 railLoader.retryFailedRails(
@@ -338,7 +298,6 @@ class DiscoverViewModel @Inject constructor(
 
     private data class RailStateData(
         val selectedRail: DiscoverRail,
-        val hidden: Set<Long>,
         val rails: List<DiscoverRailState>,
     )
 
@@ -351,7 +310,6 @@ class DiscoverViewModel @Inject constructor(
     private data class Flags(
         val loading: Boolean,
         val refreshing: Boolean,
-        val error: AppError?,
         val userMessageRes: Int?,
         val library: LibraryUi,
     )

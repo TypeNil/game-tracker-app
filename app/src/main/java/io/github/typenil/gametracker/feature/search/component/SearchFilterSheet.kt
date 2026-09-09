@@ -65,6 +65,7 @@ fun SearchFilterSheet(
     initialFilters: SearchFilters,
     onDismiss: () -> Unit,
     onApply: (SearchFilters) -> Unit,
+    queryPresent: Boolean,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
@@ -134,6 +135,11 @@ fun SearchFilterSheet(
                     val chipColors = searchChipColors()
                 // Section 1: Sort By
                 FilterSection(title = stringResource(R.string.search_filter_section_sort)) {
+                    val selectedSort = if (queryPresent) {
+                        SearchSortOption.RELEVANCE
+                    } else {
+                        draftFilters.sort
+                    }
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         // 0dp: chips carry a standard 48dp minimum interactive size, so the
@@ -141,10 +147,16 @@ fun SearchFilterSheet(
                         verticalArrangement = Arrangement.spacedBy(0.dp),
                     ) {
                         for (option in SearchSortOption.entries) {
-                            val selected = draftFilters.sort == option
+                            val selected = selectedSort == option
+                            val sortEnabled = !queryPresent || option == SearchSortOption.RELEVANCE
                             FilterChip(
                                 selected = selected,
-                                onClick = { draftFilters = draftFilters.copy(sort = option) },
+                                onClick = {
+                                    if (!queryPresent) {
+                                        draftFilters = draftFilters.copy(sort = option)
+                                    }
+                                },
+                                enabled = sortEnabled,
                                 shape = SearchChipShape,
                                 colors = chipColors,
                                 border = searchChipBorder(selected),
@@ -156,6 +168,13 @@ fun SearchFilterSheet(
                                 },
                             )
                         }
+                    }
+                    if (queryPresent) {
+                        Text(
+                            text = stringResource(R.string.search_sort_text_uses_relevance),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
 

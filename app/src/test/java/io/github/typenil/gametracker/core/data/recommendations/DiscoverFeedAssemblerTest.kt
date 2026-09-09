@@ -1,6 +1,5 @@
 package io.github.typenil.gametracker.core.data.recommendations
 
-import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationCandidate
 import io.github.typenil.gametracker.core.model.RecommendationProfile
@@ -12,26 +11,8 @@ import org.junit.Test
 
 class DiscoverFeedAssemblerTest {
 
-
     @Test
-    fun assemble_coldStart_keepsTrendingAndDropsExcluded() {
-        val profile = RecommendationProfile(
-            genreWeights = emptyMap(),
-            themeWeights = emptyMap(),
-            platformWeights = emptyMap(),
-            excludedGameIds = setOf(2L),
-            isColdStart = true,
-        )
-        val trending = listOf(game(1L, "A"), game(2L, "Excluded"), game(3L, "C"))
-
-        val feed = DiscoverFeedAssembler.assemble(profile, emptyList(), trending)
-
-        assertTrue(feed.recommendations.isEmpty())
-        assertEquals(listOf(1L, 3L), feed.trending.map { it.id })
-    }
-
-    @Test
-    fun assemble_dropsTrendingIdsThatAppearInRecs() {
+    fun assemble_ranksGenreOverlapRecommendations() {
         val profile = RecommendationProfile(
             genreWeights = mapOf("RPG" to 1f),
             themeWeights = emptyMap(),
@@ -40,12 +21,10 @@ class DiscoverFeedAssemblerTest {
             isColdStart = false,
         )
         val candidates = listOf(candidate(10L, "Rec", genres = listOf("RPG")))
-        val trending = listOf(game(10L, "Rec"), game(11L, "Trend"))
 
-        val feed = DiscoverFeedAssembler.assemble(profile, candidates, trending)
+        val feed = DiscoverFeedAssembler.assemble(profile, candidates)
 
         assertEquals(listOf(10L), feed.recommendations.map { it.game.id })
-        assertEquals(listOf(11L), feed.trending.map { it.id })
         assertTrue(feed.recommendations.single().reasons.size <= 2)
         assertTrue(feed.recommendations.single().reasons.any { it is RecommendationReason.GenreOverlap })
     }
@@ -67,7 +46,6 @@ class DiscoverFeedAssemblerTest {
         val feed = DiscoverFeedAssembler.assemble(
             profile,
             candidates,
-            trending = emptyList(),
             inLibraryIds = setOf(10L),
         )
 
@@ -105,19 +83,17 @@ class DiscoverFeedAssemblerTest {
         )
 
         val first = DiscoverFeedAssembler.assemble(
-            profile, candidates, emptyList(), pageSize = 2,
+            profile, candidates, pageSize = 2,
         )
         val second = DiscoverFeedAssembler.assemble(
             profile,
             candidates,
-            emptyList(),
             shownIds = first.recommendations.map { it.game.id }.toSet(),
             pageSize = 2,
         )
         val wrapped = DiscoverFeedAssembler.assemble(
             profile,
             candidates,
-            emptyList(),
             shownIds = (first.recommendations + second.recommendations).map { it.game.id }.toSet(),
             pageSize = 2,
         )
@@ -140,7 +116,6 @@ class DiscoverFeedAssemblerTest {
         val feed = DiscoverFeedAssembler.assemble(
             profile = profile,
             candidates = candidates,
-            trending = emptyList(),
         )
         assertEquals(DiscoverFeedAssembler.FOR_YOU_PAGE_SIZE, feed.recommendations.size)
         assertEquals(
@@ -148,8 +123,6 @@ class DiscoverFeedAssemblerTest {
             feed.recommendations.map { it.game.id }.distinct().size,
         )
     }
-
-    private fun game(id: Long, name: String) = Game(id = id, name = name)
 
     private fun candidate(id: Long, name: String, genres: List<String>) = RecommendationCandidate(
         gameId = id,

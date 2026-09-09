@@ -11,13 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
-private const val TRENDING_PAGE = 20
-private const val TRENDING_CAP = 50
 private const val RAIL_PAGE_SIZE = 20
 
 internal class DiscoverRailLoader(
@@ -30,10 +25,6 @@ internal class DiscoverRailLoader(
     private val railOffsets = DiscoverRail.entries.associateWith { 0 }.toMutableMap()
     private val railGenerations = DiscoverRail.entries.associateWith { 0L }.toMutableMap()
     private val railJobs = mutableMapOf<DiscoverRail, Job>()
-    private val trendingMutex = Mutex()
-    private var appendJob: Job? = null
-    private var trendingEndReached = false
-    private var trendingNextOffset: Int? = 0
 
     init {
         DiscoverRail.entries.forEach { rail ->
@@ -55,29 +46,6 @@ internal class DiscoverRailLoader(
         return _railStates.value.firstOrNull { it.rail == rail }?.games?.isEmpty() == true
     }
 
-    fun loadMoreTrending(isRefreshing: () -> Boolean, onUserMessage: (Int) -> Unit) {
-        if (appendJob?.isActive == true || trendingEndReached || isRefreshing()) return
-        appendJob = scope.launch {
-            trendingMutex.withLock {
-                if (trendingEndReached || isRefreshing()) return@withLock
-                val offset = trendingNextOffset ?: return@withLock
-                if (offset >= TRENDING_CAP) {
-                    trendingEndReached = true
-                    return@withLock
-                }
-                val pageSize = minOf(TRENDING_PAGE, TRENDING_CAP - offset)
-                when (val result = gameRepository.refreshTrendingGames(pageSize, offset, append = true)) {
-                    is AppResult.Success -> {
-                        val continuation = result.data
-                        trendingNextOffset = continuation.nextOffset
-                        val localSize = gameRepository.getTrendingGamesFlow().first().size
-                        trendingEndReached = continuation.endReached || localSize >= TRENDING_CAP
-                    }
-                    is AppResult.Error -> onUserMessage(R.string.error_refresh_failed)
-                }
-            }
-        }
-    }
 
     fun loadMoreRail(rail: DiscoverRail, isRefreshing: () -> Boolean, onUserMessage: (Int) -> Unit) {
         if (railJobs[rail]?.isActive == true || isRefreshing()) return
@@ -86,30 +54,6 @@ internal class DiscoverRailLoader(
         railJobs[rail] = scope.launch { refreshRail(rail, append = offset > 0, onUserMessage = onUserMessage) }
     }
 
-    suspend fun refreshTrending(
-        hasVisibleContent: suspend () -> Boolean,
-        onUserMessage: (Int) -> Unit,
-    ): AppError? {
-        return trendingMutex.withLock {
-            trendingEndReached = false
-            trendingNextOffset = 0
-            when (val result = gameRepository.refreshTrendingGames()) {
-                is AppResult.Success -> {
-                    val continuation = result.data
-                    trendingNextOffset = continuation.nextOffset
-                    val size = gameRepository.getTrendingGamesFlow().first().size
-                    trendingEndReached = continuation.endReached || size >= TRENDING_CAP
-                    null
-                }
-                is AppResult.Error -> {
-                    if (hasVisibleContent()) {
-                        onUserMessage(R.string.error_refresh_failed)
-                    }
-                    result.error
-                }
-            }
-        }
-    }
 
     suspend fun refreshRail(
         rail: DiscoverRail,
@@ -160,7 +104,6 @@ internal class DiscoverRailLoader(
     }
 
     fun cancelJobs() {
-        appendJob?.cancel()
         railJobs.forEach { (rail, job) ->
             if (job.isActive) {
                 railGenerations[rail] = (railGenerations[rail] ?: 0L) + 1L

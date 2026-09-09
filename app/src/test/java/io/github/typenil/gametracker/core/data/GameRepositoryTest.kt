@@ -667,6 +667,21 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `refreshGameDetails refetches when cachedAt is in the future`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        coEvery { gameDetailsDao.getGameDetails(1L) } returns sampleDetailsEntity.copy(
+            cachedAtEpochSeconds = TEST_NOW_SECONDS + 10_000
+        )
+        coEvery { remoteDataSource.getGameDetails(1L) } returns sampleDetailsDto
+
+        val result = repository.refreshGameDetails(1L, force = false)
+
+        assertTrue(result is AppResult.Success)
+        coVerify(exactly = 1) { remoteDataSource.getGameDetails(1L) }
+    }
+
+    @Test
     fun `refreshGameDetails with force bypasses the TTL gate`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)

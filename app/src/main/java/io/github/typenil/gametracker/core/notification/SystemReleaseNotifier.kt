@@ -64,7 +64,7 @@ class SystemReleaseNotifier @Inject constructor(
 
         createNotificationChannels()
 
-        val notificationId = ReleaseNotificationPayload.computeNotificationId(event.gameId, event.eventType)
+        val notificationId = ReleaseNotificationPayload.computeNotificationId(event)
         val intent = buildTapIntent(event.gameId)
 
         val pendingIntent = PendingIntent.getActivity(

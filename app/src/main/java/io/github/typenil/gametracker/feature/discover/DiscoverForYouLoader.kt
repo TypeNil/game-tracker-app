@@ -50,8 +50,6 @@ internal class DiscoverForYouLoader(
     private val _forYouError = MutableStateFlow<AppError?>(null)
     val forYouError: StateFlow<AppError?> = _forYouError.asStateFlow()
 
-    private val _hiddenFromTrending = MutableStateFlow<Set<Long>>(emptySet())
-    val hiddenFromTrending: StateFlow<Set<Long>> = _hiddenFromTrending.asStateFlow()
 
     private var lastShownRecIds: Set<Long> = emptySet()
     private var forYouSortIndex = 0
@@ -136,7 +134,7 @@ internal class DiscoverForYouLoader(
                     sortModeCount = FOR_YOU_SORT_MODES.size,
                 )
                 val transition = reduceForYouAppend(input)
-                applyForYouAppendTransition(transition, profile)
+                applyForYouAppendTransition(transition)
                 transition
             }
             is AppResult.Error -> {
@@ -148,11 +146,9 @@ internal class DiscoverForYouLoader(
 
     private fun applyForYouAppendTransition(
         transition: ForYouTransition,
-        profile: RecommendationProfile,
     ) {
         val recIds = transition.recommendations.map { it.game.id }.toSet()
         lastShownRecIds = recIds
-        _hiddenFromTrending.value = recIds + profile.excludedGameIds
         _recommendations.value = transition.recommendations
         forYouSortIndex = transition.nextSortIndex
         forYouCurrentOffset = transition.nextOffset
@@ -173,7 +169,7 @@ internal class DiscoverForYouLoader(
             val inLibraryIds = signals.map { it.gameId }.toSet()
             val currentSort = FOR_YOU_SORT_MODES.getOrElse(nextSortIndex) { FOR_YOU_SORT_MODES.first() }
             if (profile.isColdStart) {
-                applyColdStartRecommendations(profile, nextSortIndex)
+                applyColdStartRecommendations(nextSortIndex)
                 return@withLock
             }
             when (
@@ -224,7 +220,7 @@ internal class DiscoverForYouLoader(
         onUserMessage(R.string.error_refresh_failed)
     }
 
-    private fun applyColdStartRecommendations(profile: RecommendationProfile, nextSortIndex: Int) {
+    private fun applyColdStartRecommendations(nextSortIndex: Int) {
         pendingForYouRetry = null
         _isColdStart.value = true
         _forYouError.value = null
@@ -233,7 +229,6 @@ internal class DiscoverForYouLoader(
         _forYouEndReached.value = true
         _recommendations.value = emptyList()
         lastShownRecIds = emptySet()
-        _hiddenFromTrending.value = profile.excludedGameIds
     }
 
     private suspend fun applyForYouPage(
@@ -271,7 +266,6 @@ internal class DiscoverForYouLoader(
         }
         val recIds = feed.recommendations.map { it.game.id }.toSet()
         lastShownRecIds = recIds
-        _hiddenFromTrending.value = recIds + profile.excludedGameIds
         _recommendations.value = feed.recommendations
         return feed.recommendations.isNotEmpty()
     }
@@ -286,7 +280,7 @@ internal class DiscoverForYouLoader(
             }
             val profile = RecommendationProfileBuilder.build(signals)
             if (profile.isColdStart) {
-                applyColdStartRecommendations(profile, forYouSortIndex)
+                applyColdStartRecommendations(forYouSortIndex)
                 return@withLock
             }
             _isColdStart.value = false
@@ -298,7 +292,6 @@ internal class DiscoverForYouLoader(
             val removedIds = inLibraryIds + excludedFromLibrary + profile.excludedGameIds
             _recommendations.value = _recommendations.value.filter { it.game.id !in removedIds }
             lastShownRecIds = _recommendations.value.map { it.game.id }.toSet()
-            _hiddenFromTrending.value = lastShownRecIds + profile.excludedGameIds
         }
     }
 
@@ -361,7 +354,6 @@ internal fun reduceForYouAppend(input: ForYouPageInput): ForYouTransition {
     val newFeed = DiscoverFeedAssembler.assemble(
         profile = input.profile,
         candidates = input.page.items,
-        trending = emptyList(),
         inLibraryIds = input.inLibraryIds,
         shownIds = shownIds,
         pageSize = Int.MAX_VALUE,
@@ -407,7 +399,6 @@ internal fun reduceForYouRebuild(
     return DiscoverFeedAssembler.assemble(
         profile = profile,
         candidates = page.items,
-        trending = emptyList(),
         inLibraryIds = inLibraryIds,
         shownIds = historicShownIds,
         pageSize = Int.MAX_VALUE,

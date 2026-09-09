@@ -216,6 +216,7 @@ fun SearchScreen(
             onApply = { appliedFilters ->
                 onApplyFilters(appliedFilters)
             },
+            queryPresent = uiState.query.isNotBlank(),
         )
     }
 

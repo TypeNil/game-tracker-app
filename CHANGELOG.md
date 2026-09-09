@@ -14,11 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Search, Game Details, Library, and Discover presentation code was split into focused components without changing behavior. Extracted Search/Details/Library helpers are `internal`; screen APIs stay public.
 - Docs now state recommendation transport (seed/exclude IDs and tags), memory-only For You, best-effort release notifications, Settings as a top-bar action, and the liveDebug cleartext allowlist for LAN HTTP.
 - `:app` and `:backend` Detekt tasks use the repo YAML config and run read-only (`autoCorrect = false`) so CI cannot rewrite the checkout.
+- Local BFF binds `127.0.0.1` by default; LAN access is opt-in via `HOST=0.0.0.0`.
+- Docs record IGDB offset-pagination tie-break as a known limitation of single-field sorts.
 
 ### Fixed
 - Pull-to-refresh on a selected Discover rail preserves other rails' pagination cursors and cancelled rail loads no longer stay stuck loading.
 - For You rebuild fills through empty filtered pages, append does not reinsert a game saved during the request, and queued loadMore no longer no-ops on its own job.
 - Tag lists use repeated query params instead of CSV, so comma-containing names round-trip; `PC` canonicalizes to IGDB `PC (Microsoft Windows)`.
+- Discover no longer loads the unused trending pipeline; leftover Room trending cache cannot hide For You/Charts loading or errors.
+- Search filter sheet disables non-relevance sort while a text query is present instead of applying a silent no-op.
+- Release notification IDs are derived from `eventKey`, so successive date-change events for one game are distinct.
+- Game details TTL treats a future `cachedAt` timestamp as stale (device clock skew).
 
 ---
 

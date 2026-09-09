@@ -95,36 +95,26 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun init_hydratesTrendingSilently_andDoesNotFlipRefreshing() = runTest {
+    fun init_andPullToRefresh_doNotCallRefreshTrendingGames() = runTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
-            val state = awaitItemUntil { it.trending.isNotEmpty() && !it.isLoading }
-            assertEquals(listOf(11L), state.trending.map { it.id })
+            val state = awaitItemUntil { !it.isLoading }
             assertTrue(state.recommendations.isEmpty())
             assertFalse(state.isRefreshing)
             cancelAndIgnoreRemainingEvents()
         }
         coVerify(exactly = 1) { librarySeeder.seedIfEmpty() }
-        coVerify(exactly = 1) { gameRepository.refreshTrendingGames(any(), any(), any()) }
+        coVerify(exactly = 0) { gameRepository.refreshTrendingGames(any(), any(), any()) }
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        coVerify(exactly = 0) { gameRepository.refreshTrendingGames(any(), any(), any()) }
     }
 
     @Test
-    fun init_whenTrendingFailsAndEmpty_emitsError() = runTest {
-        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } returns AppResult.Error(AppError.NetworkError)
-
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            val state = awaitItemUntil { it.error != null && !it.isLoading }
-            assertEquals(AppError.NetworkError, state.error)
-            assertFalse(state.isRefreshing)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun recsError_keepsTrendingVisible() = runTest {
+    fun recsError_doesNotTreatTrendingCacheAsContent() = runTest {
+        trendingFlow.value = trendingGames
         coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(
                 gameId = 1942L,
@@ -139,10 +129,12 @@ class DiscoverViewModelTest {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
-            val state = awaitItemUntil { it.trending.isNotEmpty() && !it.isLoading }
+            val state = awaitItemUntil { it.forYouError != null && !it.isLoading }
             assertTrue(state.recommendations.isEmpty())
-            assertEquals(listOf(11L), state.trending.map { it.id })
-            assertEquals(null, state.error)
+            assertTrue(state.rails.all { it.games.isEmpty() })
+            assertFalse(state.hasContent)
+            assertFalse(state.isInitialLoading)
+            assertEquals(AppError.NetworkError, state.forYouError)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -153,9 +145,9 @@ class DiscoverViewModelTest {
         advanceUntilIdle()
 
         val gate = CompletableDeferred<Unit>()
-        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
+        coEvery { gameRepository.refreshPopular(any(), any(), any(), any()) } coAnswers {
             gate.await()
-            AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
+            AppResult.Success(PageContinuation(nextOffset = 20, endReached = false))
         }
 
         viewModel.uiState.test {
@@ -171,7 +163,7 @@ class DiscoverViewModelTest {
 
 
     @Test
-    fun positiveLibrary_buildsForYouAndDropsRecFromTrending() = runTest {
+    fun positiveLibrary_buildsForYouRecommendations() = runTest {
         coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
             RecommendationSignal(
                 gameId = 1942L,
@@ -201,77 +193,10 @@ class DiscoverViewModelTest {
         viewModel.uiState.test {
             val state = awaitItemUntil { it.recommendations.isNotEmpty() && !it.isLoading }
             assertEquals(listOf(11L), state.recommendations.map { it.game.id })
-            assertTrue(state.trending.none { it.id == 11L })
             cancelAndIgnoreRemainingEvents()
         }
     }
 
-    @Test
-    fun loadMoreTrending_appendsWithoutRefreshing() = runTest {
-        val pageOne = (1L..20L).map { Game(id = it, name = "T$it") }
-        val pageTwo = (21L..40L).map { Game(id = it, name = "T$it") }
-        trendingFlow.value = pageOne
-        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
-            val offset = args[1] as Int
-            val append = args[2] as Boolean
-            trendingFlow.value = if (append && offset == 20) pageOne + pageTwo else pageOne
-            AppResult.Success(
-                PageContinuation(
-                    nextOffset = if (append) 40 else 20,
-                    endReached = false,
-                ),
-            )
-        }
-
-
-        val viewModel = createViewModel()
-        viewModel.uiState.test {
-            awaitItemUntil { it.trending.size == 20 && !it.isLoading }
-            viewModel.loadMoreTrending()
-            val appended = awaitItemUntil { it.trending.size == 40 }
-            assertFalse(appended.isRefreshing)
-            cancelAndIgnoreRemainingEvents()
-        }
-        coVerify { gameRepository.refreshTrendingGames(20, 20, true) }
-
-    }
-    @Test
-    fun loadMoreTrending_usesRawContinuationNotLocalCountAfterOverlap() = runTest {
-        val pageOne = (1L..3L).map { Game(id = it, name = "T$it") }
-        val denseAfterOverlap = (1L..5L).map { Game(id = it, name = "T$it") }
-        trendingFlow.value = pageOne
-        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
-            val offset = args[1] as Int
-            val append = args[2] as Boolean
-            when {
-                !append -> {
-                    trendingFlow.value = pageOne
-                    AppResult.Success(PageContinuation(nextOffset = 3, endReached = false))
-                }
-                append && offset == 3 -> {
-                    trendingFlow.value = denseAfterOverlap
-                    AppResult.Success(PageContinuation(nextOffset = 6, endReached = false))
-                }
-                append && offset == 6 -> {
-                    AppResult.Success(PageContinuation(nextOffset = 9, endReached = false))
-                }
-                else -> error("unexpected trending request offset=$offset append=$append")
-            }
-        }
-
-        val viewModel = createViewModel()
-        viewModel.uiState.test {
-            awaitItemUntil { it.trending.size == 3 && !it.isLoading }
-            viewModel.loadMoreTrending()
-            awaitItemUntil { it.trending.size == 5 }
-            viewModel.loadMoreTrending()
-            advanceUntilIdle()
-            cancelAndIgnoreRemainingEvents()
-        }
-        coVerify { gameRepository.refreshTrendingGames(20, 3, true) }
-        coVerify { gameRepository.refreshTrendingGames(20, 6, true) }
-        coVerify(exactly = 0) { gameRepository.refreshTrendingGames(any(), 5, true) }
-    }
 
     @Test
     fun `ui state exposes rail sections without changing pull refresh flag`() = runTest {
@@ -410,50 +335,6 @@ class DiscoverViewModelTest {
         }
     }
 
-    @Test
-    fun append_removesFromVisibleTrending() = runTest {
-        val trendingGame = Game(id = 11L, name = "Trending Game")
-        trendingFlow.value = listOf(trendingGame)
-
-        val c1 = RecommendationCandidate(101L, "Rec 101", genres = listOf("RPG"), rating = 90.0, ratingCount = 200L)
-        val c2 = RecommendationCandidate(11L, "Trending Game", genres = listOf("RPG"), rating = 88.0, ratingCount = 150L)
-
-        coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(listOf(
-            RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))
-        ))
-        coEvery {
-            gameRepository.getRecommendationCandidatesPage(any(), any(), any(), any(), any(), any(), any(), any())
-        } answers {
-            val offset = args[6] as Int
-            val items = if (offset == 0) listOf(c1) else listOf(c2)
-            AppResult.Success(RecommendationCandidatePage(items = items, nextOffset = offset + 20, endReached = false))
-        }
-
-        val viewModel = createViewModel()
-        viewModel.uiState.test {
-            var item = awaitItem()
-            var triggeredAppend = false
-            while (true) {
-                val recIds = item.recommendations.map { it.game.id }.toSet()
-                val trendingIds = item.trending.map { it.id }.toSet()
-                assertTrue(
-                    "Turbine no-dual-visibility: game cannot appear in both recommendations and trending",
-                    recIds.intersect(trendingIds).isEmpty(),
-                )
-                if (item.recommendations.any { it.game.id == 11L } && item.trending.none { it.id == 11L }) {
-                    break
-                }
-                val feedSettled = !item.isLoading && item.trending.isNotEmpty()
-                val readyToAppend = !triggeredAppend && feedSettled && item.recommendations.size == 1
-                if (readyToAppend) {
-                    triggeredAppend = true
-                    viewModel.loadMoreForYou()
-                }
-                item = awaitItem()
-            }
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
 
     @Test
     fun rotate_prefersUnseen() = runTest {
@@ -1026,7 +907,7 @@ class DiscoverViewModelTest {
         }
     }
     @Test
-    fun `reconnect with trending and forYou errors rebuilds recommendations once`() = runTest {
+    fun `reconnect with forYou error rebuilds recommendations once`() = runTest {
         val networkStatus = MutableStateFlow<NetworkStatus>(NetworkStatus.Unavailable)
         val networkMonitor: NetworkMonitor = mockk {
             every { status } returns networkStatus
@@ -1037,8 +918,6 @@ class DiscoverViewModelTest {
         coEvery { libraryRepository.getRecommendationSignals() } returns AppResult.Success(
             listOf(RecommendationSignal(1942L, LibraryStatus.COMPLETED, isFavorite = true, genres = listOf("RPG"))),
         )
-        // Initial load: trending fails and forYou fails
-        coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } returns AppResult.Error(AppError.NetworkError)
 
         val candidateCalls = mutableListOf<Int>()
         coEvery {
@@ -1063,25 +942,15 @@ class DiscoverViewModelTest {
         )
 
         viewModel.uiState.test {
-            val errorState = awaitItemUntil { it.error != null && it.forYouError != null }
-            assertEquals(AppError.NetworkError, errorState.error)
+            val errorState = awaitItemUntil { it.forYouError != null }
             assertEquals(AppError.NetworkError, errorState.forYouError)
             assertEquals(1, candidateCalls.size)
 
-            // Configure success for trending on reconnect
-            coEvery { gameRepository.refreshTrendingGames(any(), any(), any()) } coAnswers {
-                trendingFlow.value = trendingGames
-                AppResult.Success(PageContinuation(nextOffset = null, endReached = true))
-            }
-
-            // Network reconnects
             networkStatus.value = NetworkStatus.Available
             advanceUntilIdle()
 
-            // Verify getRecommendationCandidatesPage was called exactly once during recovery (size == 2)
             assertEquals(2, candidateCalls.size)
             val recoveredState = viewModel.uiState.value
-            assertEquals(null, recoveredState.error)
             assertEquals(null, recoveredState.forYouError)
             assertEquals(listOf(101L), recoveredState.recommendations.map { it.game.id })
             cancelAndIgnoreRemainingEvents()
