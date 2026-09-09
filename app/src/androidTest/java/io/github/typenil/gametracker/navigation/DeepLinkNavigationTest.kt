@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -125,6 +130,60 @@ class DeepLinkNavigationTest {
                 composeTestRule.onAllNodesWithText(libraryTitle).fetchSemanticsNodes().isNotEmpty()
             }
             composeTestRule.onNodeWithText(libraryTitle).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun searchTab_survivesActivityRecreation() {
+        val searchNavLabel = context.getString(R.string.nav_search)
+        val searchHint = context.getString(R.string.search_hint)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(searchNavLabel).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(searchHint).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(searchHint).assertIsDisplayed()
+
+            scenario.recreate()
+
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(searchHint).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(searchHint).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun searchTab_switchAwayAndBack_preservesQuery_andRetapFocusesField() {
+        val searchNavLabel = context.getString(R.string.nav_search)
+        val libraryNavLabel = context.getString(R.string.nav_library)
+        val libraryTitle = context.getString(R.string.library_title)
+        val searchHint = context.getString(R.string.search_hint)
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            waitForText(searchNavLabel)
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+            waitForText(searchHint)
+
+            composeTestRule.onNode(hasSetTextAction()).performTextReplacement("witcher")
+            composeTestRule.onNode(hasSetTextAction()).performImeAction()
+
+            composeTestRule.onNodeWithText(libraryNavLabel).performClick()
+            waitForText(libraryTitle)
+
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNode(hasSetTextAction()).assertTextContains("witcher")
+
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+            composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
         }
     }
 

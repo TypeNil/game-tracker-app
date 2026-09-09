@@ -39,7 +39,7 @@ fun AnimatedContentTransitionScope<NavBackStackEntry>.appNavEnterTransition(): E
     val toTopLevel = targetState.destination.isTopLevelDestination()
 
     return if (fromTopLevel && toTopLevel) {
-        // Switching between top-level tabs (Discover <-> Library): instant clean crossfade
+        // Switching between top-level tabs (Discover / Search / Library): instant clean crossfade
         fadeIn(
             animationSpec = tween(
                 durationMillis = AppNavigationMotion.DURATION_TAB_CROSSFADE_MS,
@@ -47,7 +47,7 @@ fun AnimatedContentTransitionScope<NavBackStackEntry>.appNavEnterTransition(): E
             )
         )
     } else {
-        // Forward navigation to a sub-screen (Details, Search, Settings): slide in from right with fade
+        // Forward navigation to a sub-screen (Details, Settings): slide in from right with fade
         slideIntoContainer(
             towards = AnimatedContentTransitionScope.SlideDirection.Start,
             animationSpec = tween(

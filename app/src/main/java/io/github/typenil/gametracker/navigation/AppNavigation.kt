@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,6 +43,7 @@ import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
 import io.github.typenil.gametracker.feature.discover.navigation.discoverEntry
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.library.navigation.libraryEntry
+import io.github.typenil.gametracker.feature.search.navigation.SearchKey
 import io.github.typenil.gametracker.feature.search.navigation.searchEntry
 import io.github.typenil.gametracker.feature.settings.navigation.settingsEntry
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
@@ -79,6 +81,7 @@ fun AppNavHost(
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
     var scrollToTopDiscoverTrigger by remember { mutableLongStateOf(0L) }
+    var searchRetapTrigger by remember { mutableLongStateOf(0L) }
     LaunchedEffect(currentDestination) {
         if (currentDestination != null && currentDestination.hasRoute<DiscoverKey>() != true) {
             onLeaveSplash()
@@ -114,7 +117,7 @@ fun AppNavHost(
 
             searchEntry(
                 onGameClick = appState::navigateToGameDetails,
-                onBackClick = appState::navigateBack
+                scrollToTopTrigger = { searchRetapTrigger },
             )
 
             gameDetailsEntry(
@@ -158,8 +161,10 @@ fun AppNavHost(
             AppBottomNavigationBar(
                 currentDestination = currentDestination,
                 onNavigateToDiscover = appState::navigateToDiscover,
+                onNavigateToSearch = appState::navigateToSearch,
                 onNavigateToLibrary = appState::navigateToLibrary,
-                onScrollToTopDiscover = { scrollToTopDiscoverTrigger = System.currentTimeMillis() },
+                onScrollToTopDiscover = { scrollToTopDiscoverTrigger++ },
+                onSearchRetap = { searchRetapTrigger++ },
             )
         }
 
@@ -174,8 +179,10 @@ fun AppNavHost(
 private fun AppBottomNavigationBar(
     currentDestination: NavDestination?,
     onNavigateToDiscover: () -> Unit,
+    onNavigateToSearch: () -> Unit,
     onNavigateToLibrary: () -> Unit,
     onScrollToTopDiscover: () -> Unit,
+    onSearchRetap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NavigationBar(modifier = modifier) {
@@ -192,10 +199,29 @@ private fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.Explore,
-                    contentDescription = stringResource(R.string.nav_discover)
+                    contentDescription = null,
                 )
             },
             label = { Text(stringResource(R.string.nav_discover)) }
+        )
+
+        val isSearchSelected = currentDestination?.hasRoute<SearchKey>() == true
+        NavigationBarItem(
+            selected = isSearchSelected,
+            onClick = {
+                if (isSearchSelected) {
+                    onSearchRetap()
+                } else {
+                    onNavigateToSearch()
+                }
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                )
+            },
+            label = { Text(stringResource(R.string.nav_search)) }
         )
 
         val isLibrarySelected = currentDestination?.hasRoute<LibraryKey>() == true
@@ -209,7 +235,7 @@ private fun AppBottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Default.CollectionsBookmark,
-                    contentDescription = stringResource(R.string.nav_library)
+                    contentDescription = null,
                 )
             },
             label = { Text(stringResource(R.string.nav_library)) }

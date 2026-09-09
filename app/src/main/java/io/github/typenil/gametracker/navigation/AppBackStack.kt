@@ -91,5 +91,5 @@ fun rememberGameTrackerAppState(
  */
 fun NavDestination?.isTopLevelDestination(): Boolean {
     if (this == null) return false
-    return hasRoute<DiscoverKey>() || hasRoute<LibraryKey>()
+    return hasRoute<DiscoverKey>() || hasRoute<SearchKey>() || hasRoute<LibraryKey>()
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,11 +17,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -37,37 +41,32 @@ private fun SearchInputViolation.messageRes(): Int = when (this) {
 }
 
 /**
- * Top search header bar with back button, search text field, clear action, and input validation.
+ * Top search header bar with search text field, clear action, and input validation.
  *
  * A dedicated header row instead of TopAppBar(title = TextField): M3 TextField reserves
  * its supporting-text area even when empty, which grew the bar to ~73dp and left the
- * field misaligned with the back button plus dead space before the filter row.
+ * field with dead space before the filter row.
  */
 @Composable
 internal fun SearchTopBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
-    onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     inputValidation: SearchInputValidation = SearchInputValidation.Valid(""),
+    focusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val focusManager = LocalFocusManager.current
+    val searchFieldDescription = stringResource(R.string.search_action_desc)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
-            .padding(top = 8.dp, bottom = 8.dp, end = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBackClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.back_action_desc),
-            )
-        }
         TextField(
             value = query,
             onValueChange = onQueryChange,
@@ -118,7 +117,10 @@ internal fun SearchTopBar(
             ),
             modifier = Modifier
                 .weight(1f)
-                .padding(end = 8.dp),
+                .focusRequester(focusRequester)
+                .semantics {
+                    contentDescription = searchFieldDescription
+                },
         )
     }
 }

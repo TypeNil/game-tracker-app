@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -46,12 +48,14 @@ internal fun SearchResultsList(
     onGameClick: (Long) -> Unit,
     onLibraryAction: (Game) -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val ready = librarySnapshot as? LibrarySnapshot.Ready
     val refreshError = games.loadState.refresh as? LoadState.Error
     val appendState = games.loadState.append
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(GtDimens.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

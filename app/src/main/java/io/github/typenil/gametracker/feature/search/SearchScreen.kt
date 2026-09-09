@@ -2,9 +2,11 @@ package io.github.typenil.gametracker.feature.search
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -12,11 +14,13 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +30,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
+import io.github.typenil.gametracker.core.designsystem.theme.topLevelBottomInset
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -45,8 +50,8 @@ import kotlinx.coroutines.flow.Flow
 @Composable
 fun SearchRoute(
     onGameClick: (Long) -> Unit,
-    onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    scrollToTopTrigger: Long = 0L,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -59,7 +64,6 @@ fun SearchRoute(
         onQueryChange = viewModel::onQueryChanged,
         onClearQuery = viewModel::onClearQuery,
         onGameClick = onGameClick,
-        onBackClick = onBackClick,
         onToggleGenre = viewModel::onGenreToggled,
         onTogglePlatform = viewModel::onPlatformToggled,
         onRemoveReleaseYear = { viewModel.onReleaseYearSelected(ReleaseYearFilter.ALL) },
@@ -80,6 +84,7 @@ fun SearchRoute(
         onRemoveFromLibrary = viewModel::onRemoveFromLibrary,
         onDismissEditLibrary = viewModel::onDismissEditLibrary,
         onUserMessageShown = viewModel::onUserMessageShown,
+        scrollToTopTrigger = scrollToTopTrigger,
         modifier = modifier,
     )
 }
@@ -92,7 +97,6 @@ fun SearchScreen(
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onGameClick: (Long) -> Unit,
-    onBackClick: () -> Unit,
     onToggleGenre: (String) -> Unit = {},
     onTogglePlatform: (PlatformFamily) -> Unit = {},
     onRemoveReleaseYear: () -> Unit = {},
@@ -108,6 +112,7 @@ fun SearchScreen(
     onDismissEditLibrary: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     networkStatus: NetworkStatus = NetworkStatus.Unknown,
+    scrollToTopTrigger: Long = 0L,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -128,24 +133,51 @@ fun SearchScreen(
     }
     val readyLibrary = uiState.librarySnapshot as? LibrarySnapshot.Ready
     val editingEntry = uiState.editingGameId?.let { readyLibrary?.entries?.get(it) }
+    val focusRequester = remember { FocusRequester() }
+    val resultsListState = rememberLazyListState()
+    val recentListState = rememberLazyListState()
+    var lastHandledScrollToTopTrigger by rememberSaveable {
+        mutableLongStateOf(scrollToTopTrigger)
+    }
+
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0L && scrollToTopTrigger != lastHandledScrollToTopTrigger) {
+            lastHandledScrollToTopTrigger = scrollToTopTrigger
+            if (uiState.searchActive) {
+                resultsListState.scrollToItem(0)
+            } else {
+                recentListState.scrollToItem(0)
+            }
+            focusRequester.requestFocus()
+        }
+    }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = topLevelBottomInset()),
+            )
+        },
         topBar = {
             SearchTopBar(
                 query = uiState.query,
                 onQueryChange = onQueryChange,
                 onClearQuery = onClearQuery,
-                onBackClick = onBackClick,
                 inputValidation = uiState.inputValidation,
+                focusRequester = focusRequester,
             )
         },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = topLevelBottomInset(),
+                ),
         ) {
             // Horizontal Filter & Sort Bar
             SearchFilterBar(
@@ -175,6 +207,7 @@ fun SearchScreen(
                             onSelectRecentQuery = onSelectRecentQuery,
                             onRemoveRecentQuery = onRemoveRecentQuery,
                             onClearAllRecentQueries = onClearAllRecentQueries,
+                            listState = recentListState,
                         )
                     }
                     refreshState is LoadState.Loading && lazyItems.itemCount == 0 -> {
@@ -202,6 +235,7 @@ fun SearchScreen(
                             librarySnapshot = uiState.librarySnapshot,
                             onGameClick = onGameClick,
                             onLibraryAction = onLibraryAction,
+                            listState = resultsListState,
                         )
                     }
                 }
