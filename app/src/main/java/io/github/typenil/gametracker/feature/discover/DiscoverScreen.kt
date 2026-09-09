@@ -82,9 +82,7 @@ fun DiscoverScreen(
     onSearchClick: () -> Unit,
     onAboutClick: () -> Unit,
     onRefresh: () -> Unit,
-    onRetry: () -> Unit,
     onUserMessageShown: () -> Unit,
-    onLoadMoreTrending: () -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit = {},
     onSelectTab: (DiscoverTab) -> Unit = {},
     onSelectRail: (DiscoverRail) -> Unit = {},
@@ -143,12 +141,10 @@ fun DiscoverScreen(
         )
         when {
             uiState.isInitialLoading -> DiscoverLoadingState(contentModifier)
-            uiState.error != null && !uiState.hasContent -> DiscoverErrorState(uiState.error, onRetry, contentModifier)
             else -> DiscoverContent(
                 uiState = uiState,
                 onGameClick = onGameClick,
                 onRefresh = onRefresh,
-                onLoadMoreTrending = onLoadMoreTrending,
                 onLoadMoreRail = onLoadMoreRail,
                 onSelectTab = onSelectTab,
                 onSelectRail = onSelectRail,
@@ -179,7 +175,6 @@ private fun DiscoverContent(
     uiState: DiscoverUiState,
     onGameClick: (Long) -> Unit,
     onRefresh: () -> Unit,
-    onLoadMoreTrending: () -> Unit,
     onLoadMoreRail: (DiscoverRail) -> Unit,
     onSelectTab: (DiscoverTab) -> Unit,
     onSelectRail: (DiscoverRail) -> Unit,

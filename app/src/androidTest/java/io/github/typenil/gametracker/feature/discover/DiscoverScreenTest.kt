@@ -41,9 +41,7 @@ class DiscoverScreenTest {
                     onSearchClick = {},
                     onAboutClick = {},
                     onRefresh = {},
-                    onRetry = {},
                     onUserMessageShown = {},
-                    onLoadMoreTrending = {},
                     onLoadMoreRail = onLoadMoreRail,
                     onReadyToDraw = onReadyToDraw,
                 )
@@ -70,7 +68,6 @@ class DiscoverScreenTest {
         setContent(
             DiscoverUiState(
                 isLoading = false,
-                trending = listOf(Game(id = 1L, name = "Hades")),
             ),
             onReadyToDraw = { readyCount++ },
         )
@@ -116,9 +113,7 @@ class DiscoverScreenTest {
                     onSearchClick = {},
                     onAboutClick = {},
                     onRefresh = {},
-                    onRetry = {},
                     onUserMessageShown = {},
-                    onLoadMoreTrending = {},
                     onLibraryAction = { libraryActions++ },
                 )
             }
@@ -156,9 +151,7 @@ class DiscoverScreenTest {
                     onSearchClick = {},
                     onAboutClick = {},
                     onRefresh = {},
-                    onRetry = {},
                     onUserMessageShown = {},
-                    onLoadMoreTrending = {},
                     onLibraryAction = { libraryActions++ },
                 )
             }
@@ -189,9 +182,7 @@ class DiscoverScreenTest {
                     onSearchClick = {},
                     onAboutClick = {},
                     onRefresh = {},
-                    onRetry = {},
                     onUserMessageShown = {},
-                    onLoadMoreTrending = {},
                     onLibraryAction = {},
                 )
             }
