@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +43,7 @@ internal fun RecentQueriesList(
     onRemoveRecentQuery: (String) -> Unit,
     onClearAllRecentQueries: () -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     if (recentQueries.isEmpty()) return
 
@@ -48,6 +51,7 @@ internal fun RecentQueriesList(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = GtDimens.Gutter),
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
     ) {

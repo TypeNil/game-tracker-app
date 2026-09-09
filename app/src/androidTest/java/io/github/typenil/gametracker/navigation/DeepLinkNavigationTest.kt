@@ -129,6 +129,31 @@ class DeepLinkNavigationTest {
     }
 
     @Test
+    fun searchTab_survivesActivityRecreation() {
+        val searchNavLabel = context.getString(R.string.nav_search)
+        val searchHint = context.getString(R.string.search_hint)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(searchNavLabel).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(searchHint).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(searchHint).assertIsDisplayed()
+
+            scenario.recreate()
+
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(searchHint).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(searchHint).assertIsDisplayed()
+        }
+    }
+
+    @Test
     fun coldStartDeepLink_secondBackFinishesActivity() {
         val discoverTitle = context.getString(R.string.discover_title)
 

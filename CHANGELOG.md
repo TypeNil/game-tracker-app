@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Search is a top-level destination in bottom navigation (`Discover | Search | Library`). Query, filters, paging results, and scroll restore across tab switches; re-tapping Search focuses the field and scrolls to top.
+
 ---
 
 ## [1.0.2] - 2026-09-09

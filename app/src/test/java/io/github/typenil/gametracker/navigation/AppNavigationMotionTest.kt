@@ -65,12 +65,15 @@ class AppNavigationMotionTest {
     }
 
     @Test
+    fun searchDestination_isTopLevel() {
+        val destination = NavDestinationBuilder(navigator, route = SearchKey::class, typeMap = emptyMap()).build()
+        assertTrue(destination.isTopLevelDestination())
+    }
+
+    @Test
     fun subScreenDestinations_areNotTopLevel() {
         val gameDetails = NavDestinationBuilder(navigator, route = GameDetailsKey::class, typeMap = emptyMap()).build()
         assertFalse(gameDetails.isTopLevelDestination())
-
-        val search = NavDestinationBuilder(navigator, route = SearchKey::class, typeMap = emptyMap()).build()
-        assertFalse(search.isTopLevelDestination())
 
         val settings = NavDestinationBuilder(navigator, route = SettingsKey::class, typeMap = emptyMap()).build()
         assertFalse(settings.isTopLevelDestination())

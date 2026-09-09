@@ -146,7 +146,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -164,7 +163,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -183,7 +181,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = { clickedGameId = it },
-                onBackClick = {}
             )
         }
 
@@ -203,7 +200,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -230,7 +226,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -253,7 +248,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = { gameClicks++ },
-                onBackClick = {},
                 onLibraryAction = { libraryActions++ },
             )
         }
@@ -274,7 +268,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = { cleared = true },
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -295,7 +288,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -326,7 +318,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -349,7 +340,6 @@ class SearchScreenTest {
                 onQueryChange = { enteredText = it },
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -369,7 +359,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = { clearClicked = true },
                 onGameClick = {},
-                onBackClick = {}
             )
         }
 
@@ -380,9 +369,8 @@ class SearchScreenTest {
     }
 
     @Test
-    fun backAction_triggersOnBackClick_andHasAccessibleDescription() {
+    fun topLevelSearch_doesNotShowBackAction() {
         val context = composeTestRule.activity
-        var backClicked = false
 
         composeTestRule.setContent {
             SearchScreen(
@@ -391,14 +379,11 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = { backClicked = true }
             )
         }
 
         val backDescription = context.getString(R.string.back_action_desc)
-        composeTestRule.onNodeWithContentDescription(backDescription).assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription(backDescription).performClick()
-        assertTrue(backClicked)
+        composeTestRule.onNodeWithContentDescription(backDescription).assertDoesNotExist()
     }
 
     @Test
@@ -423,7 +408,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {},
                 onToggleGenre = { genreToggled = true },
             )
         }
@@ -456,7 +440,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {},
                 onSelectRecentQuery = { selectedQuery = it },
                 onToggleGenre = { toggledGenre = it },
             )
@@ -491,7 +474,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {},
                 onResetFilters = { resetClicked = true },
             )
         }
@@ -517,7 +499,6 @@ class SearchScreenTest {
         composeTestRule.setContent {
             SearchRoute(
                 onGameClick = {},
-                onBackClick = {},
                 viewModel = viewModel
             )
         }
@@ -567,7 +548,6 @@ class SearchScreenTest {
         composeTestRule.setContent {
             SearchRoute(
                 onGameClick = {},
-                onBackClick = {},
                 viewModel = viewModel
             )
         }
@@ -669,7 +649,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {},
             )
         }
 
@@ -722,7 +701,6 @@ class SearchScreenTest {
                         onQueryChange = {},
                         onClearQuery = {},
                         onGameClick = {},
-                        onBackClick = {},
                     )
                 }
             }
@@ -779,7 +757,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {},
             )
         }
 
@@ -856,7 +833,6 @@ class SearchScreenTest {
                 onQueryChange = {},
                 onClearQuery = {},
                 onGameClick = {},
-                onBackClick = {},
             )
         }
 

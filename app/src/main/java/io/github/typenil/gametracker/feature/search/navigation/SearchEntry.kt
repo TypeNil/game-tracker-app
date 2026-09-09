@@ -18,12 +18,12 @@ fun NavController.navigateToSearch(navOptions: NavOptions? = null) {
  */
 fun NavGraphBuilder.searchEntry(
     onGameClick: (Long) -> Unit,
-    onBackClick: () -> Unit
+    scrollToTopTrigger: () -> Long = { 0L },
 ) {
     composable<SearchKey> {
         SearchRoute(
             onGameClick = onGameClick,
-            onBackClick = onBackClick
+            scrollToTopTrigger = scrollToTopTrigger(),
         )
     }
 }
