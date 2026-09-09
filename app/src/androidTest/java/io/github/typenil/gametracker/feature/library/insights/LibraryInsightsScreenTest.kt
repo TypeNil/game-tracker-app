@@ -2,10 +2,12 @@ package io.github.typenil.gametracker.feature.library.insights
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
@@ -72,7 +74,9 @@ class LibraryInsightsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Hades").assertIsDisplayed()
+        composeTestRule.onNodeWithTag(LIBRARY_INSIGHTS_LIST_TEST_TAG)
+            .performScrollToNode(hasTestTag(mostPlayedRowTestTag(42L)))
+        composeTestRule.onNodeWithTag(mostPlayedRowTestTag(42L)).assertIsDisplayed()
         composeTestRule.onNodeWithTag(mostPlayedRowTestTag(42L)).performClick()
         assertEquals(42L, clickedId)
     }

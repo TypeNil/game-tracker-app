@@ -217,6 +217,13 @@
         <item quantity="one">%1$s game</item>
         <item quantity="other">%1$s games</item>
     </plurals>
+    <plurals name="insights_games_caption">
+        <item quantity="one">game</item>
+        <item quantity="other">games</item>
+    </plurals>
+    <string name="insights_metric_hours">hours</string>
+    <string name="insights_metric_completed">completed</string>
+    <string name="insights_metric_rating">avg rating</string>
     <string name="insights_hours_total">%1$s h</string>
     <string name="insights_completed_count">%1$s completed</string>
     <string name="insights_avg_rating">%1$s avg rating</string>

@@ -7,17 +7,22 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,6 +32,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,10 +46,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -54,24 +63,23 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
+import io.github.typenil.gametracker.core.designsystem.component.PlatformIconView
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.LibraryStatus
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.union
-import androidx.compose.ui.res.pluralStringResource
 import java.text.NumberFormat
 
 internal const val LIBRARY_INSIGHTS_SCREEN_TEST_TAG = "library-insights-screen"
 internal const val LIBRARY_INSIGHTS_ACTION_TEST_TAG = "library-insights-action"
+internal const val LIBRARY_INSIGHTS_LIST_TEST_TAG = "library-insights-list"
 
 private val StatusBarMinWidth = 2.dp
-private val StatusBarHeight = 10.dp
-private val TasteSeparator = " · "
+private val StatusBarHeight = 14.dp
+private val SectionCardShape = RoundedCornerShape(16.dp)
+private val ChipShape = RoundedCornerShape(50)
 
 @Composable
 fun LibraryInsightsRoute(
@@ -226,169 +234,247 @@ private fun InsightsContent(
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(LIBRARY_INSIGHTS_LIST_TEST_TAG),
+        contentPadding = PaddingValues(
             start = GtDimens.Gutter,
             end = GtDimens.Gutter,
             top = 8.dp,
             bottom = 24.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "summary") {
-            InsightsSummary(
+            InsightsSummaryCard(
                 insights = insights,
                 integerFormat = integerFormat,
                 percentFormat = percentFormat,
                 ratingFormat = ratingFormat,
             )
         }
-        item(key = "chips") {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                InsightChip(
-                    label = stringResource(R.string.library_status_playing),
-                    count = integerFormat.format(insights.playingCount),
-                )
-                InsightChip(
-                    label = stringResource(R.string.library_status_wishlist),
-                    count = integerFormat.format(insights.wishlistCount),
-                )
-                InsightChip(
-                    label = stringResource(R.string.library_favorite),
-                    count = integerFormat.format(insights.favoritesCount),
+        item(key = "status") {
+            InsightsSectionCard {
+                InsightsStatusSection(
+                    insights = insights,
+                    integerFormat = integerFormat,
                 )
             }
-        }
-        item(key = "status") {
-            InsightsStatusSection(
-                insights = insights,
-                integerFormat = integerFormat,
-            )
         }
         if (insights.mostPlayed.isNotEmpty()) {
-            item(key = "most-played-header") {
-                SectionTitle(text = stringResource(R.string.insights_most_played))
-            }
-            items(
-                items = insights.mostPlayed,
-                key = { it.gameId },
-            ) { game ->
-                MostPlayedRow(
-                    game = game,
-                    hoursLabel = stringResource(
-                        R.string.insights_hours_total,
-                        integerFormat.format(game.hoursPlayed),
-                    ),
-                    onClick = { onGameClick(game.gameId) },
-                )
+            item(key = "most-played") {
+                InsightsSectionCard {
+                    SectionTitle(text = stringResource(R.string.insights_most_played))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    insights.mostPlayed.forEachIndexed { index, game ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            )
+                        }
+                        MostPlayedRow(
+                            game = game,
+                            hoursLabel = stringResource(
+                                R.string.insights_hours_total,
+                                integerFormat.format(game.hoursPlayed),
+                            ),
+                            onClick = { onGameClick(game.gameId) },
+                        )
+                    }
+                }
             }
         }
         if (insights.topGenres.isNotEmpty()) {
             item(key = "taste") {
-                InsightsTasteBlock(
-                    title = stringResource(R.string.insights_taste),
-                    value = insights.topGenres.joinToString(TasteSeparator),
-                )
+                InsightsSectionCard {
+                    SectionTitle(text = stringResource(R.string.insights_taste))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TasteChipRow(labels = insights.topGenres)
+                }
             }
         }
         if (insights.topPlatforms.isNotEmpty()) {
             item(key = "platforms") {
-                InsightsTasteBlock(
-                    title = stringResource(R.string.insights_platforms),
-                    value = platformLabels(insights.topPlatforms),
-                )
+                InsightsSectionCard {
+                    SectionTitle(text = stringResource(R.string.insights_platforms))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PlatformChipRow(platforms = insights.topPlatforms)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun InsightsSummary(
+private fun InsightsSectionCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = SectionCardShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(GtDimens.Gutter),
+            content = { content() },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InsightsSummaryCard(
     insights: LibraryInsights,
     integerFormat: NumberFormat,
     percentFormat: NumberFormat,
     ratingFormat: NumberFormat,
 ) {
     val none = stringResource(R.string.insights_value_none)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val gamesValue = integerFormat.format(insights.totalGames)
+    val gamesCaption = pluralStringResource(
+        R.plurals.insights_games_caption,
+        insights.totalGames,
+    )
+    val gamesA11y = pluralStringResource(
+        R.plurals.insights_games_count,
+        insights.totalGames,
+        gamesValue,
+    )
+    InsightsSectionCard {
         Text(
             text = stringResource(R.string.insights_heading),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() },
         )
+        Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            SummaryCell(
-                value = pluralStringResource(
-                    R.plurals.insights_games_count,
-                    insights.totalGames,
-                    integerFormat.format(insights.totalGames),
-                ),
+            MetricCell(
+                value = gamesValue,
+                caption = gamesCaption,
+                contentDescription = gamesA11y,
                 modifier = Modifier.weight(1f),
             )
-            SummaryCell(
-                value = stringResource(
+            MetricCell(
+                value = integerFormat.format(insights.totalHours),
+                caption = stringResource(R.string.insights_metric_hours),
+                contentDescription = stringResource(
                     R.string.insights_hours_total,
                     integerFormat.format(insights.totalHours),
                 ),
                 modifier = Modifier.weight(1f),
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            SummaryCell(
-                value = stringResource(
+            MetricCell(
+                value = integerFormat.format(insights.completedCount),
+                caption = stringResource(R.string.insights_metric_completed),
+                contentDescription = stringResource(
                     R.string.insights_completed_count,
                     integerFormat.format(insights.completedCount),
                 ),
                 modifier = Modifier.weight(1f),
             )
-            SummaryCell(
-                value = insights.averageUserRating?.let { rating ->
+            MetricCell(
+                value = insights.averageUserRating?.let(ratingFormat::format) ?: none,
+                caption = stringResource(R.string.insights_metric_rating),
+                contentDescription = insights.averageUserRating?.let { rating ->
                     stringResource(R.string.insights_avg_rating, ratingFormat.format(rating))
                 } ?: stringResource(R.string.insights_avg_rating, none),
                 modifier = Modifier.weight(1f),
             )
         }
         insights.completionRate?.let { rate ->
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.insights_completion, percentFormat.format(rate)),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            InsightChip(
+                label = stringResource(R.string.library_status_playing),
+                count = integerFormat.format(insights.playingCount),
+                swatch = LibraryStatus.PLAYING.contentColor(),
+            )
+            InsightChip(
+                label = stringResource(R.string.library_status_wishlist),
+                count = integerFormat.format(insights.wishlistCount),
+                swatch = LibraryStatus.WISHLIST.contentColor(),
+            )
+            InsightChip(
+                label = stringResource(R.string.library_favorite),
+                count = integerFormat.format(insights.favoritesCount),
             )
         }
     }
 }
 
 @Composable
-private fun SummaryCell(
+private fun MetricCell(
     value: String,
+    caption: String,
+    contentDescription: String,
     modifier: Modifier = Modifier,
 ) {
-    Text(
-        text = value,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Medium,
-        modifier = modifier,
-    )
+    Column(
+        modifier = modifier.semantics(mergeDescendants = true) {
+            this.contentDescription = contentDescription
+        },
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Text(
+            text = caption,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
 private fun InsightChip(
     label: String,
     count: String,
+    swatch: Color? = null,
 ) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = ChipShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.semantics(mergeDescendants = true) {},
     ) {
-        Text(
-            text = stringResource(R.string.insights_chip, label, count),
-            style = MaterialTheme.typography.labelLarge,
+        Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (swatch != null) {
+                Surface(
+                    modifier = Modifier.size(8.dp),
+                    shape = CircleShape,
+                    color = swatch,
+                ) {}
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = count,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -404,8 +490,9 @@ private fun InsightsStatusSection(
         LibraryStatus.DROPPED to insights.droppedCount,
     )
     val maxCount = rows.maxOf { it.second }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SectionTitle(text = stringResource(R.string.insights_status))
+    SectionTitle(text = stringResource(R.string.insights_status))
+    Spacer(modifier = Modifier.height(12.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         rows.forEach { (status, count) ->
             StatusBarRow(
                 status = status,
@@ -424,7 +511,7 @@ private fun StatusBarRow(
     maxCount: Int,
     countLabel: String,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -432,11 +519,12 @@ private fun StatusBarRow(
             Text(
                 text = stringResource(status.displayNameRes()),
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 text = countLabel,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
             )
         }
         BoxWithConstraints(
@@ -475,10 +563,11 @@ private fun MostPlayedRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .testTag(mostPlayedRowTestTag(game.gameId))
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -494,23 +583,65 @@ private fun MostPlayedRow(
         )
         Text(
             text = hoursLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun InsightsTasteBlock(
-    title: String,
-    value: String,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        SectionTitle(text = title)
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-        )
+private fun TasteChipRow(labels: List<String>) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        labels.forEach { label ->
+            Surface(
+                shape = ChipShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PlatformChipRow(platforms: List<PlatformFamily>) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        platforms.forEach { family ->
+            val label = stringResource(family.insightsLabelRes())
+            Surface(
+                shape = ChipShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PlatformIconView(
+                        platform = label,
+                        iconSize = 16.dp,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -519,7 +650,6 @@ private fun SectionTitle(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
         modifier = Modifier.semantics { heading() },
     )
 }
@@ -533,11 +663,3 @@ internal fun PlatformFamily.insightsLabelRes(): Int = when (this) {
     PlatformFamily.PC -> R.string.platform_pc
 }
 
-@Composable
-private fun platformLabels(platforms: List<PlatformFamily>): String {
-    val labels = ArrayList<String>(platforms.size)
-    for (family in platforms) {
-        labels.add(stringResource(family.insightsLabelRes()))
-    }
-    return labels.joinToString(TasteSeparator)
-}
