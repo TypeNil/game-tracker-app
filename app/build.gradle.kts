@@ -304,11 +304,14 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
     abstract val flavors: ListProperty<String>
 
     companion object {
-        /** Declared only in `src/debug/AndroidManifest.xml`; must never reach a release artifact. */
-        private const val DEV_TOOLS_COMPONENT = "io.github.typenil.gametracker.devtools.DevToolsActivity"
+        /**
+         * Declared only in `src/debug/AndroidManifest.xml`; must never reach a release artifact.
+         * DEX stores type names as `L…;` descriptors with slashes, not dotted class names.
+         */
+        private const val DEV_TOOLS_PACKAGE_DESCRIPTOR = "Lio/github/typenil/gametracker/devtools/"
 
         /** Declared in `src/main/AndroidManifest.xml`; proves component names survive R8. */
-        private const val LAUNCHER_COMPONENT = "io.github.typenil.gametracker.MainActivity"
+        private const val LAUNCHER_COMPONENT_DESCRIPTOR = "Lio/github/typenil/gametracker/MainActivity;"
     }
 
     @TaskAction
@@ -362,13 +365,14 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
                     }
                     // Positive control: AGP keeps manifest-declared component names (aapt rules), so a
                     // component name is still findable after R8. Without this, the devtools check
-                    // below would pass vacuously if R8 renamed the name away.
-                    check(dexStrings.any { it.contains(LAUNCHER_COMPONENT) }) {
+                    // below would pass vacuously if R8 renamed the name away — which is exactly what
+                    // an earlier dotted-name version of this check did.
+                    check(dexStrings.any { it.contains(LAUNCHER_COMPONENT_DESCRIPTOR) }) {
                         "Release APK ${apk.name} does not expose the launcher activity name; " +
                             "the developer tools leak check would be vacuous"
                     }
-                    check(dexStrings.none { it.contains(DEV_TOOLS_COMPONENT) }) {
-                        "Release APK ${apk.name} still contains the debug-only developer tools activity"
+                    check(dexStrings.none { it.contains(DEV_TOOLS_PACKAGE_DESCRIPTOR) }) {
+                        "Release APK ${apk.name} still contains debug-only developer tools code"
                     }
                     // Defense in depth behind the liveRelease fail-fast URL validation above:
                     // a live APK baked against the emulator loopback is offline on real devices.
