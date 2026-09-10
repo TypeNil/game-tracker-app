@@ -543,6 +543,42 @@ class EditLibrarySheetTest {
     }
 
     @Test
+    fun releaseNotifications_savingReleasedEntryWithStaleFlag_clearsIntent() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = LibraryEntry(
+                            gameId = 8L,
+                            status = LibraryStatus.COMPLETED,
+                            addedAtEpochSeconds = 1L,
+                            updatedAtEpochSeconds = 1L,
+                            // Stale: the game shipped long ago, so this cannot deliver anything.
+                            releaseNotificationsEnabled = true,
+                        ),
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                        releaseDateEpochSeconds = 1_431_993_600L,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertDoesNotExist()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_save)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        // Saving another field must not re-persist a subscription the user can no longer see.
+        assertEquals(false, savedNotify)
+    }
+
+    @Test
     fun releaseNotifications_existingEnabledEntry_keepsIntentOnSave() {
         var savedNotify: Boolean? = null
 

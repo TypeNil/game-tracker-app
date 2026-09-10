@@ -5,17 +5,19 @@ import androidx.room.Embedded
 import androidx.room.Relation
 
 /**
- * Companies and screenshots columns from [GameDetailsEntity] without the rest of the details row.
+ * Slice of [GameDetailsEntity] needed to decorate a library row: developer, banner and the
+ * cached release date. Deliberately narrow so the library list does not pay for the full row.
  */
-data class GameDetailsCompanies(
+data class LibraryGameDetailsSlice(
     @ColumnInfo(name = "gameId")
     val gameId: Long,
     val companies: List<CompanyColumn> = emptyList(),
     val screenshots: List<String> = emptyList(),
+    val releaseDateEpochSeconds: Long? = null,
 )
 /**
  * Relational model uniting a user's library entry with its parent game entity
- * and optional cached details companies.
+ * and optional cached details slice.
  */
 data class PopulatedLibraryGameEntity(
     @Embedded
@@ -32,5 +34,5 @@ data class PopulatedLibraryGameEntity(
         parentColumn = "gameId",
         entityColumn = "gameId",
     )
-    val details: List<GameDetailsCompanies> = emptyList(),
+    val details: List<LibraryGameDetailsSlice> = emptyList(),
 )

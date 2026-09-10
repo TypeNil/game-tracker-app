@@ -76,15 +76,14 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         val previousDate = previousDetails?.releaseDateEpochSeconds
             ?: gameDao.getGameById(gameId)?.releaseDateEpochSeconds
 
-        var retryableError = false
         when (val refreshResult = gameRepository.refreshGameDetails(gameId, force = true)) {
-            is AppResult.Success -> {
-                // Room SSOT updated
-            }
+            is AppResult.Success -> Unit // Room SSOT updated
             is AppResult.Error -> {
-                if (isRetryableError(refreshResult.error)) {
-                    retryableError = true
-                }
+                // Without a fresh answer from the catalog, "already released" cannot be told apart
+                // from "postponed", and the cached date is all we would be judging. Revoking the
+                // intent here could silently drop a reminder the user still expects (and the retry
+                // would not even see the row again), so leave the entry untouched.
+                return isRetryableError(refreshResult.error)
             }
         }
 
@@ -93,11 +92,10 @@ class ReleaseNotificationWorker @AssistedInject constructor(
             ?: gameDao.getGameById(gameId)?.releaseDateEpochSeconds
 
         if (!ReleaseEventDetector.isReleasePending(nowEpochSeconds, currentDate)) {
-            // The game is out, so this subscription can never fire again. Drop it here (after the
-            // refresh above, which still catches a postponement) instead of re-fetching it every
-            // interval forever.
+            // Confirmed by the refresh above: the game is out, so this subscription can never fire
+            // again. Drop it instead of re-fetching it every interval forever.
             libraryDao.clearReleaseNotifications(gameId)
-            return retryableError
+            return false
         }
 
         val gameName = currentDetails?.name
@@ -113,7 +111,7 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         )
 
         dispatchAndRecordEvents(events, nowEpochSeconds)
-        return retryableError
+        return false
     }
 
     /**

@@ -174,7 +174,7 @@ fun DiscoverScreen(
             },
             onRemove = { onRemoveFromLibrary(editingEntry.entry.gameId) },
             actionsEnabled = !uiState.isLibrarySubmitting,
-            releaseDateEpochSeconds = editingEntry.game.releaseDateEpochSeconds,
+            releaseDateEpochSeconds = editingEntry.releaseDateEpochSeconds,
         )
     }
     if (isTuneSheetOpen) {

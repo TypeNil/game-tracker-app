@@ -112,7 +112,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
-import io.github.typenil.gametracker.core.data.notification.ReleaseEventDetector
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.leadingIcon
@@ -126,7 +125,6 @@ import io.github.typenil.gametracker.core.notification.rememberNotificationPermi
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import java.time.Instant
 
 private const val MAX_NOTES_LENGTH = LibraryNotes.MAX_CODE_POINTS
 
@@ -285,13 +283,8 @@ internal fun EditLibrarySheetContent(
     var notifyOnRelease by rememberSaveable(entryId) {
         mutableStateOf(initialEntry?.releaseNotificationsEnabled ?: false)
     }
-    // Frozen per composition: the release window is a date-level check, not a live countdown.
-    val isReleasePending = remember(releaseDateEpochSeconds) {
-        ReleaseEventDetector.isReleasePending(
-            nowEpochSeconds = Instant.now().epochSecond,
-            releaseDateEpochSeconds = releaseDateEpochSeconds,
-        )
-    }
+    // Re-evaluated on resume and at the next UTC midnight: a released game keeps no control.
+    val isReleasePending = rememberReleasePending(releaseDateEpochSeconds)
 
     val haptic = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
@@ -507,7 +500,9 @@ internal fun EditLibrarySheetContent(
                         hoursPlayed = hours,
                         userNotes = notes.trim().ifEmpty { null },
                         isFavorite = isFavorite,
-                        releaseNotificationsEnabled = notifyOnRelease,
+                        // Once the release has happened the control is hidden, so a lingering
+                        // local value must not be written back as an active subscription.
+                        releaseNotificationsEnabled = notifyOnRelease && isReleasePending,
                     ),
                 )
             },

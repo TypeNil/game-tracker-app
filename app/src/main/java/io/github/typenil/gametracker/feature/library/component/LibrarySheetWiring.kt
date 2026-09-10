@@ -78,6 +78,6 @@ internal fun LibraryEditSheetWiring(
             onRemoveFromLibrary(editingEntry.gameId)
         },
         actionsEnabled = !isMutating,
-        releaseDateEpochSeconds = editingGame.game.releaseDateEpochSeconds,
+        releaseDateEpochSeconds = editingGame.releaseDateEpochSeconds,
     )
 }

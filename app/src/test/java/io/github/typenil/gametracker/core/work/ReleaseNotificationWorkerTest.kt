@@ -155,6 +155,42 @@ class ReleaseNotificationWorkerTest {
     }
 
     @Test
+    fun doWork_whenConfirmingRefreshFails_keepsTrackingWithoutNotifying() = runTest(testDispatcher) {
+        every { workerParams.runAttemptCount } returns 1
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, 1431993600L) // stale: 2015
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns
+            AppResult.Error(AppError.NetworkError)
+
+        val result = worker.doWork()
+
+        // Without a fresh catalog answer "released" cannot be told from "postponed", so the
+        // subscription must survive the failed check and the retry.
+        assertEquals(Result.retry(), result)
+        coVerify(exactly = 0) { libraryDao.clearReleaseNotifications(any()) }
+        coVerify(exactly = 0) { releaseNotifier.postReleaseNotification(any()) }
+    }
+
+    @Test
+    fun doWork_whenConfirmingRefreshFailsPermanently_stillKeepsTracking() = runTest(testDispatcher) {
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, 1431993600L) // stale: 2015
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns
+            AppResult.Error(AppError.HttpError(statusCode = 404, errorCode = "NOT_FOUND"))
+
+        val result = worker.doWork()
+
+        assertEquals(Result.success(), result)
+        coVerify(exactly = 0) { libraryDao.clearReleaseNotifications(any()) }
+    }
+
+    @Test
     fun doWork_whenReleasedGameIsPostponed_keepsTrackingIt() = runTest(testDispatcher) {
         val futureEpoch = Instant.now().plusSeconds(30L * 24 * 3600).epochSecond
         coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(

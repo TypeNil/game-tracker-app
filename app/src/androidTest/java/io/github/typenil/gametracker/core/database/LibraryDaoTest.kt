@@ -12,6 +12,7 @@ import io.github.typenil.gametracker.core.database.entity.CompanyColumn
 import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.database.mapper.toDomain
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -162,7 +163,7 @@ class LibraryDaoTest {
                 rating = 95.0,
                 totalRating = null,
                 totalRatingCount = null,
-                releaseDateEpochSeconds = null,
+                releaseDateEpochSeconds = 1_800_000_000L,
                 summary = "unused",
                 url = null,
                 genres = emptyList(),
@@ -182,6 +183,11 @@ class LibraryDaoTest {
         assertEquals("FromSoftware", withDetails[0].details.single().companies.single().name)
         assertEquals(true, withDetails[0].details.single().companies.single().isDeveloper)
         assertEquals(listOf("https://example.com/shot1.jpg"), withDetails[0].details.single().screenshots)
+        // The slice must also carry the cached release date: the library snapshot resolves it from
+        // here (details first, catalog second) exactly like the notification worker does, and the
+        // catalog row for this game says 1600000000.
+        assertEquals(1_800_000_000L, withDetails[0].details.single().releaseDateEpochSeconds)
+        assertEquals(1_800_000_000L, withDetails[0].toDomain().releaseDateEpochSeconds)
     }
 
     @Test

@@ -166,6 +166,10 @@ fun PopulatedLibraryGameEntity.toDomain(): LibraryGame {
         entry = this.entry.toDomain(),
         developerName = detailsRow?.companies.developerName(),
         bannerUrl = detailsRow?.screenshots?.firstOrNull { it.isNotBlank() },
+        // Same precedence as ReleaseNotificationWorker and MIGRATION_6_7: the cached details row is
+        // fresher than the catalog row, which paging upserts independently.
+        releaseDateEpochSeconds = detailsRow?.releaseDateEpochSeconds
+            ?: this.game.releaseDateEpochSeconds,
     )
 }
 
