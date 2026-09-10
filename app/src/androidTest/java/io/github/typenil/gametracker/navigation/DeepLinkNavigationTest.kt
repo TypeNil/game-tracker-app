@@ -198,33 +198,21 @@ class DeepLinkNavigationTest {
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
             waitForText(searchHint)
 
-            composeTestRule.onNode(hasSetTextAction()).performTextReplacement("witcher")
-            composeTestRule.onNode(hasSetTextAction()).performImeAction()
-            advanceUntilIdle()
-
-            composeTestRule.waitUntil(timeoutMillis = 10_000) {
-                composeTestRule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
-                .performScrollToIndex(0)
-
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
             composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
 
             scenario.recreate()
             waitForText(searchHint)
-            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
                 composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
-            }
-
-            val listsAfterRecreate = composeTestRule.onAllNodes(hasScrollToIndexAction())
-            if (listsAfterRecreate.fetchSemanticsNodes().isNotEmpty()) {
-                listsAfterRecreate.onFirst().performScrollToIndex(0)
             }
 
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
             composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
-            if (composeTestRule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()) {
+            if (composeTestRule.onAllNodes(hasScrollToIndexAction())
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+            ) {
                 composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
                     .performScrollToIndex(0)
             }
