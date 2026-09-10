@@ -147,7 +147,10 @@ fun DiscoverScreen(
             bottom = topLevelBottomInset()
         )
         when {
-            uiState.isInitialLoading -> DiscoverLoadingState(contentModifier)
+            uiState.isInitialLoading -> DiscoverLoadingState(
+                onOpenTuneRecommendations = { isTuneSheetOpen = true },
+                modifier = contentModifier,
+            )
             else -> DiscoverContent(
                 uiState = uiState,
                 onGameClick = onGameClick,
@@ -360,7 +363,10 @@ private fun ForYouFeed(
             modifier = modifier.fillMaxSize(),
         )
     } else if (uiState.forYouLoading && uiState.recommendations.isEmpty()) {
-        DiscoverLoadingState(modifier.fillMaxSize())
+        DiscoverLoadingState(
+            onOpenTuneRecommendations = onOpenTuneRecommendations,
+            modifier = modifier.fillMaxSize(),
+        )
     } else if (uiState.isColdStart && uiState.recommendations.isEmpty()) {
         ColdStartCard(
             isOnboarding = uiState.showRecommendationOnboarding,
@@ -653,11 +659,27 @@ private fun reasonLabel(reason: RecommendationReason): String = when (reason) {
     RecommendationReason.HighRating -> stringResource(R.string.reason_rating)
 }
 @Composable
-private fun DiscoverLoadingState(modifier: Modifier = Modifier) {
-    FeedSkeleton(
-        label = stringResource(R.string.discover_loading),
-        modifier = modifier.fillMaxSize(),
-    )
+private fun DiscoverLoadingState(
+    modifier: Modifier = Modifier,
+    onOpenTuneRecommendations: (() -> Unit)? = null,
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        FeedSkeleton(
+            label = if (onOpenTuneRecommendations == null) {
+                stringResource(R.string.discover_loading)
+            } else {
+                null
+            },
+            header = onOpenTuneRecommendations?.let { onTune ->
+                {
+                    TextButton(onClick = onTune) {
+                        Text(stringResource(R.string.discover_tune_recommendations))
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 }
 
 @Composable

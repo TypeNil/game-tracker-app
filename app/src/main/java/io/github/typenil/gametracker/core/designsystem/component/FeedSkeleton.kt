@@ -38,6 +38,7 @@ private val TextGap = 8.dp
 private val BarCorner = 4.dp
 private val CoverTextGap = 14.dp
 private val LabelReserve = 24.dp
+private val HeaderReserve = 48.dp
 private val LibraryActionSize = 48.dp
 
 @Composable
@@ -45,6 +46,7 @@ fun FeedSkeleton(
     modifier: Modifier = Modifier,
     label: String? = null,
     showLibraryAction: Boolean = false,
+    header: (@Composable () -> Unit)? = null,
 ) {
     val coverHeight = GAME_CARD_COVER_WIDTH_DP.dp / GAME_COVER_ASPECT_RATIO
     val rowHeight = coverHeight + GtDimens.Card
@@ -54,13 +56,15 @@ fun FeedSkeleton(
             .testTag(FEED_SKELETON_TEST_TAG),
     ) {
         val labelReserve = if (label.isNullOrBlank()) 0.dp else LabelReserve
-        val rows = ((maxHeight - GtDimens.Gutter * 2 - labelReserve) / rowHeight)
+        val headerReserve = if (header == null) 0.dp else HeaderReserve + GtDimens.Card
+        val rows = ((maxHeight - GtDimens.Gutter * 2 - labelReserve - headerReserve) / rowHeight)
             .toInt()
             .coerceIn(1, SKELETON_ROWS)
         Column(
             modifier = Modifier.padding(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(GtDimens.Card),
         ) {
+            header?.invoke()
             if (!label.isNullOrBlank()) {
                 Text(
                     text = label,
