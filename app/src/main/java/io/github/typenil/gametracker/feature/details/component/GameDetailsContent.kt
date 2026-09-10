@@ -23,6 +23,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.notification.ReleaseEventDetector
 import io.github.typenil.gametracker.core.designsystem.component.GamePosterCard
 import io.github.typenil.gametracker.core.designsystem.component.rememberImageModel
 import io.github.typenil.gametracker.core.model.AppError
@@ -44,6 +46,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.feature.details.DetailsSection
 import io.github.typenil.gametracker.feature.details.SCREENSHOT_ASPECT_RATIO
 import io.github.typenil.gametracker.feature.details.viewer.ScreenshotViewerDialog
+import java.time.Instant
 
 private val DETAILS_GUTTER = GtDimens.Gutter
 
@@ -71,6 +74,13 @@ internal fun GameDetailsContent(
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
     var selectedScreenshotIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    // Frozen per composition: an already-released game has no release left to announce.
+    val isReleasePending = remember(game?.releaseDateEpochSeconds) {
+        ReleaseEventDetector.isReleasePending(
+            nowEpochSeconds = Instant.now().epochSecond,
+            releaseDateEpochSeconds = game?.releaseDateEpochSeconds,
+        )
+    }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -115,6 +125,7 @@ internal fun GameDetailsContent(
                             isLibraryLoading = isLibraryLoading,
                             onEditClicked = onEditLibraryClicked,
                             modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
+                            isReleasePending = isReleasePending,
                         )
                     }
                 }

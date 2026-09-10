@@ -73,6 +73,7 @@ internal fun LibraryStatusCard(
     isLibraryLoading: Boolean,
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    isReleasePending: Boolean = true,
 ) {
     if (isLibraryLoading) {
         LibraryStatusPlaceholder(modifier = modifier.fillMaxWidth())
@@ -88,7 +89,7 @@ internal fun LibraryStatusCard(
             } else {
                 InLibraryCard(
                     status = stringResource(entry.status.displayNameRes()),
-                    releaseNotificationsEnabled = entry.releaseNotificationsEnabled,
+                    releaseNotificationsEnabled = entry.releaseNotificationsEnabled && isReleasePending,
                     onClick = onEditClicked,
                 )
             }

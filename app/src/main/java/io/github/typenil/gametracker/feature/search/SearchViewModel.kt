@@ -227,7 +227,7 @@ class SearchViewModel @Inject constructor(
                     when (result) {
                         is AppResult.Success -> {
                             librarySnapshot.value = LibrarySnapshot.Ready(
-                                result.data.associate { it.entry.gameId to it.entry },
+                                result.data.associate { it.entry.gameId to it },
                             )
                         }
                         is AppResult.Error -> {

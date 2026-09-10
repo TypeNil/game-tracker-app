@@ -187,6 +187,7 @@ fun GameDetailsScreen(
                 onSave = onSaveLibraryEntry,
                 onRemove = onRemoveFromLibrary,
                 actionsEnabled = !uiState.isLibrarySubmitting,
+                releaseDateEpochSeconds = uiState.game?.releaseDateEpochSeconds,
             )
         }
     }

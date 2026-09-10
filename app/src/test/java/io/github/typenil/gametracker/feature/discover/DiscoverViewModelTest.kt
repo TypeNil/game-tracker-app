@@ -463,7 +463,7 @@ class DiscoverViewModelTest {
                 snapshot is LibrarySnapshot.Ready && snapshot.entries.containsKey(11L)
             }
             val ready = state.librarySnapshot as LibrarySnapshot.Ready
-            assertEquals(LibraryStatus.PLAYING, ready.entries[11L]?.status)
+            assertEquals(LibraryStatus.PLAYING, ready.entries[11L]?.entry?.status)
             cancelAndIgnoreRemainingEvents()
         }
     }

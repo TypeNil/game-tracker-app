@@ -112,6 +112,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
+import io.github.typenil.gametracker.core.data.notification.ReleaseEventDetector
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.leadingIcon
@@ -125,6 +126,7 @@ import io.github.typenil.gametracker.core.notification.rememberNotificationPermi
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import java.time.Instant
 
 private const val MAX_NOTES_LENGTH = LibraryNotes.MAX_CODE_POINTS
 
@@ -159,6 +161,7 @@ fun EditLibrarySheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     actionsEnabled: Boolean = true,
+    releaseDateEpochSeconds: Long? = null,
 ) {
     var showConfirmDelete by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -201,6 +204,7 @@ fun EditLibrarySheet(
             actionsEnabled = actionsEnabled && !isDismissing,
             hasNotificationPermission = notificationPermission.hasPermission,
             onRequestNotificationPermission = notificationPermission.requestPermission,
+            releaseDateEpochSeconds = releaseDateEpochSeconds,
             modifier = Modifier
                 .fillMaxWidth()
                 .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),
@@ -258,6 +262,7 @@ internal fun EditLibrarySheetContent(
     actionsEnabled: Boolean = true,
     hasNotificationPermission: Boolean = true,
     onRequestNotificationPermission: () -> Unit = {},
+    releaseDateEpochSeconds: Long? = null,
 ) {
     val isNewEntry = initialEntry == null
     val entryId = initialEntry?.gameId
@@ -279,6 +284,13 @@ internal fun EditLibrarySheetContent(
     }
     var notifyOnRelease by rememberSaveable(entryId) {
         mutableStateOf(initialEntry?.releaseNotificationsEnabled ?: false)
+    }
+    // Frozen per composition: the release window is a date-level check, not a live countdown.
+    val isReleasePending = remember(releaseDateEpochSeconds) {
+        ReleaseEventDetector.isReleasePending(
+            nowEpochSeconds = Instant.now().epochSecond,
+            releaseDateEpochSeconds = releaseDateEpochSeconds,
+        )
     }
 
     val haptic = LocalHapticFeedback.current
@@ -438,19 +450,23 @@ internal fun EditLibrarySheetContent(
                 enabled = actionsEnabled,
             )
 
-            // Section 5: Release notifications (independent of library status)
-            ReleaseNotificationSection(
-                notifyOnRelease = notifyOnRelease,
-                permissionGranted = hasNotificationPermission,
-                onNotifyChange = { enabled ->
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    if (enabled && !hasNotificationPermission) {
-                        onRequestNotificationPermission()
-                    }
-                    notifyOnRelease = enabled
-                },
-                enabled = actionsEnabled,
-            )
+            // Section 5: Release notifications (independent of library status).
+            // Hidden once the game has shipped: there is nothing left to be notified about, and
+            // offering the switch would promise an event that can never fire.
+            if (isReleasePending) {
+                ReleaseNotificationSection(
+                    notifyOnRelease = notifyOnRelease,
+                    permissionGranted = hasNotificationPermission,
+                    onNotifyChange = { enabled ->
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (enabled && !hasNotificationPermission) {
+                            onRequestNotificationPermission()
+                        }
+                        notifyOnRelease = enabled
+                    },
+                    enabled = actionsEnabled,
+                )
+            }
 
             // Section 6: Personal Notes
             Column(

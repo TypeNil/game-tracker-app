@@ -49,7 +49,8 @@ internal fun LibraryEditSheetWiring(
     onSaveLibraryEntry: (Long, LibraryEntryDraft) -> Unit,
     onRemoveFromLibrary: (Long) -> Unit,
 ) {
-    val editingEntry = allGames.firstOrNull { it.game.id == editingGameId }?.entry ?: return
+    val editingGame = allGames.firstOrNull { it.game.id == editingGameId } ?: return
+    val editingEntry = editingGame.entry
     val isMutating = libraryMutationState is LibraryMutationState.Saving
     val currentIsMutating = rememberUpdatedState(isMutating)
     val confirmSheetValueChange = remember {
@@ -77,5 +78,6 @@ internal fun LibraryEditSheetWiring(
             onRemoveFromLibrary(editingEntry.gameId)
         },
         actionsEnabled = !isMutating,
+        releaseDateEpochSeconds = editingGame.game.releaseDateEpochSeconds,
     )
 }

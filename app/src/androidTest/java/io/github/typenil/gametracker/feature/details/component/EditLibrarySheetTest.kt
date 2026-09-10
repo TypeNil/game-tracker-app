@@ -37,6 +37,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 class EditLibrarySheetTest {
@@ -470,6 +471,75 @@ class EditLibrarySheetTest {
         composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
 
         assertEquals(false, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_hiddenForAlreadyReleasedGame() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                        // Released in 2015: the switch would promise an event that cannot happen.
+                        releaseDateEpochSeconds = 1_431_993_600L,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.library_release_notifications))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun releaseNotifications_shownForUpcomingAndUnknownReleaseDates() {
+        val upcoming = Instant.now().epochSecond + 30L * 86_400L
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                        releaseDateEpochSeconds = upcoming,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
+    }
+
+    @Test
+    fun releaseNotifications_shownForUnknownReleaseDate() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                        releaseDateEpochSeconds = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
     }
 
     @Test

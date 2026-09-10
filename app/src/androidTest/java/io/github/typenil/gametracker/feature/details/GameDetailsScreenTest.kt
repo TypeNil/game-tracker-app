@@ -46,6 +46,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class GameDetailsScreenTest {
@@ -628,15 +629,18 @@ class GameDetailsScreenTest {
 
     @Test
     fun inLibraryCardShowsReleaseNotificationState() {
+        val upcomingGame = compactDetails.copy(
+            releaseDateEpochSeconds = Instant.now().epochSecond + 30L * 86_400L,
+        )
         val enabledEntry = LibraryEntry(
-            gameId = compactDetails.id,
+            gameId = upcomingGame.id,
             status = LibraryStatus.WISHLIST,
             addedAtEpochSeconds = 0L,
             updatedAtEpochSeconds = 0L,
             releaseNotificationsEnabled = true,
         )
         setContent(
-            GameDetailsUiState(game = compactDetails, libraryEntry = enabledEntry, isHydrated = true),
+            GameDetailsUiState(game = upcomingGame, libraryEntry = enabledEntry, isHydrated = true),
         )
 
         val enabledDesc = composeTestRule.activity.getString(
@@ -647,14 +651,39 @@ class GameDetailsScreenTest {
 
     @Test
     fun inLibraryCardHidesReleaseNotificationStateWhenDisabled() {
+        val upcomingGame = compactDetails.copy(
+            releaseDateEpochSeconds = Instant.now().epochSecond + 30L * 86_400L,
+        )
         val disabledEntry = LibraryEntry(
-            gameId = compactDetails.id,
+            gameId = upcomingGame.id,
             status = LibraryStatus.WISHLIST,
             addedAtEpochSeconds = 0L,
             updatedAtEpochSeconds = 0L,
         )
         setContent(
-            GameDetailsUiState(game = compactDetails, libraryEntry = disabledEntry, isHydrated = true),
+            GameDetailsUiState(game = upcomingGame, libraryEntry = disabledEntry, isHydrated = true),
+        )
+
+        val enabledDesc = composeTestRule.activity.getString(
+            R.string.library_release_notifications_enabled_desc,
+        )
+        composeTestRule.onNodeWithContentDescription(enabledDesc).assertDoesNotExist()
+    }
+
+    @Test
+    fun inLibraryCardHidesReleaseNotificationStateForReleasedGameEvenIfFlagIsStale() {
+        // Released in 2015: a lingering flag must not claim an active subscription for a game
+        // that has already shipped. (compactDetails itself is TBA, i.e. still pending.)
+        val releasedGame = compactDetails.copy(releaseDateEpochSeconds = 1_431_993_600L)
+        val staleEntry = LibraryEntry(
+            gameId = releasedGame.id,
+            status = LibraryStatus.COMPLETED,
+            addedAtEpochSeconds = 0L,
+            updatedAtEpochSeconds = 0L,
+            releaseNotificationsEnabled = true,
+        )
+        setContent(
+            GameDetailsUiState(game = releasedGame, libraryEntry = staleEntry, isHydrated = true),
         )
 
         val enabledDesc = composeTestRule.activity.getString(

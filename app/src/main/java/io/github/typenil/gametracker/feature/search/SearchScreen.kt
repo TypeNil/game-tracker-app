@@ -256,13 +256,14 @@ fun SearchScreen(
 
     if (editingEntry != null) {
         EditLibrarySheet(
-            initialEntry = editingEntry,
+            initialEntry = editingEntry.entry,
             onDismiss = onDismissEditLibrary,
             onSave = { draft ->
-                onSaveLibraryEntry(editingEntry.gameId, draft)
+                onSaveLibraryEntry(editingEntry.entry.gameId, draft)
             },
-            onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
+            onRemove = { onRemoveFromLibrary(editingEntry.entry.gameId) },
             actionsEnabled = !uiState.isLibrarySubmitting,
+            releaseDateEpochSeconds = editingEntry.game.releaseDateEpochSeconds,
         )
     }
 }

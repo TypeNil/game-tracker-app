@@ -167,13 +167,14 @@ fun DiscoverScreen(
     }
     if (editingEntry != null) {
         EditLibrarySheet(
-            initialEntry = editingEntry,
+            initialEntry = editingEntry.entry,
             onDismiss = onDismissEditLibrary,
             onSave = { draft ->
-                onSaveLibraryEntry(editingEntry.gameId, draft)
+                onSaveLibraryEntry(editingEntry.entry.gameId, draft)
             },
-            onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
+            onRemove = { onRemoveFromLibrary(editingEntry.entry.gameId) },
             actionsEnabled = !uiState.isLibrarySubmitting,
+            releaseDateEpochSeconds = editingEntry.game.releaseDateEpochSeconds,
         )
     }
     if (isTuneSheetOpen) {
@@ -569,7 +570,7 @@ private fun ChartsFeed(
                         game = game,
                         onClick = { onGameClick(game.id) },
                         libraryStatus = (uiState.librarySnapshot as? LibrarySnapshot.Ready)
-                            ?.entries?.get(game.id)?.status,
+                            ?.entries?.get(game.id)?.entry?.status,
                         onLibraryAction = if (uiState.librarySnapshot is LibrarySnapshot.Ready) {
                             onLibraryAction
                         } else {

@@ -16,6 +16,7 @@ import io.github.typenil.gametracker.core.model.LibrarySnapshot
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -144,7 +145,9 @@ class DiscoverScreenTest {
                                 games = listOf(game),
                             ),
                         ),
-                        librarySnapshot = LibrarySnapshot.Ready(mapOf(42L to entry)),
+                        librarySnapshot = LibrarySnapshot.Ready(
+                            mapOf(42L to LibraryGame(game = game, entry = entry)),
+                        ),
                         editingGameId = 42L,
                     ),
                     onGameClick = {},

@@ -151,7 +151,7 @@ class DiscoverViewModel @Inject constructor(
             is AppResult.Success -> {
                 val games = result.data
                 librarySnapshot.value = LibrarySnapshot.Ready(
-                    games.associate { it.entry.gameId to it.entry },
+                    games.associate { it.entry.gameId to it },
                 )
                 val entries = games.map { it.entry }.toSet()
                 val isInitial = lastLibraryEntries == null
