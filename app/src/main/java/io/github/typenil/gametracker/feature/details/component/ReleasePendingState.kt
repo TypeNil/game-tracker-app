@@ -41,7 +41,7 @@ internal fun rememberReleasePending(releaseDateEpochSeconds: Long?): Boolean {
     }
 
     // Epoch seconds align with UTC day starts, so this is the beginning of the current UTC day.
-    val utcDayStart = nowEpochSeconds - nowEpochSeconds % SECONDS_PER_DAY
+    val utcDayStart = ReleaseEventDetector.utcDayStartEpochSeconds(nowEpochSeconds)
     LaunchedEffect(utcDayStart) {
         val secondsUntilNextDay = utcDayStart + SECONDS_PER_DAY - Instant.now().epochSecond
         delay(secondsUntilNextDay.coerceAtLeast(1L) * MILLIS_PER_SECOND)

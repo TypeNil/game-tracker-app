@@ -142,6 +142,18 @@ class ReleaseEventDetectorTest {
     }
 
     @Test
+    fun utcDayStartEpochSeconds_floorsAcrossDayBoundaries() {
+        assertEquals(0L, ReleaseEventDetector.utcDayStartEpochSeconds(0L))
+        assertEquals(0L, ReleaseEventDetector.utcDayStartEpochSeconds(86_399L))
+        assertEquals(86_400L, ReleaseEventDetector.utcDayStartEpochSeconds(86_400L))
+        // Before the Unix epoch the remainder must floor, not truncate toward zero.
+        assertEquals(-86_400L, ReleaseEventDetector.utcDayStartEpochSeconds(-1L))
+        assertEquals(-86_400L, ReleaseEventDetector.utcDayStartEpochSeconds(-86_400L))
+        assertEquals(-172_800L, ReleaseEventDetector.utcDayStartEpochSeconds(-86_401L))
+        assertEquals(1787529600L, ReleaseEventDetector.utcDayStartEpochSeconds(nowEpoch))
+    }
+
+    @Test
     fun isReleasePending_treatsTodayAndUnknownAsPending_butNotPastDates() {
         // 2026-08-24 00:00:00 UTC
         val todayRelease = 1787529600L

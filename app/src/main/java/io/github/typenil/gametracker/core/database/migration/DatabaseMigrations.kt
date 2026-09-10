@@ -166,7 +166,11 @@ object DatabaseMigrations {
                          WHERE `game_details`.`gameId` = `library_entries`.`gameId`),
                         (SELECT `releaseDateEpochSeconds` FROM `games`
                          WHERE `games`.`id` = `library_entries`.`gameId`)
-                    ) >= CAST(strftime('%s', 'now') AS INTEGER) - (CAST(strftime('%s', 'now') AS INTEGER) % 86400)
+                    ) >= CAST(strftime('%s', 'now') AS INTEGER) - (
+                        (
+                            (CAST(strftime('%s', 'now') AS INTEGER) % 86400) + 86400
+                        ) % 86400
+                    )
                   )
                 """.trimIndent()
             )

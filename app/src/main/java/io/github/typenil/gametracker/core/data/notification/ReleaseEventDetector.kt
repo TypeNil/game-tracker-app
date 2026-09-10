@@ -14,6 +14,14 @@ object ReleaseEventDetector {
 
     const val SOON_WINDOW_DAYS_MIN = 1L
     const val SOON_WINDOW_DAYS_MAX = 7L
+    private const val SECONDS_PER_DAY = 86_400L
+
+    /**
+     * Start of the UTC day containing [epochSeconds], using floor division so pre-epoch clock
+     * values (a misconfigured device) still land on the boundary of their own day.
+     */
+    fun utcDayStartEpochSeconds(epochSeconds: Long): Long =
+        Math.floorDiv(epochSeconds, SECONDS_PER_DAY) * SECONDS_PER_DAY
 
     /**
      * Whole UTC days until [releaseDateEpochSeconds]; negative once that date has passed.
