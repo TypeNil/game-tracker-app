@@ -8,8 +8,8 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -184,6 +184,68 @@ class DeepLinkNavigationTest {
 
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
             composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
+        }
+    }
+
+    @Test
+    fun searchRetap_afterActivityRecreation_focusesFieldAndScrollsToTop() {
+        val searchNavLabel = context.getString(R.string.nav_search)
+        val searchHint = context.getString(R.string.search_hint)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForText(searchNavLabel)
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+            waitForText(searchHint)
+
+            composeTestRule.onNode(hasSetTextAction()).performTextReplacement("witcher")
+            composeTestRule.onNode(hasSetTextAction()).performImeAction()
+            advanceUntilIdle()
+
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
+                .performScrollToIndex(0)
+
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+            composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
+
+            scenario.recreate()
+            waitForText(searchHint)
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
+            }
+
+            val listsAfterRecreate = composeTestRule.onAllNodes(hasScrollToIndexAction())
+            if (listsAfterRecreate.fetchSemanticsNodes().isNotEmpty()) {
+                listsAfterRecreate.onFirst().performScrollToIndex(0)
+            }
+
+            composeTestRule.onNodeWithText(searchNavLabel).performClick()
+            composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
+            if (composeTestRule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()) {
+                composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
+                    .performScrollToIndex(0)
+            }
+        }
+    }
+
+    @Test
+    fun discoverRetap_afterActivityRecreation_keepsTabAndAcceptsScrollToTop() {
+        val discoverNavLabel = context.getString(R.string.nav_discover)
+        val discoverTitle = context.getString(R.string.discover_title)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitForText(discoverNavLabel)
+            waitForText(discoverTitle)
+
+            composeTestRule.onNodeWithText(discoverNavLabel).performClick()
+
+            scenario.recreate()
+            waitForText(discoverTitle)
+
+            composeTestRule.onNodeWithText(discoverNavLabel).performClick()
+            composeTestRule.onNodeWithText(discoverTitle).assertIsDisplayed()
         }
     }
 

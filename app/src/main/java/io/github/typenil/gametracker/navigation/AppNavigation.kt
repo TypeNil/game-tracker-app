@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -82,8 +83,8 @@ fun AppNavHost(
     }
     val isTopLevelDestination = appState.isTopLevelDestination
     val currentDestination = appState.currentDestination
-    var scrollToTopDiscoverTrigger by remember { mutableLongStateOf(0L) }
-    var searchRetapTrigger by remember { mutableLongStateOf(0L) }
+    var scrollToTopDiscoverTrigger by rememberSaveable { mutableLongStateOf(0L) }
+    var searchRetapTrigger by rememberSaveable { mutableLongStateOf(0L) }
     LaunchedEffect(currentDestination) {
         if (currentDestination != null && currentDestination.hasRoute<DiscoverKey>() != true) {
             onLeaveSplash()
