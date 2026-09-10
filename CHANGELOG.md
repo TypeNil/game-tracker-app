@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Release notifications are an explicit per-game choice rather than a side effect of library status: an **Release notifications** switch in the library edit sheet, an enabled marker on Game Details, and a background check that only inspects entries you enabled. Room schema v7 backfills `WISHLIST`/`PLAYING`/`COMPLETED` (including legacy `PLAN_TO_PLAY` rows), so reminders you already relied on carry over; newly added games start opted out and delivery stays best-effort.
 - For You contextual onboarding stores favorite genres/platforms in DataStore as decaying cold-start signals. Tune later from For You or Settings; library taste outranks onboarding prefs as it grows. **Use library only** clears those signals so ranking uses the library alone.
 - Library Insights is a nested Library screen (chart icon in the TopAppBar): counts, hours, average rating, completion, most played, taste, and platforms. Not a Profile tab.
 
