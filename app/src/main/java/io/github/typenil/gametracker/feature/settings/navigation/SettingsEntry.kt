@@ -31,6 +31,10 @@ fun NavGraphBuilder.settingsEntry(
             onResetRecommendationPreferences = viewModel::resetRecommendationPreferences,
             userMessageRes = userMessageRes,
             onUserMessageShown = viewModel::onUserMessageShown,
+            themeMode = preferences.themeMode,
+            dynamicColor = preferences.dynamicColor,
+            onThemeModeChange = viewModel::onThemeModeSelected,
+            onDynamicColorChange = viewModel::onDynamicColorChanged,
         )
     }
 }

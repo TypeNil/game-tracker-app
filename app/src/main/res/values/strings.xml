@@ -250,6 +250,17 @@
     <string name="settings_igdb_link">IGDB</string>
     <string name="settings_igdb_open_error">No app available to open this link.</string>
 
+    <!-- Appearance -->
+    <string name="settings_appearance_title">Appearance</string>
+    <string name="settings_appearance_desc">Theme and wallpaper colors</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color_title">Dynamic colors</string>
+    <string name="settings_dynamic_color_desc">Use colors from your wallpaper</string>
+    <string name="settings_dynamic_color_unsupported">Requires Android 12 or later</string>
+
     <!-- Release Notifications -->
     <string name="notification_channel_releases_name">Game Releases</string>
     <string name="notification_channel_releases_desc">Notifications for upcoming and new game releases in your library</string>

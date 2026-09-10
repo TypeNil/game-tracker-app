@@ -1,8 +1,11 @@
 package io.github.typenil.gametracker.feature.settings
 
 import android.content.ActivityNotFoundException
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontWeight
 import io.github.typenil.gametracker.BuildConfig
@@ -38,6 +41,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -52,9 +57,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
+import io.github.typenil.gametracker.core.model.ThemeMode
 import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
@@ -76,6 +83,11 @@ fun SettingsRoute(
     onResetRecommendationPreferences: suspend () -> Boolean = { true },
     userMessageRes: Int? = null,
     onUserMessageShown: () -> Unit = {},
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    dynamicColor: Boolean = true,
+    dynamicColorSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+    onThemeModeChange: (ThemeMode) -> Unit = {},
+    onDynamicColorChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     var isTuneSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -156,7 +168,12 @@ fun SettingsRoute(
                 Toast.makeText(context, R.string.settings_github_open_error, Toast.LENGTH_SHORT).show()
             }
         },
-        modifier = modifier
+        modifier = modifier,
+        themeMode = themeMode,
+        dynamicColor = dynamicColor,
+        dynamicColorSupported = dynamicColorSupported,
+        onThemeModeChange = onThemeModeChange,
+        onDynamicColorChange = onDynamicColorChange,
     )
     if (isTuneSheetOpen && recommendationPreferencesLoaded) {
         TuneRecommendationsSheet(
@@ -194,7 +211,12 @@ fun SettingsScreen(
     onResetDebugBffUrl: () -> Unit = {},
     userMessageRes: Int? = null,
     onUserMessageShown: () -> Unit = {},
-    modifier: Modifier = Modifier
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    dynamicColor: Boolean = true,
+    dynamicColorSupported: Boolean = true,
+    onThemeModeChange: (ThemeMode) -> Unit = {},
+    onDynamicColorChange: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage = userMessageRes?.let { stringResource(it) }
@@ -231,6 +253,14 @@ fun SettingsScreen(
                 .padding(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(GtDimens.Gutter)
         ) {
+            AppearanceSettingsCard(
+                themeMode = themeMode,
+                dynamicColor = dynamicColor,
+                dynamicColorSupported = dynamicColorSupported,
+                onThemeModeChange = onThemeModeChange,
+                onDynamicColorChange = onDynamicColorChange,
+            )
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -483,3 +513,100 @@ fun SettingsScreen(
         }
     }
 }
+
+@Composable
+private fun AppearanceSettingsCard(
+    themeMode: ThemeMode,
+    dynamicColor: Boolean,
+    dynamicColorSupported: Boolean,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(GtDimens.Gutter),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_appearance_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.settings_appearance_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = stringResource(R.string.settings_theme_title),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Column(modifier = Modifier.selectableGroup()) {
+                ThemeMode.entries.forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = themeMode == mode,
+                                onClick = { onThemeModeChange(mode) },
+                                role = Role.RadioButton,
+                            )
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        RadioButton(
+                            selected = themeMode == mode,
+                            onClick = null,
+                        )
+                        Text(
+                            text = stringResource(mode.labelRes()),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_dynamic_color_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringResource(
+                            if (dynamicColorSupported) {
+                                R.string.settings_dynamic_color_desc
+                            } else {
+                                R.string.settings_dynamic_color_unsupported
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = dynamicColor && dynamicColorSupported,
+                    onCheckedChange = onDynamicColorChange,
+                    enabled = dynamicColorSupported,
+                )
+            }
+        }
+    }
+}
+
+private fun ThemeMode.labelRes(): Int = when (this) {
+    ThemeMode.SYSTEM -> R.string.settings_theme_system
+    ThemeMode.LIGHT -> R.string.settings_theme_light
+    ThemeMode.DARK -> R.string.settings_theme_dark
+}
+

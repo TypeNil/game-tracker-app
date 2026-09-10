@@ -6,12 +6,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import io.github.typenil.gametracker.core.common.IoDispatcher
 import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.RecommendationTagCatalog
+import io.github.typenil.gametracker.core.model.ThemeMode
 import io.github.typenil.gametracker.core.model.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -47,6 +49,8 @@ class DataStoreUserPreferencesRepository @Inject constructor(
                 recommendationThemes = themes,
                 recommendationPlatforms = prefs[KEY_PLATFORMS].orEmpty(),
                 recommendationOnboardingDismissed = prefs[KEY_DISMISSED] ?: false,
+                themeMode = ThemeMode.fromStorage(prefs[KEY_THEME_MODE]),
+                dynamicColor = prefs[KEY_DYNAMIC_COLOR] ?: true,
             )
         }
         .flowOn(ioDispatcher)
@@ -82,6 +86,14 @@ class DataStoreUserPreferencesRepository @Inject constructor(
         }
     }
 
+    override suspend fun setThemeMode(mode: ThemeMode): AppResult<Unit> {
+        return write { it[KEY_THEME_MODE] = mode.name }
+    }
+
+    override suspend fun setDynamicColor(enabled: Boolean): AppResult<Unit> {
+        return write { it[KEY_DYNAMIC_COLOR] = enabled }
+    }
+
     private suspend fun write(block: suspend (MutablePreferences) -> Unit): AppResult<Unit> =
         withContext(ioDispatcher) {
             try {
@@ -99,5 +111,7 @@ class DataStoreUserPreferencesRepository @Inject constructor(
         val KEY_THEMES = stringSetPreferencesKey("recommendation_themes")
         val KEY_PLATFORMS = stringSetPreferencesKey("recommendation_platforms")
         val KEY_DISMISSED = booleanPreferencesKey("recommendation_onboarding_dismissed")
+        val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
+        val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
     }
 }

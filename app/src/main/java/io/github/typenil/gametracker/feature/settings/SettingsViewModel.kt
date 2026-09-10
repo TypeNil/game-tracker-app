@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.ThemeMode
 import io.github.typenil.gametracker.core.model.UserPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -44,6 +46,18 @@ class SettingsViewModel @Inject constructor(
 
     suspend fun resetRecommendationPreferences(): Boolean {
         return recordPreferenceWrite(userPreferencesRepository.clearRecommendationPreferences())
+    }
+
+    fun onThemeModeSelected(mode: ThemeMode) {
+        viewModelScope.launch {
+            recordPreferenceWrite(userPreferencesRepository.setThemeMode(mode))
+        }
+    }
+
+    fun onDynamicColorChanged(enabled: Boolean) {
+        viewModelScope.launch {
+            recordPreferenceWrite(userPreferencesRepository.setDynamicColor(enabled))
+        }
     }
 
     fun onUserMessageShown() {

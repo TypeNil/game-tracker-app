@@ -254,6 +254,17 @@
     <string name="settings_igdb_attribution">Данные игр предоставлены IGDB</string>
     <string name="settings_igdb_link">IGDB</string>
     <string name="settings_igdb_open_error">Нет приложения для открытия ссылки.</string>
+
+    <!-- Appearance -->
+    <string name="settings_appearance_title">Оформление</string>
+    <string name="settings_appearance_desc">Тема и цвета с обоев</string>
+    <string name="settings_theme_title">Тема</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_dynamic_color_title">Динамические цвета</string>
+    <string name="settings_dynamic_color_desc">Брать цвета с обоев устройства</string>
+    <string name="settings_dynamic_color_unsupported">Нужен Android 12 или новее</string>
     <!-- Release Notifications -->
     <string name="notification_channel_releases_name">Выходы игр</string>
     <string name="notification_channel_releases_desc">Уведомления о скорых и состоявшихся выходах игр из библиотеки</string>

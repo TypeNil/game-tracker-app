@@ -1,22 +1,30 @@
 package io.github.typenil.gametracker
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Trace
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.connectivity.NetworkMonitor
+import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
+import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.NotificationEventType
 import io.github.typenil.gametracker.core.model.ReleaseEvent
+import io.github.typenil.gametracker.core.model.UserPreferences
 import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import io.github.typenil.gametracker.navigation.AppNavHost
 import kotlinx.coroutines.launch
@@ -34,6 +42,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var splashHold: SplashHold
 
+    @Inject
+    lateinit var userPreferencesRepository: UserPreferencesRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Trace.beginSection(TRACE_MAIN_ACTIVITY_ON_CREATE)
         try {
@@ -46,7 +57,26 @@ class MainActivity : ComponentActivity() {
             enableEdgeToEdge()
             handleTestNotification(intent)
             setContent {
-                GameTrackerTheme {
+                val preferences by userPreferencesRepository.preferences.collectAsStateWithLifecycle(
+                    initialValue = UserPreferences(),
+                )
+                val darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme())
+                SideEffect {
+                    enableEdgeToEdge(
+                        statusBarStyle = SystemBarStyle.auto(
+                            Color.TRANSPARENT,
+                            Color.TRANSPARENT,
+                        ) { darkTheme },
+                        navigationBarStyle = SystemBarStyle.auto(
+                            Color.TRANSPARENT,
+                            Color.TRANSPARENT,
+                        ) { darkTheme },
+                    )
+                }
+                GameTrackerTheme(
+                    darkTheme = darkTheme,
+                    dynamicColor = preferences.dynamicColor,
+                ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background

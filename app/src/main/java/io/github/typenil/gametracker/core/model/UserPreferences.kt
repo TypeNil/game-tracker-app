@@ -9,6 +9,8 @@ data class UserPreferences(
     val recommendationThemes: Set<String> = emptySet(),
     val recommendationPlatforms: Set<String> = emptySet(),
     val recommendationOnboardingDismissed: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val dynamicColor: Boolean = true,
 ) {
     val selectedRecommendationTags: Set<String>
         get() = recommendationGenres + recommendationThemes
