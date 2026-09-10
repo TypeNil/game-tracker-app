@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.feature.library.insights
 
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
+import io.github.typenil.gametracker.core.designsystem.component.formatGenreTag
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
@@ -218,6 +219,50 @@ class LibraryInsightsTest {
             ),
             insights.topPlatforms,
         )
+    }
+
+    @Test
+    fun hugeHours_sumAsLongWithoutIntOverflow() {
+        val insights = computeLibraryInsights(
+            listOf(
+                libraryGame(1, "A", LibraryStatus.PLAYING, hoursPlayed = Int.MAX_VALUE),
+                libraryGame(2, "B", LibraryStatus.COMPLETED, hoursPlayed = Int.MAX_VALUE),
+            ),
+        )
+        assertEquals(Int.MAX_VALUE.toLong() * 2, insights.totalHours)
+        assertEquals(Int.MAX_VALUE, insights.mostPlayed.first().hoursPlayed)
+    }
+
+    @Test
+    fun manyGenres_capsTasteAtThree_andKeepsLongFormattedLabel() {
+        val longName = "Role Playing Game With A Very Long Name"
+        val games = (1L..8L).map { id ->
+            libraryGame(
+                id = id,
+                name = "G$id",
+                status = LibraryStatus.COMPLETED,
+                genres = listOf("genre-$id"),
+            )
+        } + libraryGame(
+            id = 9L,
+            name = "Long",
+            status = LibraryStatus.PLAYING,
+            hoursPlayed = 1,
+            genres = listOf(longName, longName),
+        )
+        val insights = computeLibraryInsights(games)
+        assertEquals(3, insights.topGenres.size)
+        val longOnly = computeLibraryInsights(
+            listOf(
+                libraryGame(
+                    id = 1L,
+                    name = "Long",
+                    status = LibraryStatus.PLAYING,
+                    genres = listOf(longName),
+                ),
+            ),
+        )
+        assertEquals(listOf(formatGenreTag(longName)), longOnly.topGenres)
     }
 }
 

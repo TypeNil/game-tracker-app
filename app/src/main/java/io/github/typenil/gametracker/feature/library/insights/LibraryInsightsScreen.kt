@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.feature.library.insights
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,8 +50,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -63,7 +66,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
-import io.github.typenil.gametracker.core.designsystem.component.PlatformIconView
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
@@ -79,6 +81,7 @@ internal const val LIBRARY_INSIGHTS_LIST_TEST_TAG = "library-insights-list"
 private val StatusBarMinWidth = 2.dp
 private val StatusBarHeight = 14.dp
 private val SectionCardShape = RoundedCornerShape(16.dp)
+private val InsightsFilterChipShape = RoundedCornerShape(8.dp)
 private val ChipShape = RoundedCornerShape(50)
 
 @Composable
@@ -323,7 +326,6 @@ private fun InsightsSectionCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun InsightsSummaryCard(
     insights: LibraryInsights,
@@ -342,10 +344,29 @@ private fun InsightsSummaryCard(
         insights.totalGames,
         gamesValue,
     )
+    val hoursValue = integerFormat.format(insights.totalHours)
+    val completedValue = integerFormat.format(insights.completedCount)
+    val completionLabel = insights.completionRate?.let { rate ->
+        percentFormat.format(rate)
+    }
+    val completedCaption = if (completionLabel != null) {
+        stringResource(R.string.insights_metric_completed_rate, completionLabel)
+    } else {
+        stringResource(R.string.insights_metric_completed)
+    }
+    val completedA11y = if (completionLabel != null) {
+        stringResource(R.string.insights_completed_count, completedValue) +
+            ", " +
+            stringResource(R.string.insights_completion, completionLabel)
+    } else {
+        stringResource(R.string.insights_completed_count, completedValue)
+    }
+    val ratingValue = insights.averageUserRating?.let { ratingFormat.format(it) } ?: none
     InsightsSectionCard {
         Text(
             text = stringResource(R.string.insights_heading),
             style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -357,41 +378,25 @@ private fun InsightsSummaryCard(
                 modifier = Modifier.weight(1f),
             )
             MetricCell(
-                value = integerFormat.format(insights.totalHours),
+                value = hoursValue,
                 caption = stringResource(R.string.insights_metric_hours),
-                contentDescription = stringResource(
-                    R.string.insights_hours_total,
-                    integerFormat.format(insights.totalHours),
-                ),
+                contentDescription = stringResource(R.string.insights_hours_total, hoursValue),
                 modifier = Modifier.weight(1f),
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             MetricCell(
-                value = integerFormat.format(insights.completedCount),
-                caption = stringResource(R.string.insights_metric_completed),
-                contentDescription = stringResource(
-                    R.string.insights_completed_count,
-                    integerFormat.format(insights.completedCount),
-                ),
+                value = completedValue,
+                caption = completedCaption,
+                contentDescription = completedA11y,
                 modifier = Modifier.weight(1f),
             )
             MetricCell(
-                value = insights.averageUserRating?.let(ratingFormat::format) ?: none,
+                value = ratingValue,
                 caption = stringResource(R.string.insights_metric_rating),
-                contentDescription = insights.averageUserRating?.let { rating ->
-                    stringResource(R.string.insights_avg_rating, ratingFormat.format(rating))
-                } ?: stringResource(R.string.insights_avg_rating, none),
+                contentDescription = stringResource(R.string.insights_avg_rating, ratingValue),
                 modifier = Modifier.weight(1f),
-            )
-        }
-        insights.completionRate?.let { rate ->
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.insights_completion, percentFormat.format(rate)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -400,18 +405,19 @@ private fun InsightsSummaryCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             InsightChip(
-                label = stringResource(R.string.library_status_playing),
+                label = stringResource(LibraryStatus.PLAYING.displayNameRes()),
                 count = integerFormat.format(insights.playingCount),
                 swatch = LibraryStatus.PLAYING.contentColor(),
             )
             InsightChip(
-                label = stringResource(R.string.library_status_wishlist),
+                label = stringResource(LibraryStatus.WISHLIST.displayNameRes()),
                 count = integerFormat.format(insights.wishlistCount),
                 swatch = LibraryStatus.WISHLIST.contentColor(),
             )
             InsightChip(
-                label = stringResource(R.string.library_favorite),
+                label = stringResource(R.string.library_filter_favorites),
                 count = integerFormat.format(insights.favoritesCount),
+                swatch = MaterialTheme.colorScheme.error,
             )
         }
     }
@@ -432,11 +438,15 @@ private fun MetricCell(
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
         )
         Text(
             text = caption,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -455,7 +465,6 @@ private fun InsightChip(
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (swatch != null) {
                 Surface(
@@ -463,16 +472,23 @@ private fun InsightChip(
                     shape = CircleShape,
                     color = swatch,
                 ) {}
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 160.dp),
             )
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = count,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -566,30 +582,58 @@ private fun MostPlayedRow(
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .testTag(mostPlayedRowTestTag(game.gameId))
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(vertical = 8.dp)
+            .testTag(mostPlayedRowTestTag(game.gameId)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = game.name,
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 12.dp),
         )
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = hoursLabel,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InsightsFilterChip(
+    label: String,
+    leadingIcon: @Composable (() -> Unit)? = null,
+) {
+    Surface(
+        shape = InsightsFilterChipShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier
+                .heightIn(min = 32.dp)
+                .padding(horizontal = 12.dp)
+                .widthIn(max = 200.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            leadingIcon?.invoke()
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun TasteChipRow(labels: List<String>) {
     FlowRow(
@@ -597,22 +641,11 @@ private fun TasteChipRow(labels: List<String>) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         labels.forEach { label ->
-            Surface(
-                shape = ChipShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
+            InsightsFilterChip(label = label)
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlatformChipRow(platforms: List<PlatformFamily>) {
     FlowRow(
@@ -620,27 +653,17 @@ private fun PlatformChipRow(platforms: List<PlatformFamily>) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         platforms.forEach { family ->
-            val label = stringResource(family.insightsLabelRes())
-            Surface(
-                shape = ChipShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    PlatformIconView(
-                        platform = label,
-                        iconSize = 16.dp,
-                        tint = MaterialTheme.colorScheme.primary,
+            InsightsFilterChip(
+                label = stringResource(family.insightsLabelRes()),
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(family.iconRes),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
                     )
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
-            }
+                },
+            )
         }
     }
 }

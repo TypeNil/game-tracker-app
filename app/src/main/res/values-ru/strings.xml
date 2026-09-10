@@ -220,7 +220,7 @@
         <item quantity="many">%1$s игр</item>
         <item quantity="other">%1$s игр</item>
     </plurals>
-    <plurals name="insights_games_caption">
+    <plurals name="insights_games_caption" tools:ignore="ImpliedQuantity">
         <item quantity="one">игра</item>
         <item quantity="few">игры</item>
         <item quantity="many">игр</item>
@@ -228,11 +228,12 @@
     </plurals>
     <string name="insights_metric_hours">часов</string>
     <string name="insights_metric_completed">пройдено</string>
+    <string name="insights_metric_completed_rate">пройдено · %1$s</string>
     <string name="insights_metric_rating">ср. оценка</string>
     <string name="insights_hours_total">%1$s ч</string>
     <string name="insights_completed_count">%1$s пройдено</string>
     <string name="insights_avg_rating">%1$s ср. оценка</string>
-    <string name="insights_completion">завершённость %1$s</string>
+    <string name="insights_completion">%1$s от начатых</string>
     <string name="insights_value_none">—</string>
     <string name="insights_chip">%1$s %2$s</string>
     <string name="insights_status">Статусы</string>
