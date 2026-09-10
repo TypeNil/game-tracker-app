@@ -14,6 +14,7 @@ import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameSearchQuery
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.SearchInputValidation
@@ -99,7 +100,7 @@ class SearchViewModelTest {
 
         coEvery { libraryRepository.addToWishlist(any()) } returns AppResult.Success(Unit)
         coEvery {
-            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+            libraryRepository.upsertUserEdits(any(), any())
         } returns AppResult.Success(Unit)
         coEvery { libraryRepository.removeGameFromLibrary(any()) } returns AppResult.Success(Unit)
         coEvery { repository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
@@ -918,16 +919,29 @@ class SearchViewModelTest {
 
         viewModel.onSaveLibraryEntry(
             gameId = 1L,
-            status = LibraryStatus.COMPLETED,
-            userRating = 10,
-            hoursPlayed = 120,
-            userNotes = "Masterpiece",
-            isFavorite = true,
+            draft = LibraryEntryDraft(
+                status = LibraryStatus.COMPLETED,
+                userRating = 10,
+                hoursPlayed = 120,
+                userNotes = "Masterpiece",
+                isFavorite = true,
+                releaseNotificationsEnabled = false,
+            ),
         )
         advanceUntilIdle()
 
         coVerify(exactly = 1) {
-            libraryRepository.upsertUserEdits(1L, LibraryStatus.COMPLETED, 10, 120, "Masterpiece", true)
+            libraryRepository.upsertUserEdits(
+                1L,
+                LibraryEntryDraft(
+                    status = LibraryStatus.COMPLETED,
+                    userRating = 10,
+                    hoursPlayed = 120,
+                    userNotes = "Masterpiece",
+                    isFavorite = true,
+                    releaseNotificationsEnabled = false,
+                ),
+            )
         }
     }
 

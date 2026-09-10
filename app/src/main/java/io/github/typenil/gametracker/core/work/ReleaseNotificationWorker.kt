@@ -16,7 +16,6 @@ import io.github.typenil.gametracker.core.database.dao.NotificationEventDao
 import io.github.typenil.gametracker.core.database.entity.NotificationEventEntity
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.ReleaseEvent
 import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,7 +25,8 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 
 /**
- * Background worker checking release dates for user-tracked library games and posting local notifications.
+ * Background worker checking release dates for library entries the user explicitly
+ * enabled release notifications for, and posting local notifications.
  */
 @HiltWorker
 class ReleaseNotificationWorker @AssistedInject constructor(
@@ -50,8 +50,7 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         val retentionThreshold = nowEpochSeconds - RETENTION_DAYS * SECONDS_PER_DAY
         notificationEventDao.deleteOldEvents(retentionThreshold)
 
-        val allEntries = libraryDao.getAllLibraryEntries()
-        val trackedEntries = allEntries.filter { isTrackedStatus(it.status) }
+        val trackedEntries = libraryDao.getEntriesWithReleaseNotificationsEnabled()
         if (trackedEntries.isEmpty()) return@withContext Result.success()
 
         var hasRetryableError = false
@@ -77,21 +76,28 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         val previousDate = previousDetails?.releaseDateEpochSeconds
             ?: gameDao.getGameById(gameId)?.releaseDateEpochSeconds
 
-        var retryableError = false
         when (val refreshResult = gameRepository.refreshGameDetails(gameId, force = true)) {
-            is AppResult.Success -> {
-                // Room SSOT updated
-            }
+            is AppResult.Success -> Unit // Room SSOT updated
             is AppResult.Error -> {
-                if (isRetryableError(refreshResult.error)) {
-                    retryableError = true
-                }
+                // Without a fresh answer from the catalog, "already released" cannot be told apart
+                // from "postponed", and the cached date is all we would be judging. Revoking the
+                // intent here could silently drop a reminder the user still expects (and the retry
+                // would not even see the row again), so leave the entry untouched.
+                return isRetryableError(refreshResult.error)
             }
         }
 
         val currentDetails = gameDetailsDao.getGameDetails(gameId)
         val currentDate = currentDetails?.releaseDateEpochSeconds
             ?: gameDao.getGameById(gameId)?.releaseDateEpochSeconds
+
+        if (!ReleaseEventDetector.isReleasePending(nowEpochSeconds, currentDate)) {
+            // Confirmed by the refresh above: the game is out, so this subscription can never fire
+            // again. Drop it instead of re-fetching it every interval forever.
+            libraryDao.clearReleaseNotifications(gameId)
+            return false
+        }
+
         val gameName = currentDetails?.name
             ?: gameDao.getGameById(gameId)?.name
             ?: "Game #$gameId"
@@ -105,7 +111,7 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         )
 
         dispatchAndRecordEvents(events, nowEpochSeconds)
-        return retryableError
+        return false
     }
 
     /**
@@ -134,12 +140,6 @@ class ReleaseNotificationWorker @AssistedInject constructor(
                 }
             }
         }
-    }
-
-    private fun isTrackedStatus(status: LibraryStatus): Boolean {
-        return status == LibraryStatus.WISHLIST ||
-            status == LibraryStatus.PLAYING ||
-            status == LibraryStatus.COMPLETED
     }
 
     private fun isRetryableError(error: AppError): Boolean {

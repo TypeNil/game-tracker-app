@@ -9,12 +9,14 @@ import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_4_5
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_3_4
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_5_6
+import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_6_7
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -334,4 +336,112 @@ class MigrationTest {
         cursor.close()
         db.close()
     }
+
+    @Test
+    fun migration6To7_backfillsOnlyStatusesThatCanStillNotify() {
+        var db = helper.createDatabase(testDbName, 6)
+
+        val nowEpochSeconds = Instant.now().epochSecond
+        val futureDate = nowEpochSeconds + 30L * 86_400L
+        // Exactly the start of the current UTC day: a release today must still count as pending,
+        // so the comparison cannot be tightened to "greater than today's start".
+        val todayUtcStart = nowEpochSeconds - nowEpochSeconds % 86_400L
+        val pastDate = 1_431_993_600L // 2015-05-19
+
+        // The worker tracked WISHLIST/PLAYING/COMPLETED before this migration, and the legacy
+        // PLAN_TO_PLAY name is still deserialized as WISHLIST. Released games are excluded: they
+        // could never produce a release event, so subscribing to them is pure background work.
+        val rows = listOf(
+            SeedRow(1L, "WISHLIST", futureDate, null, 1, "upcoming wishlist keeps its reminder"),
+            SeedRow(2L, "PLAYING", futureDate, null, 1, "upcoming playing keeps its reminder"),
+            SeedRow(3L, "COMPLETED", null, null, 1, "TBA completed keeps its reminder"),
+            SeedRow(4L, "PLAN_TO_PLAY", futureDate, null, 1, "legacy PLAN_TO_PLAY keeps its reminder"),
+            SeedRow(5L, "WISHLIST", pastDate, null, 0, "released wishlist stays unsubscribed"),
+            SeedRow(6L, "COMPLETED", pastDate, null, 0, "released completed stays unsubscribed"),
+            SeedRow(
+                id = 7L,
+                status = "PLAYING",
+                catalogDate = pastDate,
+                detailsDate = futureDate,
+                insertDetails = true,
+                expectedFlag = 1,
+                reason = "cached details date wins over the catalog row",
+            ),
+            SeedRow(
+                id = 8L,
+                status = "WISHLIST",
+                catalogDate = todayUtcStart,
+                detailsDate = null,
+                expectedFlag = 1,
+                reason = "a release on today's UTC date is still pending",
+            ),
+            SeedRow(
+                id = 9L,
+                status = "WISHLIST",
+                catalogDate = futureDate,
+                detailsDate = null,
+                insertDetails = true,
+                expectedFlag = 1,
+                reason = "details row without a date falls back to the catalog row",
+            ),
+            SeedRow(10L, "DROPPED", futureDate, null, 0, "dropped was never tracked"),
+            SeedRow(11L, "NOT_INTERESTED", null, null, 0, "not interested was never tracked"),
+        )
+
+        rows.forEach { row ->
+            db.execSQL(
+                """
+                INSERT INTO games (id, name, coverUrl, rating, releaseDateEpochSeconds, summary, genres, platforms, cachedAtEpochSeconds)
+                VALUES (${row.id}, 'Game ${row.id}', NULL, NULL, ${row.catalogDate ?: "NULL"}, NULL, '[]', '[]', 1000)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO library_entries (gameId, status, userRating, userNotes, isFavorite, addedAtEpochSeconds, updatedAtEpochSeconds, hoursPlayed)
+                VALUES (${row.id}, '${row.status}', NULL, NULL, 0, 1000, 1000, 0)
+                """.trimIndent()
+            )
+            if (row.insertDetails) {
+                db.execSQL(
+                    """
+                    INSERT INTO game_details (
+                        gameId, name, coverUrl, rating, totalRating, totalRatingCount,
+                        releaseDateEpochSeconds, summary, url, genres, themes, gameModes,
+                        platforms, releaseDates, companies, screenshots, videos, similarGames,
+                        cachedAtEpochSeconds
+                    ) VALUES (
+                        ${row.id}, 'Game ${row.id}', NULL, NULL, NULL, NULL,
+                        ${row.detailsDate ?: "NULL"}, NULL, NULL, '[]', '[]', '[]',
+                        '[]', '[]', '[]', '[]', '[]', '[]', 1000
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+        db.close()
+
+        db = helper.runMigrationsAndValidate(testDbName, 7, true, MIGRATION_6_7)
+
+        val flags = mutableMapOf<Long, Int>()
+        val cursor = db.query("SELECT gameId, releaseNotificationsEnabled FROM library_entries ORDER BY gameId")
+        while (cursor.moveToNext()) {
+            flags[cursor.getLong(0)] = cursor.getInt(1)
+        }
+        cursor.close()
+
+        rows.forEach { row ->
+            assertEquals(row.reason, row.expectedFlag, flags[row.id])
+        }
+        db.close()
+    }
+
+    private data class SeedRow(
+        val id: Long,
+        val status: String,
+        val catalogDate: Long?,
+        val detailsDate: Long?,
+        val expectedFlag: Int,
+        val reason: String,
+        val insertDetails: Boolean = false,
+    )
 }

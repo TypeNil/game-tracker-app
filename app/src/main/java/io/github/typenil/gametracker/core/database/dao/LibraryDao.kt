@@ -36,6 +36,14 @@ interface LibraryDao {
     @Query("SELECT * FROM library_entries")
     suspend fun getAllLibraryEntries(): List<LibraryEntryEntity>
 
+    /**
+     * Entries the user explicitly opted into release notifications for.
+     * Filtering lives in SQL so notification eligibility is a single, testable predicate,
+     * independent of [LibraryStatus].
+     */
+    @Query("SELECT * FROM library_entries WHERE releaseNotificationsEnabled = 1")
+    suspend fun getEntriesWithReleaseNotificationsEnabled(): List<LibraryEntryEntity>
+
     @Query("SELECT * FROM library_entries WHERE isFavorite = 1 ORDER BY updatedAtEpochSeconds DESC")
     fun getFavoriteLibraryEntriesFlow(): Flow<List<LibraryEntryEntity>>
 
@@ -83,4 +91,17 @@ interface LibraryDao {
 
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int
+
+    /**
+     * Drops the release-notification intent for a game that has already shipped, so the worker
+     * stops refreshing it forever. Returns the number of updated rows.
+     */
+    @Query(
+        """
+        UPDATE library_entries
+        SET releaseNotificationsEnabled = 0
+        WHERE gameId = :gameId
+        """,
+    )
+    suspend fun clearReleaseNotifications(gameId: Long): Int
 }

@@ -612,7 +612,18 @@ class DefaultGameRepository internal constructor(
         ) { details, game ->
             when {
                 details != null -> {
-                    val domainDetails = details.toDomain()
+                    // The cached details row wins, but a details row without a release date must
+                    // not hide the catalog date: the release-notification worker and MIGRATION_6_7
+                    // resolve the same way (details first, catalog second) and the notification
+                    // gate reads this value.
+                    val mappedDetails = details.toDomain()
+                    val domainDetails = if (mappedDetails.releaseDateEpochSeconds != null) {
+                        mappedDetails
+                    } else {
+                        mappedDetails.copy(
+                            releaseDateEpochSeconds = game?.releaseDateEpochSeconds,
+                        )
+                    }
                     previewCache.putHydrated(domainDetails)
                     domainDetails.similarGames.forEach(previewCache::putPreview)
                     domainDetails

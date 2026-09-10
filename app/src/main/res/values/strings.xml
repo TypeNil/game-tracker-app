@@ -180,6 +180,10 @@
     <string name="library_favorite_add">Add to favorites</string>
     <string name="library_favorite_remove">Remove from favorites</string>
     <string name="library_favorite_subtitle">Highlight in your personal collection</string>
+    <string name="library_release_notifications">Release notifications</string>
+    <string name="library_release_notifications_subtitle">Notify me about release-date changes and an approaching release. Delivery time is approximate.</string>
+    <string name="library_release_notifications_enabled_desc">Release notifications enabled</string>
+    <string name="library_release_notifications_permission_hint">System notifications are disabled. Your choice will still be saved.</string>
     <string name="library_personal_notes">Personal Notes</string>
     <string name="library_save">Save</string>
     <string name="library_cancel">Cancel</string>

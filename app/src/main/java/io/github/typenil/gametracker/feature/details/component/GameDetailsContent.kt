@@ -71,6 +71,9 @@ internal fun GameDetailsContent(
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
     var selectedScreenshotIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    // Re-evaluated on resume and at the next UTC midnight: an already-released game has no
+    // release left to announce.
+    val isReleasePending = rememberReleasePending(game?.releaseDateEpochSeconds)
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -115,6 +118,7 @@ internal fun GameDetailsContent(
                             isLibraryLoading = isLibraryLoading,
                             onEditClicked = onEditLibraryClicked,
                             modifier = Modifier.padding(horizontal = DETAILS_GUTTER),
+                            isReleasePending = isReleasePending,
                         )
                     }
                 }

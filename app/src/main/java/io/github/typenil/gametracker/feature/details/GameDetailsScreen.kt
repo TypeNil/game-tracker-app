@@ -27,7 +27,7 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.model.GameVideo
-import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.feature.details.component.DetailsOverflowSheet
 import io.github.typenil.gametracker.feature.details.component.DetailsOverflowSheets
 import io.github.typenil.gametracker.feature.details.component.DetailsTopAppBar
@@ -82,13 +82,7 @@ fun GameDetailsScreen(
     onUserMessageShown: () -> Unit,
     onEditLibraryClicked: () -> Unit = {},
     onDismissEditLibrary: () -> Unit = {},
-    onSaveLibraryEntry: (
-        status: LibraryStatus,
-        rating: Int?,
-        hours: Int,
-        notes: String?,
-        isFavorite: Boolean
-    ) -> Unit = { _, _, _, _, _ -> },
+    onSaveLibraryEntry: (LibraryEntryDraft) -> Unit = {},
     onRemoveFromLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -193,6 +187,7 @@ fun GameDetailsScreen(
                 onSave = onSaveLibraryEntry,
                 onRemove = onRemoveFromLibrary,
                 actionsEnabled = !uiState.isLibrarySubmitting,
+                releaseDateEpochSeconds = uiState.game?.releaseDateEpochSeconds,
             )
         }
     }

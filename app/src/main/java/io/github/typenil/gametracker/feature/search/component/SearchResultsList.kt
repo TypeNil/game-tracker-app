@@ -136,7 +136,7 @@ internal fun SearchResultsList(
                 GameCard(
                     game = game,
                     onClick = { onGameClick(game.id) },
-                    libraryStatus = ready?.entries?.get(game.id)?.status,
+                    libraryStatus = ready?.entries?.get(game.id)?.entry?.status,
                     onLibraryAction = if (ready != null) onLibraryAction else null,
                 )
             }

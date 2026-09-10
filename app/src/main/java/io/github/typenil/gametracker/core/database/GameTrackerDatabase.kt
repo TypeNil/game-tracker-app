@@ -32,7 +32,7 @@ import io.github.typenil.gametracker.core.database.entity.SearchResultCrossRef
         NotificationEventEntity::class,
         SearchHistoryEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(GameTrackerTypeConverters::class, GameDetailsColumnConverters::class)

@@ -583,6 +583,41 @@ class GameRepositoryTest {
     }
 
     @Test
+    fun `getGameDetailsFlow falls back to the catalog release date when details row has none`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        // TBA in the details cache, but the catalog row still knows a date: the release
+        // notification gate reads this value, so it must not be hidden by the details row.
+        every { gameDao.getGameByIdFlow(1L) } returns flowOf(sampleGameEntity)
+        every { gameDetailsDao.getGameDetailsFlow(1L) } returns flowOf(
+            sampleDetailsEntity.copy(releaseDateEpochSeconds = null),
+        )
+
+        repository.getGameDetailsFlow(1L).test {
+            val details = awaitItem()
+            assertEquals(sampleGameEntity.releaseDateEpochSeconds, details?.releaseDateEpochSeconds)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `getGameDetailsFlow keeps the details release date over the catalog one`() = runTest {
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        val repository = createRepository(testDispatcher)
+        val detailsDate = 1_900_000_000L
+        every { gameDao.getGameByIdFlow(1L) } returns flowOf(sampleGameEntity)
+        every { gameDetailsDao.getGameDetailsFlow(1L) } returns flowOf(
+            sampleDetailsEntity.copy(releaseDateEpochSeconds = detailsDate),
+        )
+
+        repository.getGameDetailsFlow(1L).test {
+            val details = awaitItem()
+            assertEquals(detailsDate, details?.releaseDateEpochSeconds)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `getGameDetailsFlow falls back to catalog skeleton when only games row exists`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         val repository = createRepository(testDispatcher)

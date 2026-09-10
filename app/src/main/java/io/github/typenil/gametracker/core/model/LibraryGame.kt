@@ -12,4 +12,9 @@ data class LibraryGame(
     val entry: LibraryEntry,
     val developerName: String? = null,
     val bannerUrl: String? = null,
+    /**
+     * Release date resolved for notification purposes: cached details first, catalog second —
+     * the same rule the release worker and the 6→7 migration use. Null when the release is TBA.
+     */
+    val releaseDateEpochSeconds: Long? = null,
 )

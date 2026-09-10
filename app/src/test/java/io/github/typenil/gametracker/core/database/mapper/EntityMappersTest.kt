@@ -1,7 +1,7 @@
 package io.github.typenil.gametracker.core.database.mapper
 
 import io.github.typenil.gametracker.core.database.entity.CompanyColumn
-import io.github.typenil.gametracker.core.database.entity.GameDetailsCompanies
+import io.github.typenil.gametracker.core.database.entity.LibraryGameDetailsSlice
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.entity.PopulatedLibraryGameEntity
@@ -104,7 +104,8 @@ class EntityMappersTest {
             isFavorite = true,
             addedAtEpochSeconds = 1600000000L,
             updatedAtEpochSeconds = 1600001000L,
-            hoursPlayed = 55
+            hoursPlayed = 55,
+            releaseNotificationsEnabled = true
         )
 
         val entity = entry.toEntity()
@@ -114,10 +115,12 @@ class EntityMappersTest {
         assertEquals("Great game so far", entity.userNotes)
         assertEquals(true, entity.isFavorite)
         assertEquals(55, entity.hoursPlayed)
+        assertEquals(true, entity.releaseNotificationsEnabled)
 
         val mappedBack = entity.toDomain()
         assertEquals(entry, mappedBack)
         assertEquals(55, mappedBack.hoursPlayed)
+        assertEquals(true, mappedBack.releaseNotificationsEnabled)
     }
 
     @Test
@@ -204,7 +207,7 @@ class EntityMappersTest {
                 cachedAtEpochSeconds = 100L,
             ),
             details = listOf(
-                GameDetailsCompanies(
+                LibraryGameDetailsSlice(
                     gameId = 1L,
                     companies = listOf(CompanyColumn("Supergiant", isDeveloper = true)),
                     screenshots = listOf("", "https://example.com/shot.jpg", "https://example.com/shot2.jpg"),
@@ -215,4 +218,57 @@ class EntityMappersTest {
         assertEquals("https://example.com/shot.jpg", domain.bannerUrl)
         assertEquals("Supergiant", domain.developerName)
     }
+
+    /**
+     * The notification worker and MIGRATION_6_7 resolve the release date as
+     * `game_details` first, `games` second; the library snapshot must expose the same value,
+     * otherwise a sheet can hide a subscription the worker is actively tracking.
+     */
+    @Test
+    fun `PopulatedLibraryGameEntity toDomain resolves release date from details then catalog`() {
+        val catalogDate = 1_431_993_600L // 2015-05-19
+        val detailsDate = 1_800_000_000L // future
+
+        val withDetails = populatedRow(
+            catalogDate = catalogDate,
+            details = listOf(LibraryGameDetailsSlice(gameId = 1L, releaseDateEpochSeconds = detailsDate)),
+        )
+        assertEquals(detailsDate, withDetails.toDomain().releaseDateEpochSeconds)
+
+        val detailsWithoutDate = populatedRow(
+            catalogDate = catalogDate,
+            details = listOf(LibraryGameDetailsSlice(gameId = 1L)),
+        )
+        assertEquals(catalogDate, detailsWithoutDate.toDomain().releaseDateEpochSeconds)
+
+        val withoutDetails = populatedRow(catalogDate = catalogDate, details = emptyList())
+        assertEquals(catalogDate, withoutDetails.toDomain().releaseDateEpochSeconds)
+
+        val tba = populatedRow(catalogDate = null, details = emptyList())
+        assertEquals(null, tba.toDomain().releaseDateEpochSeconds)
+    }
+
+    private fun populatedRow(
+        catalogDate: Long?,
+        details: List<LibraryGameDetailsSlice>,
+    ) = PopulatedLibraryGameEntity(
+        entry = LibraryEntryEntity(
+            gameId = 1L,
+            status = LibraryStatus.WISHLIST,
+            addedAtEpochSeconds = 100L,
+            updatedAtEpochSeconds = 100L,
+        ),
+        game = GameEntity(
+            id = 1L,
+            name = "Hades II",
+            coverUrl = null,
+            rating = null,
+            releaseDateEpochSeconds = catalogDate,
+            summary = null,
+            genres = emptyList(),
+            platforms = emptyList(),
+            cachedAtEpochSeconds = 100L,
+        ),
+        details = details,
+    )
 }

@@ -12,6 +12,7 @@ import io.github.typenil.gametracker.core.database.entity.CompanyColumn
 import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
+import io.github.typenil.gametracker.core.database.mapper.toDomain
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -162,7 +163,7 @@ class LibraryDaoTest {
                 rating = 95.0,
                 totalRating = null,
                 totalRatingCount = null,
-                releaseDateEpochSeconds = null,
+                releaseDateEpochSeconds = 1_800_000_000L,
                 summary = "unused",
                 url = null,
                 genres = emptyList(),
@@ -182,6 +183,11 @@ class LibraryDaoTest {
         assertEquals("FromSoftware", withDetails[0].details.single().companies.single().name)
         assertEquals(true, withDetails[0].details.single().companies.single().isDeveloper)
         assertEquals(listOf("https://example.com/shot1.jpg"), withDetails[0].details.single().screenshots)
+        // The slice must also carry the cached release date: the library snapshot resolves it from
+        // here (details first, catalog second) exactly like the notification worker does, and the
+        // catalog row for this game says 1600000000.
+        assertEquals(1_800_000_000L, withDetails[0].details.single().releaseDateEpochSeconds)
+        assertEquals(1_800_000_000L, withDetails[0].toDomain().releaseDateEpochSeconds)
     }
 
     @Test
@@ -297,6 +303,80 @@ class LibraryDaoTest {
         val entry = libraryDao.getLibraryEntry(102L)
         assertNotNull(entry)
         assertEquals(LibraryStatus.WISHLIST, entry?.status)
+    }
+
+    @Test
+    fun getEntriesWithReleaseNotificationsEnabled_returnsEnabledRowsAcrossStatuses() = runTest {
+        gameDao.upsertGames(
+            listOf(
+                GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L),
+                GameEntity(2L, "G2", null, null, null, null, emptyList(), emptyList(), 100L),
+                GameEntity(3L, "G3", null, null, null, null, emptyList(), emptyList(), 100L),
+            ),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 1L,
+                status = LibraryStatus.WISHLIST,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 2L,
+                status = LibraryStatus.NOT_INTERESTED,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 3L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+            ),
+        )
+
+        val enabled = libraryDao.getEntriesWithReleaseNotificationsEnabled()
+
+        // The explicit flag is authoritative: status neither grants nor revokes eligibility.
+        assertEquals(listOf(1L, 2L), enabled.map { it.gameId }.sorted())
+    }
+
+    @Test
+    fun clearReleaseNotifications_dropsIntentAndPreservesOtherFields() = runTest {
+        gameDao.upsertGame(
+            GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 1L,
+                status = LibraryStatus.PLAYING,
+                userRating = 9,
+                userNotes = "still here",
+                isFavorite = true,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 200L,
+                hoursPlayed = 12,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+
+        assertEquals(1, libraryDao.clearReleaseNotifications(1L))
+
+        val updated = libraryDao.getLibraryEntry(1L)
+        assertEquals(false, updated?.releaseNotificationsEnabled)
+        assertEquals(LibraryStatus.PLAYING, updated?.status)
+        assertEquals(9, updated?.userRating)
+        assertEquals("still here", updated?.userNotes)
+        assertEquals(true, updated?.isFavorite)
+        assertEquals(12, updated?.hoursPlayed)
+        assertEquals(200L, updated?.updatedAtEpochSeconds)
+        assertEquals(0, libraryDao.clearReleaseNotifications(999L))
     }
 
     @Test

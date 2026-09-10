@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -72,6 +73,7 @@ internal fun LibraryStatusCard(
     isLibraryLoading: Boolean,
     onEditClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    isReleasePending: Boolean = true,
 ) {
     if (isLibraryLoading) {
         LibraryStatusPlaceholder(modifier = modifier.fillMaxWidth())
@@ -87,6 +89,7 @@ internal fun LibraryStatusCard(
             } else {
                 InLibraryCard(
                     status = stringResource(entry.status.displayNameRes()),
+                    releaseNotificationsEnabled = entry.releaseNotificationsEnabled && isReleasePending,
                     onClick = onEditClicked,
                 )
             }
@@ -158,6 +161,7 @@ internal fun AddToLibraryButton(
 @Composable
 internal fun InLibraryCard(
     status: String,
+    releaseNotificationsEnabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -212,6 +216,18 @@ internal fun InLibraryCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+            if (releaseNotificationsEnabled) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    // State, not an action: the whole card remains the edit affordance.
+                    contentDescription = stringResource(
+                        R.string.library_release_notifications_enabled_desc,
+                    ),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Icon(
                 imageVector = Icons.Default.Edit,

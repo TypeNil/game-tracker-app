@@ -15,11 +15,13 @@ import io.github.typenil.gametracker.core.database.transaction.RoomTransactionRu
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -72,6 +74,38 @@ class DefaultLibraryRepositoryAndroidTest {
         val entry = libraryDao.getLibraryEntry(7L)
         assertNotNull(entry)
         assertEquals(LibraryStatus.WISHLIST, entry!!.status)
+        assertFalse("One-tap add must not subscribe to release reminders", entry.releaseNotificationsEnabled)
+    }
+
+    @Test
+    fun upsertUserEdits_persistsReleaseNotificationIntent_andPreservesAddedAt() = runTest {
+        gameDao.upsertGame(Game(id = 7L, name = "Hades II").toEntity(1L))
+        libraryDao.upsertLibraryEntry(
+            LibraryEntry(
+                gameId = 7L,
+                status = LibraryStatus.WISHLIST,
+                addedAtEpochSeconds = 111L,
+                updatedAtEpochSeconds = 111L,
+            ).toEntity(),
+        )
+
+        val result = repository.upsertUserEdits(
+            gameId = 7L,
+            draft = LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 8,
+                hoursPlayed = 4,
+                userNotes = null,
+                isFavorite = false,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+
+        assertTrue(result is AppResult.Success)
+        val entry = libraryDao.getLibraryEntry(7L)!!
+        assertEquals(LibraryStatus.PLAYING, entry.status)
+        assertTrue(entry.releaseNotificationsEnabled)
+        assertEquals(111L, entry.addedAtEpochSeconds)
     }
 
     @Test

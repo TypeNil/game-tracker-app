@@ -12,5 +12,11 @@ data class LibraryEntry(
     val isFavorite: Boolean = false,
     val addedAtEpochSeconds: Long,
     val updatedAtEpochSeconds: Long,
-    val hoursPlayed: Int = 0
+    val hoursPlayed: Int = 0,
+    /**
+     * Explicit user intent to be notified about this game's release.
+     * Deliberately independent of [status]: library status describes where the game
+     * sits in the user's collection, not whether its release should be watched.
+     */
+    val releaseNotificationsEnabled: Boolean = false
 )

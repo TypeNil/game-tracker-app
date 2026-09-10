@@ -6,8 +6,8 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.library.HoursSaveState
 import io.github.typenil.gametracker.feature.library.LibraryMutationState
@@ -46,17 +46,11 @@ internal fun LibraryEditSheetWiring(
     editingGameId: Long?,
     libraryMutationState: LibraryMutationState,
     onDismiss: () -> Unit,
-    onSaveLibraryEntry: (
-        gameId: Long,
-        status: LibraryStatus,
-        rating: Int?,
-        hours: Int,
-        notes: String?,
-        isFavorite: Boolean,
-    ) -> Unit,
+    onSaveLibraryEntry: (Long, LibraryEntryDraft) -> Unit,
     onRemoveFromLibrary: (Long) -> Unit,
 ) {
-    val editingEntry = allGames.firstOrNull { it.game.id == editingGameId }?.entry ?: return
+    val editingGame = allGames.firstOrNull { it.game.id == editingGameId } ?: return
+    val editingEntry = editingGame.entry
     val isMutating = libraryMutationState is LibraryMutationState.Saving
     val currentIsMutating = rememberUpdatedState(isMutating)
     val confirmSheetValueChange = remember {
@@ -77,19 +71,13 @@ internal fun LibraryEditSheetWiring(
                 onDismiss()
             }
         },
-        onSave = { status, rating, hours, notes, favorite ->
-            onSaveLibraryEntry(
-                editingEntry.gameId,
-                status,
-                rating,
-                hours,
-                notes,
-                favorite,
-            )
+        onSave = { draft ->
+            onSaveLibraryEntry(editingEntry.gameId, draft)
         },
         onRemove = {
             onRemoveFromLibrary(editingEntry.gameId)
         },
         actionsEnabled = !isMutating,
+        releaseDateEpochSeconds = editingGame.releaseDateEpochSeconds,
     )
 }

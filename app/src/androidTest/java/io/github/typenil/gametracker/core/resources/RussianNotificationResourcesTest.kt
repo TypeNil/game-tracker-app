@@ -47,4 +47,24 @@ class RussianNotificationResourcesTest {
             russianResources.getString(R.string.notification_date_tbd),
         )
     }
+
+    @Test
+    fun releaseNotificationControls_areTranslatedAndAvoidDeliveryPromises() {
+        assertEquals(
+            "Уведомления о релизе",
+            russianResources.getString(R.string.library_release_notifications),
+        )
+        assertEquals(
+            "Сообщать об изменениях даты и приближении релиза. Время доставки приблизительное.",
+            russianResources.getString(R.string.library_release_notifications_subtitle),
+        )
+        assertEquals(
+            "Уведомления о релизе включены",
+            russianResources.getString(R.string.library_release_notifications_enabled_desc),
+        )
+        assertEquals(
+            "Системные уведомления выключены. Ваш выбор всё равно сохранится.",
+            russianResources.getString(R.string.library_release_notifications_permission_hint),
+        )
+    }
 }

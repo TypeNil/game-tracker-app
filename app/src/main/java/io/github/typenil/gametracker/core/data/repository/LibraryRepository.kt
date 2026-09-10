@@ -3,6 +3,7 @@ package io.github.typenil.gametracker.core.data.repository
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.RecommendationSignal
@@ -25,15 +26,11 @@ interface LibraryRepository {
     suspend fun addToWishlist(game: Game): AppResult<Unit>
 
     /**
-     * Updates an existing library entry. Preserves [LibraryEntry.addedAtEpochSeconds].
+     * Applies [draft] to an existing [LibraryEntry]. Preserves [LibraryEntry.addedAtEpochSeconds].
      */
     suspend fun upsertUserEdits(
         gameId: Long,
-        status: LibraryStatus,
-        userRating: Int?,
-        hoursPlayed: Int,
-        userNotes: String?,
-        isFavorite: Boolean,
+        draft: LibraryEntryDraft,
     ): AppResult<Unit>
 
     /**

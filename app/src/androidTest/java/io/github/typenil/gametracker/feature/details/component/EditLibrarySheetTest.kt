@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
@@ -35,6 +37,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 class EditLibrarySheetTest {
@@ -52,7 +55,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { status, _, _, _, _ -> savedStatus = status },
+                        onSave = { savedStatus = it.status },
                         onDeleteClick = null,
                     )
                 }
@@ -77,7 +80,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { status, _, _, _, _ -> savedStatus = status },
+                        onSave = { savedStatus = it.status },
                         onDeleteClick = null,
                     )
                 }
@@ -104,7 +107,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, rating, _, _, _ -> savedRating = rating },
+                        onSave = { savedRating = it.userRating },
                         onDeleteClick = null,
                     )
                 }
@@ -139,7 +142,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -169,7 +172,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = { dismissed = true },
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -201,7 +204,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = entry,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = { deleteClicked = true },
                     )
                 }
@@ -224,9 +227,9 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { status, _, hours, _, _ ->
-                            savedStatus = status
-                            savedHours = hours
+                        onSave = { draft ->
+                            savedStatus = draft.status
+                            savedHours = draft.hoursPlayed
                         },
                         onDeleteClick = null,
                     )
@@ -266,8 +269,8 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, _, _, _, isFavorite ->
-                            savedFavorite = isFavorite
+                        onSave = { draft ->
+                            savedFavorite = draft.isFavorite
                         },
                         onDeleteClick = null,
                     )
@@ -308,7 +311,7 @@ class EditLibrarySheetTest {
                             dismissCount++
                             visible = false
                         },
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                     )
                 }
             }
@@ -342,7 +345,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -384,7 +387,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = initialEntry,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -408,5 +411,314 @@ class EditLibrarySheetTest {
         composeTestRule
             .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
             .assertTextContains(draft)
+    }
+
+    @Test
+    fun releaseNotifications_defaultOffForNewEntry_andPersistsToggle() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .performClick()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOn()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_savingUntouchedNewEntry_keepsIntentOff() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(false, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_hiddenForAlreadyReleasedGame() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                        // Released in 2015: the switch would promise an event that cannot happen.
+                        releaseDateEpochSeconds = 1_431_993_600L,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.library_release_notifications))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun releaseNotifications_shownForUpcomingAndUnknownReleaseDates() {
+        val upcoming = Instant.now().epochSecond + 30L * 86_400L
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                        releaseDateEpochSeconds = upcoming,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
+    }
+
+    @Test
+    fun releaseNotifications_shownForUnknownReleaseDate() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                        releaseDateEpochSeconds = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
+    }
+
+    @Test
+    fun releaseNotifications_savingReleasedEntry_keepsStoredIntentForTheWorkerToClear() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = LibraryEntry(
+                            gameId = 8L,
+                            status = LibraryStatus.COMPLETED,
+                            addedAtEpochSeconds = 1L,
+                            updatedAtEpochSeconds = 1L,
+                            releaseNotificationsEnabled = true,
+                        ),
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                        releaseDateEpochSeconds = 1_431_993_600L,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertDoesNotExist()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_save)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        // The control is hidden, so saving must not mutate it in either direction - least of all
+        // revoke a subscription based on a date that may be stale. The worker clears a confirmed
+        // release after its own refresh (ReleaseNotificationWorkerTest).
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_existingEnabledEntry_keepsIntentOnSave() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = LibraryEntry(
+                            gameId = 7L,
+                            status = LibraryStatus.WISHLIST,
+                            addedAtEpochSeconds = 1_700_000_000L,
+                            updatedAtEpochSeconds = 1_700_000_000L,
+                            releaseNotificationsEnabled = true,
+                        ),
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOn()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_save)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_withoutPermission_requestsOncePerEnablement_andKeepsIntent() {
+        var requestCount = 0
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                        hasNotificationPermission = false,
+                        onRequestNotificationPermission = { requestCount++ },
+                    )
+                }
+            }
+        }
+
+        val hint = composeTestRule.activity.getString(
+            R.string.library_release_notifications_permission_hint,
+        )
+        val toggle = composeTestRule.onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+
+        composeTestRule.onNodeWithText(hint).assertDoesNotExist()
+
+        toggle.performClick()
+        assertEquals(1, requestCount)
+        composeTestRule.onNodeWithText(hint).assertIsDisplayed()
+
+        // Disabling must not ask for permission again; re-enabling must ask exactly once more.
+        toggle.performClick()
+        assertEquals(1, requestCount)
+        toggle.performClick()
+        assertEquals(2, requestCount)
+
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        // The stored intent is the user's choice, independent of the OS permission outcome.
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_toggle_restoresAcrossSavedStateRecreation() {
+        val restorationTester = StateRestorationTester(composeTestRule)
+
+        restorationTester.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .performClick()
+
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOn()
+    }
+
+    @Test
+    fun releaseNotifications_reinitializesWhenEditingAnotherEntry() {
+        var entry by mutableStateOf(
+            LibraryEntry(
+                gameId = 1L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 1L,
+                updatedAtEpochSeconds = 1L,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = entry,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOn()
+
+        entry = entry.copy(gameId = 2L, releaseNotificationsEnabled = false)
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
     }
 }

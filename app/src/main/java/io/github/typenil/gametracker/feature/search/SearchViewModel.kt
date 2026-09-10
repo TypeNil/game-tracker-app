@@ -18,8 +18,8 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.GameSearchQuery
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.SearchInputPolicy
 import io.github.typenil.gametracker.core.model.SearchInputValidation
 import kotlinx.coroutines.CancellationException
@@ -227,7 +227,7 @@ class SearchViewModel @Inject constructor(
                     when (result) {
                         is AppResult.Success -> {
                             librarySnapshot.value = LibrarySnapshot.Ready(
-                                result.data.associate { it.entry.gameId to it.entry },
+                                result.data.associate { it.entry.gameId to it },
                             )
                         }
                         is AppResult.Error -> {
@@ -357,23 +357,12 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    fun onSaveLibraryEntry(
-        gameId: Long,
-        status: LibraryStatus,
-        userRating: Int?,
-        hoursPlayed: Int,
-        userNotes: String?,
-        isFavorite: Boolean,
-    ) {
+    fun onSaveLibraryEntry(gameId: Long, draft: LibraryEntryDraft) {
         if (libraryMutationJob?.isActive == true) return
         libraryMutationJob = viewModelScope.launch {
             isLibrarySubmitting.value = true
             try {
-                when (
-                    libraryRepository.upsertUserEdits(
-                        gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
-                    )
-                ) {
+                when (libraryRepository.upsertUserEdits(gameId, draft)) {
                     is AppResult.Success -> editingGameId.value = null
                     is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
                 }

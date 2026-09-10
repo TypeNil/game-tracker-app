@@ -67,7 +67,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.topLevelBottomInset
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.Game
-import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.recommendations.TuneRecommendationsSheet
 import androidx.compose.material3.Button
@@ -93,7 +93,7 @@ fun DiscoverScreen(
     onRetryForYou: () -> Unit = {},
 
     onLibraryAction: (Game) -> Unit = {},
-    onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
+    onSaveLibraryEntry: (Long, LibraryEntryDraft) -> Unit = { _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
     onDismissEditLibrary: () -> Unit = {},
     onSaveRecommendationPreferences: suspend (Set<String>, Set<String>) -> Boolean = { _, _ -> true },
@@ -167,13 +167,14 @@ fun DiscoverScreen(
     }
     if (editingEntry != null) {
         EditLibrarySheet(
-            initialEntry = editingEntry,
+            initialEntry = editingEntry.entry,
             onDismiss = onDismissEditLibrary,
-            onSave = { status, rating, hours, notes, favorite ->
-                onSaveLibraryEntry(editingEntry.gameId, status, rating, hours, notes, favorite)
+            onSave = { draft ->
+                onSaveLibraryEntry(editingEntry.entry.gameId, draft)
             },
-            onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
+            onRemove = { onRemoveFromLibrary(editingEntry.entry.gameId) },
             actionsEnabled = !uiState.isLibrarySubmitting,
+            releaseDateEpochSeconds = editingEntry.releaseDateEpochSeconds,
         )
     }
     if (isTuneSheetOpen) {
@@ -569,7 +570,7 @@ private fun ChartsFeed(
                         game = game,
                         onClick = { onGameClick(game.id) },
                         libraryStatus = (uiState.librarySnapshot as? LibrarySnapshot.Ready)
-                            ?.entries?.get(game.id)?.status,
+                            ?.entries?.get(game.id)?.entry?.status,
                         onLibraryAction = if (uiState.librarySnapshot is LibrarySnapshot.Ready) {
                             onLibraryAction
                         } else {

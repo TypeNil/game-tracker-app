@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.core.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -34,5 +35,12 @@ data class LibraryEntryEntity(
     val isFavorite: Boolean = false,
     val addedAtEpochSeconds: Long,
     val updatedAtEpochSeconds: Long,
-    val hoursPlayed: Int = 0
+    val hoursPlayed: Int = 0,
+    /**
+     * `defaultValue` mirrors MIGRATION_6_7's `DEFAULT 0` so a freshly created v7
+     * database and a migrated one describe the same schema (standard 4.3.8: ADD COLUMN
+     * targets the last property).
+     */
+    @ColumnInfo(defaultValue = "0")
+    val releaseNotificationsEnabled: Boolean = false
 )
