@@ -182,6 +182,10 @@
     <string name="library_favorite_add">В избранное</string>
     <string name="library_favorite_remove">Убрать из избранного</string>
     <string name="library_favorite_subtitle">Выделить в личной коллекции</string>
+    <string name="library_release_notifications">Уведомления о релизе</string>
+    <string name="library_release_notifications_subtitle">Сообщать об изменениях даты и приближении релиза. Время доставки приблизительное.</string>
+    <string name="library_release_notifications_enabled_desc">Уведомления о релизе включены</string>
+    <string name="library_release_notifications_permission_hint">Системные уведомления выключены. Ваш выбор всё равно сохранится.</string>
     <string name="library_personal_notes">Личные заметки</string>
     <string name="library_save">Сохранить</string>
     <string name="library_cancel">Отмена</string>

@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
@@ -95,6 +97,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
@@ -117,6 +120,7 @@ import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryNotes
+import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.launch
@@ -132,6 +136,7 @@ private const val SHEET_MAX_HEIGHT_FRACTION = 0.94f
 const val EDIT_LIBRARY_RATING_BAR_TEST_TAG = "edit_library_rating_bar"
 const val EDIT_LIBRARY_SHEET_HEADER_TEST_TAG = "edit_library_sheet_header"
 const val EDIT_LIBRARY_NOTES_INPUT_TEST_TAG = "edit_library_notes_input"
+const val EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG = "edit_library_release_notifications"
 
 private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
     this.then(
@@ -159,6 +164,8 @@ fun EditLibrarySheet(
     val scope = rememberCoroutineScope()
     val latestOnDismiss by rememberUpdatedState(onDismiss)
     var isDismissing by remember { mutableStateOf(false) }
+    // Platform launcher stays in the outer composable so content remains previewable and testable.
+    val notificationPermission = rememberNotificationPermissionState()
 
     fun dismissAnimated() {
         if (isDismissing) return
@@ -192,6 +199,8 @@ fun EditLibrarySheet(
                 null
             },
             actionsEnabled = actionsEnabled && !isDismissing,
+            hasNotificationPermission = notificationPermission.hasPermission,
+            onRequestNotificationPermission = notificationPermission.requestPermission,
             modifier = Modifier
                 .fillMaxWidth()
                 .maxHeightFraction(SHEET_MAX_HEIGHT_FRACTION),
@@ -247,6 +256,8 @@ internal fun EditLibrarySheetContent(
     onDeleteClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true,
+    hasNotificationPermission: Boolean = true,
+    onRequestNotificationPermission: () -> Unit = {},
 ) {
     val isNewEntry = initialEntry == null
     val entryId = initialEntry?.gameId
@@ -265,6 +276,9 @@ internal fun EditLibrarySheetContent(
     }
     var isFavorite by rememberSaveable(entryId) {
         mutableStateOf(initialEntry?.isFavorite ?: false)
+    }
+    var notifyOnRelease by rememberSaveable(entryId) {
+        mutableStateOf(initialEntry?.releaseNotificationsEnabled ?: false)
     }
 
     val haptic = LocalHapticFeedback.current
@@ -424,7 +438,21 @@ internal fun EditLibrarySheetContent(
                 enabled = actionsEnabled,
             )
 
-            // Section 5: Personal Notes
+            // Section 5: Release notifications (independent of library status)
+            ReleaseNotificationSection(
+                notifyOnRelease = notifyOnRelease,
+                permissionGranted = hasNotificationPermission,
+                onNotifyChange = { enabled ->
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (enabled && !hasNotificationPermission) {
+                        onRequestNotificationPermission()
+                    }
+                    notifyOnRelease = enabled
+                },
+                enabled = actionsEnabled,
+            )
+
+            // Section 6: Personal Notes
             Column(
                 modifier = Modifier
                     .bringIntoViewRequester(notesRequester)
@@ -463,7 +491,7 @@ internal fun EditLibrarySheetContent(
                         hoursPlayed = hours,
                         userNotes = notes.trim().ifEmpty { null },
                         isFavorite = isFavorite,
-                        releaseNotificationsEnabled = initialEntry?.releaseNotificationsEnabled ?: false,
+                        releaseNotificationsEnabled = notifyOnRelease,
                     ),
                 )
             },
@@ -964,6 +992,110 @@ private fun FavoriteToggleSection(
                 checked = isFavorite,
                 onCheckedChange = onFavoriteChange,
                 enabled = enabled,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReleaseNotificationSection(
+    notifyOnRelease: Boolean,
+    permissionGranted: Boolean,
+    onNotifyChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+
+    OutlinedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            // The row is the single accessible toggle target; the nested Switch is decorative
+            // so assistive tech does not expose two competing controls for one value.
+            .toggleable(
+                value = notifyOnRelease,
+                enabled = enabled,
+                role = Role.Switch,
+                onValueChange = onNotifyChange,
+            ),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(
+            width = if (notifyOnRelease) 1.5.dp else 1.dp,
+            color = if (notifyOnRelease) {
+                accent.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            },
+        ),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = if (notifyOnRelease) {
+                accent.copy(alpha = 0.08f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = if (notifyOnRelease) {
+                        accent.copy(alpha = 0.15f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = null,
+                            tint = if (notifyOnRelease) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+
+                Column {
+                    Text(
+                        text = stringResource(R.string.library_release_notifications),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        // No exact delivery promise: WorkManager checks are best-effort.
+                        text = stringResource(R.string.library_release_notifications_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (notifyOnRelease && !permissionGranted) {
+                        Text(
+                            text = stringResource(R.string.library_release_notifications_permission_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+            }
+
+            Switch(
+                checked = notifyOnRelease,
+                onCheckedChange = null,
+                enabled = enabled,
+                modifier = Modifier.clearAndSetSemantics { },
             )
         }
     }

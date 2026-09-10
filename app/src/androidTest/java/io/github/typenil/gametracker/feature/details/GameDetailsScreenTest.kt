@@ -627,7 +627,44 @@ class GameDetailsScreenTest {
     }
 
     @Test
-    fun libraryFailure_doesNotShowAddOrEditAction() {
+    fun inLibraryCardShowsReleaseNotificationState() {
+        val enabledEntry = LibraryEntry(
+            gameId = compactDetails.id,
+            status = LibraryStatus.WISHLIST,
+            addedAtEpochSeconds = 0L,
+            updatedAtEpochSeconds = 0L,
+            releaseNotificationsEnabled = true,
+        )
+        setContent(
+            GameDetailsUiState(game = compactDetails, libraryEntry = enabledEntry, isHydrated = true),
+        )
+
+        val enabledDesc = composeTestRule.activity.getString(
+            R.string.library_release_notifications_enabled_desc,
+        )
+        composeTestRule.onNodeWithContentDescription(enabledDesc).assertIsDisplayed()
+    }
+
+    @Test
+    fun inLibraryCardHidesReleaseNotificationStateWhenDisabled() {
+        val disabledEntry = LibraryEntry(
+            gameId = compactDetails.id,
+            status = LibraryStatus.WISHLIST,
+            addedAtEpochSeconds = 0L,
+            updatedAtEpochSeconds = 0L,
+        )
+        setContent(
+            GameDetailsUiState(game = compactDetails, libraryEntry = disabledEntry, isHydrated = true),
+        )
+
+        val enabledDesc = composeTestRule.activity.getString(
+            R.string.library_release_notifications_enabled_desc,
+        )
+        composeTestRule.onNodeWithContentDescription(enabledDesc).assertDoesNotExist()
+    }
+
+    @Test
+    fun libraryFailure_DoesNotShowAddOrEditAction() {
         setContent(
             GameDetailsUiState(
                 game = compactDetails,

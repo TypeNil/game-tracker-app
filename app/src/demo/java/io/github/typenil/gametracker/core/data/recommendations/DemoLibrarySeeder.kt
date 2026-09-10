@@ -27,6 +27,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 150,
                 addedAtEpochSeconds = now - 86400 * 30,
                 updatedAtEpochSeconds = now - 86400 * 5,
+                releaseNotificationsEnabled = true,
             ),
             LibraryEntry(
                 gameId = MYSTERY_INDIE_ID,
@@ -36,6 +37,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 12,
                 addedAtEpochSeconds = now - 86400 * 10,
                 updatedAtEpochSeconds = now - 86400 * 1,
+                releaseNotificationsEnabled = true,
             ),
             LibraryEntry(
                 gameId = GTA_VI_ID,
@@ -45,6 +47,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 0,
                 addedAtEpochSeconds = now - 86400 * 20,
                 updatedAtEpochSeconds = now - 86400 * 20,
+                releaseNotificationsEnabled = true,
             ),
             LibraryEntry(
                 gameId = DOOM_1993_ID,
@@ -54,6 +57,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 25,
                 addedAtEpochSeconds = now - 86400 * 40,
                 updatedAtEpochSeconds = now - 86400 * 15,
+                releaseNotificationsEnabled = true,
             ),
             LibraryEntry(
                 gameId = ARENA_PRO_ID,
@@ -63,6 +67,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 8,
                 addedAtEpochSeconds = now - 86400 * 15,
                 updatedAtEpochSeconds = now - 86400 * 2,
+                releaseNotificationsEnabled = false,
             ),
             LibraryEntry(
                 gameId = SPACE_INVADERS_ID,
@@ -72,6 +77,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 0,
                 addedAtEpochSeconds = now - 86400 * 50,
                 updatedAtEpochSeconds = now - 86400 * 50,
+                releaseNotificationsEnabled = false,
             ),
         )
 

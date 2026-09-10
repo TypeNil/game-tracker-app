@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
@@ -408,5 +410,181 @@ class EditLibrarySheetTest {
         composeTestRule
             .onNodeWithTag(EDIT_LIBRARY_NOTES_INPUT_TEST_TAG)
             .assertTextContains(draft)
+    }
+
+    @Test
+    fun releaseNotifications_defaultOffForNewEntry_andPersistsToggle() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .assertIsOff()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .performClick()
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .assertIsOn()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_existingEnabledEntry_keepsIntentOnSave() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = LibraryEntry(
+                            gameId = 7L,
+                            status = LibraryStatus.WISHLIST,
+                            addedAtEpochSeconds = 1_700_000_000L,
+                            updatedAtEpochSeconds = 1_700_000_000L,
+                            releaseNotificationsEnabled = true,
+                        ),
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .assertIsOn()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_save)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_withoutPermission_requestsOncePerEnablement_andKeepsIntent() {
+        var requestCount = 0
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                        hasNotificationPermission = false,
+                        onRequestNotificationPermission = { requestCount++ },
+                    )
+                }
+            }
+        }
+
+        val hint = composeTestRule.activity.getString(
+            R.string.library_release_notifications_permission_hint,
+        )
+        val toggle = composeTestRule.onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+
+        composeTestRule.onNodeWithText(hint).assertDoesNotExist()
+
+        toggle.performClick()
+        assertEquals(1, requestCount)
+        composeTestRule.onNodeWithText(hint).assertIsDisplayed()
+
+        // Disabling must not ask for permission again; re-enabling must ask exactly once more.
+        toggle.performClick()
+        assertEquals(1, requestCount)
+        toggle.performClick()
+        assertEquals(2, requestCount)
+
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        // The stored intent is the user's choice, independent of the OS permission outcome.
+        assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_toggle_restoresAcrossSavedStateRecreation() {
+        val restorationTester = StateRestorationTester(composeTestRule)
+
+        restorationTester.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .performClick()
+
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .assertIsOn()
+    }
+
+    @Test
+    fun releaseNotifications_reinitializesWhenEditingAnotherEntry() {
+        var entry by mutableStateOf(
+            LibraryEntry(
+                gameId = 1L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 1L,
+                updatedAtEpochSeconds = 1L,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = entry,
+                        onDismiss = {},
+                        onSave = { },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .assertIsOn()
+
+        entry = entry.copy(gameId = 2L, releaseNotificationsEnabled = false)
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .assertIsOff()
     }
 }

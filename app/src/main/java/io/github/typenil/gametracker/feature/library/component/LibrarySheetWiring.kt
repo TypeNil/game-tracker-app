@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.library.HoursSaveState
 import io.github.typenil.gametracker.feature.library.LibraryMutationState

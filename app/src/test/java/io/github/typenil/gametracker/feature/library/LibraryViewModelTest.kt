@@ -745,20 +745,14 @@ class LibraryViewModelTest {
     }
 
 
-    private fun libraryDraft(
-        status: LibraryStatus,
-        userRating: Int? = null,
-        hoursPlayed: Int = 0,
-        userNotes: String? = null,
-        isFavorite: Boolean = false,
-        releaseNotificationsEnabled: Boolean = false,
-    ): LibraryEntryDraft = LibraryEntryDraft(
+    /** The single-flight and error cases only vary the status; other fields stay at defaults. */
+    private fun libraryDraft(status: LibraryStatus) = LibraryEntryDraft(
         status = status,
-        userRating = userRating,
-        hoursPlayed = hoursPlayed,
-        userNotes = userNotes,
-        isFavorite = isFavorite,
-        releaseNotificationsEnabled = releaseNotificationsEnabled,
+        userRating = null,
+        hoursPlayed = 0,
+        userNotes = null,
+        isFavorite = false,
+        releaseNotificationsEnabled = false,
     )
 
     private class FakeLibraryRepository : LibraryRepository {
