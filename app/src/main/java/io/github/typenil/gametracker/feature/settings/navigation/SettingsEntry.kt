@@ -1,10 +1,12 @@
 package io.github.typenil.gametracker.feature.settings.navigation
 
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import io.github.typenil.gametracker.devtools.DevToolsEntry
 import io.github.typenil.gametracker.feature.settings.SettingsRoute
 import io.github.typenil.gametracker.feature.settings.SettingsViewModel
 
@@ -15,6 +17,7 @@ fun NavGraphBuilder.settingsEntry(
     onBackClick: () -> Unit
 ) {
     composable<SettingsKey> {
+        val context = LocalContext.current
         val viewModel: SettingsViewModel = hiltViewModel()
         val preferences by viewModel.preferences.collectAsStateWithLifecycle()
         val preferencesLoaded by viewModel.preferencesLoaded.collectAsStateWithLifecycle()
@@ -43,6 +46,7 @@ fun NavGraphBuilder.settingsEntry(
             importPreview = importPreview,
             onConfirmImport = viewModel::confirmImport,
             onDismissImportPreview = viewModel::dismissImportPreview,
+            onOpenDevTools = { DevToolsEntry.open(context) },
         )
     }
 }

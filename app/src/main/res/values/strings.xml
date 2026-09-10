@@ -348,4 +348,8 @@
     <string name="settings_debug_bff_invalid_url">Invalid URL: must be http(s) origin with no path or query (e.g. http://10.0.2.2:8080)</string>
     <string name="settings_debug_bff_saved">BFF URL updated</string>
     <string name="settings_debug_bff_reset_done">BFF URL reset to default</string>
+    <!-- Developer tools (debug builds only) -->
+    <string name="settings_devtools_title">Developer tools</string>
+    <string name="settings_devtools_desc">Seed and clear local data, and inspect the current state.</string>
+    <string name="settings_devtools_open">Open</string>
 </resources>

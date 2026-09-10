@@ -352,4 +352,8 @@
     <string name="settings_debug_bff_invalid_url">Некорректный URL: требуется http(s) origin без пути и параметров (например, http://10.0.2.2:8080)</string>
     <string name="settings_debug_bff_saved">URL BFF обновлён</string>
     <string name="settings_debug_bff_reset_done">URL BFF сброшен по умолчанию</string>
+    <!-- Developer tools (debug builds only) -->
+    <string name="settings_devtools_title">Инструменты разработчика</string>
+    <string name="settings_devtools_desc">Наполнение и очистка локальных данных и просмотр текущего состояния.</string>
+    <string name="settings_devtools_open">Открыть</string>
 </resources>

@@ -71,6 +71,7 @@ import io.github.typenil.gametracker.core.data.backup.LibraryImportPreview
 import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
+import io.github.typenil.gametracker.devtools.DevToolsEntry
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
 import io.github.typenil.gametracker.feature.recommendations.TuneRecommendationsSheet
@@ -100,6 +101,7 @@ fun SettingsRoute(
     importPreview: LibraryImportPreview? = null,
     onConfirmImport: (LibraryImportMode) -> Unit = {},
     onDismissImportPreview: () -> Unit = {},
+    onOpenDevTools: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var isTuneSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -210,6 +212,7 @@ fun SettingsRoute(
         },
         onConfirmImport = onConfirmImport,
         onDismissImportPreview = onDismissImportPreview,
+        onOpenDevTools = onOpenDevTools,
     )
     if (isTuneSheetOpen && recommendationPreferencesLoaded) {
         TuneRecommendationsSheet(
@@ -258,6 +261,8 @@ fun SettingsScreen(
     onImportLibrary: () -> Unit = {},
     onConfirmImport: (LibraryImportMode) -> Unit = {},
     onDismissImportPreview: () -> Unit = {},
+    isDevToolsAvailable: Boolean = DevToolsEntry.isAvailable,
+    onOpenDevTools: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -455,6 +460,38 @@ fun SettingsScreen(
                 onImportLibrary = onImportLibrary,
             )
 
+            if (DevToolsEntry.isAvailable && isDevToolsAvailable) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(GtDimens.Gutter),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = stringResource(R.string.settings_devtools_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_devtools_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onOpenDevTools,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.settings_devtools_open))
+                        }
+                    }
+                }
+            }
 
             if (DebugBffUrlActions.isVisible && isDebugBffUrlVisible) {
                 Card(

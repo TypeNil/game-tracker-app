@@ -303,6 +303,14 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
     @get:Input
     abstract val flavors: ListProperty<String>
 
+    companion object {
+        /** Declared only in `src/debug/AndroidManifest.xml`; must never reach a release artifact. */
+        private const val DEV_TOOLS_COMPONENT = "io.github.typenil.gametracker.devtools.DevToolsActivity"
+
+        /** Declared in `src/main/AndroidManifest.xml`; proves component names survive R8. */
+        private const val LAUNCHER_COMPONENT = "io.github.typenil.gametracker.MainActivity"
+    }
+
     @TaskAction
     fun verify() {
         flavors.get().forEach { flavor ->
@@ -351,6 +359,16 @@ abstract class VerifyReleaseArtifactsTask : DefaultTask() {
                     }
                     check(dexStrings.none { it.contains("io.github.typenil.gametracker.ACTION_TEST_NOTIFICATION") }) {
                         "Release APK ${apk.name} still contains ACTION_TEST_NOTIFICATION marker"
+                    }
+                    // Positive control: AGP keeps manifest-declared component names (aapt rules), so a
+                    // component name is still findable after R8. Without this, the devtools check
+                    // below would pass vacuously if R8 renamed the name away.
+                    check(dexStrings.any { it.contains(LAUNCHER_COMPONENT) }) {
+                        "Release APK ${apk.name} does not expose the launcher activity name; " +
+                            "the developer tools leak check would be vacuous"
+                    }
+                    check(dexStrings.none { it.contains(DEV_TOOLS_COMPONENT) }) {
+                        "Release APK ${apk.name} still contains the debug-only developer tools activity"
                     }
                     // Defense in depth behind the liveRelease fail-fast URL validation above:
                     // a live APK baked against the emulator loopback is offline on real devices.
