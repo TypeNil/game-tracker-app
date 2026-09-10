@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.core.model
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,5 +25,12 @@ class UserPreferencesTest {
                 platforms = setOf("PC"),
             ),
         )
+    }
+
+    @Test
+    fun defaults_useSystemThemeAndDynamicColor() {
+        val prefs = UserPreferences()
+        assertEquals(ThemeMode.SYSTEM, prefs.themeMode)
+        assertTrue(prefs.dynamicColor)
     }
 }

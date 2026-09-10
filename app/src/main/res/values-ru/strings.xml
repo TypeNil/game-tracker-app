@@ -254,6 +254,36 @@
     <string name="settings_igdb_attribution">Данные игр предоставлены IGDB</string>
     <string name="settings_igdb_link">IGDB</string>
     <string name="settings_igdb_open_error">Нет приложения для открытия ссылки.</string>
+
+    <!-- Appearance -->
+    <string name="settings_appearance_title">Оформление</string>
+    <string name="settings_appearance_desc">Тема и цвета с обоев</string>
+    <string name="settings_theme_title">Тема</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_dynamic_color_title">Динамические цвета</string>
+    <string name="settings_dynamic_color_desc">Брать цвета с обоев устройства</string>
+    <string name="settings_dynamic_color_unsupported">Нужен Android 12 или новее</string>
+
+    <!-- Library backup -->
+    <string name="settings_data_title">Данные</string>
+    <string name="settings_data_desc">Экспорт и импорт библиотеки JSON-файлом на устройстве. Merge добавляет и перезаписывает; Replace собирает библиотеку заново из файла.</string>
+    <string name="settings_export_library">Экспортировать библиотеку</string>
+    <string name="settings_import_library">Импортировать библиотеку</string>
+    <string name="settings_export_success">Библиотека экспортирована</string>
+    <string name="settings_import_success">Библиотека импортирована</string>
+    <string name="settings_import_preview_title">Импорт библиотеки</string>
+    <string name="settings_import_preview_found">Игр в файле: %1$d</string>
+    <string name="settings_import_preview_new">Новых: %1$d</string>
+    <string name="settings_import_preview_conflicts">Конфликтов: %1$d</string>
+    <string name="settings_import_merge">Объединить</string>
+    <string name="settings_import_replace">Заменить</string>
+    <string name="settings_import_cancel">Отмена</string>
+    <string name="settings_backup_failed">Не удалось экспортировать или импортировать библиотеку</string>
+    <string name="settings_backup_invalid">Это не файл резервной копии библиотеки GameTracker</string>
+    <string name="settings_backup_unsupported">Эта копия создана более новой версией приложения</string>
+    <string name="settings_backup_too_large">Файл слишком большой для импорта</string>
     <!-- Release Notifications -->
     <string name="notification_channel_releases_name">Выходы игр</string>
     <string name="notification_channel_releases_desc">Уведомления о скорых и состоявшихся выходах игр из библиотеки</string>

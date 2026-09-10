@@ -19,6 +19,8 @@ fun NavGraphBuilder.settingsEntry(
         val preferences by viewModel.preferences.collectAsStateWithLifecycle()
         val preferencesLoaded by viewModel.preferencesLoaded.collectAsStateWithLifecycle()
         val userMessageRes by viewModel.userMessageRes.collectAsStateWithLifecycle()
+        val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
+        val importPreview by viewModel.importPreview.collectAsStateWithLifecycle()
         SettingsRoute(
             onBackClick = onBackClick,
             recommendationGenres = preferences.recommendationGenres,
@@ -31,6 +33,16 @@ fun NavGraphBuilder.settingsEntry(
             onResetRecommendationPreferences = viewModel::resetRecommendationPreferences,
             userMessageRes = userMessageRes,
             onUserMessageShown = viewModel::onUserMessageShown,
+            themeMode = preferences.themeMode,
+            dynamicColor = preferences.dynamicColor,
+            onThemeModeChange = viewModel::onThemeModeSelected,
+            onDynamicColorChange = viewModel::onDynamicColorChanged,
+            onExportDocumentPicked = viewModel::onExportDocumentPicked,
+            onImportDocumentPicked = viewModel::onImportDocumentPicked,
+            backupBusy = backupBusy,
+            importPreview = importPreview,
+            onConfirmImport = viewModel::confirmImport,
+            onDismissImportPreview = viewModel::dismissImportPreview,
         )
     }
 }

@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.core.data.repository
 
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.core.model.ThemeMode
 import io.github.typenil.gametracker.core.model.UserPreferences
 import kotlinx.coroutines.flow.Flow
 
@@ -15,4 +16,8 @@ interface UserPreferencesRepository {
     suspend fun skipRecommendationOnboarding(): AppResult<Unit>
 
     suspend fun clearRecommendationPreferences(): AppResult<Unit>
+
+    suspend fun setThemeMode(mode: ThemeMode): AppResult<Unit>
+
+    suspend fun setDynamicColor(enabled: Boolean): AppResult<Unit>
 }

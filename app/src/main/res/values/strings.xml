@@ -250,6 +250,36 @@
     <string name="settings_igdb_link">IGDB</string>
     <string name="settings_igdb_open_error">No app available to open this link.</string>
 
+    <!-- Appearance -->
+    <string name="settings_appearance_title">Appearance</string>
+    <string name="settings_appearance_desc">Theme and wallpaper colors</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color_title">Dynamic colors</string>
+    <string name="settings_dynamic_color_desc">Use colors from your wallpaper</string>
+    <string name="settings_dynamic_color_unsupported">Requires Android 12 or later</string>
+
+    <!-- Library backup -->
+    <string name="settings_data_title">Data</string>
+    <string name="settings_data_desc">Export or import your library as a JSON file on this device. Merge adds and overwrites; Replace rebuilds the library from the file.</string>
+    <string name="settings_export_library">Export library</string>
+    <string name="settings_import_library">Import library</string>
+    <string name="settings_export_success">Library exported</string>
+    <string name="settings_import_success">Library imported</string>
+    <string name="settings_import_preview_title">Import library</string>
+    <string name="settings_import_preview_found">Games in file: %1$d</string>
+    <string name="settings_import_preview_new">New: %1$d</string>
+    <string name="settings_import_preview_conflicts">Conflicts: %1$d</string>
+    <string name="settings_import_merge">Merge</string>
+    <string name="settings_import_replace">Replace</string>
+    <string name="settings_import_cancel">Cancel</string>
+    <string name="settings_backup_failed">Couldn\'t export or import the library</string>
+    <string name="settings_backup_invalid">This file isn\'t a valid GameTracker library backup</string>
+    <string name="settings_backup_unsupported">This backup was created by a newer app version</string>
+    <string name="settings_backup_too_large">This file is too large to import</string>
+
     <!-- Release Notifications -->
     <string name="notification_channel_releases_name">Game Releases</string>
     <string name="notification_channel_releases_desc">Notifications for upcoming and new game releases in your library</string>

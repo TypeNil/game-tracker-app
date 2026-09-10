@@ -31,6 +31,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE id IN (:ids)")
     suspend fun getGamesByIds(ids: List<Long>): List<GameEntity>
 
+    @Query("SELECT * FROM games WHERE id IN (SELECT gameId FROM library_entries)")
+    suspend fun getGamesReferencedByLibrary(): List<GameEntity>
+
     @Query("DELETE FROM games WHERE id = :id")
     suspend fun deleteGameById(id: Long): Int
 

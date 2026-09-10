@@ -4,6 +4,7 @@ import io.github.typenil.gametracker.core.data.repository.UserPreferencesReposit
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.RecommendationTagCatalog
+import io.github.typenil.gametracker.core.model.ThemeMode
 import io.github.typenil.gametracker.core.model.UserPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,16 @@ class FakeUserPreferencesRepository(
             recommendationPlatforms = emptySet(),
             recommendationOnboardingDismissed = true,
         )
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun setThemeMode(mode: ThemeMode): AppResult<Unit> {
+        state.value = state.value.copy(themeMode = mode)
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun setDynamicColor(enabled: Boolean): AppResult<Unit> {
+        state.value = state.value.copy(dynamicColor = enabled)
         return AppResult.Success(Unit)
     }
 

@@ -21,6 +21,9 @@ interface LibraryDao {
     @Upsert
     suspend fun upsertLibraryEntry(entry: LibraryEntryEntity): Long
 
+    @Upsert
+    suspend fun upsertLibraryEntries(entries: List<LibraryEntryEntity>): List<Long>
+
     @Query("SELECT * FROM library_entries WHERE gameId = :gameId")
     fun getLibraryEntryFlow(gameId: Long): Flow<LibraryEntryEntity?>
 
@@ -91,6 +94,9 @@ interface LibraryDao {
 
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int
+
+    @Query("DELETE FROM library_entries")
+    suspend fun deleteAllLibraryEntries(): Int
 
     /**
      * Drops the release-notification intent for a game that has already shipped, so the worker
