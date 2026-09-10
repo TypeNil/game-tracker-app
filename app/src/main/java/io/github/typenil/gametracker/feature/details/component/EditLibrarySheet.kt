@@ -115,6 +115,7 @@ import io.github.typenil.gametracker.core.designsystem.component.leadingIcon
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryNotes
 
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -148,7 +149,7 @@ private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
 fun EditLibrarySheet(
     initialEntry: LibraryEntry?,
     onDismiss: () -> Unit,
-    onSave: (status: LibraryStatus, rating: Int?, hours: Int, notes: String?, isFavorite: Boolean) -> Unit,
+    onSave: (LibraryEntryDraft) -> Unit,
     onRemove: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -242,7 +243,7 @@ fun EditLibrarySheet(
 internal fun EditLibrarySheetContent(
     initialEntry: LibraryEntry?,
     onDismiss: () -> Unit,
-    onSave: (status: LibraryStatus, rating: Int?, hours: Int, notes: String?, isFavorite: Boolean) -> Unit,
+    onSave: (LibraryEntryDraft) -> Unit,
     onDeleteClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true,
@@ -456,11 +457,14 @@ internal fun EditLibrarySheetContent(
             actionsEnabled = actionsEnabled,
             onSaveClick = {
                 onSave(
-                    selectedStatus,
-                    rating,
-                    hours,
-                    notes.trim().ifEmpty { null },
-                    isFavorite,
+                    LibraryEntryDraft(
+                        status = selectedStatus,
+                        userRating = rating,
+                        hoursPlayed = hours,
+                        userNotes = notes.trim().ifEmpty { null },
+                        isFavorite = isFavorite,
+                        releaseNotificationsEnabled = initialEntry?.releaseNotificationsEnabled ?: false,
+                    ),
                 )
             },
             onDeleteClick = onDeleteClick,
@@ -1103,7 +1107,7 @@ private fun EditLibrarySheetContentNewPreview() {
             EditLibrarySheetContent(
                 initialEntry = null,
                 onDismiss = {},
-                onSave = { _, _, _, _, _ -> },
+                onSave = { },
                 onDeleteClick = null,
             )
         }
@@ -1128,7 +1132,7 @@ private fun EditLibrarySheetContentExistingPreview() {
                     updatedAtEpochSeconds = 1700000000L,
                 ),
                 onDismiss = {},
-                onSave = { _, _, _, _, _ -> },
+                onSave = { },
                 onDeleteClick = {},
             )
         }

@@ -32,8 +32,8 @@ import io.github.typenil.gametracker.core.connectivity.NetworkStatus
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
 import io.github.typenil.gametracker.core.designsystem.theme.topLevelBottomInset
 import io.github.typenil.gametracker.core.model.Game
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.details.component.EditLibrarySheet
 import io.github.typenil.gametracker.feature.search.component.RecentQueriesList
 import io.github.typenil.gametracker.feature.search.component.SearchEmptyState
@@ -107,7 +107,7 @@ fun SearchScreen(
     onRemoveRecentQuery: (String) -> Unit = {},
     onClearAllRecentQueries: () -> Unit = {},
     onLibraryAction: (Game) -> Unit = {},
-    onSaveLibraryEntry: (Long, LibraryStatus, Int?, Int, String?, Boolean) -> Unit = { _, _, _, _, _, _ -> },
+    onSaveLibraryEntry: (Long, LibraryEntryDraft) -> Unit = { _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
     onDismissEditLibrary: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
@@ -258,8 +258,8 @@ fun SearchScreen(
         EditLibrarySheet(
             initialEntry = editingEntry,
             onDismiss = onDismissEditLibrary,
-            onSave = { status, rating, hours, notes, favorite ->
-                onSaveLibraryEntry(editingEntry.gameId, status, rating, hours, notes, favorite)
+            onSave = { draft ->
+                onSaveLibraryEntry(editingEntry.gameId, draft)
             },
             onRemove = { onRemoveFromLibrary(editingEntry.gameId) },
             actionsEnabled = !uiState.isLibrarySubmitting,

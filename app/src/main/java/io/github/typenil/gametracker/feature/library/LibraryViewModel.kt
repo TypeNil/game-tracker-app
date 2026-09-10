@@ -8,6 +8,7 @@ import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppResult
 
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -212,28 +213,12 @@ class LibraryViewModel @Inject constructor(
         _hoursSaveState.value = HoursSaveState.Idle
     }
 
-    fun onSaveLibraryEntry(
-        gameId: Long,
-        status: LibraryStatus,
-        userRating: Int?,
-        hoursPlayed: Int,
-        userNotes: String?,
-        isFavorite: Boolean,
-    ) {
+    fun onSaveLibraryEntry(gameId: Long, draft: LibraryEntryDraft) {
         if (libraryMutationJob?.isActive == true) return
 
         _libraryMutationState.value = LibraryMutationState.Saving(gameId)
         libraryMutationJob = viewModelScope.launch {
-            when (
-                libraryRepository.upsertUserEdits(
-                    gameId = gameId,
-                    status = status,
-                    userRating = userRating,
-                    hoursPlayed = hoursPlayed,
-                    userNotes = userNotes,
-                    isFavorite = isFavorite,
-                )
-            ) {
+            when (libraryRepository.upsertUserEdits(gameId = gameId, draft = draft)) {
                 is AppResult.Success -> {
                     _libraryMutationState.value = LibraryMutationState.Saved(gameId)
                 }

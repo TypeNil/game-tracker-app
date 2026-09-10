@@ -6,6 +6,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
@@ -132,11 +133,7 @@ class LibraryInsightsViewModelTest {
 
         override suspend fun upsertUserEdits(
             gameId: Long,
-            status: LibraryStatus,
-            userRating: Int?,
-            hoursPlayed: Int,
-            userNotes: String?,
-            isFavorite: Boolean,
+            draft: LibraryEntryDraft,
         ): AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun toggleFavorite(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)

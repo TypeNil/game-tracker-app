@@ -15,7 +15,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.LibraryEntry
-import io.github.typenil.gametracker.core.model.LibraryStatus
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.feature.details.navigation.GameDetailsKey
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -172,13 +172,7 @@ class GameDetailsViewModel internal constructor(
         _flags.update { it.copy(isEditingLibrary = false) }
     }
 
-    fun onSaveLibraryEntry(
-        status: LibraryStatus,
-        userRating: Int?,
-        hoursPlayed: Int,
-        userNotes: String?,
-        isFavorite: Boolean
-    ) {
+    fun onSaveLibraryEntry(draft: LibraryEntryDraft) {
         val loadError = uiState.value.libraryLoadError
         if (loadError != null) {
             _flags.update {
@@ -193,13 +187,14 @@ class GameDetailsViewModel internal constructor(
         mutateLibrary {
             val entry = LibraryEntry(
                 gameId = gameId,
-                status = status,
-                userRating = userRating,
-                userNotes = userNotes?.trim()?.takeIf { it.isNotEmpty() },
-                isFavorite = isFavorite,
+                status = draft.status,
+                userRating = draft.userRating,
+                userNotes = draft.userNotes?.trim()?.takeIf { it.isNotEmpty() },
+                isFavorite = draft.isFavorite,
                 addedAtEpochSeconds = 0L,
                 updatedAtEpochSeconds = 0L,
-                hoursPlayed = hoursPlayed,
+                hoursPlayed = draft.hoursPlayed,
+                releaseNotificationsEnabled = draft.releaseNotificationsEnabled,
             )
             when (val result = libraryRepository.saveLibraryEntry(entry)) {
                 is AppResult.Success -> {

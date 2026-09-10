@@ -17,8 +17,8 @@ import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -222,23 +222,12 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-    fun onSaveLibraryEntry(
-        gameId: Long,
-        status: LibraryStatus,
-        userRating: Int?,
-        hoursPlayed: Int,
-        userNotes: String?,
-        isFavorite: Boolean,
-    ) {
+    fun onSaveLibraryEntry(gameId: Long, draft: LibraryEntryDraft) {
         if (libraryMutationJob?.isActive == true) return
         libraryMutationJob = viewModelScope.launch {
             isLibrarySubmitting.value = true
             try {
-                when (
-                    libraryRepository.upsertUserEdits(
-                        gameId, status, userRating, hoursPlayed, userNotes, isFavorite,
-                    )
-                ) {
+                when (libraryRepository.upsertUserEdits(gameId, draft)) {
                     is AppResult.Success -> editingGameId.value = null
                     is AppResult.Error -> userMessageRes.value = R.string.error_library_update_failed
                 }

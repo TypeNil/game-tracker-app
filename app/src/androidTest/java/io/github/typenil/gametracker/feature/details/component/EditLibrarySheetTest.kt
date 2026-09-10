@@ -52,7 +52,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { status, _, _, _, _ -> savedStatus = status },
+                        onSave = { savedStatus = it.status },
                         onDeleteClick = null,
                     )
                 }
@@ -77,7 +77,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { status, _, _, _, _ -> savedStatus = status },
+                        onSave = { savedStatus = it.status },
                         onDeleteClick = null,
                     )
                 }
@@ -104,7 +104,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, rating, _, _, _ -> savedRating = rating },
+                        onSave = { savedRating = it.userRating },
                         onDeleteClick = null,
                     )
                 }
@@ -139,7 +139,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -169,7 +169,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = { dismissed = true },
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -201,7 +201,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = entry,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = { deleteClicked = true },
                     )
                 }
@@ -224,9 +224,9 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { status, _, hours, _, _ ->
-                            savedStatus = status
-                            savedHours = hours
+                        onSave = { draft ->
+                            savedStatus = draft.status
+                            savedHours = draft.hoursPlayed
                         },
                         onDeleteClick = null,
                     )
@@ -266,8 +266,8 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, _, _, _, isFavorite ->
-                            savedFavorite = isFavorite
+                        onSave = { draft ->
+                            savedFavorite = draft.isFavorite
                         },
                         onDeleteClick = null,
                     )
@@ -308,7 +308,7 @@ class EditLibrarySheetTest {
                             dismissCount++
                             visible = false
                         },
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                     )
                 }
             }
@@ -342,7 +342,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = null,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }
@@ -384,7 +384,7 @@ class EditLibrarySheetTest {
                     EditLibrarySheetContent(
                         initialEntry = initialEntry,
                         onDismiss = {},
-                        onSave = { _, _, _, _, _ -> },
+                        onSave = { },
                         onDeleteClick = null,
                     )
                 }

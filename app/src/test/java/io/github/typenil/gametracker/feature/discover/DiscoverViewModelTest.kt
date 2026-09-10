@@ -16,6 +16,7 @@ import io.github.typenil.gametracker.core.model.PageContinuation
 
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 
 import io.github.typenil.gametracker.core.model.LibrarySnapshot
 
@@ -90,7 +91,7 @@ class DiscoverViewModelTest {
         } returns AppResult.Success(RecommendationCandidatePage(items = emptyList(), nextOffset = null, endReached = true))
         coEvery { libraryRepository.addToWishlist(any()) } returns AppResult.Success(Unit)
         coEvery {
-            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+            libraryRepository.upsertUserEdits(any(), any())
         } returns AppResult.Success(Unit)
         coEvery { libraryRepository.removeGameFromLibrary(any()) } returns AppResult.Success(Unit)
         coEvery { gameRepository.refreshGameDetails(any(), any()) } returns AppResult.Success(Unit)
@@ -436,10 +437,18 @@ class DiscoverViewModelTest {
     fun onSaveLibraryEntry_delegatesToUpsertUserEdits() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
-        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        val draft = LibraryEntryDraft(
+            status = LibraryStatus.PLAYING,
+            userRating = 8,
+            hoursPlayed = 12,
+            userNotes = "fun",
+            isFavorite = true,
+            releaseNotificationsEnabled = true,
+        )
+        viewModel.onSaveLibraryEntry(11L, draft)
         advanceUntilIdle()
         coVerify {
-            libraryRepository.upsertUserEdits(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+            libraryRepository.upsertUserEdits(11L, draft)
         }
         coVerify(exactly = 0) { libraryRepository.saveLibraryEntry(any()) }
     }
@@ -463,13 +472,23 @@ class DiscoverViewModelTest {
     fun saveFailure_keepsEditingGameId() = runTest {
         libraryFlow.value = listOf(libraryGame(11L, LibraryStatus.WISHLIST))
         coEvery {
-            libraryRepository.upsertUserEdits(any(), any(), any(), any(), any(), any())
+            libraryRepository.upsertUserEdits(any(), any())
         } returns AppResult.Error(AppError.UnknownError(IllegalStateException("fail")))
         val viewModel = createViewModel()
         advanceUntilIdle()
         viewModel.onLibraryCardAction(Game(id = 11L, name = "Trending Game"))
         advanceUntilIdle()
-        viewModel.onSaveLibraryEntry(11L, LibraryStatus.PLAYING, 8, 12, "fun", true)
+        viewModel.onSaveLibraryEntry(
+            11L,
+            LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 8,
+                hoursPlayed = 12,
+                userNotes = "fun",
+                isFavorite = true,
+                releaseNotificationsEnabled = false,
+            ),
+        )
         viewModel.uiState.test {
             val state = awaitItemUntil { it.userMessageRes != null }
             assertEquals(11L, state.editingGameId)

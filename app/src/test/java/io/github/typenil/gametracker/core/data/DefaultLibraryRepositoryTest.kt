@@ -13,6 +13,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryNotes
 
 import io.github.typenil.gametracker.core.model.LibraryStatus
@@ -207,11 +208,13 @@ class DefaultLibraryRepositoryTest {
                 hoursPlayed = 12,
                 addedAtEpochSeconds = 999L,
                 updatedAtEpochSeconds = 999L,
+                releaseNotificationsEnabled = true,
             ),
         )
 
         assertTrue(result is AppResult.Success)
         assertEquals(111L, captured.captured.addedAtEpochSeconds)
+        assertEquals(true, captured.captured.releaseNotificationsEnabled)
     }
 
     @Test
@@ -428,7 +431,14 @@ class DefaultLibraryRepositoryTest {
         assertTrue(result is AppResult.Success)
         coVerify(exactly = 1) { gameDao.upsertGame(match { it.id == 7L && it.name == "Hades II" }) }
         coVerify(exactly = 1) {
-            libraryDao.upsertLibraryEntry(match { it.gameId == 7L && it.status == LibraryStatus.WISHLIST })
+            libraryDao.upsertLibraryEntry(
+                match {
+                    it.gameId == 7L &&
+                        it.status == LibraryStatus.WISHLIST &&
+                        // A one-tap add must not silently subscribe the user to release reminders.
+                        !it.releaseNotificationsEnabled
+                },
+            )
         }
     }
 
@@ -465,11 +475,14 @@ class DefaultLibraryRepositoryTest {
 
         val result = repository.upsertUserEdits(
             gameId = 7L,
-            status = LibraryStatus.PLAYING,
-            userRating = 99,
-            hoursPlayed = 12,
-            userNotes = "  fun  ",
-            isFavorite = false,
+            draft = LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 99,
+                hoursPlayed = 12,
+                userNotes = "  fun  ",
+                isFavorite = false,
+                releaseNotificationsEnabled = true,
+            ),
         )
         assertTrue(result is AppResult.Success)
         coVerify {
@@ -480,7 +493,8 @@ class DefaultLibraryRepositoryTest {
                         it.hoursPlayed == 12 &&
                         it.userNotes == "fun" &&
                         !it.isFavorite &&
-                        it.addedAtEpochSeconds == 111L
+                        it.addedAtEpochSeconds == 111L &&
+                        it.releaseNotificationsEnabled
                 },
             )
         }
@@ -492,7 +506,17 @@ class DefaultLibraryRepositoryTest {
             7L, "Hades II", null, null, null, null, emptyList(), emptyList(), 1L,
         )
         coEvery { libraryDao.getLibraryEntry(7L) } returns null
-        val result = repository.upsertUserEdits(7L, LibraryStatus.WISHLIST, null, 0, null, false)
+        val result = repository.upsertUserEdits(
+            7L,
+            LibraryEntryDraft(
+                status = LibraryStatus.WISHLIST,
+                userRating = null,
+                hoursPlayed = 0,
+                userNotes = null,
+                isFavorite = false,
+                releaseNotificationsEnabled = false,
+            ),
+        )
         assertTrue(result is AppResult.Error)
         coVerify(exactly = 0) { libraryDao.upsertLibraryEntry(any()) }
     }
@@ -539,11 +563,14 @@ class DefaultLibraryRepositoryTest {
 
         val result = trackingRepository.upsertUserEdits(
             gameId = 7L,
-            status = LibraryStatus.PLAYING,
-            userRating = 8,
-            hoursPlayed = 1,
-            userNotes = null,
-            isFavorite = false,
+            draft = LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 8,
+                hoursPlayed = 1,
+                userNotes = null,
+                isFavorite = false,
+                releaseNotificationsEnabled = false,
+            ),
         )
 
         assertTrue(result is AppResult.Success)

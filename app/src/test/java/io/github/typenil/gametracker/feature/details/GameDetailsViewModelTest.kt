@@ -17,6 +17,7 @@ import io.github.typenil.gametracker.core.model.GameDetails
 import io.github.typenil.gametracker.core.model.GameSummary
 import io.github.typenil.gametracker.core.model.GameVideo
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.PageContinuation
@@ -446,11 +447,14 @@ class GameDetailsViewModelTest {
 
         // Trigger a library mutation error
         viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.PLAYING,
-            userRating = 9,
-            hoursPlayed = 10,
-            userNotes = "Notes",
-            isFavorite = false
+            LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 9,
+                hoursPlayed = 10,
+                userNotes = "Notes",
+                isFavorite = false,
+                releaseNotificationsEnabled = false,
+            ),
         )
 
         // Network recovers
@@ -758,11 +762,14 @@ class GameDetailsViewModelTest {
 
         viewModel.onEditLibraryClicked()
         viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.COMPLETED,
-            userRating = 9,
-            hoursPlayed = 120,
-            userNotes = "Finished main story",
-            isFavorite = true
+            LibraryEntryDraft(
+                status = LibraryStatus.COMPLETED,
+                userRating = 9,
+                hoursPlayed = 120,
+                userNotes = "Finished main story",
+                isFavorite = true,
+                releaseNotificationsEnabled = true,
+            ),
         )
 
         val saved = fakeLibraryRepository.savedEntries.lastOrNull()
@@ -773,6 +780,7 @@ class GameDetailsViewModelTest {
         assertEquals(120, saved?.hoursPlayed)
         assertEquals("Finished main story", saved?.userNotes)
         assertTrue(saved?.isFavorite == true)
+        assertTrue("Details must persist the explicit notification intent", saved?.releaseNotificationsEnabled == true)
 
         viewModel.uiState.test {
             val state = awaitItem()
@@ -806,11 +814,14 @@ class GameDetailsViewModelTest {
 
         viewModel.onEditLibraryClicked()
         viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.PLAYING,
-            userRating = 8,
-            hoursPlayed = 10,
-            userNotes = null,
-            isFavorite = false
+            LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 8,
+                hoursPlayed = 10,
+                userNotes = null,
+                isFavorite = false,
+                releaseNotificationsEnabled = false,
+            ),
         )
 
         viewModel.uiState.test {
@@ -847,18 +858,24 @@ class GameDetailsViewModelTest {
 
         viewModel.onEditLibraryClicked()
         viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.COMPLETED,
-            userRating = 9,
-            hoursPlayed = 10,
-            userNotes = "first",
-            isFavorite = true,
+            LibraryEntryDraft(
+                status = LibraryStatus.COMPLETED,
+                userRating = 9,
+                hoursPlayed = 10,
+                userNotes = "first",
+                isFavorite = true,
+                releaseNotificationsEnabled = false,
+            ),
         )
         viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.PLAYING,
-            userRating = 1,
-            hoursPlayed = 1,
-            userNotes = "second",
-            isFavorite = false,
+            LibraryEntryDraft(
+                status = LibraryStatus.PLAYING,
+                userRating = 1,
+                hoursPlayed = 1,
+                userNotes = "second",
+                isFavorite = false,
+                releaseNotificationsEnabled = false,
+            ),
         )
         viewModel.onRemoveFromLibrary()
 
@@ -936,11 +953,14 @@ class GameDetailsViewModelTest {
 
         viewModel.onEditLibraryClicked()
         viewModel.onSaveLibraryEntry(
-            status = LibraryStatus.WISHLIST,
-            userRating = null,
-            hoursPlayed = 0,
-            userNotes = null,
-            isFavorite = false,
+            LibraryEntryDraft(
+                status = LibraryStatus.WISHLIST,
+                userRating = null,
+                hoursPlayed = 0,
+                userNotes = null,
+                isFavorite = false,
+                releaseNotificationsEnabled = true,
+            ),
         )
 
         assertTrue(fakeLibraryRepository.savedEntries.isEmpty())
@@ -1084,11 +1104,7 @@ class GameDetailsViewModelTest {
 
         override suspend fun upsertUserEdits(
             gameId: Long,
-            status: LibraryStatus,
-            userRating: Int?,
-            hoursPlayed: Int,
-            userNotes: String?,
-            isFavorite: Boolean,
+            draft: LibraryEntryDraft,
         ): AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun toggleFavorite(gameId: Long): AppResult<Unit> = AppResult.Success(Unit)

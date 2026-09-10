@@ -14,6 +14,7 @@ import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryNotes
 
 import io.github.typenil.gametracker.core.model.LibraryGame
@@ -136,11 +137,7 @@ class DefaultLibraryRepository @Inject constructor(
 
     override suspend fun upsertUserEdits(
         gameId: Long,
-        status: LibraryStatus,
-        userRating: Int?,
-        hoursPlayed: Int,
-        userNotes: String?,
-        isFavorite: Boolean,
+        draft: LibraryEntryDraft,
     ): AppResult<Unit> =
         withContext(ioDispatcher) {
             runSuspendCatching {
@@ -158,17 +155,18 @@ class DefaultLibraryRepository @Inject constructor(
                             ),
                         )
                     val now = clock.instant().epochSecond
-                    val notes = userNotes?.trim()?.takeIf { it.isNotEmpty() }
+                    val notes = draft.userNotes?.trim()?.takeIf { it.isNotEmpty() }
                     val sanitizedNotes = notes?.let(LibraryNotes::clamp)
 
                     libraryDao.upsertLibraryEntry(
                         existing.copy(
-                            status = status,
-                            userRating = userRating?.coerceIn(1, 10),
-                            hoursPlayed = hoursPlayed.coerceAtLeast(0),
+                            status = draft.status,
+                            userRating = draft.userRating?.coerceIn(1, 10),
+                            hoursPlayed = draft.hoursPlayed.coerceAtLeast(0),
                             userNotes = sanitizedNotes,
-                            isFavorite = isFavorite,
+                            isFavorite = draft.isFavorite,
                             updatedAtEpochSeconds = now,
+                            releaseNotificationsEnabled = draft.releaseNotificationsEnabled,
                         ),
                     )
                     AppResult.Success(Unit)

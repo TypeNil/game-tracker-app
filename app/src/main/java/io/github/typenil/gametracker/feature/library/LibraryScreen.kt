@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.core.designsystem.theme.topLevelBottomInset
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.feature.library.component.LibraryEditSheetWiring
@@ -84,14 +85,7 @@ fun LibraryScreen(
     onHoursSaveHandled: () -> Unit = {},
     onUserMessageShown: () -> Unit = {},
     onCardVisible: (LibraryGame) -> Unit = {},
-    onSaveLibraryEntry: (
-        gameId: Long,
-        status: LibraryStatus,
-        rating: Int?,
-        hours: Int,
-        notes: String?,
-        isFavorite: Boolean,
-    ) -> Unit = { _, _, _, _, _, _ -> },
+    onSaveLibraryEntry: (Long, LibraryEntryDraft) -> Unit = { _, _ -> },
     onRemoveFromLibrary: (Long) -> Unit = {},
     onLibraryMutationHandled: () -> Unit = {},
     modifier: Modifier = Modifier

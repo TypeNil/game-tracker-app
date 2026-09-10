@@ -10,6 +10,7 @@ import io.github.typenil.gametracker.core.model.Game
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.github.typenil.gametracker.core.model.LibraryEntry
+import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.testing.MainDispatcherRule
@@ -626,11 +627,14 @@ class LibraryViewModelTest {
         val viewModel = createViewModel()
         viewModel.onSaveLibraryEntry(
             gameId = 42L,
-            status = LibraryStatus.COMPLETED,
-            userRating = 8,
-            hoursPlayed = 35,
-            userNotes = "Great game, finished DLC",
-            isFavorite = true,
+            draft = LibraryEntryDraft(
+                status = LibraryStatus.COMPLETED,
+                userRating = 8,
+                hoursPlayed = 35,
+                userNotes = "Great game, finished DLC",
+                isFavorite = true,
+                releaseNotificationsEnabled = true,
+            ),
         )
 
         assertEquals(42L, fakeLibraryRepository.lastUpsertGameId)
@@ -639,6 +643,7 @@ class LibraryViewModelTest {
         assertEquals(35, fakeLibraryRepository.lastUpsertHours)
         assertEquals("Great game, finished DLC", fakeLibraryRepository.lastUpsertNotes)
         assertEquals(true, fakeLibraryRepository.lastUpsertFavorite)
+        assertEquals(true, fakeLibraryRepository.lastUpsertReleaseNotifications)
     }
 
     @Test
@@ -652,21 +657,13 @@ class LibraryViewModelTest {
 
             viewModel.onSaveLibraryEntry(
                 gameId = 42L,
-                status = LibraryStatus.COMPLETED,
-                userRating = null,
-                hoursPlayed = 0,
-                userNotes = null,
-                isFavorite = false,
+                draft = libraryDraft(status = LibraryStatus.COMPLETED),
             )
             assertEquals(LibraryMutationState.Saving(42L), awaitItem().libraryMutationState)
 
             viewModel.onSaveLibraryEntry(
                 gameId = 99L,
-                status = LibraryStatus.PLAYING,
-                userRating = null,
-                hoursPlayed = 0,
-                userNotes = null,
-                isFavorite = false,
+                draft = libraryDraft(status = LibraryStatus.PLAYING),
             )
             assertEquals(1, fakeLibraryRepository.upsertCallCount)
 
@@ -685,11 +682,7 @@ class LibraryViewModelTest {
             assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
             viewModel.onSaveLibraryEntry(
                 gameId = 42L,
-                status = LibraryStatus.COMPLETED,
-                userRating = null,
-                hoursPlayed = 0,
-                userNotes = null,
-                isFavorite = false,
+                draft = libraryDraft(status = LibraryStatus.COMPLETED),
             )
             val saving = awaitItem()
             assertEquals(LibraryMutationState.Saving(42L), saving.libraryMutationState)
@@ -740,11 +733,7 @@ class LibraryViewModelTest {
             assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
             viewModel.onSaveLibraryEntry(
                 gameId = 42L,
-                status = LibraryStatus.COMPLETED,
-                userRating = null,
-                hoursPlayed = 0,
-                userNotes = null,
-                isFavorite = false,
+                draft = libraryDraft(status = LibraryStatus.COMPLETED),
             )
             assertEquals(LibraryMutationState.Saving(42L), awaitItem().libraryMutationState)
             assertEquals(LibraryMutationState.Saved(42L), awaitItem().libraryMutationState)
@@ -755,6 +744,22 @@ class LibraryViewModelTest {
         }
     }
 
+
+    private fun libraryDraft(
+        status: LibraryStatus,
+        userRating: Int? = null,
+        hoursPlayed: Int = 0,
+        userNotes: String? = null,
+        isFavorite: Boolean = false,
+        releaseNotificationsEnabled: Boolean = false,
+    ): LibraryEntryDraft = LibraryEntryDraft(
+        status = status,
+        userRating = userRating,
+        hoursPlayed = hoursPlayed,
+        userNotes = userNotes,
+        isFavorite = isFavorite,
+        releaseNotificationsEnabled = releaseNotificationsEnabled,
+    )
 
     private class FakeLibraryRepository : LibraryRepository {
         val libraryGamesFlow = MutableStateFlow<List<LibraryGame>>(emptyList())
@@ -790,23 +795,21 @@ class LibraryViewModelTest {
         var lastUpsertHours: Int? = null
         var lastUpsertNotes: String? = null
         var lastUpsertFavorite: Boolean? = null
+        var lastUpsertReleaseNotifications: Boolean? = null
         var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
 
         override suspend fun upsertUserEdits(
             gameId: Long,
-            status: LibraryStatus,
-            userRating: Int?,
-            hoursPlayed: Int,
-            userNotes: String?,
-            isFavorite: Boolean,
+            draft: LibraryEntryDraft,
         ): AppResult<Unit> {
             upsertCallCount++
             lastUpsertGameId = gameId
-            lastUpsertStatus = status
-            lastUpsertRating = userRating
-            lastUpsertHours = hoursPlayed
-            lastUpsertNotes = userNotes
-            lastUpsertFavorite = isFavorite
+            lastUpsertStatus = draft.status
+            lastUpsertRating = draft.userRating
+            lastUpsertHours = draft.hoursPlayed
+            lastUpsertNotes = draft.userNotes
+            lastUpsertFavorite = draft.isFavorite
+            lastUpsertReleaseNotifications = draft.releaseNotificationsEnabled
             delayUpsert?.await()
             return upsertResult
         }
