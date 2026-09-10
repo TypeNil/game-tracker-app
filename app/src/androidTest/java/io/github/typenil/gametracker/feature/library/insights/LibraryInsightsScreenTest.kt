@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,6 +45,26 @@ class LibraryInsightsScreenTest {
             composeTestRule.activity.getString(R.string.insights_empty_title),
         ).assertIsDisplayed()
     }
+
+    @Test
+    fun loading_exposesLocalizedDescription() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryInsightsScreen(
+                    uiState = LibraryInsightsUiState.Loading,
+                    onBackClick = {},
+                    onGameClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag(LIBRARY_INSIGHTS_LOADING_TEST_TAG).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            composeTestRule.activity.getString(R.string.insights_loading),
+        ).assertIsDisplayed()
+    }
+
 
     @Test
     fun content_showsGameNameAndMostPlayedClick_emitsGameId() {

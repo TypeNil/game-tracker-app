@@ -47,8 +47,7 @@ import io.github.typenil.gametracker.feature.details.TITLE_DOCK_SCALE_DELTA
 import io.github.typenil.gametracker.feature.details.TRANSFORM_ORIGIN_CENTER_Y
 import io.github.typenil.gametracker.feature.details.formatHeaderTagPreview
 
-/** Enlarged portrait cover width in the details header. */
-private val HEADER_COVER_WIDTH = 124.dp
+
 
 private val DETAILS_GUTTER = GtDimens.Gutter
 
@@ -103,9 +102,9 @@ internal fun GameDetailsHeader(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(HEADER_COVER_WIDTH)
+                        .width(detailsHeaderCoverWidth)
                         .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(detailsHeaderCoverCorner))
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
                 ) {

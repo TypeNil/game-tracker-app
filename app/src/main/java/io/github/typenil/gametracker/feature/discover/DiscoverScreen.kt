@@ -537,6 +537,7 @@ private fun ChartsFeed(
         if (currentRailState.games.isEmpty() && currentRailState.isLoading) {
             FeedSkeleton(
                 modifier = Modifier.fillMaxSize(),
+                showLibraryAction = uiState.librarySnapshot is LibrarySnapshot.Ready,
             )
         } else if (currentRailState.games.isEmpty() && currentRailState.error != null) {
             DiscoverErrorState(

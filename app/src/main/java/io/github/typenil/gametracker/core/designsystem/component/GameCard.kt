@@ -49,14 +49,17 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-private const val COVER_WIDTH_DP = 100
-private val CardShape = RoundedCornerShape(16.dp)
-private val CoverShape = RoundedCornerShape(
+internal const val GAME_CARD_COVER_WIDTH_DP = 100
+internal val GameCardShape = RoundedCornerShape(16.dp)
+internal val GameCardCoverShape = RoundedCornerShape(
     topStart = 16.dp,
     bottomStart = 16.dp,
     topEnd = 0.dp,
     bottomEnd = 0.dp,
 )
+private const val COVER_WIDTH_DP = GAME_CARD_COVER_WIDTH_DP
+private val CardShape = GameCardShape
+private val CoverShape = GameCardCoverShape
 
 const val GAME_CARD_LIBRARY_ACTION_TEST_TAG = "game_card_library_action"
 

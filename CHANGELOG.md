@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Library export now rejects payloads over the 8 MiB import cap instead of writing a backup the app cannot re-import.
 - Search and Discover bottom-nav re-taps survive Activity recreation: the trigger counters now use the same saveable lifetime as the screens that consume them.
+- Loading skeletons on Search, Discover, Library, Details, and Insights now share the loaded cards' chrome and major slots so content does not jump in.
 
 ---
 
