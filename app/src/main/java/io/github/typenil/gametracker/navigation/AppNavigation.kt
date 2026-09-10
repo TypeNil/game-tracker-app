@@ -41,8 +41,10 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.feature.details.navigation.gameDetailsEntry
 import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
 import io.github.typenil.gametracker.feature.discover.navigation.discoverEntry
+import io.github.typenil.gametracker.feature.library.navigation.LibraryInsightsKey
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.library.navigation.libraryEntry
+import io.github.typenil.gametracker.feature.library.navigation.libraryInsightsEntry
 import io.github.typenil.gametracker.feature.search.navigation.SearchKey
 import io.github.typenil.gametracker.feature.search.navigation.searchEntry
 import io.github.typenil.gametracker.feature.settings.navigation.settingsEntry
@@ -88,7 +90,8 @@ fun AppNavHost(
         }
     }
     val isOfflinePillEnabled = currentDestination?.hasRoute<LibraryKey>() != true &&
-        currentDestination?.hasRoute<SettingsKey>() != true
+        currentDestination?.hasRoute<SettingsKey>() != true &&
+        currentDestination?.hasRoute<LibraryInsightsKey>() != true
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -112,7 +115,8 @@ fun AppNavHost(
             )
             libraryEntry(
                 onGameClick = appState::navigateToGameDetails,
-                onNavigateToDiscover = appState::navigateToDiscover
+                onNavigateToDiscover = appState::navigateToDiscover,
+                onInsightsClick = appState::navigateToLibraryInsights,
             )
 
             searchEntry(
@@ -127,6 +131,11 @@ fun AppNavHost(
 
             settingsEntry(
                 onBackClick = appState::navigateBack
+            )
+
+            libraryInsightsEntry(
+                onBackClick = appState::navigateBack,
+                onGameClick = appState::navigateToGameDetails,
             )
         }
 

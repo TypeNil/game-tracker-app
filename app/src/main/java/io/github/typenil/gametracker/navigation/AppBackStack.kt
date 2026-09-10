@@ -11,6 +11,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.typenil.gametracker.feature.details.navigation.navigateToGameDetails
 import io.github.typenil.gametracker.feature.discover.navigation.DiscoverKey
+import io.github.typenil.gametracker.feature.library.navigation.LibraryInsightsKey
 import io.github.typenil.gametracker.feature.library.navigation.LibraryKey
 import io.github.typenil.gametracker.feature.search.navigation.SearchKey
 import io.github.typenil.gametracker.feature.settings.navigation.SettingsKey
@@ -65,6 +66,12 @@ class GameTrackerAppState(
             }
             launchSingleTop = true
             restoreState = true
+        }
+    }
+
+    fun navigateToLibraryInsights() {
+        navController.navigate(LibraryInsightsKey) {
+            launchSingleTop = true
         }
     }
 

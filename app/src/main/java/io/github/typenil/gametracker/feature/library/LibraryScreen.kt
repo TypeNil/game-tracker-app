@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 fun LibraryRoute(
     onGameClick: (Long) -> Unit,
     onNavigateToDiscover: () -> Unit,
+    onInsightsClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
@@ -44,6 +45,7 @@ fun LibraryRoute(
         uiState = uiState,
         onGameClick = onGameClick,
         onNavigateToDiscover = onNavigateToDiscover,
+        onInsightsClick = onInsightsClick,
         onTabSelected = viewModel::onTabSelected,
         onToggleFavoritesOnly = viewModel::onToggleFavoritesOnly,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
@@ -69,6 +71,7 @@ fun LibraryScreen(
     uiState: LibraryUiState,
     onGameClick: (Long) -> Unit,
     onNavigateToDiscover: () -> Unit,
+    onInsightsClick: () -> Unit,
     onTabSelected: (LibraryTab) -> Unit,
     onToggleFavoritesOnly: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
@@ -162,6 +165,7 @@ fun LibraryScreen(
                 onClearSearch = onClearSearch,
                 sortOption = uiState.sortOption,
                 onSortOptionSelected = onSortOptionSelected,
+                onInsightsClick = onInsightsClick,
             )
         },
         modifier = modifier.fillMaxSize()

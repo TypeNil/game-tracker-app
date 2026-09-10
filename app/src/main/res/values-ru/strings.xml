@@ -210,6 +210,40 @@
 
     <string name="error_library_remove_failed">Не удалось убрать игру из библиотеки</string>
 
+    <!-- Library Insights -->
+    <string name="insights_title">Статистика</string>
+    <string name="insights_action_desc">Статистика библиотеки</string>
+    <string name="insights_heading">Ваша библиотека</string>
+    <plurals name="insights_games_count">
+        <item quantity="one">%1$s игра</item>
+        <item quantity="few">%1$s игры</item>
+        <item quantity="many">%1$s игр</item>
+        <item quantity="other">%1$s игр</item>
+    </plurals>
+    <plurals name="insights_games_caption" tools:ignore="ImpliedQuantity">
+        <item quantity="one">игра</item>
+        <item quantity="few">игры</item>
+        <item quantity="many">игр</item>
+        <item quantity="other">игр</item>
+    </plurals>
+    <string name="insights_metric_hours">часов</string>
+    <string name="insights_metric_completed">пройдено</string>
+    <string name="insights_metric_completed_rate">пройдено · %1$s</string>
+    <string name="insights_metric_rating">ср. оценка</string>
+    <string name="insights_hours_total">%1$s ч</string>
+    <string name="insights_completed_count">%1$s пройдено</string>
+    <string name="insights_avg_rating">%1$s ср. оценка</string>
+    <string name="insights_completion">%1$s от начатых</string>
+    <string name="insights_value_none">—</string>
+    <string name="insights_chip">%1$s %2$s</string>
+    <string name="insights_status">Статусы</string>
+    <string name="insights_most_played">Больше всего играли</string>
+    <string name="insights_taste">Ваш вкус</string>
+    <string name="insights_platforms">Платформы</string>
+    <string name="insights_platform_nintendo">Nintendo</string>
+    <string name="insights_empty_title">Пока нет статистики</string>
+    <string name="insights_empty_subtitle">Добавьте игры в «Играю», «Хочу сыграть», «Пройдено» или «Брошено», чтобы увидеть статистику.</string>
+
     <!-- About / Attribution -->
     <string name="settings_title">О приложении</string>
     <string name="settings_action_desc">О приложении</string>

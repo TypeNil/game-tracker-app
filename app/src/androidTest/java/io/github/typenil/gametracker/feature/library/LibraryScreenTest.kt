@@ -35,12 +35,14 @@ import io.github.typenil.gametracker.feature.library.component.LIBRARY_CARD_NOTE
 import io.github.typenil.gametracker.core.designsystem.component.FEED_SKELETON_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_CARD_TEST_TAG
 import io.github.typenil.gametracker.feature.library.component.LIBRARY_SKELETON_TEST_TAG
+import io.github.typenil.gametracker.feature.library.insights.LIBRARY_INSIGHTS_ACTION_TEST_TAG
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import io.github.typenil.gametracker.R
 import org.junit.Rule
 import org.junit.Test
@@ -90,6 +92,29 @@ class LibraryScreenTest {
     private val sampleGames = listOf(hades, eldenRing)
 
     @Test
+    fun insightsAction_click_invokesCallback() {
+        var clicked = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = LibraryUiState(),
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onInsightsClick = { clicked = true },
+                    onTabSelected = {},
+                    onToggleFavoritesOnly = {},
+                    onSearchQueryChanged = {},
+                    onToggleSearchActive = {},
+                    onSortOptionSelected = {},
+                    onClearSearch = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag(LIBRARY_INSIGHTS_ACTION_TEST_TAG).performClick()
+        assertTrue(clicked)
+    }
+
+    @Test
     fun loading_showsLibraryCardSkeletonNotFeedSkeleton() {
         composeTestRule.setContent {
             GameTrackerTheme {
@@ -97,6 +122,7 @@ class LibraryScreenTest {
                     uiState = LibraryUiState(isLoading = true),
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -137,6 +163,7 @@ class LibraryScreenTest {
                     ),
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = { currentTab = it },
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -181,6 +208,7 @@ class LibraryScreenTest {
                     ),
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = { currentTab = it },
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -223,6 +251,7 @@ class LibraryScreenTest {
                     ),
                     onGameClick = {},
                     onNavigateToDiscover = { navigated = true },
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -256,6 +285,7 @@ class LibraryScreenTest {
                     ),
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -294,6 +324,7 @@ class LibraryScreenTest {
                     uiState = currentUiState,
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -336,6 +367,7 @@ class LibraryScreenTest {
                     uiState = currentUiState,
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -374,6 +406,7 @@ class LibraryScreenTest {
                     uiState = currentUiState,
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -418,6 +451,7 @@ class LibraryScreenTest {
                     uiState = currentUiState,
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -454,6 +488,7 @@ class LibraryScreenTest {
                     ),
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -506,6 +541,7 @@ class LibraryScreenTest {
                     uiState = currentUiState,
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
@@ -580,6 +616,7 @@ class LibraryScreenTest {
                     uiState = currentUiState,
                     onGameClick = {},
                     onNavigateToDiscover = {},
+                    onInsightsClick = {},
                     onTabSelected = {},
                     onToggleFavoritesOnly = {},
                     onSearchQueryChanged = {},
