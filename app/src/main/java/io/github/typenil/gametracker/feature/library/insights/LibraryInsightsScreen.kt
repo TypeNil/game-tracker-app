@@ -1,6 +1,7 @@
 package io.github.typenil.gametracker.feature.library.insights
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +33,6 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -77,12 +77,19 @@ import java.text.NumberFormat
 internal const val LIBRARY_INSIGHTS_SCREEN_TEST_TAG = "library-insights-screen"
 internal const val LIBRARY_INSIGHTS_ACTION_TEST_TAG = "library-insights-action"
 internal const val LIBRARY_INSIGHTS_LIST_TEST_TAG = "library-insights-list"
+internal const val LIBRARY_INSIGHTS_LOADING_TEST_TAG = "library-insights-loading"
 
 private val StatusBarMinWidth = 2.dp
 private val StatusBarHeight = 14.dp
 private val SectionCardShape = RoundedCornerShape(16.dp)
 private val InsightsFilterChipShape = RoundedCornerShape(8.dp)
 private val ChipShape = RoundedCornerShape(50)
+
+private const val INSIGHTS_SKELETON_TITLE_FRACTION = 0.45f
+private const val INSIGHTS_SKELETON_STATUS_TITLE_FRACTION = 0.28f
+private const val INSIGHTS_SKELETON_PLAYED_TITLE_FRACTION = 0.4f
+private const val INSIGHTS_SKELETON_METRIC_VALUE_FRACTION = 0.5f
+private const val INSIGHTS_SKELETON_METRIC_CAPTION_FRACTION = 0.7f
 
 @Composable
 fun LibraryInsightsRoute(
@@ -149,10 +156,137 @@ fun LibraryInsightsScreen(
     }
 }
 
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun InsightsLoading(modifier: Modifier = Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    val loadingDescription = stringResource(R.string.insights_loading)
+    val barColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(LIBRARY_INSIGHTS_LOADING_TEST_TAG)
+            .semantics { contentDescription = loadingDescription }
+            .padding(
+                start = GtDimens.Gutter,
+                end = GtDimens.Gutter,
+                top = 8.dp,
+                bottom = 24.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        InsightsSectionCard {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(INSIGHTS_SKELETON_TITLE_FRACTION)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(barColor),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                InsightsMetricPlaceholder(barColor = barColor, modifier = Modifier.weight(1f))
+                InsightsMetricPlaceholder(barColor = barColor, modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                InsightsMetricPlaceholder(barColor = barColor, modifier = Modifier.weight(1f))
+                InsightsMetricPlaceholder(barColor = barColor, modifier = Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .width(88.dp)
+                            .height(32.dp)
+                            .clip(ChipShape)
+                            .background(barColor),
+                    )
+                }
+            }
+        }
+        InsightsSectionCard {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(INSIGHTS_SKELETON_STATUS_TITLE_FRACTION)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(barColor),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            repeat(4) { index ->
+                if (index > 0) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(barColor),
+                )
+            }
+        }
+        InsightsSectionCard {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(INSIGHTS_SKELETON_PLAYED_TITLE_FRACTION)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(barColor),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            repeat(2) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(barColor),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(barColor),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightsMetricPlaceholder(
+    barColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(INSIGHTS_SKELETON_METRIC_VALUE_FRACTION)
+                .height(24.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(barColor),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(INSIGHTS_SKELETON_METRIC_CAPTION_FRACTION)
+                .height(12.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(barColor),
+        )
     }
 }
 

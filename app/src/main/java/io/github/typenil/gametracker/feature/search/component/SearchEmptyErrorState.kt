@@ -41,9 +41,13 @@ internal fun Throwable.toPresentedAppError(): AppError =
  * Full-screen skeleton loading state when search results are being fetched initially.
  */
 @Composable
-internal fun SearchLoadingState(modifier: Modifier = Modifier) {
+internal fun SearchLoadingState(
+    modifier: Modifier = Modifier,
+    showLibraryAction: Boolean = false,
+) {
     FeedSkeleton(
         label = stringResource(R.string.search_loading_games),
+        showLibraryAction = showLibraryAction,
         modifier = modifier.fillMaxSize(),
     )
 }

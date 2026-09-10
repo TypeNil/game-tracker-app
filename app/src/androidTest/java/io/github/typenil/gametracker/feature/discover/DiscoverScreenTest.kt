@@ -57,6 +57,15 @@ class DiscoverScreenTest {
     }
 
     @Test
+    fun forYouLoading_showsTuneRecommendationsAboveSkeleton() {
+        setContent(DiscoverUiState(forYouLoading = true))
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.discover_tune_recommendations),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(FEED_SKELETON_TEST_TAG).assertIsDisplayed()
+    }
+
+    @Test
     fun initialLoading_doesNotSignalReadyToDraw() {
         var readyCount = 0
         setContent(DiscoverUiState(isLoading = true), onReadyToDraw = { readyCount++ })

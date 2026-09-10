@@ -211,7 +211,7 @@ fun SearchScreen(
                         )
                     }
                     refreshState is LoadState.Loading && lazyItems.itemCount == 0 -> {
-                        SearchLoadingState()
+                        SearchLoadingState(showLibraryAction = readyLibrary != null)
                     }
                     lazyItems.itemCount == 0 && refreshState is LoadState.Error -> {
                         SearchErrorState(

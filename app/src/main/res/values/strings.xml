@@ -242,6 +242,7 @@
     <string name="insights_platform_nintendo">Nintendo</string>
     <string name="insights_empty_title">No insights yet</string>
     <string name="insights_empty_subtitle">Add or move games into Playing, Wishlist, Completed, or Dropped to see insights.</string>
+    <string name="insights_loading">Loading insights…</string>
 
     <!-- About / Attribution -->
     <string name="settings_title">About</string>

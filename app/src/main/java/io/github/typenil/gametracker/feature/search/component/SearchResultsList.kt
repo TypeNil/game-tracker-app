@@ -131,7 +131,7 @@ internal fun SearchResultsList(
             // cards. games[index] still submits the hint.
             val game = games[index]
             if (game == null) {
-                SkeletonCardRow()
+                SkeletonCardRow(showLibraryAction = ready != null)
             } else {
                 GameCard(
                     game = game,

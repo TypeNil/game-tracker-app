@@ -45,7 +45,7 @@ class DefaultLibraryBackupRepository @Inject constructor(
                     )
                 },
             )
-            LibraryBackupCodec.encode(backup)
+            LibraryBackupCodec.encode(backup).ensureFitsBackupLimit()
         }.fold(
             onSuccess = { AppResult.Success(it) },
             onFailure = { AppResult.Error(AppError.UnknownError(it)) },

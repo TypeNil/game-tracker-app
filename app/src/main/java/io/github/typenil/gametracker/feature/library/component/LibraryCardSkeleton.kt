@@ -52,6 +52,7 @@ private val StatusMinHeight = 48.dp
 private val StatusBarWidth = 96.dp
 private val DateBarWidth = 72.dp
 private val FavoritePlaceholderSize = 34.dp
+private val FavoriteHitSize = 48.dp
 private val MetaReserve = 64.dp
 private val CardSpacing = 12.dp
 private const val STACKED_FONT_SCALE = 1.3f
@@ -133,10 +134,16 @@ private fun LibrarySkeletonCard() {
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .size(FavoritePlaceholderSize)
-                        .clip(CircleShape)
-                        .background(barColor),
-                )
+                        .size(FavoriteHitSize),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(FavoritePlaceholderSize)
+                            .clip(CircleShape)
+                            .background(barColor),
+                    )
+                }
             }
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,

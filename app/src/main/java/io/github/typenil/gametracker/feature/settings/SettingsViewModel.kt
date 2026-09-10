@@ -14,6 +14,7 @@ import io.github.typenil.gametracker.core.data.backup.LibraryBackupRepository
 import io.github.typenil.gametracker.core.data.backup.LibraryImportMode
 import io.github.typenil.gametracker.core.data.backup.LibraryImportPreview
 import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.ThemeMode
 import io.github.typenil.gametracker.core.model.UserPreferences
@@ -90,7 +91,7 @@ class SettingsViewModel @Inject constructor(
                 when (val exported = libraryBackupRepository.exportLibrary()) {
                     is AppResult.Success -> writeExport(uri, exported.data)
                     is AppResult.Error -> {
-                        _userMessageRes.value = R.string.settings_backup_failed
+                        _userMessageRes.value = exportErrorMessage(exported.error)
                     }
                 }
             } finally {
@@ -201,6 +202,11 @@ class SettingsViewModel @Inject constructor(
         } else {
             R.string.settings_backup_failed
         }
+    }
+
+    private fun exportErrorMessage(error: AppError): Int {
+        val io = (error as? AppError.UnknownError)?.cause as? IOException
+        return if (io != null) ioErrorMessage(io) else R.string.settings_backup_failed
     }
 
     private fun backupErrorMessage(error: LibraryBackupError): Int = when (error) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -23,10 +24,9 @@ import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.core.designsystem.component.GAME_COVER_ASPECT_RATIO
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 
-/** Enlarged portrait cover width in the details header. */
-private val HEADER_COVER_WIDTH = 124.dp
+internal val detailsHeaderCoverWidth = 124.dp
+internal val detailsHeaderCoverCorner = 12.dp
 
-/** Placeholder bar proportions for the details header skeleton. */
 private const val SKELETON_TITLE_FRACTION = 0.7f
 private const val SKELETON_SUBTITLE_FRACTION = 0.4f
 
@@ -52,13 +52,13 @@ internal fun DetailsHeaderSkeleton(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
             SkeletonBlock(
                 modifier = Modifier
-                    .width(HEADER_COVER_WIDTH)
+                    .width(detailsHeaderCoverWidth)
                     .aspectRatio(GAME_COVER_ASPECT_RATIO)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(detailsHeaderCoverCorner))
                     .background(shimmerColor),
             )
             Column(
@@ -79,44 +79,23 @@ internal fun DetailsHeaderSkeleton(
                         .clip(RoundedCornerShape(6.dp))
                         .background(shimmerColor),
                 )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerColor),
+                )
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
         SkeletonBlock(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(shimmerColor),
+                .height(58.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .testTag("details-skeleton-library-cta"),
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        SkeletonBlock(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(68.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(shimmerColor),
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SkeletonBlock(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(shimmerColor),
-            )
-            SkeletonBlock(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(shimmerColor),
-            )
-        }
     }
 }
 

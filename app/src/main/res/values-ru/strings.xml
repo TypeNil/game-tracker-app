@@ -247,6 +247,7 @@
     <string name="insights_platform_nintendo">Nintendo</string>
     <string name="insights_empty_title">Пока нет статистики</string>
     <string name="insights_empty_subtitle">Добавьте игры в «Играю», «Хочу сыграть», «Пройдено» или «Брошено», чтобы увидеть статистику.</string>
+    <string name="insights_loading">Загружаем статистику…</string>
 
     <!-- About / Attribution -->
     <string name="settings_title">О приложении</string>
