@@ -129,4 +129,29 @@ object DatabaseMigrations {
             )
         }
     }
+
+    /**
+     * Migration from Room schema version 6 to 7: adds explicit per-entry release notification intent
+     * to `library_entries` and backfills it from the statuses the notification worker used to treat
+     * as tracked, so upgrading users keep exactly the reminders they already had.
+     *
+     * `PLAN_TO_PLAY` is included because GameTrackerTypeConverters still maps that legacy stored
+     * name to [io.github.typenil.gametracker.core.model.LibraryStatus.WISHLIST], so pre-rename rows
+     * can survive into a v6 database; matching only modern names would silently drop those users.
+     * DROPPED and NOT_INTERESTED deliberately stay at 0 (the worker never notified for them).
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `library_entries` ADD COLUMN `releaseNotificationsEnabled` INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                """
+                UPDATE `library_entries`
+                SET `releaseNotificationsEnabled` = 1
+                WHERE `status` IN ('WISHLIST', 'PLAYING', 'COMPLETED', 'PLAN_TO_PLAY')
+                """.trimIndent()
+            )
+        }
+    }
 }

@@ -9,6 +9,7 @@ import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_4_5
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_3_4
 import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_5_6
+import io.github.typenil.gametracker.core.database.migration.DatabaseMigrations.MIGRATION_6_7
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -332,6 +333,48 @@ class MigrationTest {
         assertEquals("Witcher", cursor.getString(1))
         assertEquals(2000L, cursor.getLong(2))
         cursor.close()
+        db.close()
+    }
+
+    @Test
+    fun migration6To7_addsNotificationFlagAndBackfillsLegacyTrackedStatuses() {
+        var db = helper.createDatabase(testDbName, 6)
+
+        // The worker tracked WISHLIST/PLAYING/COMPLETED before this migration, and the legacy
+        // PLAN_TO_PLAY name is still deserialized as WISHLIST, so all four must be backfilled.
+        val legacyTracked = listOf(1L to "WISHLIST", 2L to "PLAYING", 3L to "COMPLETED", 4L to "PLAN_TO_PLAY")
+        val legacyUntracked = listOf(5L to "DROPPED", 6L to "NOT_INTERESTED")
+        (legacyTracked + legacyUntracked).forEach { (id, status) ->
+            db.execSQL(
+                """
+                INSERT INTO games (id, name, coverUrl, rating, releaseDateEpochSeconds, summary, genres, platforms, cachedAtEpochSeconds)
+                VALUES ($id, 'Game $id', NULL, NULL, NULL, NULL, '[]', '[]', 1000)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO library_entries (gameId, status, userRating, userNotes, isFavorite, addedAtEpochSeconds, updatedAtEpochSeconds, hoursPlayed)
+                VALUES ($id, '$status', NULL, NULL, 0, 1000, 1000, 0)
+                """.trimIndent()
+            )
+        }
+        db.close()
+
+        db = helper.runMigrationsAndValidate(testDbName, 7, true, MIGRATION_6_7)
+
+        val flags = mutableMapOf<Long, Int>()
+        val cursor = db.query("SELECT gameId, releaseNotificationsEnabled FROM library_entries ORDER BY gameId")
+        while (cursor.moveToNext()) {
+            flags[cursor.getLong(0)] = cursor.getInt(1)
+        }
+        cursor.close()
+
+        legacyTracked.forEach { (id, status) ->
+            assertEquals("$status must keep the reminders it already had", 1, flags[id])
+        }
+        legacyUntracked.forEach { (id, status) ->
+            assertEquals("$status must not gain new reminders", 0, flags[id])
+        }
         db.close()
     }
 }

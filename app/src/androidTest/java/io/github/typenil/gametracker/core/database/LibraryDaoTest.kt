@@ -300,6 +300,48 @@ class LibraryDaoTest {
     }
 
     @Test
+    fun getEntriesWithReleaseNotificationsEnabled_returnsEnabledRowsAcrossStatuses() = runTest {
+        gameDao.upsertGames(
+            listOf(
+                GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L),
+                GameEntity(2L, "G2", null, null, null, null, emptyList(), emptyList(), 100L),
+                GameEntity(3L, "G3", null, null, null, null, emptyList(), emptyList(), 100L),
+            ),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 1L,
+                status = LibraryStatus.WISHLIST,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 2L,
+                status = LibraryStatus.NOT_INTERESTED,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 3L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+            ),
+        )
+
+        val enabled = libraryDao.getEntriesWithReleaseNotificationsEnabled()
+
+        // The explicit flag is authoritative: status neither grants nor revokes eligibility.
+        assertEquals(listOf(1L, 2L), enabled.map { it.gameId }.sorted())
+    }
+
+    @Test
     fun libraryByStatus_usesStatusIndex() = runTest {
         val plan = database.explainQueryPlan(LibraryDao.LIBRARY_ENTRIES_BY_STATUS, "PLAYING")
         assertTrue(plan, plan.contains("index_library_entries_status"))
