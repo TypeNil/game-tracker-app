@@ -16,6 +16,32 @@ object ReleaseEventDetector {
     const val SOON_WINDOW_DAYS_MAX = 7L
 
     /**
+     * Whole UTC days until [releaseDateEpochSeconds]; negative once that date has passed.
+     *
+     * Single definition of the release window so [detectEvents] and [isReleasePending] cannot drift.
+     */
+    fun daysUntilRelease(
+        nowEpochSeconds: Long,
+        releaseDateEpochSeconds: Long,
+        zoneId: ZoneId = ZoneOffset.UTC
+    ): Long = ChronoUnit.DAYS.between(
+        Instant.ofEpochSecond(nowEpochSeconds).atZone(zoneId).toLocalDate(),
+        Instant.ofEpochSecond(releaseDateEpochSeconds).atZone(zoneId).toLocalDate()
+    )
+
+    /**
+     * True while a release notification can still fire for this game: unknown dates (TBA) and
+     * today-or-later. Already-released games are excluded, so the worker stops tracking them and
+     * the UI stops offering a switch that could never do anything.
+     */
+    fun isReleasePending(
+        nowEpochSeconds: Long,
+        releaseDateEpochSeconds: Long?,
+        zoneId: ZoneId = ZoneOffset.UTC
+    ): Boolean = releaseDateEpochSeconds == null ||
+        daysUntilRelease(nowEpochSeconds, releaseDateEpochSeconds, zoneId) >= 0
+
+    /**
      * Evaluates whether [currentReleaseDate] triggers any [ReleaseEvent] relative to [nowEpochSeconds]
      * or compared to [previousReleaseDate].
      *
@@ -30,9 +56,15 @@ object ReleaseEventDetector {
         zoneId: ZoneId = ZoneOffset.UTC
     ): List<ReleaseEvent> {
         val events = mutableListOf<ReleaseEvent>()
+        val daysUntil = currentReleaseDate?.let {
+            daysUntilRelease(nowEpochSeconds, it, zoneId)
+        }
 
-        // 1. Check for DATE_CHANGED: previous date was known and differs from new known date
-        if (previousReleaseDate != null && currentReleaseDate != null && previousReleaseDate != currentReleaseDate) {
+        // 1. DATE_CHANGED is only meaningful while the release is still ahead of us: a catalog
+        // correction for an already-released game is not something the user asked to hear about.
+        val bothDatesKnown = previousReleaseDate != null && currentReleaseDate != null
+        val releaseStillPending = daysUntil != null && daysUntil >= 0L
+        if (bothDatesKnown && previousReleaseDate != currentReleaseDate && releaseStillPending) {
             events.add(
                 ReleaseEvent(
                     gameId = gameId,
@@ -45,13 +77,9 @@ object ReleaseEventDetector {
         }
 
         // 2. Check for RELEASE_TODAY and RELEASE_SOON
-        if (currentReleaseDate != null) {
-            val today = Instant.ofEpochSecond(nowEpochSeconds).atZone(zoneId).toLocalDate()
-            val releaseDate = Instant.ofEpochSecond(currentReleaseDate).atZone(zoneId).toLocalDate()
-            val daysUntilRelease = ChronoUnit.DAYS.between(today, releaseDate)
-
+        if (currentReleaseDate != null && daysUntil != null) {
             when {
-                daysUntilRelease == 0L -> {
+                daysUntil == 0L -> {
                     events.add(
                         ReleaseEvent(
                             gameId = gameId,
@@ -61,7 +89,7 @@ object ReleaseEventDetector {
                         )
                     )
                 }
-                daysUntilRelease in SOON_WINDOW_DAYS_MIN..SOON_WINDOW_DAYS_MAX -> {
+                daysUntil in SOON_WINDOW_DAYS_MIN..SOON_WINDOW_DAYS_MAX -> {
                     events.add(
                         ReleaseEvent(
                             gameId = gameId,

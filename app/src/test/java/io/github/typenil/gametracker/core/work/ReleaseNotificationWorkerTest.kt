@@ -137,6 +137,42 @@ class ReleaseNotificationWorkerTest {
     }
 
     @Test
+    fun doWork_whenTrackedGameAlreadyReleased_stopsTrackingItWithoutNotifying() = runTest(testDispatcher) {
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.COMPLETED)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, 1431993600L) // 2015-05-19
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns AppResult.Success(Unit)
+
+        val result = worker.doWork()
+
+        assertEquals(Result.success(), result)
+        // The refresh above is what confirms the game really shipped (or was postponed).
+        coVerify(exactly = 1) { gameRepository.refreshGameDetails(10L, force = true) }
+        coVerify(exactly = 0) { releaseNotifier.postReleaseNotification(any()) }
+        coVerify(exactly = 1) { libraryDao.clearReleaseNotifications(10L) }
+    }
+
+    @Test
+    fun doWork_whenReleasedGameIsPostponed_keepsTrackingIt() = runTest(testDispatcher) {
+        val futureEpoch = Instant.now().plusSeconds(30L * 24 * 3600).epochSecond
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.WISHLIST)
+        )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, 1431993600L) // stale: 2015
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns AppResult.Success(Unit)
+        // Room refresh moved the canonical date into the future before the worker re-read it.
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, futureEpoch)
+
+        val result = worker.doWork()
+
+        assertEquals(Result.success(), result)
+        coVerify(exactly = 0) { libraryDao.clearReleaseNotifications(any()) }
+    }
+
+    @Test
     fun doWork_whenEventAlreadyRecorded_doesNotNotifyAgain() = runTest(testDispatcher) {
         val todayEpoch = Instant.now().epochSecond
         coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(

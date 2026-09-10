@@ -27,7 +27,8 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 150,
                 addedAtEpochSeconds = now - 86400 * 30,
                 updatedAtEpochSeconds = now - 86400 * 5,
-                releaseNotificationsEnabled = true,
+                // Released in 2015: nothing to be notified about.
+                releaseNotificationsEnabled = false,
             ),
             LibraryEntry(
                 gameId = MYSTERY_INDIE_ID,
@@ -37,7 +38,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 12,
                 addedAtEpochSeconds = now - 86400 * 10,
                 updatedAtEpochSeconds = now - 86400 * 1,
-                releaseNotificationsEnabled = true,
+                releaseNotificationsEnabled = false,
             ),
             LibraryEntry(
                 gameId = GTA_VI_ID,
@@ -47,6 +48,8 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 0,
                 addedAtEpochSeconds = now - 86400 * 20,
                 updatedAtEpochSeconds = now - 86400 * 20,
+                // Release date is still TBA, so this is the seeded entry that exercises the
+                // enabled state end to end.
                 releaseNotificationsEnabled = true,
             ),
             LibraryEntry(
@@ -57,7 +60,7 @@ class DemoLibrarySeeder @Inject constructor(
                 hoursPlayed = 25,
                 addedAtEpochSeconds = now - 86400 * 40,
                 updatedAtEpochSeconds = now - 86400 * 15,
-                releaseNotificationsEnabled = true,
+                releaseNotificationsEnabled = false,
             ),
             LibraryEntry(
                 gameId = ARENA_PRO_ID,

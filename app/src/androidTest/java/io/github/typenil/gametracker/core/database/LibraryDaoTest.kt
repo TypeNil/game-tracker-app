@@ -342,6 +342,38 @@ class LibraryDaoTest {
     }
 
     @Test
+    fun clearReleaseNotifications_dropsIntentAndPreservesOtherFields() = runTest {
+        gameDao.upsertGame(
+            GameEntity(1L, "G1", null, null, null, null, emptyList(), emptyList(), 100L),
+        )
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 1L,
+                status = LibraryStatus.PLAYING,
+                userRating = 9,
+                userNotes = "still here",
+                isFavorite = true,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 200L,
+                hoursPlayed = 12,
+                releaseNotificationsEnabled = true,
+            ),
+        )
+
+        assertEquals(1, libraryDao.clearReleaseNotifications(1L))
+
+        val updated = libraryDao.getLibraryEntry(1L)
+        assertEquals(false, updated?.releaseNotificationsEnabled)
+        assertEquals(LibraryStatus.PLAYING, updated?.status)
+        assertEquals(9, updated?.userRating)
+        assertEquals("still here", updated?.userNotes)
+        assertEquals(true, updated?.isFavorite)
+        assertEquals(12, updated?.hoursPlayed)
+        assertEquals(200L, updated?.updatedAtEpochSeconds)
+        assertEquals(0, libraryDao.clearReleaseNotifications(999L))
+    }
+
+    @Test
     fun libraryByStatus_usesStatusIndex() = runTest {
         val plan = database.explainQueryPlan(LibraryDao.LIBRARY_ENTRIES_BY_STATUS, "PLAYING")
         assertTrue(plan, plan.contains("index_library_entries_status"))

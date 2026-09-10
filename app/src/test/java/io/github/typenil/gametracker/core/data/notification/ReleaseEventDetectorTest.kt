@@ -2,6 +2,7 @@ package io.github.typenil.gametracker.core.data.notification
 
 import io.github.typenil.gametracker.core.model.NotificationEventType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneOffset
@@ -120,6 +121,44 @@ class ReleaseEventDetectorTest {
         )
 
         assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun detectEvents_whenReleasedGameDateIsCorrected_emitsNoEvent() {
+        // Both dates are in the past: the catalog correction is not user-relevant.
+        val releasedDate = 1431993600L // 2015-05-19
+        val correctedDate = 1432080000L // 2015-05-20
+
+        val events = ReleaseEventDetector.detectEvents(
+            nowEpochSeconds = nowEpoch,
+            gameId = 42L,
+            gameName = "The Witcher 3",
+            previousReleaseDate = releasedDate,
+            currentReleaseDate = correctedDate,
+            zoneId = testZone
+        )
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun isReleasePending_treatsTodayAndUnknownAsPending_butNotPastDates() {
+        // 2026-08-24 00:00:00 UTC
+        val todayRelease = 1787529600L
+        // 2026-08-20 (4 days before the frozen "now")
+        val pastRelease = 1787184000L
+
+        assertTrue(ReleaseEventDetector.isReleasePending(nowEpoch, todayRelease, testZone))
+        assertTrue(ReleaseEventDetector.isReleasePending(nowEpoch, null, testZone))
+        assertTrue(
+            "A date later today is still a pending release",
+            ReleaseEventDetector.isReleasePending(
+                nowEpoch,
+                1787615990L, // 2026-08-24 23:59:50 UTC
+                testZone,
+            ),
+        )
+        assertFalse(ReleaseEventDetector.isReleasePending(nowEpoch, pastRelease, testZone))
     }
 
     @Test

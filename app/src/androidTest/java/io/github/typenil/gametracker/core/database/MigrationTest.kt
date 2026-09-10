@@ -16,6 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -337,26 +338,57 @@ class MigrationTest {
     }
 
     @Test
-    fun migration6To7_addsNotificationFlagAndBackfillsLegacyTrackedStatuses() {
+    fun migration6To7_backfillsOnlyStatusesThatCanStillNotify() {
         var db = helper.createDatabase(testDbName, 6)
 
+        val futureDate = Instant.now().epochSecond + 30L * 86_400L
+        val pastDate = 1_431_993_600L // 2015-05-19
+
+        // id -> (status, games.releaseDateEpochSeconds, game_details.releaseDateEpochSeconds?, expected flag)
         // The worker tracked WISHLIST/PLAYING/COMPLETED before this migration, and the legacy
-        // PLAN_TO_PLAY name is still deserialized as WISHLIST, so all four must be backfilled.
-        val legacyTracked = listOf(1L to "WISHLIST", 2L to "PLAYING", 3L to "COMPLETED", 4L to "PLAN_TO_PLAY")
-        val legacyUntracked = listOf(5L to "DROPPED", 6L to "NOT_INTERESTED")
-        (legacyTracked + legacyUntracked).forEach { (id, status) ->
+        // PLAN_TO_PLAY name is still deserialized as WISHLIST. Released games are excluded: they
+        // could never produce a release event, so subscribing to them is pure background work.
+        val rows = listOf(
+            SeedRow(1L, "WISHLIST", futureDate, null, 1, "upcoming wishlist keeps its reminder"),
+            SeedRow(2L, "PLAYING", futureDate, null, 1, "upcoming playing keeps its reminder"),
+            SeedRow(3L, "COMPLETED", null, null, 1, "TBA completed keeps its reminder"),
+            SeedRow(4L, "PLAN_TO_PLAY", futureDate, null, 1, "legacy PLAN_TO_PLAY keeps its reminder"),
+            SeedRow(5L, "WISHLIST", pastDate, null, 0, "released wishlist stays unsubscribed"),
+            SeedRow(6L, "COMPLETED", pastDate, null, 0, "released completed stays unsubscribed"),
+            SeedRow(7L, "PLAYING", pastDate, futureDate, 1, "cached details date wins over the catalog row"),
+            SeedRow(8L, "DROPPED", futureDate, null, 0, "dropped was never tracked"),
+            SeedRow(9L, "NOT_INTERESTED", null, null, 0, "not interested was never tracked"),
+        )
+
+        rows.forEach { row ->
             db.execSQL(
                 """
                 INSERT INTO games (id, name, coverUrl, rating, releaseDateEpochSeconds, summary, genres, platforms, cachedAtEpochSeconds)
-                VALUES ($id, 'Game $id', NULL, NULL, NULL, NULL, '[]', '[]', 1000)
+                VALUES (${row.id}, 'Game ${row.id}', NULL, NULL, ${row.catalogDate ?: "NULL"}, NULL, '[]', '[]', 1000)
                 """.trimIndent()
             )
             db.execSQL(
                 """
                 INSERT INTO library_entries (gameId, status, userRating, userNotes, isFavorite, addedAtEpochSeconds, updatedAtEpochSeconds, hoursPlayed)
-                VALUES ($id, '$status', NULL, NULL, 0, 1000, 1000, 0)
+                VALUES (${row.id}, '${row.status}', NULL, NULL, 0, 1000, 1000, 0)
                 """.trimIndent()
             )
+            row.detailsDate?.let { detailsDate ->
+                db.execSQL(
+                    """
+                    INSERT INTO game_details (
+                        gameId, name, coverUrl, rating, totalRating, totalRatingCount,
+                        releaseDateEpochSeconds, summary, url, genres, themes, gameModes,
+                        platforms, releaseDates, companies, screenshots, videos, similarGames,
+                        cachedAtEpochSeconds
+                    ) VALUES (
+                        ${row.id}, 'Game ${row.id}', NULL, NULL, NULL, NULL,
+                        $detailsDate, NULL, NULL, '[]', '[]', '[]',
+                        '[]', '[]', '[]', '[]', '[]', '[]', 1000
+                    )
+                    """.trimIndent()
+                )
+            }
         }
         db.close()
 
@@ -369,12 +401,18 @@ class MigrationTest {
         }
         cursor.close()
 
-        legacyTracked.forEach { (id, status) ->
-            assertEquals("$status must keep the reminders it already had", 1, flags[id])
-        }
-        legacyUntracked.forEach { (id, status) ->
-            assertEquals("$status must not gain new reminders", 0, flags[id])
+        rows.forEach { row ->
+            assertEquals(row.reason, row.expectedFlag, flags[row.id])
         }
         db.close()
     }
+
+    private data class SeedRow(
+        val id: Long,
+        val status: String,
+        val catalogDate: Long?,
+        val detailsDate: Long?,
+        val expectedFlag: Int,
+        val reason: String,
+    )
 }

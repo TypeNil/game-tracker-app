@@ -91,4 +91,17 @@ interface LibraryDao {
 
     @Query("DELETE FROM library_entries WHERE gameId = :gameId")
     suspend fun deleteLibraryEntry(gameId: Long): Int
+
+    /**
+     * Drops the release-notification intent for a game that has already shipped, so the worker
+     * stops refreshing it forever. Returns the number of updated rows.
+     */
+    @Query(
+        """
+        UPDATE library_entries
+        SET releaseNotificationsEnabled = 0
+        WHERE gameId = :gameId
+        """,
+    )
+    suspend fun clearReleaseNotifications(gameId: Long): Int
 }

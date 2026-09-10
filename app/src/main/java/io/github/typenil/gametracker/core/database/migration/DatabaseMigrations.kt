@@ -135,6 +135,10 @@ object DatabaseMigrations {
      * to `library_entries` and backfills it from the statuses the notification worker used to treat
      * as tracked, so upgrading users keep exactly the reminders they already had.
      *
+     * Only games that have not shipped yet (unknown date or today-or-later, UTC day boundary) are
+     * backfilled: a released game could never produce a release event, so subscribing to it would
+     * only make the worker re-fetch it forever.
+     *
      * `PLAN_TO_PLAY` is included because GameTrackerTypeConverters still maps that legacy stored
      * name to [io.github.typenil.gametracker.core.model.LibraryStatus.WISHLIST], so pre-rename rows
      * can survive into a v6 database; matching only modern names would silently drop those users.
@@ -150,6 +154,20 @@ object DatabaseMigrations {
                 UPDATE `library_entries`
                 SET `releaseNotificationsEnabled` = 1
                 WHERE `status` IN ('WISHLIST', 'PLAYING', 'COMPLETED', 'PLAN_TO_PLAY')
+                  AND (
+                    COALESCE(
+                        (SELECT `releaseDateEpochSeconds` FROM `game_details`
+                         WHERE `game_details`.`gameId` = `library_entries`.`gameId`),
+                        (SELECT `releaseDateEpochSeconds` FROM `games`
+                         WHERE `games`.`id` = `library_entries`.`gameId`)
+                    ) IS NULL
+                    OR COALESCE(
+                        (SELECT `releaseDateEpochSeconds` FROM `game_details`
+                         WHERE `game_details`.`gameId` = `library_entries`.`gameId`),
+                        (SELECT `releaseDateEpochSeconds` FROM `games`
+                         WHERE `games`.`id` = `library_entries`.`gameId`)
+                    ) >= CAST(strftime('%s', 'now') AS INTEGER) - (CAST(strftime('%s', 'now') AS INTEGER) % 86400)
+                  )
                 """.trimIndent()
             )
         }

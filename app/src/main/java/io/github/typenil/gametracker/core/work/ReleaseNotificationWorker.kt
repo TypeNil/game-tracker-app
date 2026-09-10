@@ -91,6 +91,15 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         val currentDetails = gameDetailsDao.getGameDetails(gameId)
         val currentDate = currentDetails?.releaseDateEpochSeconds
             ?: gameDao.getGameById(gameId)?.releaseDateEpochSeconds
+
+        if (!ReleaseEventDetector.isReleasePending(nowEpochSeconds, currentDate)) {
+            // The game is out, so this subscription can never fire again. Drop it here (after the
+            // refresh above, which still catches a postponement) instead of re-fetching it every
+            // interval forever.
+            libraryDao.clearReleaseNotifications(gameId)
+            return retryableError
+        }
+
         val gameName = currentDetails?.name
             ?: gameDao.getGameById(gameId)?.name
             ?: "Game #$gameId"
