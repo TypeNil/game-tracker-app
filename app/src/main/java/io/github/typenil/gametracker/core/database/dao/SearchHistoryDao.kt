@@ -34,4 +34,7 @@ interface SearchHistoryDao {
 
     @Query("DELETE FROM search_history")
     suspend fun clearAllSearchHistory(): Int
+
+    @Query("SELECT COUNT(*) FROM search_history")
+    suspend fun countSearchHistory(): Int
 }
