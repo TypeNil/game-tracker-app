@@ -99,7 +99,11 @@ class DefaultLibraryBackupRepositoryTest {
             coVerify(exactly = 0) { libraryDao.deleteAllLibraryEntries() }
             coVerify(exactly = 1) { gameDao.upsertGame(match { it.id == 3L }) }
             coVerify(exactly = 0) { gameDao.upsertGame(match { it.id == 2L }) }
-            coVerify { libraryDao.upsertLibraryEntry(match { it.gameId == 2L && it.status == LibraryStatus.COMPLETED && it.userRating == 8 }) }
+            coVerify {
+                libraryDao.upsertLibraryEntry(
+                    match { it.gameId == 2L && it.status == LibraryStatus.COMPLETED && it.userRating == 8 },
+                )
+            }
             coVerify { libraryDao.upsertLibraryEntry(match { it.gameId == 3L && it.status == LibraryStatus.WISHLIST }) }
         }
 

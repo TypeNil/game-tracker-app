@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.theme.GameTrackerTheme
 import io.github.typenil.gametracker.core.model.ThemeMode
+import io.github.typenil.gametracker.core.data.backup.LibraryImportPreview
 import dagger.hilt.android.EntryPointAccessors
 import io.github.typenil.gametracker.core.network.DebugBffUrlStore
 import io.github.typenil.gametracker.core.network.DebugNetworkGraphEntryPoint
@@ -86,6 +87,38 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText(dark).performClick()
         composeTestRule.runOnIdle { assertEquals(ThemeMode.DARK, selected) }
     }
+
+    @Test
+    fun dataSection_isVisible() {
+        setContent()
+
+        val title = composeTestRule.activity.getString(R.string.settings_data_title)
+        composeTestRule.onNodeWithText(title).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun importPreviewDialog_showsCounts() {
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    importPreview = LibraryImportPreview(
+                        foundCount = 3,
+                        newCount = 1,
+                        conflictCount = 2,
+                    ),
+                )
+            }
+        }
+
+        val found = composeTestRule.activity.getString(R.string.settings_import_preview_found, 3)
+        composeTestRule.onNodeWithText(found).assertIsDisplayed()
+    }
+
 
 
     @Test
