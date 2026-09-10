@@ -7,6 +7,10 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.typenil.gametracker.core.data.backup.ContentResolverDocumentBytesStore
+import io.github.typenil.gametracker.core.data.backup.DefaultLibraryBackupRepository
+import io.github.typenil.gametracker.core.data.backup.DocumentBytesStore
+import io.github.typenil.gametracker.core.data.backup.LibraryBackupRepository
 import io.github.typenil.gametracker.core.data.preferences.DataStoreUserPreferencesRepository
 import io.github.typenil.gametracker.core.data.repository.UserPreferencesRepository
 import dagger.Module
@@ -56,4 +60,17 @@ abstract class DataModule {
     abstract fun bindUserPreferencesRepository(
         impl: DataStoreUserPreferencesRepository,
     ): UserPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLibraryBackupRepository(
+        impl: DefaultLibraryBackupRepository,
+    ): LibraryBackupRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDocumentBytesStore(
+        impl: ContentResolverDocumentBytesStore,
+    ): DocumentBytesStore
+
 }
