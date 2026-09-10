@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release notifications are an explicit per-game choice rather than a side effect of library status: an **Release notifications** switch in the library edit sheet, an enabled marker on Game Details, and a background check that only inspects entries you enabled. Room schema v7 backfills `WISHLIST`/`PLAYING`/`COMPLETED` (including legacy `PLAN_TO_PLAY` rows), so reminders you already relied on carry over; newly added games start opted out and delivery stays best-effort.
 - For You contextual onboarding stores favorite genres/platforms in DataStore as decaying cold-start signals. Tune later from For You or Settings; library taste outranks onboarding prefs as it grows. **Use library only** clears those signals so ranking uses the library alone.
 - Library Insights is a nested Library screen (chart icon in the TopAppBar): counts, hours, average rating, completion, most played, taste, and platforms. Not a Profile tab.
+- Developer tools in debug builds only (Settings → **Developer tools**, or `gamertracker://dev/{state,seed,wipe}` from `adb`): a state panel with copy-to-clipboard, deterministic seed presets (`REALISTIC`, `COVERAGE`, `EDGE`, `STRESS`, `NOTIFICATIONS`) written through the same path as a real library Import, and selective clears for the library, search history and the notification ledger. The screen and its Activity live in `app/src/debug`, the release entry point is a no-op, and `verifyReleaseArtifacts` proves both release APKs are free of the component.
 
 ### Changed
 - Search is a top-level destination in bottom navigation (`Discover | Search | Library`). Query, filters, paging results, and scroll restore across tab switches; re-tapping Search focuses the field and scrolls to top.
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Library export now rejects payloads over the 8 MiB import cap instead of writing a backup the app cannot re-import.
 - Search and Discover bottom-nav re-taps survive Activity recreation: the trigger counters now use the same saveable lifetime as the screens that consume them.
 - Loading skeletons on Search, Discover, Library, Details, and Insights now share the loaded cards' chrome and major slots so content does not jump in.
+- The demo flavor seeds its starter library once per install instead of whenever the library is empty, so deleting every game — or clearing the library from the developer tools — no longer brings the curated entries back. Installations that predate the marker are recognised and never repopulated, including when their library is already empty.
 
 ---
 
