@@ -500,9 +500,11 @@ internal fun EditLibrarySheetContent(
                         hoursPlayed = hours,
                         userNotes = notes.trim().ifEmpty { null },
                         isFavorite = isFavorite,
-                        // Once the release has happened the control is hidden, so a lingering
-                        // local value must not be written back as an active subscription.
-                        releaseNotificationsEnabled = notifyOnRelease && isReleasePending,
+                        // A hidden control must not mutate the field it cannot show: the release
+                        // date here can come from a preview, and revoking intent on a stale
+                        // "already released" date would drop a live reminder irrecoverably. A
+                        // confirmed release is cleared by the worker after its own refresh.
+                        releaseNotificationsEnabled = notifyOnRelease,
                     ),
                 )
             },

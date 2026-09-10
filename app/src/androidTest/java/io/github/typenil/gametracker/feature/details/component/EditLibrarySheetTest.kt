@@ -543,7 +543,7 @@ class EditLibrarySheetTest {
     }
 
     @Test
-    fun releaseNotifications_savingReleasedEntryWithStaleFlag_clearsIntent() {
+    fun releaseNotifications_savingReleasedEntry_keepsStoredIntentForTheWorkerToClear() {
         var savedNotify: Boolean? = null
 
         composeTestRule.setContent {
@@ -555,7 +555,6 @@ class EditLibrarySheetTest {
                             status = LibraryStatus.COMPLETED,
                             addedAtEpochSeconds = 1L,
                             updatedAtEpochSeconds = 1L,
-                            // Stale: the game shipped long ago, so this cannot deliver anything.
                             releaseNotificationsEnabled = true,
                         ),
                         onDismiss = {},
@@ -574,8 +573,10 @@ class EditLibrarySheetTest {
         val saveText = composeTestRule.activity.getString(R.string.library_save)
         composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
 
-        // Saving another field must not re-persist a subscription the user can no longer see.
-        assertEquals(false, savedNotify)
+        // The control is hidden, so saving must not mutate it in either direction - least of all
+        // revoke a subscription based on a date that may be stale. The worker clears a confirmed
+        // release after its own refresh (ReleaseNotificationWorkerTest).
+        assertEquals(true, savedNotify)
     }
 
     @Test
