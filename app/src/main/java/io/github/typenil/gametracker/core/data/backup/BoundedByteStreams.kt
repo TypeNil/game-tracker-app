@@ -21,3 +21,10 @@ internal fun InputStream.readAtMost(maxBytes: Int): ByteArray {
     }
     return output.toByteArray()
 }
+
+internal fun ByteArray.ensureFitsBackupLimit(maxBytes: Int = MAX_BACKUP_BYTES): ByteArray {
+    if (size > maxBytes) {
+        throw IOException(LibraryBackupError.TOO_LARGE.name)
+    }
+    return this
+}

@@ -5,6 +5,7 @@ import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.transaction.TransactionRunner
+import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
 import io.github.typenil.gametracker.core.model.Game
 import io.github.typenil.gametracker.core.model.LibraryEntry
@@ -15,6 +16,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -54,6 +56,34 @@ class DefaultLibraryBackupRepositoryTest {
             (parsed as LibraryBackupParseResult.Success).file,
         )
         coVerify(exactly = 0) { gameDao.getGamesByIds(any()) }
+    }
+
+    @Test
+    fun exportLibrary_success_payloadPassesImportSizeGate() = runTest(testDispatcher) {
+        coEvery { libraryDao.getAllLibraryEntries() } returns emptyList()
+        coEvery { gameDao.getGamesReferencedByLibrary() } returns emptyList()
+
+        val result = repository.exportLibrary()
+
+        assertTrue(result is AppResult.Success)
+        val bytes = (result as AppResult.Success).data
+        assertTrue(bytes.size <= MAX_BACKUP_BYTES)
+        assertArrayEquals(bytes, java.io.ByteArrayInputStream(bytes).readAtMost(MAX_BACKUP_BYTES))
+    }
+
+    @Test
+    fun exportLibrary_oversizedSummary_failsTooLargeWithoutSuccess() = runTest(testDispatcher) {
+        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(entryEntity(1L))
+        coEvery { gameDao.getGamesReferencedByLibrary() } returns listOf(
+            gameEntity(1L, "Huge", summary = "x".repeat(MAX_BACKUP_BYTES)),
+        )
+
+        val result = repository.exportLibrary()
+
+        assertTrue(result is AppResult.Error)
+        val cause = ((result as AppResult.Error).error as AppError.UnknownError).cause
+        assertTrue(cause is java.io.IOException)
+        assertEquals(LibraryBackupError.TOO_LARGE.name, cause?.message)
     }
 
     @Test
@@ -189,13 +219,17 @@ class DefaultLibraryBackupRepositoryTest {
         updatedAtEpochSeconds = 20L,
     )
 
-    private fun gameEntity(id: Long, name: String) = GameEntity(
+    private fun gameEntity(
+        id: Long,
+        name: String,
+        summary: String? = null,
+    ) = GameEntity(
         id = id,
         name = name,
         coverUrl = null,
         rating = null,
         releaseDateEpochSeconds = null,
-        summary = null,
+        summary = summary,
         genres = emptyList(),
         platforms = emptyList(),
         cachedAtEpochSeconds = 1L,

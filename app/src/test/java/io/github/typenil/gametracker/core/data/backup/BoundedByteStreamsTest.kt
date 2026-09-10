@@ -24,4 +24,19 @@ class BoundedByteStreamsTest {
         }
         assertEquals(LibraryBackupError.TOO_LARGE.name, error.message)
     }
+
+    @Test
+    fun ensureFitsBackupLimit_returnsSameArrayAtCap() {
+        val payload = ByteArray(4) { 1 }
+        assertArrayEquals(payload, payload.ensureFitsBackupLimit(maxBytes = 4))
+    }
+
+    @Test
+    fun ensureFitsBackupLimit_rejectsAboveCap() {
+        val payload = ByteArray(5) { 1 }
+        val error = assertThrows(IOException::class.java) {
+            payload.ensureFitsBackupLimit(maxBytes = 4)
+        }
+        assertEquals(LibraryBackupError.TOO_LARGE.name, error.message)
+    }
 }
