@@ -136,7 +136,7 @@ private const val SHEET_MAX_HEIGHT_FRACTION = 0.94f
 const val EDIT_LIBRARY_RATING_BAR_TEST_TAG = "edit_library_rating_bar"
 const val EDIT_LIBRARY_SHEET_HEADER_TEST_TAG = "edit_library_sheet_header"
 const val EDIT_LIBRARY_NOTES_INPUT_TEST_TAG = "edit_library_notes_input"
-const val EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG = "edit_library_release_notifications"
+const val EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG = "edit_library_release_notifications"
 
 private fun Modifier.maxHeightFraction(fraction: Float): Modifier =
     this.then(
@@ -1010,7 +1010,7 @@ private fun ReleaseNotificationSection(
     OutlinedCard(
         modifier = modifier
             .fillMaxWidth()
-            .testTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .testTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             // The row is the single accessible toggle target; the nested Switch is decorative
             // so assistive tech does not expose two competing controls for one value.
             .toggleable(
@@ -1262,6 +1262,7 @@ private fun EditLibrarySheetContentExistingPreview() {
                     hoursPlayed = 42,
                     addedAtEpochSeconds = 1700000000L,
                     updatedAtEpochSeconds = 1700000000L,
+                    releaseNotificationsEnabled = true,
                 ),
                 onDismiss = {},
                 onSave = { },

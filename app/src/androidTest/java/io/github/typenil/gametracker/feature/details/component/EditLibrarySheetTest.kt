@@ -430,19 +430,46 @@ class EditLibrarySheetTest {
         }
 
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .assertIsOff()
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .performClick()
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .assertIsOn()
 
         val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
         composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
 
         assertEquals(true, savedNotify)
+    }
+
+    @Test
+    fun releaseNotifications_savingUntouchedNewEntry_keepsIntentOff() {
+        var savedNotify: Boolean? = null
+
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                Surface {
+                    EditLibrarySheetContent(
+                        initialEntry = null,
+                        onDismiss = {},
+                        onSave = { savedNotify = it.releaseNotificationsEnabled },
+                        onDeleteClick = null,
+                    )
+                }
+            }
+        }
+
+        composeTestRule
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
+            .assertIsOff()
+
+        val saveText = composeTestRule.activity.getString(R.string.library_add_to_library)
+        composeTestRule.onNode(hasText(saveText) and hasClickAction()).performClick()
+
+        assertEquals(false, savedNotify)
     }
 
     @Test
@@ -469,7 +496,7 @@ class EditLibrarySheetTest {
         }
 
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .assertIsOn()
 
         val saveText = composeTestRule.activity.getString(R.string.library_save)
@@ -501,7 +528,7 @@ class EditLibrarySheetTest {
         val hint = composeTestRule.activity.getString(
             R.string.library_release_notifications_permission_hint,
         )
-        val toggle = composeTestRule.onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+        val toggle = composeTestRule.onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
 
         composeTestRule.onNodeWithText(hint).assertDoesNotExist()
 
@@ -540,14 +567,14 @@ class EditLibrarySheetTest {
         }
 
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .performClick()
 
         restorationTester.emulateSavedInstanceStateRestore()
         composeTestRule.waitForIdle()
 
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .assertIsOn()
     }
 
@@ -577,14 +604,14 @@ class EditLibrarySheetTest {
         }
 
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .assertIsOn()
 
         entry = entry.copy(gameId = 2L, releaseNotificationsEnabled = false)
         composeTestRule.waitForIdle()
 
         composeTestRule
-            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_TEST_TAG)
+            .onNodeWithTag(EDIT_LIBRARY_RELEASE_NOTIFICATIONS_SWITCH_TEST_TAG)
             .assertIsOff()
     }
 }

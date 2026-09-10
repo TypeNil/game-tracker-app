@@ -344,7 +344,12 @@ class DefaultLibraryRepositoryTest {
         assertTrue(result is AppResult.Success)
         coVerify {
             libraryDao.upsertLibraryEntry(
-                match { it.gameId == 10L && it.status == LibraryStatus.WISHLIST }
+                match {
+                    it.gameId == 10L &&
+                        it.status == LibraryStatus.WISHLIST &&
+                        // Changing status is not a notification subscription.
+                        !it.releaseNotificationsEnabled
+                }
             )
         }
     }

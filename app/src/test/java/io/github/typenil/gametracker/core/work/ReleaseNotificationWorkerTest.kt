@@ -116,6 +116,7 @@ class ReleaseNotificationWorkerTest {
         // Library status neither grants nor revokes eligibility: the explicit intent is authoritative.
         assertEquals(Result.success(), result)
         coVerify(exactly = 1) { releaseNotifier.postReleaseNotification(any()) }
+        coVerify(exactly = 1) { notificationEventDao.upsertEvent(any()) }
     }
 
     @Test
