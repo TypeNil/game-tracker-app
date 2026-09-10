@@ -16,7 +16,6 @@ import io.github.typenil.gametracker.core.database.dao.NotificationEventDao
 import io.github.typenil.gametracker.core.database.entity.NotificationEventEntity
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
-import io.github.typenil.gametracker.core.model.LibraryStatus
 import io.github.typenil.gametracker.core.model.ReleaseEvent
 import io.github.typenil.gametracker.core.notification.ReleaseNotifier
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,7 +25,8 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 
 /**
- * Background worker checking release dates for user-tracked library games and posting local notifications.
+ * Background worker checking release dates for library entries the user explicitly
+ * enabled release notifications for, and posting local notifications.
  */
 @HiltWorker
 class ReleaseNotificationWorker @AssistedInject constructor(
@@ -50,8 +50,7 @@ class ReleaseNotificationWorker @AssistedInject constructor(
         val retentionThreshold = nowEpochSeconds - RETENTION_DAYS * SECONDS_PER_DAY
         notificationEventDao.deleteOldEvents(retentionThreshold)
 
-        val allEntries = libraryDao.getAllLibraryEntries()
-        val trackedEntries = allEntries.filter { isTrackedStatus(it.status) }
+        val trackedEntries = libraryDao.getEntriesWithReleaseNotificationsEnabled()
         if (trackedEntries.isEmpty()) return@withContext Result.success()
 
         var hasRetryableError = false
@@ -134,12 +133,6 @@ class ReleaseNotificationWorker @AssistedInject constructor(
                 }
             }
         }
-    }
-
-    private fun isTrackedStatus(status: LibraryStatus): Boolean {
-        return status == LibraryStatus.WISHLIST ||
-            status == LibraryStatus.PLAYING ||
-            status == LibraryStatus.COMPLETED
     }
 
     private fun isRetryableError(error: AppError): Boolean {

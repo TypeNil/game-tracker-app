@@ -63,12 +63,17 @@ class ReleaseNotificationWorkerTest {
         )
     }
 
-    private fun createLibraryEntry(gameId: Long, status: LibraryStatus): LibraryEntryEntity {
+    private fun createLibraryEntry(
+        gameId: Long,
+        status: LibraryStatus,
+        releaseNotificationsEnabled: Boolean = true,
+    ): LibraryEntryEntity {
         return LibraryEntryEntity(
             gameId = gameId,
             status = status,
             addedAtEpochSeconds = 1000L,
-            updatedAtEpochSeconds = 1000L
+            updatedAtEpochSeconds = 1000L,
+            releaseNotificationsEnabled = releaseNotificationsEnabled,
         )
     }
 
@@ -87,8 +92,8 @@ class ReleaseNotificationWorkerTest {
     }
 
     @Test
-    fun doWork_whenLibraryIsEmpty_returnsSuccessAndDoesNotFetch_butCleansUpOldEvents() = runTest(testDispatcher) {
-        coEvery { libraryDao.getAllLibraryEntries() } returns emptyList()
+    fun doWork_whenNoEntryEnabledNotifications_returnsSuccessAndDoesNotFetch_butCleansUpOldEvents() = runTest(testDispatcher) {
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns emptyList()
 
         val result = worker.doWork()
 
@@ -97,23 +102,26 @@ class ReleaseNotificationWorkerTest {
         coVerify(exactly = 1) { notificationEventDao.deleteOldEvents(any()) }
     }
     @Test
-    fun doWork_filtersOutDroppedAndNotInterestedStatuses() = runTest(testDispatcher) {
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
-            createLibraryEntry(1L, LibraryStatus.DROPPED),
-            createLibraryEntry(2L, LibraryStatus.NOT_INTERESTED)
+    fun doWork_whenEnabledEntryIsNotInterested_stillNotifies() = runTest(testDispatcher) {
+        val todayEpoch = Instant.now().epochSecond
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
+            createLibraryEntry(10L, LibraryStatus.NOT_INTERESTED)
         )
+        coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
+        coEvery { gameDetailsDao.getGameDetails(10L) } returns null
+        coEvery { gameRepository.refreshGameDetails(10L, force = true) } returns AppResult.Success(Unit)
 
         val result = worker.doWork()
 
+        // Library status neither grants nor revokes eligibility: the explicit intent is authoritative.
         assertEquals(Result.success(), result)
-        coVerify(exactly = 0) { gameRepository.refreshGameDetails(any(), any()) }
-        coVerify(exactly = 0) { releaseNotifier.postReleaseNotification(any()) }
+        coVerify(exactly = 1) { releaseNotifier.postReleaseNotification(any()) }
     }
 
     @Test
     fun doWork_whenTrackedGameReleasesToday_notifiesAndRecordsEvent() = runTest(testDispatcher) {
         val todayEpoch = Instant.now().epochSecond
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
@@ -130,7 +138,7 @@ class ReleaseNotificationWorkerTest {
     @Test
     fun doWork_whenEventAlreadyRecorded_doesNotNotifyAgain() = runTest(testDispatcher) {
         val todayEpoch = Instant.now().epochSecond
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
@@ -148,7 +156,7 @@ class ReleaseNotificationWorkerTest {
 
     @Test
     fun doWork_whenHttp4xxClientErrorOccurs_doesNotRetry() = runTest(testDispatcher) {
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
@@ -165,7 +173,7 @@ class ReleaseNotificationWorkerTest {
 
     @Test
     fun doWork_whenSerializationErrorOccurs_doesNotRetry() = runTest(testDispatcher) {
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
@@ -183,7 +191,7 @@ class ReleaseNotificationWorkerTest {
     @Test
     fun doWork_whenNetworkErrorOccurs_retriesUnderMaxAttemptLimit() = runTest(testDispatcher) {
         every { workerParams.runAttemptCount } returns 1
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
@@ -200,7 +208,7 @@ class ReleaseNotificationWorkerTest {
     @Test
     fun doWork_whenNetworkErrorOccurs_failsWhenMaxAttemptsExceeded() = runTest(testDispatcher) {
         every { workerParams.runAttemptCount } returns 3
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
@@ -217,7 +225,7 @@ class ReleaseNotificationWorkerTest {
     @Test
     fun doWork_whenHttp5xxServerErrorOccurs_retriesUnderMaxAttemptLimit() = runTest(testDispatcher) {
         every { workerParams.runAttemptCount } returns 1
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
@@ -235,7 +243,7 @@ class ReleaseNotificationWorkerTest {
     fun doWork_whenNotificationPermissionDenied_doesNotCrashAndDoesNotRecordEvent() = runTest(testDispatcher) {
         val todayEpoch = Instant.now().epochSecond
         every { releaseNotifier.postReleaseNotification(any()) } returns false
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
@@ -251,7 +259,7 @@ class ReleaseNotificationWorkerTest {
 
     @Test
     fun doWork_cleansUpOldNotificationEvents() = runTest(testDispatcher) {
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, null)
@@ -270,7 +278,7 @@ class ReleaseNotificationWorkerTest {
         val recordedEvents = mutableSetOf<String>()
         val gate = CompletableDeferred<Unit>()
 
-        coEvery { libraryDao.getAllLibraryEntries() } returns listOf(
+        coEvery { libraryDao.getEntriesWithReleaseNotificationsEnabled() } returns listOf(
             createLibraryEntry(10L, LibraryStatus.WISHLIST)
         )
         coEvery { gameDao.getGameById(10L) } returns createGame(10L, todayEpoch)
