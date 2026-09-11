@@ -15,7 +15,11 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -47,6 +51,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Instant
+import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
 class GameDetailsScreenTest {
@@ -137,19 +142,51 @@ class GameDetailsScreenTest {
         }
     }
 
+    /**
+     * Bounds are measured per node, so two nodes the layout placed with the same arithmetic agree only up
+     * to the pixel grid: at 420 dpi a card sharing a row lands half a pixel (0.19 dp) away from
+     * `sibling + gap`, and converting each measured edge to dp adds float noise on top. Exact equality
+     * held only on devices whose density divides the layout evenly, so these assertions passed in CI and
+     * failed on phones. Compare within a sub-dp tolerance instead: the claim is that the layout shares the
+     * row, not that the float arithmetic is bit-identical.
+     */
+    private fun assertBoundsClose(expected: Dp, actual: Dp, what: String) {
+        val tolerance = 1.dp
+        assertTrue(
+            "$what: expected $actual within $tolerance of $expected",
+            abs((expected - actual).value) <= tolerance.value,
+        )
+    }
+
     @Test
     fun hydratedContentRendersAllSections() {
         setContent(GameDetailsUiState(game = compactDetails, isHydrated = true))
 
         // The title exists both in the TopAppBar and the header - assert one of them
         composeTestRule.onAllNodesWithText("The Witcher 3: Wild Hunt")[0].assertIsDisplayed()
-        composeTestRule.onNodeWithText("5451 votes").assertIsDisplayed()
-        val companies = composeTestRule.activity.getString(
-            R.string.details_developed_by_format, "CD Projekt RED"
+        assertSectionDisplayed(
+            composeTestRule.activity.getString(R.string.details_votes_count_format, 5451L),
         )
-        composeTestRule.onNodeWithText(companies).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Red Dead Redemption 2").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Shooter").assertIsDisplayed()
+        assertSectionDisplayed(
+            composeTestRule.activity.getString(R.string.details_developed_by_format, "CD Projekt RED"),
+        )
+        assertSectionDisplayed("Red Dead Redemption 2")
+        assertSectionDisplayed("Shooter")
+    }
+
+    /**
+     * Scrolls the details list to [text] before asserting it is displayed.
+     *
+     * Two device facts are not the subject of this test. The vote count is a formatted resource, so its
+     * text differs per locale - the English literal matched on an English emulator and never matched on a
+     * Russian device. And the screen is a LazyColumn: a section below the fold is not composed until it is
+     * scrolled into range, and a 360x804dp window (raised display size) leaves several sections there.
+     * Asserting that the screen renders every section therefore means scrolling to each one first.
+     */
+    private fun assertSectionDisplayed(text: String) {
+        composeTestRule.onAllNodes(hasScrollToIndexAction()).onFirst()
+            .performScrollToNode(hasText(text))
+        composeTestRule.onNodeWithText(text).assertIsDisplayed()
     }
 
     @Test
@@ -226,8 +263,8 @@ class GameDetailsScreenTest {
             .getUnclippedBoundsInRoot()
             .run { bottom - top }
 
-        assertEquals(releaseHeight, modesHeight)
-        assertEquals(platformsHeight, timeHeight)
+        assertBoundsClose(releaseHeight, modesHeight, "release and modes card heights")
+        assertBoundsClose(platformsHeight, timeHeight, "platforms and time card heights")
     }
 
     @Test
@@ -471,8 +508,16 @@ class GameDetailsScreenTest {
             .onNodeWithContentDescription(page1Text)
             .getUnclippedBoundsInRoot()
 
-        assertEquals(dialogRootBounds.right - dialogRootBounds.left, imageBounds.right - imageBounds.left)
-        assertEquals(dialogRootBounds.bottom - dialogRootBounds.top, imageBounds.bottom - imageBounds.top)
+        assertBoundsClose(
+            dialogRootBounds.right - dialogRootBounds.left,
+            imageBounds.right - imageBounds.left,
+            "viewer image width against the dialog viewport",
+        )
+        assertBoundsClose(
+            dialogRootBounds.bottom - dialogRootBounds.top,
+            imageBounds.bottom - imageBounds.top,
+            "viewer image height against the dialog viewport",
+        )
     }
 
     @Test
@@ -579,9 +624,10 @@ class GameDetailsScreenTest {
             .onNodeWithTag("details-fact-card-platforms")
             .getUnclippedBoundsInRoot().run { right - left }
 
-        assertEquals(
+        assertBoundsClose(
             releaseWidth + modesWidth + 12.dp,
-            platformsWidth
+            platformsWidth,
+            "leftover fact card spans the row",
         )
     }
 
@@ -601,7 +647,7 @@ class GameDetailsScreenTest {
             .onNodeWithTag("details-fact-card-modes")
             .getUnclippedBoundsInRoot()
             .run { right - left }
-        assertEquals(releaseWidth, modesWidth)
+        assertBoundsClose(releaseWidth, modesWidth, "two fact cards share the row equally")
     }
 
     @Test
