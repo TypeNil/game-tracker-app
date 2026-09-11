@@ -65,8 +65,8 @@ class DevToolsViewModelTest {
 
     private fun diagnostics() = DevDiagnostics(
         applicationId = "io.github.typenil.gametracker.demo.debug",
-        versionName = "1.0.2-demo",
-        versionCode = 3,
+        versionName = "1.0.3-demo",
+        versionCode = 4,
         flavor = "demo",
         buildType = "debug",
         roomSchemaVersion = 7,
