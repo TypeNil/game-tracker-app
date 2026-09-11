@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Search is a top-level destination in bottom navigation (`Discover | Search | Library`). Query, filters, paging results, and scroll restore across tab switches; re-tapping Search focuses the field and scrolls to top.
 - Settings actions are uniform: every button spans its card with a centred label, and the IGDB attribution is a card like every other section instead of sitting one gutter further left than the content above it.
+- Settings was rebuilt on the app's section vocabulary: `SectionCard`/`SectionTitle` now live in the design system (the Library Insights screen uses them too instead of its own copy), section headings are exposed as headings, and every section shares one container role, shape and 12dp rhythm. Actions that navigate are rows with a leading icon and a trailing affordance — a chevron in-app, `OpenInNew` for the two external links — while commands stay buttons, so nine identical full-width buttons no longer hide what each one does. App information and the IGDB attribution merged into one card, and the Russian card title no longer duplicates the screen title («О приложении» appeared twice).
 
 
 ### Fixed
