@@ -106,4 +106,68 @@ class SettingsScreenNotificationTest {
         val actionWidth = actionBounds.right - actionBounds.left
         assertTrue("Action '$actionText' looks crushed: $actionBounds", actionWidth > 100.dp)
     }
+
+    /**
+     * The converted action rows put a leading icon, a wrapping label and a trailing affordance on one
+     * line. At the width and font scale this repository already treats as a boundary, the label must stay
+     * inside its row and leave the affordance its slot: a single-line cap or a fixed row height would
+     * clip the two long Russian labels instead.
+     */
+    @Test
+    fun settingsScreen_russianLocale_narrowWidth_actionRowsKeepTheirLabelInside() {
+        val activity = composeTestRule.activity
+        val configuration = Configuration(activity.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag("ru-RU"))
+        }
+        val localizedContext = activity.createConfigurationContext(configuration)
+        composeTestRule.setContent {
+            val density = Density(
+                density = LocalDensity.current.density,
+                fontScale = 1.3f,
+            )
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalConfiguration provides configuration,
+                LocalDensity provides density,
+            ) {
+                GameTrackerTheme {
+                    Box(modifier = Modifier.width(320.dp)) {
+                        SettingsScreen(
+                            hasNotificationPermission = true,
+                            onRequestPermission = {},
+                            onManageNotifications = {},
+                            onBackClick = {},
+                            onOpenIgdb = {},
+                            isDevToolsAvailable = true,
+                        )
+                    }
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        val labels = listOf(
+            R.string.settings_notifications_manage,
+            R.string.discover_tune_recommendations,
+            R.string.settings_devtools_open,
+            R.string.settings_github_link,
+            R.string.settings_igdb_link,
+        ).map(localizedContext::getString)
+
+        labels.forEach { label ->
+            composeTestRule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+            val row = composeTestRule.onNodeWithText(label).getUnclippedBoundsInRoot()
+            val text = composeTestRule.onNodeWithText(label, useUnmergedTree = true)
+                .getUnclippedBoundsInRoot()
+            assertTrue(
+                "'$label' escapes its row: label=$text row=$row",
+                text.left >= row.left && text.right <= row.right &&
+                    text.top >= row.top && text.bottom <= row.bottom,
+            )
+            assertTrue(
+                "'$label' reaches the trailing affordance: label=$text row=$row",
+                row.right - text.right >= 24.dp,
+            )
+        }
+    }
 }

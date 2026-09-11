@@ -22,4 +22,10 @@ interface NotificationEventDao {
 
     @Query("DELETE FROM notification_events WHERE notifiedAtEpochSeconds < :thresholdEpochSeconds")
     suspend fun deleteOldEvents(thresholdEpochSeconds: Long): Int
+
+    @Query("SELECT COUNT(*) FROM notification_events")
+    suspend fun countEvents(): Int
+
+    @Query("DELETE FROM notification_events")
+    suspend fun clearAllEvents(): Int
 }

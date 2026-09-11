@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="devtools_title">Developer tools</string>
+    <string name="devtools_intro">Debug-only data lab. Every action here is also reachable from adb.</string>
+    <string name="devtools_busy">Working…</string>
+
+    <string name="devtools_diagnostics_title">State</string>
+    <string name="devtools_diagnostics_unavailable">Current state is unavailable.</string>
+    <string name="devtools_copy">Copy</string>
+
+    <string name="devtools_seed_title">Seed library</string>
+    <string name="devtools_seed_desc">Written through the production import path, so the result matches a real Import.</string>
+    <string name="devtools_preset_label">Preset</string>
+    <string name="devtools_count_label">Count</string>
+    <string name="devtools_seed_value_label">Random seed</string>
+    <string name="devtools_seed_action">Seed</string>
+    <string name="devtools_count_invalid">Enter a number between %1$d and %2$d</string>
+    <string name="devtools_seed_value_invalid">Enter a whole number</string>
+    <string name="devtools_mode_replace">replace</string>
+    <string name="devtools_mode_merge">merge</string>
+
+    <string name="devtools_wipe_title">Clear state</string>
+    <string name="devtools_wipe_desc">Each action reports the state it reached, read back from storage.</string>
+    <string name="devtools_wipe_all_note">Everything also clears user preferences and the debug BFF override. WorkManager state, already-posted notifications and the in-memory details cache survive.</string>
+
+    <string name="devtools_wipe_library">Library</string>
+    <string name="devtools_wipe_search_history">Search history</string>
+    <string name="devtools_wipe_ledger">Notification ledger</string>
+    <string name="devtools_wipe_all">Everything</string>
+
+    <string name="devtools_confirm_title">Clear %1$s?</string>
+    <string name="devtools_confirm_action">Clear</string>
+    <string name="devtools_cancel">Cancel</string>
+
+    <string name="devtools_result_seeded">Seeded %1$s: %2$d of %3$d entries (%4$s).</string>
+    <string name="devtools_result_seed_partial">Generated games have no catalog row, so opening them from the library shows a Details error.</string>
+    <string name="devtools_result_wiped">Cleared %1$s. Library %2$d, search history %3$d, ledger %4$d.</string>
+    <string name="devtools_result_failed">%1$s failed: %2$s</string>
+    <string name="devtools_result_rejected">Command rejected: %1$s</string>
+    <string name="devtools_copied">Copied to clipboard</string>
+    <string name="devtools_count_hint">Between %1$d and %2$d</string>
+    <string name="devtools_result_title">Last action</string>
+</resources>

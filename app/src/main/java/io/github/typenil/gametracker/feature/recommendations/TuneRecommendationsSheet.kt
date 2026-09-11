@@ -10,11 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
@@ -31,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -128,9 +132,7 @@ fun TuneRecommendationsSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 RecommendationPlatformFamily.entries.forEach { family ->
-                    val labelRes = PlatformFamily.entries
-                        .first { it.name == family.storageId }
-                        .labelRes
+                    val platform = family.toPlatformFamily()
                     FilterChip(
                         selected = family.storageId in selectedPlatforms,
                         onClick = {
@@ -140,7 +142,16 @@ fun TuneRecommendationsSheet(
                                 selectedPlatforms + family.storageId
                             }
                         },
-                        label = { Text(stringResource(labelRes)) },
+                        label = { Text(stringResource(platform.labelRes)) },
+                        // The chip slot supplies the icon colour, so the mark follows the selected and
+                        // unselected states on its own — the same icons the cards and Insights use.
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(platform.iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize),
+                            )
+                        },
                     )
                 }
             }
@@ -228,4 +239,17 @@ fun TuneRecommendationsSheet(
             }
         }
     }
+}
+
+/**
+ * Design-system family for a stored platform preference.
+ *
+ * An exhaustive `when` rather than a lookup by name: the two enums describe the same four platforms, and
+ * adding a fifth must fail the build here instead of throwing while a sheet is on screen.
+ */
+private fun RecommendationPlatformFamily.toPlatformFamily(): PlatformFamily = when (this) {
+    RecommendationPlatformFamily.PLAYSTATION -> PlatformFamily.PLAYSTATION
+    RecommendationPlatformFamily.XBOX -> PlatformFamily.XBOX
+    RecommendationPlatformFamily.NINTENDO -> PlatformFamily.NINTENDO
+    RecommendationPlatformFamily.PC -> PlatformFamily.PC
 }

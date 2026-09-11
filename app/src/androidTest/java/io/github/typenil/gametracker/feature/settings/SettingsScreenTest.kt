@@ -1,6 +1,12 @@
 package io.github.typenil.gametracker.feature.settings
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -55,7 +61,8 @@ class SettingsScreenTest {
     fun attributionCopy_isVisible() {
         setContent()
 
-        composeTestRule.onNodeWithText("Game data provided by IGDB").performScrollTo().assertIsDisplayed()
+        val attribution = composeTestRule.activity.getString(R.string.settings_igdb_attribution)
+        composeTestRule.onNodeWithText(attribution).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -433,6 +440,104 @@ class SettingsScreenTest {
         composeTestRule.runOnIdle {
             assertNull(graphStore().currentUrl())
         }
+    }
+
+    @Test
+    fun developerToolsRow_invokesCallback() {
+        var opened = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    isDevToolsAvailable = true,
+                    onOpenDevTools = { opened = true },
+                )
+            }
+        }
+
+        val open = composeTestRule.activity.getString(R.string.settings_devtools_open)
+        composeTestRule.onNodeWithText(open).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle { assertTrue(opened) }
+    }
+
+    /**
+     * Tune recommendations is unavailable until the stored preferences have loaded. The row must say so:
+     * it is the one action whose enabled state is not a constant.
+     */
+    @Test
+    fun tuneRecommendationsRow_isDisabledUntilPreferencesLoad() {
+        var opened = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    recommendationPreferencesLoaded = false,
+                    onTuneRecommendations = { opened = true },
+                )
+            }
+        }
+
+        val tune = composeTestRule.activity.getString(R.string.discover_tune_recommendations)
+        composeTestRule.onNodeWithText(tune).performScrollTo().assertIsNotEnabled()
+
+        composeTestRule.runOnIdle { assertFalse(opened) }
+    }
+
+    @Test
+    fun tuneRecommendationsRow_invokesCallbackOncePreferencesLoaded() {
+        var opened = false
+        composeTestRule.setContent {
+            GameTrackerTheme {
+                SettingsScreen(
+                    hasNotificationPermission = false,
+                    onRequestPermission = {},
+                    onManageNotifications = {},
+                    onBackClick = {},
+                    onOpenIgdb = {},
+                    onTuneRecommendations = { opened = true },
+                )
+            }
+        }
+
+        val tune = composeTestRule.activity.getString(R.string.discover_tune_recommendations)
+        composeTestRule.onNodeWithText(tune).performScrollTo().performClick()
+
+        composeTestRule.runOnIdle { assertTrue(opened) }
+    }
+
+    /**
+     * Section headings are reachable with assistive technology by section rather than by control.
+     */
+    @Test
+    fun sectionTitles_areExposedAsHeadings() {
+        setContent()
+
+        val title = composeTestRule.activity.getString(R.string.settings_appearance_title)
+        composeTestRule.onNodeWithText(title, useUnmergedTree = true)
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    /**
+     * A row exposes exactly its label: the leading icon and the trailing affordance are decorative, so
+     * nothing extra is announced between the label and the action.
+     */
+    @Test
+    fun actionRows_announceOnlyTheirLabel() {
+        setContent()
+
+        val tune = composeTestRule.activity.getString(R.string.discover_tune_recommendations)
+        composeTestRule.onNodeWithText(tune)
+            .assertTextEquals(tune)
+            .assertHasClickAction()
     }
 
     private fun graphStore(): DebugBffUrlStore =

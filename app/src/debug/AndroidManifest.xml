@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Debug-only data lab, declared here so no release variant can compile it.
+
+            `exported` is what makes the documented `adb shell am start` workflow possible: the shell
+            runs as a different UID, and `exported="false"` would permit only the same UID or a
+            privileged system component. The consequence is that any app installed on a device with a
+            debug build can also reach these commands; the payload is this app's own disposable debug
+            data, and the release artifacts are verified to contain neither this component nor its
+            filter. `gamertracker://dev` uses a different host from main's `gamertracker://game`, which
+            keeps filter resolution unambiguous — it is not a caller restriction.
+
+            No user-visible permission can improve this: the shell grant for a candidate such as
+            android.permission.DUMP is image-dependent, and gating the primary developer workflow on
+            an unverified grant is the worse trade.
+        -->
+        <activity
+            android:name=".devtools.DevToolsActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/devtools_title"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.GameTracker">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="dev"
+                    android:scheme="gamertracker" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

@@ -13,15 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release notifications are an explicit per-game choice rather than a side effect of library status: an **Release notifications** switch in the library edit sheet, an enabled marker on Game Details, and a background check that only inspects entries you enabled. Room schema v7 backfills `WISHLIST`/`PLAYING`/`COMPLETED` (including legacy `PLAN_TO_PLAY` rows), so reminders you already relied on carry over; newly added games start opted out and delivery stays best-effort.
 - For You contextual onboarding stores favorite genres/platforms in DataStore as decaying cold-start signals. Tune later from For You or Settings; library taste outranks onboarding prefs as it grows. **Use library only** clears those signals so ranking uses the library alone.
 - Library Insights is a nested Library screen (chart icon in the TopAppBar): counts, hours, average rating, completion, most played, taste, and platforms. Not a Profile tab.
+- Developer tools in debug builds only (Settings → **Developer tools**, or `gamertracker://dev/{state,seed,wipe}` from `adb`): a state panel with copy-to-clipboard, deterministic seed presets (`REALISTIC`, `COVERAGE`, `EDGE`, `STRESS`, `NOTIFICATIONS`) written through the same path as a real library Import, and selective clears for the library, search history and the notification ledger. The screen and its Activity live in `app/src/debug`, the release entry point is a no-op, and `verifyReleaseArtifacts` proves both release APKs are free of the component.
 
 ### Changed
 - Search is a top-level destination in bottom navigation (`Discover | Search | Library`). Query, filters, paging results, and scroll restore across tab switches; re-tapping Search focuses the field and scrolls to top.
+- Settings actions are uniform: every button spans its card with a centred label, and the IGDB attribution is a card like every other section instead of sitting one gutter further left than the content above it.
+- Settings was rebuilt on the app's section vocabulary: `SectionCard`/`SectionTitle` now live in the design system (the Library Insights screen uses them too instead of its own copy), section headings are exposed as headings, and every section shares one container role, shape and 12dp rhythm. Actions that navigate are rows with a leading icon and a trailing affordance — a chevron in-app, `OpenInNew` for the two external links — while commands stay buttons, so nine identical full-width buttons no longer hide what each one does. App information and the IGDB attribution merged into one card, and the Russian card title no longer duplicates the screen title («О приложении» appeared twice).
+- The tune-recommendations sheet marks each platform chip with the same platform icons the cards and Library Insights already use, so `PlayStation | Xbox | Nintendo Switch | PC` read as platforms before the label is read. The stored preference maps to the icon family through an exhaustive `when`, so adding a platform fails the build instead of the sheet.
 
 
 ### Fixed
 - Library export now rejects payloads over the 8 MiB import cap instead of writing a backup the app cannot re-import.
 - Search and Discover bottom-nav re-taps survive Activity recreation: the trigger counters now use the same saveable lifetime as the screens that consume them.
 - Loading skeletons on Search, Discover, Library, Details, and Insights now share the loaded cards' chrome and major slots so content does not jump in.
+- The demo flavor seeds its starter library once per install instead of whenever the library is empty, so deleting every game — or clearing the library from the developer tools — no longer brings the curated entries back. Installations that predate the marker are recognised and never repopulated, including when their library is already empty.
+- Clearing everything no longer leaves Discover showing nothing. Wiping the database left `DiscoverRailLoader` holding page offsets and `endReached` flags for rows that no longer existed, so the rails saw an empty cache and still never refetched. The full reset now relaunches the app, which is what that target promises.
 
 ---
 

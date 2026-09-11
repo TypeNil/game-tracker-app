@@ -10,6 +10,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import io.github.typenil.gametracker.core.designsystem.component.SectionCard
+import io.github.typenil.gametracker.core.designsystem.component.SectionTitle
 import androidx.compose.ui.text.font.FontWeight
 import io.github.typenil.gametracker.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
@@ -33,10 +46,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +81,7 @@ import io.github.typenil.gametracker.core.data.backup.LibraryImportPreview
 import io.github.typenil.gametracker.core.notification.NotificationIntents
 import io.github.typenil.gametracker.core.notification.rememberNotificationPermissionState
 import io.github.typenil.gametracker.core.work.ReleaseNotificationScheduler
+import io.github.typenil.gametracker.devtools.DevToolsEntry
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
 import io.github.typenil.gametracker.feature.recommendations.TuneRecommendationsSheet
@@ -100,6 +111,7 @@ fun SettingsRoute(
     importPreview: LibraryImportPreview? = null,
     onConfirmImport: (LibraryImportMode) -> Unit = {},
     onDismissImportPreview: () -> Unit = {},
+    onOpenDevTools: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var isTuneSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -210,6 +222,7 @@ fun SettingsRoute(
         },
         onConfirmImport = onConfirmImport,
         onDismissImportPreview = onDismissImportPreview,
+        onOpenDevTools = onOpenDevTools,
     )
     if (isTuneSheetOpen && recommendationPreferencesLoaded) {
         TuneRecommendationsSheet(
@@ -258,6 +271,8 @@ fun SettingsScreen(
     onImportLibrary: () -> Unit = {},
     onConfirmImport: (LibraryImportMode) -> Unit = {},
     onDismissImportPreview: () -> Unit = {},
+    isDevToolsAvailable: Boolean = DevToolsEntry.isAvailable,
+    onOpenDevTools: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -292,8 +307,13 @@ fun SettingsScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(GtDimens.Gutter),
-            verticalArrangement = Arrangement.spacedBy(GtDimens.Gutter)
+                .padding(
+                    start = GtDimens.Gutter,
+                    end = GtDimens.Gutter,
+                    top = GtDimens.Card,
+                    bottom = GtDimens.Empty,
+                ),
+            verticalArrangement = Arrangement.spacedBy(GtDimens.Card),
         ) {
             AppearanceSettingsCard(
                 themeMode = themeMode,
@@ -303,151 +323,19 @@ fun SettingsScreen(
                 onDynamicColorChange = onDynamicColorChange,
             )
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(GtDimens.Gutter),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = stringResource(R.string.settings_notifications_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_notifications_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            NotificationsSection(
+                hasNotificationPermission = hasNotificationPermission,
+                onRequestPermission = onRequestPermission,
+                onManageNotifications = onManageNotifications,
+                onSendTestNotification = onSendTestNotification,
+                isSendTestNotificationVisible = isSendTestNotificationVisible,
+                onCheckReleasesNow = onCheckReleasesNow,
+            )
 
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (hasNotificationPermission) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (hasNotificationPermission) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.error
-                                        }
-                                    )
-                            )
-                            Text(
-                                text = if (hasNotificationPermission) {
-                                    stringResource(R.string.settings_notifications_enabled)
-                                } else {
-                                    stringResource(R.string.settings_notifications_disabled)
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (hasNotificationPermission) {
-                                    MaterialTheme.colorScheme.onSurface
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                },
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    if (!hasNotificationPermission) {
-                        Button(
-                            onClick = onRequestPermission,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = stringResource(R.string.settings_notifications_enable))
-                        }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                onClick = onManageNotifications,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(text = stringResource(R.string.settings_notifications_manage))
-                            }
-                            if (DebugNotificationActions.isVisible && isSendTestNotificationVisible) {
-                                OutlinedButton(
-                                    onClick = onSendTestNotification,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = stringResource(R.string.settings_notifications_send_test))
-                                }
-                            }
-                            OutlinedButton(
-                                onClick = onCheckReleasesNow,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = stringResource(R.string.settings_notifications_check_now))
-                            }
-                        }
-                    }
-                }
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(GtDimens.Gutter),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = stringResource(R.string.settings_recommendations_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_recommendations_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = onTuneRecommendations,
-                        enabled = recommendationPreferencesLoaded,
-                    ) {
-                        Text(text = stringResource(R.string.discover_tune_recommendations))
-                    }
-                }
-            }
+            RecommendationsSection(
+                recommendationPreferencesLoaded = recommendationPreferencesLoaded,
+                onTuneRecommendations = onTuneRecommendations,
+            )
 
             DataSettingsCard(
                 backupBusy = backupBusy,
@@ -455,110 +343,24 @@ fun SettingsScreen(
                 onImportLibrary = onImportLibrary,
             )
 
+            if (DevToolsEntry.isAvailable && isDevToolsAvailable) {
+                DeveloperToolsSection(onOpenDevTools = onOpenDevTools)
+            }
 
             if (DebugBffUrlActions.isVisible && isDebugBffUrlVisible) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(GtDimens.Gutter),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = stringResource(R.string.settings_debug_bff_title),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_debug_bff_desc),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        OutlinedTextField(
-                            value = debugBffUrl,
-                            onValueChange = onDebugBffUrlChange,
-                            label = { Text(stringResource(R.string.settings_debug_bff_label)) },
-                            placeholder = { Text("http://10.0.2.2:8080") },
-                            isError = debugBffUrlError != null,
-                            supportingText = debugBffUrlError?.let { errorText ->
-                                { Text(text = errorText) }
-                            },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = onSaveDebugBffUrl,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(text = stringResource(R.string.settings_debug_bff_save))
-                            }
-                            OutlinedButton(
-                                onClick = onResetDebugBffUrl,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(text = stringResource(R.string.settings_debug_bff_reset))
-                            }
-                        }
-                    }
-                }
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                DebugBffSection(
+                    debugBffUrl = debugBffUrl,
+                    debugBffUrlError = debugBffUrlError,
+                    onDebugBffUrlChange = onDebugBffUrlChange,
+                    onSaveDebugBffUrl = onSaveDebugBffUrl,
+                    onResetDebugBffUrl = onResetDebugBffUrl,
                 )
-            ) {
-                Column(
-                    modifier = Modifier.padding(GtDimens.Gutter),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.settings_app_info_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_app_name),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.settings_app_version,
-                            BuildConfig.VERSION_NAME,
-                            BuildConfig.FLAVOR
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    TextButton(onClick = onOpenGitHub) {
-                        Text(text = stringResource(R.string.settings_github_link))
-                    }
-                }
             }
 
-            HorizontalDivider()
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_igdb_attribution),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                TextButton(onClick = onOpenIgdb) {
-                    Text(text = stringResource(R.string.settings_igdb_link))
-                }
-            }
+            AppInformationSection(
+                onOpenGitHub = onOpenGitHub,
+                onOpenIgdb = onOpenIgdb,
+            )
         }
     }
     importPreview?.let { preview ->
@@ -572,6 +374,325 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * One titled Settings section. Sections without a description (App information) pass none, and nothing
+ * is emitted for it: no empty text node, no phantom gap under the heading.
+ */
+@Composable
+private fun SettingsSection(
+    title: String,
+    description: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    SectionCard {
+        SectionTitle(text = title)
+        if (description != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.height(GtDimens.Card))
+        Column(
+            verticalArrangement = Arrangement.spacedBy(GtDimens.Card),
+            content = content,
+        )
+    }
+}
+
+/**
+ * A Settings action that takes the user somewhere, as opposed to a button that runs a command.
+ *
+ * [enabled] is not decoration: Tune recommendations is unavailable while the stored preferences are still
+ * loading, and a row that looks available would be a lying affordance.
+ *
+ * The label is weighted and never capped to one line, so a long translation grows the row instead of
+ * clipping it; both icons are decorative, and the label is what a screen reader announces.
+ */
+@Composable
+private fun SettingsActionRow(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    external: Boolean = false,
+) {
+    val labelColor = if (enabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
+    }
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = SettingsActionRowMinHeight)
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (enabled) MaterialTheme.colorScheme.primary else labelColor,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+                color = labelColor,
+            )
+            Icon(
+                imageVector = if (external) {
+                    Icons.Filled.OpenInNew
+                } else {
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight
+                },
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationsSection(
+    hasNotificationPermission: Boolean,
+    onRequestPermission: () -> Unit,
+    onManageNotifications: () -> Unit,
+    onSendTestNotification: () -> Unit,
+    isSendTestNotificationVisible: Boolean,
+    onCheckReleasesNow: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_notifications_title),
+        description = stringResource(R.string.settings_notifications_desc),
+    ) {
+        NotificationPermissionPill(hasNotificationPermission = hasNotificationPermission)
+
+        if (!hasNotificationPermission) {
+            Button(
+                onClick = onRequestPermission,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = stringResource(R.string.settings_notifications_enable))
+            }
+        } else {
+            SettingsActionRow(
+                icon = Icons.Default.Notifications,
+                label = stringResource(R.string.settings_notifications_manage),
+                onClick = onManageNotifications,
+            )
+            if (DebugNotificationActions.isVisible && isSendTestNotificationVisible) {
+                OutlinedButton(
+                    onClick = onSendTestNotification,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.settings_notifications_send_test))
+                }
+            }
+            OutlinedButton(
+                onClick = onCheckReleasesNow,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = stringResource(R.string.settings_notifications_check_now))
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionPill(hasNotificationPermission: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (hasNotificationPermission) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (hasNotificationPermission) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
+                    )
+            )
+            Text(
+                text = if (hasNotificationPermission) {
+                    stringResource(R.string.settings_notifications_enabled)
+                } else {
+                    stringResource(R.string.settings_notifications_disabled)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = if (hasNotificationPermission) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecommendationsSection(
+    recommendationPreferencesLoaded: Boolean,
+    onTuneRecommendations: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_recommendations_title),
+        description = stringResource(R.string.settings_recommendations_desc),
+    ) {
+        SettingsActionRow(
+            icon = Icons.Default.Tune,
+            label = stringResource(R.string.discover_tune_recommendations),
+            onClick = onTuneRecommendations,
+            enabled = recommendationPreferencesLoaded,
+        )
+    }
+}
+
+@Composable
+private fun DeveloperToolsSection(onOpenDevTools: () -> Unit) {
+    SettingsSection(
+        title = stringResource(R.string.settings_devtools_title),
+        description = stringResource(R.string.settings_devtools_desc),
+    ) {
+        SettingsActionRow(
+            icon = Icons.Default.Build,
+            label = stringResource(R.string.settings_devtools_open),
+            onClick = onOpenDevTools,
+        )
+    }
+}
+
+@Composable
+private fun DebugBffSection(
+    debugBffUrl: String,
+    debugBffUrlError: String?,
+    onDebugBffUrlChange: (String) -> Unit,
+    onSaveDebugBffUrl: () -> Unit,
+    onResetDebugBffUrl: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_debug_bff_title),
+        description = stringResource(R.string.settings_debug_bff_desc),
+    ) {
+        OutlinedTextField(
+            value = debugBffUrl,
+            onValueChange = onDebugBffUrlChange,
+            label = { Text(stringResource(R.string.settings_debug_bff_label)) },
+            placeholder = { Text("http://10.0.2.2:8080") },
+            isError = debugBffUrlError != null,
+            supportingText = debugBffUrlError?.let { errorText ->
+                { Text(text = errorText) }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onSaveDebugBffUrl,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = stringResource(R.string.settings_debug_bff_save))
+            }
+            OutlinedButton(
+                onClick = onResetDebugBffUrl,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = stringResource(R.string.settings_debug_bff_reset))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppInformationSection(
+    onOpenGitHub: () -> Unit,
+    onOpenIgdb: () -> Unit,
+) {
+    SettingsSection(title = stringResource(R.string.settings_app_info_title)) {
+        Text(
+            text = stringResource(R.string.settings_app_name),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = stringResource(
+                R.string.settings_app_version,
+                BuildConfig.VERSION_NAME,
+                BuildConfig.FLAVOR
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        SettingsActionRow(
+            icon = Icons.Default.Code,
+            label = stringResource(R.string.settings_github_link),
+            onClick = onOpenGitHub,
+            external = true,
+        )
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+        Text(
+            text = stringResource(R.string.settings_igdb_attribution),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        SettingsActionRow(
+            icon = Icons.Default.SportsEsports,
+            label = stringResource(R.string.settings_igdb_link),
+            onClick = onOpenIgdb,
+            external = true,
+        )
+    }
+}
+
 @Composable
 private fun AppearanceSettingsCard(
     themeMode: ThemeMode,
@@ -580,85 +701,73 @@ private fun AppearanceSettingsCard(
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+    SettingsSection(
+        title = stringResource(R.string.settings_appearance_title),
+        description = stringResource(R.string.settings_appearance_desc),
     ) {
-        Column(
-            modifier = Modifier.padding(GtDimens.Gutter),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Text(
+            text = stringResource(R.string.settings_theme_title),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Column(modifier = Modifier.selectableGroup()) {
+            ThemeMode.entries.forEach { mode ->
+                ThemeModeRow(
+                    mode = mode,
+                    selected = themeMode == mode,
+                    onSelect = { onThemeModeChange(mode) },
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.settings_appearance_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = stringResource(R.string.settings_dynamic_color_title),
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = stringResource(R.string.settings_appearance_desc),
+                    text = stringResource(
+                        if (dynamicColorSupported) {
+                            R.string.settings_dynamic_color_desc
+                        } else {
+                            R.string.settings_dynamic_color_unsupported
+                        },
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = stringResource(R.string.settings_theme_title),
-                style = MaterialTheme.typography.labelLarge,
+            Switch(
+                checked = dynamicColor && dynamicColorSupported,
+                onCheckedChange = onDynamicColorChange,
+                enabled = dynamicColorSupported,
             )
-            Column(modifier = Modifier.selectableGroup()) {
-                ThemeMode.entries.forEach { mode ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = themeMode == mode,
-                                onClick = { onThemeModeChange(mode) },
-                                role = Role.RadioButton,
-                            )
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        RadioButton(
-                            selected = themeMode == mode,
-                            onClick = null,
-                        )
-                        Text(
-                            text = stringResource(mode.labelRes()),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_dynamic_color_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        text = stringResource(
-                            if (dynamicColorSupported) {
-                                R.string.settings_dynamic_color_desc
-                            } else {
-                                R.string.settings_dynamic_color_unsupported
-                            },
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = dynamicColor && dynamicColorSupported,
-                    onCheckedChange = onDynamicColorChange,
-                    enabled = dynamicColorSupported,
-                )
-            }
         }
+    }
+}
+
+@Composable
+private fun ThemeModeRow(mode: ThemeMode, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = selected,
+                onClick = onSelect,
+                role = Role.RadioButton,
+            )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(
+            text = stringResource(mode.labelRes()),
+            style = MaterialTheme.typography.bodyLarge,
+        )
     }
 }
 
@@ -674,41 +783,23 @@ private fun DataSettingsCard(
     onExportLibrary: () -> Unit,
     onImportLibrary: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+    SettingsSection(
+        title = stringResource(R.string.settings_data_title),
+        description = stringResource(R.string.settings_data_desc),
     ) {
-        Column(
-            modifier = Modifier.padding(GtDimens.Gutter),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        OutlinedButton(
+            onClick = onExportLibrary,
+            enabled = !backupBusy,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_data_title),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = stringResource(R.string.settings_data_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            OutlinedButton(
-                onClick = onExportLibrary,
-                enabled = !backupBusy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = stringResource(R.string.settings_export_library))
-            }
-            OutlinedButton(
-                onClick = onImportLibrary,
-                enabled = !backupBusy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = stringResource(R.string.settings_import_library))
-            }
+            Text(text = stringResource(R.string.settings_export_library))
+        }
+        OutlinedButton(
+            onClick = onImportLibrary,
+            enabled = !backupBusy,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(text = stringResource(R.string.settings_import_library))
         }
     }
 }
@@ -754,4 +845,6 @@ private fun ImportPreviewDialog(
     )
 }
 
-
+/** Minimum touch target for a settings row, independent of how long its label wraps. */
+private val SettingsActionRowMinHeight = 48.dp
+private const val DISABLED_CONTENT_ALPHA = 0.38f

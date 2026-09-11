@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="devtools_title">Инструменты разработчика</string>
+    <string name="devtools_intro">Отладочная лаборатория данных. Каждое действие доступно и из adb.</string>
+    <string name="devtools_busy">Выполняется…</string>
+
+    <string name="devtools_diagnostics_title">Состояние</string>
+    <string name="devtools_diagnostics_unavailable">Текущее состояние недоступно.</string>
+    <string name="devtools_copy">Копировать</string>
+
+    <string name="devtools_seed_title">Наполнить библиотеку</string>
+    <string name="devtools_seed_desc">Запись идёт через production-путь импорта, поэтому результат совпадает с настоящим импортом.</string>
+    <string name="devtools_preset_label">Пресет</string>
+    <string name="devtools_count_label">Количество</string>
+    <string name="devtools_seed_value_label">Зерно генератора</string>
+    <string name="devtools_seed_action">Наполнить</string>
+    <string name="devtools_count_invalid">Введите число от %1$d до %2$d</string>
+    <string name="devtools_seed_value_invalid">Введите целое число</string>
+    <string name="devtools_mode_replace">заменить</string>
+    <string name="devtools_mode_merge">дополнить</string>
+
+    <string name="devtools_wipe_title">Очистить состояние</string>
+    <string name="devtools_wipe_desc">Каждое действие сообщает фактически достигнутое состояние, прочитанное из хранилища.</string>
+    <string name="devtools_wipe_all_note">«Всё» дополнительно очищает пользовательские настройки и отладочный BFF-адрес. Состояние WorkManager, уже показанные уведомления и кэш деталей в памяти сохраняются.</string>
+
+    <string name="devtools_wipe_library">Библиотека</string>
+    <string name="devtools_wipe_search_history">История поиска</string>
+    <string name="devtools_wipe_ledger">Журнал уведомлений</string>
+    <string name="devtools_wipe_all">Всё</string>
+
+    <string name="devtools_confirm_title">Очистить «%1$s»?</string>
+    <string name="devtools_confirm_action">Очистить</string>
+    <string name="devtools_cancel">Отмена</string>
+
+    <string name="devtools_result_seeded">Пресет %1$s: записано %2$d из %3$d (%4$s).</string>
+    <string name="devtools_result_seed_partial">У сгенерированных игр нет строки каталога, поэтому при открытии из библиотеки экран деталей покажет ошибку.</string>
+    <string name="devtools_result_wiped">Очищено — %1$s. Библиотека %2$d, история поиска %3$d, журнал %4$d.</string>
+    <string name="devtools_result_failed">Ошибка: %1$s — %2$s</string>
+    <string name="devtools_result_rejected">Команда отклонена: %1$s</string>
+    <string name="devtools_copied">Скопировано в буфер обмена</string>
+    <string name="devtools_count_hint">От %1$d до %2$d</string>
+    <string name="devtools_result_title">Последнее действие</string>
+</resources>
