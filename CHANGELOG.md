@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Search is a top-level destination in bottom navigation (`Discover | Search | Library`). Query, filters, paging results, and scroll restore across tab switches; re-tapping Search focuses the field and scrolls to top.
+- Settings actions are uniform: every button spans its card with a centred label, and the IGDB attribution is a card like every other section instead of sitting one gutter further left than the content above it.
 
 
 ### Fixed
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Search and Discover bottom-nav re-taps survive Activity recreation: the trigger counters now use the same saveable lifetime as the screens that consume them.
 - Loading skeletons on Search, Discover, Library, Details, and Insights now share the loaded cards' chrome and major slots so content does not jump in.
 - The demo flavor seeds its starter library once per install instead of whenever the library is empty, so deleting every game — or clearing the library from the developer tools — no longer brings the curated entries back. Installations that predate the marker are recognised and never repopulated, including when their library is already empty.
+- Clearing everything no longer leaves Discover showing nothing. Wiping the database left `DiscoverRailLoader` holding page offsets and `endReached` flags for rows that no longer existed, so the rails saw an empty cache and still never refetched. The full reset now relaunches the app, which is what that target promises.
 
 ---
 

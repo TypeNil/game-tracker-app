@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.typenil.gametracker.core.model.AppError
 import io.github.typenil.gametracker.core.model.AppResult
+import io.github.typenil.gametracker.devtools.DevAppRestarter
 import io.github.typenil.gametracker.devtools.DevSeedRequest
 import io.github.typenil.gametracker.devtools.DevToolsCommand
 import io.github.typenil.gametracker.devtools.DevToolsRepository
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 internal class DevToolsViewModel @Inject constructor(
     private val repository: DevToolsRepository,
+    private val appRestarter: DevAppRestarter,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DevToolsUiState())
@@ -56,7 +58,15 @@ internal class DevToolsViewModel @Inject constructor(
     fun wipe(target: DevWipeTarget) {
         startOperation(OPERATION_WIPE) {
             when (val result = repository.wipe(target)) {
-                is AppResult.Success -> DevActionResult.Wiped(result.data)
+                is AppResult.Success -> {
+                    // Every other target leaves the data the UI is showing intact; a full reset does
+                    // not, and the in-memory holders that describe it (Discover rail offsets and
+                    // `endReached`, the For You feed, the details preview cache) would leave the app
+                    // serving deleted rows. Relaunching is the only complete cure.
+                    if (target == DevWipeTarget.ALL) appRestarter.restart()
+                    DevActionResult.Wiped(result.data)
+                }
+
                 is AppResult.Error -> DevActionResult.Failed(OPERATION_WIPE, result.error.describe())
             }
         }

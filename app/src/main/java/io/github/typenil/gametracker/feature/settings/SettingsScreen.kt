@@ -36,7 +36,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -448,6 +447,7 @@ fun SettingsScreen(
                     OutlinedButton(
                         onClick = onTuneRecommendations,
                         enabled = recommendationPreferencesLoaded,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = stringResource(R.string.discover_tune_recommendations))
                     }
@@ -579,21 +579,36 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    TextButton(onClick = onOpenGitHub) {
+                    OutlinedButton(
+                        onClick = onOpenGitHub,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         Text(text = stringResource(R.string.settings_github_link))
                     }
                 }
             }
 
-            HorizontalDivider()
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_igdb_attribution),
-                    style = MaterialTheme.typography.bodyLarge
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-                TextButton(onClick = onOpenIgdb) {
-                    Text(text = stringResource(R.string.settings_igdb_link))
+            ) {
+                Column(
+                    modifier = Modifier.padding(GtDimens.Gutter),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_igdb_attribution),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = onOpenIgdb,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.settings_igdb_link))
+                    }
                 }
             }
         }
