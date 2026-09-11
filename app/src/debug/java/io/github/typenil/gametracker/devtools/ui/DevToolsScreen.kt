@@ -22,8 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,6 +33,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -54,6 +53,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.backup.LibraryImportMode
+import io.github.typenil.gametracker.core.designsystem.component.SectionCardShape
+import io.github.typenil.gametracker.core.designsystem.component.SectionTitle
 import io.github.typenil.gametracker.core.designsystem.theme.GtDimens
 import io.github.typenil.gametracker.devtools.DevDiagnostics
 import io.github.typenil.gametracker.devtools.DevSeedPreset
@@ -443,6 +444,11 @@ private fun ResultCard(result: DevActionResult?, modifier: Modifier = Modifier) 
     }
 }
 
+/**
+ * Deliberately not the shared `SectionCard`: this one switches container role to mark a failed or
+ * rejected result, and keeps a tighter 12dp rhythm between its controls than a Settings section does.
+ * It shares the shape and the heading so the two screens still read as one vocabulary.
+ */
 @Composable
 private fun DevToolsCard(
     title: String,
@@ -450,21 +456,21 @@ private fun DevToolsCard(
     highlightAsError: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (highlightAsError) {
-                MaterialTheme.colorScheme.errorContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-        ),
+        shape = SectionCardShape,
+        color = if (highlightAsError) {
+            MaterialTheme.colorScheme.errorContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
+        tonalElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier.padding(GtDimens.Gutter),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            SectionTitle(text = title)
             content()
         }
     }

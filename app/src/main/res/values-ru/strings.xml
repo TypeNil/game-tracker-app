@@ -327,7 +327,7 @@
     <string name="library_loading">Загружаем библиотеку…</string>
     <string name="discover_rail_empty">В этом чарте сейчас пусто</string>
     <string name="library_search_clear_action">Сбросить поиск и фильтры</string>
-    <string name="settings_app_info_title">О приложении</string>
+    <string name="settings_app_info_title">Информация о приложении</string>
     <string name="settings_app_name">GameTracker</string>
     <string name="settings_app_version">Версия %1$s (%2$s)</string>
     <string name="settings_github_link">Репозиторий GitHub</string>

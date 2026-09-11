@@ -66,6 +66,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.designsystem.component.PlatformFamily
+import io.github.typenil.gametracker.core.designsystem.component.SectionCard
+import io.github.typenil.gametracker.core.designsystem.component.SectionTitle
 import io.github.typenil.gametracker.core.designsystem.component.contentColor
 import io.github.typenil.gametracker.core.designsystem.component.displayNameRes
 import io.github.typenil.gametracker.core.designsystem.component.errorMessage
@@ -81,7 +83,6 @@ internal const val LIBRARY_INSIGHTS_LOADING_TEST_TAG = "library-insights-loading
 
 private val StatusBarMinWidth = 2.dp
 private val StatusBarHeight = 14.dp
-private val SectionCardShape = RoundedCornerShape(16.dp)
 private val InsightsFilterChipShape = RoundedCornerShape(8.dp)
 private val ChipShape = RoundedCornerShape(50)
 
@@ -175,7 +176,7 @@ private fun InsightsLoading(modifier: Modifier = Modifier) {
             ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        InsightsSectionCard {
+        SectionCard {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(INSIGHTS_SKELETON_TITLE_FRACTION)
@@ -209,7 +210,7 @@ private fun InsightsLoading(modifier: Modifier = Modifier) {
                 }
             }
         }
-        InsightsSectionCard {
+        SectionCard {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(INSIGHTS_SKELETON_STATUS_TITLE_FRACTION)
@@ -231,7 +232,7 @@ private fun InsightsLoading(modifier: Modifier = Modifier) {
                 )
             }
         }
-        InsightsSectionCard {
+        SectionCard {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(INSIGHTS_SKELETON_PLAYED_TITLE_FRACTION)
@@ -391,7 +392,7 @@ private fun InsightsContent(
             )
         }
         item(key = "status") {
-            InsightsSectionCard {
+            SectionCard {
                 InsightsStatusSection(
                     insights = insights,
                     integerFormat = integerFormat,
@@ -400,7 +401,7 @@ private fun InsightsContent(
         }
         if (insights.mostPlayed.isNotEmpty()) {
             item(key = "most-played") {
-                InsightsSectionCard {
+                SectionCard {
                     SectionTitle(text = stringResource(R.string.insights_most_played))
                     Spacer(modifier = Modifier.height(4.dp))
                     insights.mostPlayed.forEachIndexed { index, game ->
@@ -423,7 +424,7 @@ private fun InsightsContent(
         }
         if (insights.topGenres.isNotEmpty()) {
             item(key = "taste") {
-                InsightsSectionCard {
+                SectionCard {
                     SectionTitle(text = stringResource(R.string.insights_taste))
                     Spacer(modifier = Modifier.height(8.dp))
                     TasteChipRow(labels = insights.topGenres)
@@ -432,31 +433,13 @@ private fun InsightsContent(
         }
         if (insights.topPlatforms.isNotEmpty()) {
             item(key = "platforms") {
-                InsightsSectionCard {
+                SectionCard {
                     SectionTitle(text = stringResource(R.string.insights_platforms))
                     Spacer(modifier = Modifier.height(8.dp))
                     PlatformChipRow(platforms = insights.topPlatforms)
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun InsightsSectionCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = SectionCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 1.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(GtDimens.Gutter),
-            content = { content() },
-        )
     }
 }
 
@@ -496,7 +479,7 @@ private fun InsightsSummaryCard(
         stringResource(R.string.insights_completed_count, completedValue)
     }
     val ratingValue = insights.averageUserRating?.let { ratingFormat.format(it) } ?: none
-    InsightsSectionCard {
+    SectionCard {
         Text(
             text = stringResource(R.string.insights_heading),
             style = MaterialTheme.typography.titleLarge,
@@ -802,14 +785,6 @@ private fun PlatformChipRow(platforms: List<PlatformFamily>) {
     }
 }
 
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() },
-    )
-}
 
 internal fun mostPlayedRowTestTag(gameId: Long): String = "library-insights-most-played-$gameId"
 
