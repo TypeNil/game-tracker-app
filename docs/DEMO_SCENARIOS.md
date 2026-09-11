@@ -52,7 +52,7 @@ adb shell am start -W \
 ---
 
 ## 3. Фоновая проверка релизов через WorkManager
-Приложение в фоне сверяет даты выхода игр из библиотеки. Это **best-effort**: WorkManager не обещает доставку в момент релиза, а переход даты может быть потерян, если details уже обновил UI-кэш до worker или процесс остановился до записи события. Повторные показы дедуплицируются по `(gameId, eventType)`.
+Приложение в фоне сверяет даты выхода игр из библиотеки. Это **best-effort**: WorkManager не обещает доставку в момент релиза, а переход даты может быть потерян, если details уже обновил UI-кэш до worker или процесс остановился до записи события. Повторные показы дедуплицируются по уникальному `eventKey`, включающему игру, тип события и релевантные даты.
 
 1. Откройте **Настройки** с экрана Discover: кнопка с иконкой информации в верхней панели (это не вкладка нижней навигации).
 2. Найдите блок **«Фоновые уведомления»** и нажмите **«Проверить релизы сейчас»**.
@@ -97,7 +97,41 @@ adb shell dumpsys jobscheduler | grep -i gametracker
 
 ---
 
-## 5. Решение проблем с установкой и подписью
+## 5. Debug-only developer tools
+
+Debug-варианты содержат отдельный экран **Developer tools** в Settings. Он позволяет посмотреть диагностику, заполнить библиотеку детерминированным набором данных и выборочно очистить пользовательское состояние. В подписанные release APK этот компонент не попадает.
+
+Те же операции можно запускать через `adb` по URI `gamertracker://dev/`:
+
+```bash
+# Состояние базы и сборки.
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "gamertracker://dev/state" \
+  io.github.typenil.gametracker.demo.debug
+
+# Детерминированный набор для проверки всех статусов.
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "gamertracker://dev/seed?preset=COVERAGE&count=12&mode=replace" \
+  io.github.typenil.gametracker.demo.debug
+
+# Большая библиотека для проверки прокрутки и производительности.
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "gamertracker://dev/seed?preset=STRESS&count=150&mode=replace" \
+  io.github.typenil.gametracker.demo.debug
+
+# Очистить только пользовательскую библиотеку.
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "gamertracker://dev/wipe?target=LIBRARY" \
+  io.github.typenil.gametracker.demo.debug
+```
+
+Доступные preset: `REALISTIC`, `COVERAGE`, `EDGE`, `STRESS`, `NOTIFICATIONS`. Для полного сброса используйте `target=ALL`; после успешного сброса приложение перезапускается, чтобы Discover заново построил свои in-memory состояния.
+
+## 6. Решение проблем с установкой и подписью
 
 Если при установке APK возникает ошибка несовпадения сертификатов подписи:
 ```

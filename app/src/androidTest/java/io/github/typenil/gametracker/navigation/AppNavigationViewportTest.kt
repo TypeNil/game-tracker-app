@@ -16,6 +16,7 @@ import io.github.typenil.gametracker.BuildConfig
 import io.github.typenil.gametracker.MainActivity
 import io.github.typenil.gametracker.R
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +29,11 @@ class AppNavigationViewportTest {
 
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
+
+    @Before
+    fun installNavigationFixture() {
+        DemoNavigationFixture.install(context)
+    }
     private fun viewportBounds() = composeTestRule
         .onNodeWithTag("app-nav-viewport")
         .getUnclippedBoundsInRoot()

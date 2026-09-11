@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
@@ -27,6 +28,7 @@ import io.github.typenil.gametracker.BuildConfig
 import io.github.typenil.gametracker.MainActivity
 import io.github.typenil.gametracker.R
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,6 +41,11 @@ class DeepLinkNavigationTest {
 
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
+
+    @Before
+    fun installNavigationFixture() {
+        DemoNavigationFixture.install(context)
+    }
 
     @Test
     fun coldStartDeepLink_opensGameDetails_andBackReturnsToDiscover() {
@@ -184,7 +191,7 @@ class DeepLinkNavigationTest {
             composeTestRule.onNode(hasSetTextAction()).assertTextContains("witcher")
 
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
-            composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
+            waitForSearchFieldFocus()
         }
     }
 
@@ -199,7 +206,7 @@ class DeepLinkNavigationTest {
             waitForText(searchHint)
 
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
-            composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
+            waitForSearchFieldFocus()
 
             scenario.recreate()
             waitForText(searchHint)
@@ -208,7 +215,7 @@ class DeepLinkNavigationTest {
             }
 
             composeTestRule.onNodeWithText(searchNavLabel).performClick()
-            composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
+            waitForSearchFieldFocus()
             if (composeTestRule.onAllNodes(hasScrollToIndexAction())
                     .fetchSemanticsNodes()
                     .isNotEmpty()
@@ -400,6 +407,15 @@ class DeepLinkNavigationTest {
 
     private fun advanceUntilIdle() {
         composeTestRule.waitForIdle()
+    }
+
+    private fun waitForSearchFieldFocus(timeoutMillis: Long = 5_000) {
+        composeTestRule.waitUntil(timeoutMillis = timeoutMillis) {
+            composeTestRule.onAllNodes(hasSetTextAction() and isFocused())
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNode(hasSetTextAction()).assertIsFocused()
     }
 
     private fun waitForText(text: String, timeoutMillis: Long = 10_000) {

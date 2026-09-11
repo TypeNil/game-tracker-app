@@ -143,11 +143,8 @@ fun SearchScreen(
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0L && scrollToTopTrigger != lastHandledScrollToTopTrigger) {
             lastHandledScrollToTopTrigger = scrollToTopTrigger
-            if (uiState.searchActive) {
-                resultsListState.scrollToItem(0)
-            } else {
-                recentListState.scrollToItem(0)
-            }
+            val activeListState = if (uiState.searchActive) resultsListState else recentListState
+            activeListState.requestScrollToItem(0)
             focusRequester.requestFocus()
         }
     }

@@ -133,7 +133,7 @@ jobs:
 
           tag = os.environ["TAG"]
           if not tag.startswith("v"):
-              print(f"::error::Expected tag ref like v1.0.2, got {tag!r}")
+              print(f"::error::Expected a v-prefixed tag (for example v1.2.3), got {tag!r}")
               sys.exit(1)
           version = tag[1:]
           text = Path("CHANGELOG.md").read_text(encoding="utf-8")
