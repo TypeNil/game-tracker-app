@@ -6,18 +6,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -94,10 +91,12 @@ fun LibraryScreen(
 ) {
     var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
     var editingGameId by rememberSaveable { mutableStateOf<Long?>(null) }
-    val pagerState = rememberTransientPagerState(
-        initialPage = uiState.selectedTab.ordinal,
-        pageCount = { LibraryTab.entries.size },
-    )
+    val pagerState = remember {
+        PagerState(
+            currentPage = uiState.selectedTab.ordinal,
+            pageCount = { LibraryTab.entries.size },
+        )
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage = uiState.userMessageRes?.let { stringResource(it) }
     LaunchedEffect(userMessage) {
@@ -228,23 +227,3 @@ fun LibraryScreen(
     )
 }
 
-/**
- * Creates a [PagerState] that does not persist its page index across saved instance state.
- *
- * This guarantees that `SavedStateHandle` in `LibraryViewModel` remains the sole authoritative
- * persisted source of truth for the selected tab across process death and configuration changes.
- */
-@Composable
-private fun rememberTransientPagerState(
-    initialPage: Int = 0,
-    pageCount: () -> Int,
-): PagerState {
-    var state: PagerState? = null
-    CompositionLocalProvider(LocalSaveableStateRegistry provides null) {
-        state = rememberPagerState(
-            initialPage = initialPage,
-            pageCount = pageCount,
-        )
-    }
-    return checkNotNull(state) { "Transient PagerState was not initialized" }
-}
