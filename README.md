@@ -12,8 +12,8 @@ Kotlin · Jetpack Compose · offline-first · Room / Paging 3 · Ktor BFF
 
 <img src="art/walkthrough.gif" width="340" alt="GameTracker Walkthrough" />
 
-**[Скачать demo APK (v1.0.3)](https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.3/GameTracker-v1.0.3-demo.apk)**
-· [Релиз](https://github.com/TypeNil/game-tracker-app/releases/tag/v1.0.3)
+**[Скачать demo APK (v1.0.4)](https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.4/GameTracker-v1.0.4-demo.apk)**
+· [Релиз](https://github.com/TypeNil/game-tracker-app/releases/tag/v1.0.4)
 
 Signed `demoRelease`, оффлайн, без API-ключей. Портфолио-сборка, не Play-релиз.
 
@@ -100,7 +100,7 @@ flowchart LR
 
 ```bash
 curl --fail --location --output app-demo.apk \
-  https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.3/GameTracker-v1.0.3-demo.apk
+  https://github.com/TypeNil/game-tracker-app/releases/download/v1.0.4/GameTracker-v1.0.4-demo.apk
 adb install -r app-demo.apk
 adb shell monkey -p io.github.typenil.gametracker.demo -c android.intent.category.LAUNCHER 1
 ```

@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4] - 2026-09-19
+
+Patch release focused on offline Library reliability and process-death state restoration.
+
+### Fixed
+- Stale cache cleanup now preserves enriched `game_details` rows for games saved in the user's library, keeping cached developer, banner, and other details available offline.
+- Library tab, favorites filter, search state/query, and sort order now restore through `SavedStateHandle` after process death. The pager remains transient so the selected tab has a single persisted source of truth.
+
+---
+
 ## [1.0.3] - 2026-09-11
 
 Post-`v1.0.2` personalization, library tooling, settings, and navigation improvements.
