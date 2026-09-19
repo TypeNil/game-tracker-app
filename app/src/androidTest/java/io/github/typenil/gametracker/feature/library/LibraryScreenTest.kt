@@ -782,6 +782,7 @@ class LibraryScreenTest {
 
     @Test
     fun libraryViewModel_and_libraryScreen_integrationRestoration_singleSourceOfTruth() {
+        val restorationTester = StateRestorationTester(composeTestRule)
         val handle1 = SavedStateHandle()
         val fakeLibRepo = FakeLibraryRepositoryForTest(sampleGames)
         val fakeGameRepo = FakeGameRepositoryForTest()
@@ -793,24 +794,22 @@ class LibraryScreenTest {
 
         var activeViewModel by mutableStateOf(vm1)
 
-        composeTestRule.setContent {
+        restorationTester.setContent {
             val vm = activeViewModel
             val uiState by vm.uiState.collectAsStateWithLifecycle()
-            androidx.compose.runtime.key(vm) {
-                GameTrackerTheme {
-                    LibraryScreen(
-                        uiState = uiState,
-                        onGameClick = {},
-                        onNavigateToDiscover = {},
-                        onInsightsClick = {},
-                        onTabSelected = vm::onTabSelected,
-                        onToggleFavoritesOnly = vm::onToggleFavoritesOnly,
-                        onSearchQueryChanged = vm::onSearchQueryChanged,
-                        onToggleSearchActive = vm::onToggleSearchActive,
-                        onSortOptionSelected = vm::onSortOptionSelected,
-                        onClearSearch = vm::onClearSearch,
-                    )
-                }
+            GameTrackerTheme {
+                LibraryScreen(
+                    uiState = uiState,
+                    onGameClick = {},
+                    onNavigateToDiscover = {},
+                    onInsightsClick = {},
+                    onTabSelected = vm::onTabSelected,
+                    onToggleFavoritesOnly = vm::onToggleFavoritesOnly,
+                    onSearchQueryChanged = vm::onSearchQueryChanged,
+                    onToggleSearchActive = vm::onToggleSearchActive,
+                    onSortOptionSelected = vm::onSortOptionSelected,
+                    onClearSearch = vm::onClearSearch,
+                )
             }
         }
 
@@ -840,8 +839,9 @@ class LibraryScreenTest {
         // Verify recreated ViewModel starts with restored tab immediately before emission
         assertEquals(LibraryTab.WISHLIST, vm2.uiState.value.selectedTab)
 
-        // 4. Switch active ViewModel to the recreated instance (simulating composition after recreation)
+        // 4. Update active ViewModel to recreated instance and emulate saved instance state restore
         activeViewModel = vm2
+        restorationTester.emulateSavedInstanceStateRestore()
         composeTestRule.waitForIdle()
 
         // 5. Pager is restored to Wishlist tab without any race or reconciliation conflict
