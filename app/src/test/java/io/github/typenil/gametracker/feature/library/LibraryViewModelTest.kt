@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.feature.library
 
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
@@ -31,6 +32,7 @@ import org.junit.Rule
 import org.junit.Before
 import org.junit.Test
 
+@Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class)
 class LibraryViewModelTest {
 
@@ -96,7 +98,13 @@ class LibraryViewModelTest {
         )
     )
 
-    private fun createViewModel(): LibraryViewModel = LibraryViewModel(fakeLibraryRepository, fakeGameRepository)
+    private fun createViewModel(
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    ): LibraryViewModel = LibraryViewModel(
+        libraryRepository = fakeLibraryRepository,
+        gameRepository = fakeGameRepository,
+        savedStateHandle = savedStateHandle,
+    )
 
     @Test
     fun `ui state keeps last snapshot after subscription timeout`() = runTest {
@@ -740,6 +748,109 @@ class LibraryViewModelTest {
 
             viewModel.onLibraryMutationHandled()
             assertEquals(LibraryMutationState.Idle, awaitItem().libraryMutationState)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `restored state from SavedStateHandle initializes uiState before and after loading`() = runTest {
+        val handle = SavedStateHandle(
+            mapOf(
+                LibraryViewModel.KEY_SELECTED_TAB to LibraryTab.COMPLETED,
+                LibraryViewModel.KEY_FILTER_FAVORITES_ONLY to true,
+                LibraryViewModel.KEY_SORT_OPTION to LibrarySortOption.USER_RATING_DESC,
+                LibraryViewModel.KEY_SEARCH_QUERY to "Elden",
+                LibraryViewModel.KEY_IS_SEARCH_ACTIVE to true,
+            )
+        )
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing, hollowKnight)
+        val viewModel = createViewModel(savedStateHandle = handle)
+
+        val initial = viewModel.uiState.value
+        assertTrue(initial.isLoading)
+        assertEquals(LibraryTab.COMPLETED, initial.selectedTab)
+        assertTrue(initial.filterFavoritesOnly)
+        assertEquals(LibrarySortOption.USER_RATING_DESC, initial.sortOption)
+        assertEquals("Elden", initial.searchQuery)
+        assertTrue(initial.isSearchActive)
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isLoading)
+            assertEquals(LibraryTab.COMPLETED, state.selectedTab)
+            assertTrue(state.filterFavoritesOnly)
+            assertEquals(LibrarySortOption.USER_RATING_DESC, state.sortOption)
+            assertEquals("Elden", state.searchQuery)
+            assertTrue(state.isSearchActive)
+            // eldenRing is COMPLETED, isFavorite=true, and matches "Elden"
+            assertEquals(listOf(eldenRing), state.filteredGames)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `mutating UI preferences updates values in SavedStateHandle`() = runTest {
+        val handle = SavedStateHandle()
+        val viewModel = createViewModel(savedStateHandle = handle)
+
+        viewModel.onTabSelected(LibraryTab.WISHLIST)
+        assertEquals(LibraryTab.WISHLIST, handle.get<LibraryTab>(LibraryViewModel.KEY_SELECTED_TAB))
+
+        viewModel.onToggleFavoritesOnly()
+        assertEquals(true, handle.get<Boolean>(LibraryViewModel.KEY_FILTER_FAVORITES_ONLY))
+
+        viewModel.onSortOptionSelected(LibrarySortOption.TITLE_ASC)
+        assertEquals(LibrarySortOption.TITLE_ASC, handle.get<LibrarySortOption>(LibraryViewModel.KEY_SORT_OPTION))
+
+        viewModel.onToggleSearchActive(true)
+        assertEquals(true, handle.get<Boolean>(LibraryViewModel.KEY_IS_SEARCH_ACTIVE))
+
+        viewModel.onSearchQueryChanged("Hades")
+        assertEquals("Hades", handle.get<String>(LibraryViewModel.KEY_SEARCH_QUERY))
+
+        viewModel.onClearSearch()
+        assertEquals("", handle.get<String>(LibraryViewModel.KEY_SEARCH_QUERY))
+
+        viewModel.onSearchQueryChanged("Hades")
+        viewModel.onToggleSearchActive(false)
+        assertEquals(false, handle.get<Boolean>(LibraryViewModel.KEY_IS_SEARCH_ACTIVE))
+        assertEquals("", handle.get<String>(LibraryViewModel.KEY_SEARCH_QUERY))
+    }
+
+    @Test
+    fun `simulated process death preserves UI preferences across ViewModel recreations`() = runTest {
+        fakeLibraryRepository.libraryGamesFlow.value = listOf(hades, eldenRing, hollowKnight)
+        val handle1 = SavedStateHandle()
+
+        val vm1 = createViewModel(savedStateHandle = handle1)
+        vm1.onTabSelected(LibraryTab.PLAYING)
+        vm1.onToggleFavoritesOnly()
+        vm1.onSortOptionSelected(LibrarySortOption.HOURS_PLAYED_DESC)
+        vm1.onToggleSearchActive(true)
+        vm1.onSearchQueryChanged("Had")
+
+        // Simulate process recreation by creating a fresh SavedStateHandle from saved entries
+        val restoredHandle = SavedStateHandle(
+            handle1.keys().associateWith { handle1.get<Any>(it) }
+        )
+        val vm2 = createViewModel(savedStateHandle = restoredHandle)
+
+        // Verify initial state reflects restored preferences before flow emission
+        val initial = vm2.uiState.value
+        assertTrue(initial.isLoading)
+        assertEquals(LibraryTab.PLAYING, initial.selectedTab)
+        assertTrue(initial.filterFavoritesOnly)
+        assertEquals(LibrarySortOption.HOURS_PLAYED_DESC, initial.sortOption)
+        assertEquals("Had", initial.searchQuery)
+        assertTrue(initial.isSearchActive)
+
+        // Verify emitted state correctly filters with restored preferences
+        vm2.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.isLoading)
+            assertEquals(LibraryTab.PLAYING, state.selectedTab)
+            assertTrue(state.filterFavoritesOnly)
+            assertEquals(listOf(hades), state.filteredGames)
             cancelAndIgnoreRemainingEvents()
         }
     }

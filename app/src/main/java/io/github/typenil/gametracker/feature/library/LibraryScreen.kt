@@ -3,18 +3,21 @@ package io.github.typenil.gametracker.feature.library
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -31,7 +34,6 @@ import io.github.typenil.gametracker.feature.library.component.LibraryHoursDialo
 import io.github.typenil.gametracker.feature.library.component.LibraryTabBody
 import io.github.typenil.gametracker.feature.library.component.LibraryTabRow
 import io.github.typenil.gametracker.feature.library.component.LibraryTopBar
-import kotlinx.coroutines.launch
 
 @Composable
 fun LibraryRoute(
@@ -92,11 +94,10 @@ fun LibraryScreen(
 ) {
     var editingHoursGameId by rememberSaveable { mutableStateOf<Long?>(null) }
     var editingGameId by rememberSaveable { mutableStateOf<Long?>(null) }
-    val pagerState = rememberPagerState(
+    val pagerState = rememberTransientPagerState(
         initialPage = uiState.selectedTab.ordinal,
         pageCount = { LibraryTab.entries.size },
     )
-    val pagerScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage = uiState.userMessageRes?.let { stringResource(it) }
     LaunchedEffect(userMessage) {
@@ -175,9 +176,8 @@ fun LibraryScreen(
             LibraryTabRow(
                 selectedTabIndex = pagerState.currentPage,
                 tabCounts = uiState.tabCounts,
-                onTabClick = { tab ->
-                    pagerScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
-                },
+                onTabClick = onTabSelected,
+                modifier = Modifier.fillMaxWidth(),
             )
 
             LibraryFavoritesFilter(
@@ -226,4 +226,25 @@ fun LibraryScreen(
         onSaveLibraryEntry = onSaveLibraryEntry,
         onRemoveFromLibrary = onRemoveFromLibrary,
     )
+}
+
+/**
+ * Creates a [PagerState] that does not persist its page index across saved instance state.
+ *
+ * This guarantees that `SavedStateHandle` in `LibraryViewModel` remains the sole authoritative
+ * persisted source of truth for the selected tab across process death and configuration changes.
+ */
+@Composable
+private fun rememberTransientPagerState(
+    initialPage: Int = 0,
+    pageCount: () -> Int,
+): PagerState {
+    var state: PagerState? = null
+    CompositionLocalProvider(LocalSaveableStateRegistry provides null) {
+        state = rememberPagerState(
+            initialPage = initialPage,
+            pageCount = pageCount,
+        )
+    }
+    return checkNotNull(state) { "Transient PagerState was not initialized" }
 }
