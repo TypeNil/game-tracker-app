@@ -1,5 +1,6 @@
 package io.github.typenil.gametracker.feature.library
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -7,25 +8,24 @@ import io.github.typenil.gametracker.R
 import io.github.typenil.gametracker.core.data.repository.GameRepository
 import io.github.typenil.gametracker.core.data.repository.LibraryRepository
 import io.github.typenil.gametracker.core.model.AppResult
-
 import io.github.typenil.gametracker.core.model.LibraryEntryDraft
 import io.github.typenil.gametracker.core.model.LibraryGame
 import io.github.typenil.gametracker.core.model.LibraryStatus
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import javax.inject.Inject
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @Suppress("TooManyFunctions")
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val gameRepository: GameRepository,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val requestedDetailIds = mutableSetOf<Long>()
@@ -59,16 +59,20 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
-    private companion object {
-        const val MAX_PENDING_DETAIL_IDS = 16
+    companion object {
+        const val KEY_SELECTED_TAB = "library_selected_tab"
+        const val KEY_FILTER_FAVORITES_ONLY = "library_filter_favorites_only"
+        const val KEY_SEARCH_QUERY = "library_search_query"
+        const val KEY_IS_SEARCH_ACTIVE = "library_is_search_active"
+        const val KEY_SORT_OPTION = "library_sort_option"
+        private const val MAX_PENDING_DETAIL_IDS = 16
     }
 
-
-    private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
-    private val _filterFavoritesOnly = MutableStateFlow(false)
-    private val _searchQuery = MutableStateFlow("")
-    private val _isSearchActive = MutableStateFlow(false)
-    private val _sortOption = MutableStateFlow(LibrarySortOption.ADDED_DESC)
+    private val _selectedTab = savedStateHandle.getStateFlow(KEY_SELECTED_TAB, LibraryTab.ALL)
+    private val _filterFavoritesOnly = savedStateHandle.getStateFlow(KEY_FILTER_FAVORITES_ONLY, false)
+    private val _searchQuery = savedStateHandle.getStateFlow(KEY_SEARCH_QUERY, "")
+    private val _isSearchActive = savedStateHandle.getStateFlow(KEY_IS_SEARCH_ACTIVE, false)
+    private val _sortOption = savedStateHandle.getStateFlow(KEY_SORT_OPTION, LibrarySortOption.ADDED_DESC)
     private val _userMessageRes = MutableStateFlow<Int?>(null)
     private val _hoursSaveState = MutableStateFlow<HoursSaveState>(HoursSaveState.Idle)
     private val _libraryMutationState =
@@ -140,34 +144,41 @@ class LibraryViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
-        initialValue = LibraryUiState(isLoading = true)
+        initialValue = LibraryUiState(
+            selectedTab = _selectedTab.value,
+            filterFavoritesOnly = _filterFavoritesOnly.value,
+            searchQuery = _searchQuery.value,
+            isSearchActive = _isSearchActive.value,
+            sortOption = _sortOption.value,
+            isLoading = true,
+        )
     )
 
     fun onTabSelected(tab: LibraryTab) {
-        _selectedTab.value = tab
+        savedStateHandle[KEY_SELECTED_TAB] = tab
     }
 
     fun onToggleFavoritesOnly() {
-        _filterFavoritesOnly.update { !it }
+        savedStateHandle[KEY_FILTER_FAVORITES_ONLY] = !_filterFavoritesOnly.value
     }
 
     fun onSearchQueryChanged(query: String) {
-        _searchQuery.value = query
+        savedStateHandle[KEY_SEARCH_QUERY] = query
     }
 
     fun onToggleSearchActive(active: Boolean) {
-        _isSearchActive.value = active
+        savedStateHandle[KEY_IS_SEARCH_ACTIVE] = active
         if (!active) {
-            _searchQuery.value = ""
+            savedStateHandle[KEY_SEARCH_QUERY] = ""
         }
     }
 
     fun onSortOptionSelected(sortOption: LibrarySortOption) {
-        _sortOption.value = sortOption
+        savedStateHandle[KEY_SORT_OPTION] = sortOption
     }
 
     fun onClearSearch() {
-        _searchQuery.value = ""
+        savedStateHandle[KEY_SEARCH_QUERY] = ""
     }
 
     fun onToggleFavorite(gameId: Long) {

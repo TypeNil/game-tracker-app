@@ -11,6 +11,7 @@ import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.dao.LibraryDao
 import io.github.typenil.gametracker.core.database.dao.RemoteKeyDao
 import io.github.typenil.gametracker.core.database.dao.SearchDao
+import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
 import io.github.typenil.gametracker.core.database.entity.GameEntity
 import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.transaction.RoomTransactionRunner
@@ -288,6 +289,87 @@ class OfflineAcceptanceTest {
 
         val cached = repository.getGameDetailsFlow(10L).first()
         assertEquals(hydrated, cached)
+    }
+
+    @Test
+    fun offlineAcceptance_clearStaleCache_preservesEnrichedDetailsForLibraryGames() = runTest(testScheduler) {
+        // Online sync: Discover and hydrated details for game 10L (Elden Ring)
+        assertTrue(repository.refreshTopRatedGames(limit = 20, offset = 0) is AppResult.Success)
+        assertTrue(repository.refreshGameDetails(10L) is AppResult.Success)
+
+        val hydrated = repository.getGameDetailsFlow(10L).first()
+        assertNotNull(hydrated)
+        assertEquals(96.5, hydrated?.totalRating ?: 0.0, 0.001)
+
+        // Seed an unreferenced unsaved game (999L) with enriched details
+        val unsavedDetails = GameDetailsEntity(
+            gameId = 999L,
+            name = "Unsaved Details Game",
+            coverUrl = null,
+            rating = 85.0,
+            totalRating = 85.0,
+            totalRatingCount = 100L,
+            releaseDateEpochSeconds = 1000L,
+            summary = "Unsaved summary",
+            url = null,
+            genres = listOf("Action"),
+            themes = emptyList(),
+            gameModes = emptyList(),
+            platforms = listOf("PC"),
+            releaseDates = emptyList(),
+            companies = emptyList(),
+            screenshots = emptyList(),
+            videos = emptyList(),
+            similarGames = emptyList(),
+            cachedAtEpochSeconds = 100L,
+        )
+        gameDao.upsertGame(
+            GameEntity(
+                id = 999L,
+                name = "Unsaved Details Game",
+                coverUrl = null,
+                rating = 85.0,
+                releaseDateEpochSeconds = 1000L,
+                summary = "Unsaved summary",
+                genres = listOf("Action"),
+                platforms = listOf("PC"),
+                cachedAtEpochSeconds = 100L,
+            )
+        )
+        gameDetailsDao.upsertDetails(unsavedDetails)
+
+        // Save game 10L into user library
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 10L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = testNow,
+                updatedAtEpochSeconds = testNow,
+            )
+        )
+
+        // Make game 10L's details row stale (older than 500L cutoff)
+        val stale10Details = gameDetailsDao.getGameDetails(10L)!!.copy(cachedAtEpochSeconds = 100L)
+        gameDetailsDao.upsertDetails(stale10Details)
+
+        // Execute production cleanup
+        repository.clearStaleCache(staleThresholdSeconds = 500L)
+
+        // Unsaved game 999L details must be evicted
+        assertNull("Unsaved game details must be evicted when stale", gameDetailsDao.getGameDetails(999L))
+
+        // Library game 10L details must be preserved despite being stale
+        val preserved = gameDetailsDao.getGameDetails(10L)
+        assertNotNull("Library game details must NOT be evicted by clearStaleCache", preserved)
+        assertEquals(96.5, preserved?.totalRating ?: 0.0, 0.001)
+
+        // Switch to offline (Airplane Mode) and confirm offline flow returns full enriched details
+        testRemoteDataSource.isOffline = true
+        val offlineDetails = repository.getGameDetailsFlow(10L).first()
+        assertNotNull(offlineDetails)
+        assertEquals("Elden Ring", offlineDetails?.name)
+        assertEquals(96.5, offlineDetails?.totalRating ?: 0.0, 0.001)
+        assertTrue(offlineDetails?.companies?.any { it.isDeveloper } == true)
     }
 
     private class TestRemoteDataSource(

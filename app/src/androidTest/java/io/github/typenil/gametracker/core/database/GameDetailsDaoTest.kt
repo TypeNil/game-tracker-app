@@ -7,9 +7,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.typenil.gametracker.core.database.dao.GameDetailsDao
 import io.github.typenil.gametracker.core.database.entity.CompanyColumn
 import io.github.typenil.gametracker.core.database.entity.GameDetailsEntity
+import io.github.typenil.gametracker.core.database.entity.GameEntity
+import io.github.typenil.gametracker.core.database.entity.LibraryEntryEntity
 import io.github.typenil.gametracker.core.database.entity.ReleaseDateColumn
 import io.github.typenil.gametracker.core.database.entity.SimilarGameColumn
 import io.github.typenil.gametracker.core.database.entity.VideoColumn
+import io.github.typenil.gametracker.core.model.LibraryStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -118,5 +121,53 @@ class GameDetailsDaoTest {
         assertEquals(1, deleted)
         assertNull(gameDetailsDao.getGameDetails(1L))
         assertNotNull(gameDetailsDao.getGameDetails(2L))
+    }
+
+    @Test
+    fun deleteStaleDetails_preservesStaleDetailsForLibraryGames() = runTest {
+        val gameDao = database.gameDao()
+        val libraryDao = database.libraryDao()
+
+        val unsavedGame = GameEntity(
+            id = 10L,
+            name = "Unsaved Game",
+            coverUrl = null,
+            rating = 80.0,
+            releaseDateEpochSeconds = 1000L,
+            summary = null,
+            genres = emptyList(),
+            platforms = emptyList(),
+            cachedAtEpochSeconds = 100L,
+        )
+        val libraryGame = GameEntity(
+            id = 20L,
+            name = "Library Game",
+            coverUrl = null,
+            rating = 90.0,
+            releaseDateEpochSeconds = 1000L,
+            summary = null,
+            genres = emptyList(),
+            platforms = emptyList(),
+            cachedAtEpochSeconds = 100L,
+        )
+        gameDao.upsertGames(listOf(unsavedGame, libraryGame))
+
+        libraryDao.upsertLibraryEntry(
+            LibraryEntryEntity(
+                gameId = 20L,
+                status = LibraryStatus.PLAYING,
+                addedAtEpochSeconds = 100L,
+                updatedAtEpochSeconds = 100L,
+            )
+        )
+
+        gameDetailsDao.upsertDetails(detailsEntity.copy(gameId = 10L, cachedAtEpochSeconds = 100L))
+        gameDetailsDao.upsertDetails(detailsEntity.copy(gameId = 20L, cachedAtEpochSeconds = 100L))
+
+        val deleted = gameDetailsDao.deleteStaleDetails(staleThreshold = 500L)
+
+        assertEquals(1, deleted)
+        assertNull(gameDetailsDao.getGameDetails(10L))
+        assertNotNull(gameDetailsDao.getGameDetails(20L))
     }
 }
